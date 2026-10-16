@@ -241,10 +241,13 @@ const handHtml = usable => {
 };
 const extras = () => (digital() ? '' : physExtras());
 const outBadge = p => p.out === 'escaped' ? `<span class="b-ok">✓ ${t('escaped')}</span>` : p.out ? `<span class="b-out">✗ ${p.out === 'trapped' ? t('trapped') : t('eliminated')}${p.role ? ' (' + t(p.role === 'alien' ? 'Alien' : 'Human') + ')' : ''}</span>` : '';
+/* private suspicion tag for a player: ? / Human (blue) / Alien (red) */
+const susBtns = key => key === 'me' ? '' : `<span class="sus" role="group" aria-label="${t('Your suspicion')}">${[['', '?', 'No idea'], ['human', t('H'), 'Suspected Human'], ['alien', t('A'), 'Suspected Alien']].map(([v, l, a]) => `<button data-act="sus" data-k="${esc(key)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(key) === v}" aria-label="${t(a)}">${l}</button>`).join('')}</span>`;
+const keyOfUid = u => u === Sync.uid ? 'me' : 'u:' + u;
 function orderList() {
   const ord = (Sync.settings && Sync.settings.order) || [], ps = Sync.players || {}, cur = T.turnState && T.turnState.uid;
   if (!ord.length) return '';
-  return `<ol class="turnlist">${ord.filter(u => ps[u]).map(u => `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? '▶' : ''}</span><span class="pname">${esc(ps[u].name)}${u === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}</li>`).join('')}</ol>`;
+  return `<ol class="turnlist">${ord.filter(u => ps[u]).map(u => { const k = keyOfUid(u); return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? '▶' : ''}</span>${shapeIcon(shapeOf(k), suspicion(k))}<span class="pname">${esc(ps[u].name)}${u === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
 }
 function waitPanel() {
   const cur = T.turnState;
@@ -318,10 +321,14 @@ function decksHtml() {
   return `<h3>${t('Decks')}</h3><div class="decks">${row('sector', 'Sector cards')}${row('item', 'Item cards')}${row('hatch', 'Escape Hatch cards')}</div>`;
 }
 function tablePanel() {
-  const ln = S.log.map(e => `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span><b>${esc(e.who)}</b> · ${esc(entryText(e))}</span></li>`).join('');
+  const ln = S.log.map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : shapeIcon(shapeOf(k), suspicion(k)); return `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${esc(entryText(e))}</span></li>`; }).join('');
+  // players known from hand-written notes (no table): one row each, with suspicion buttons
+  const noted = []; if (!inRoom()) { const seenK = new Set(); S.log.forEach(e => { if (e.mine || !e.sector) return; const k = playerKey(e); if (k === 'me' || seenK.has(k)) return; seenK.add(k); noted.push([k, e.who]); }); }
+  const notedHtml = noted.length ? `<h3>${t('Players')}</h3><ol class="turnlist">${noted.map(([k, n]) => `<li>${shapeIcon(shapeOf(k), suspicion(k))}<span class="pname">${esc(n)}</span>${susBtns(k)}</li>`).join('')}</ol>` : '';
+  const filt = `<div class="chips mkf" role="group" aria-label="${t('Map markers')}"><span class="hint">${t('Map markers')}</span><button data-act="mkall" data-v="0" aria-pressed="${!S.mkAll}">${t('Last {n} turns', { n: MK_RECENT })}</button><button data-act="mkall" data-v="1" aria-pressed="${!!S.mkAll}">${t('All turns')}</button></div>`;
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
   return `<h2>${t('Table')}</h2>${roomBlock()}
-    ${inRoom() ? `<h3>${t('Turn order')}</h3>${orderList()}${skip}` : ''}
+    ${inRoom() ? `<h3>${t('Turn order')}</h3><p class="dim hintline">${t('Tap H or A to mark who you suspect is Human (blue) or Alien (red). Only you see it.')}</p>${orderList()}${skip}` : notedHtml}${filt}
     ${decksHtml()}
     <h3>${t('Escape hatches')} <span class="hint">${digital() ? '' : t('tap to close or reopen')}</span></h3>
     <div class="hatches">${[1, 2, 3, 4].map(n => `<button data-act="${digital() ? 'noop' : 'hatch'}" data-n="${n}" aria-pressed="${!!S.hatches[n]}">${n}<small>${S.hatches[n] ? t('Closed') : t('Open')}</small></button>`).join('')}</div>

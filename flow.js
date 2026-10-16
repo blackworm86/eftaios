@@ -58,7 +58,7 @@ function renderFlow() {
   upd();
   const jc = $('#join-code'); if (jc) jc.onkeydown = e => { if (e.key === 'Enter') actions.joinroom(); };
 }
-const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found', started: 'That game has already started', closed: 'The host closed this game.' };
+const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found', started: 'That game has already started', closed: 'The host closed this game.', full: 'This table is full (8 players).' };
 function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="status">${t(FLOW_MSG[Sync.status])}${Sync.status === 'error' && Sync.lastError ? ` <code>${esc(Sync.lastError)}</code>` : ''}</p>` : ''; }
 
 function lobbyHtml() {
@@ -162,7 +162,7 @@ function syncOrder() {
 
 Sync.on({
   status(s) {
-    if ((S.stage === 'lobby' || S.stage === 'game') && (s === 'no-room' || s === 'started' || s === 'closed')) { toast(t(FLOW_MSG[s])); Sync.leave(true); resetToWelcome(); return; }
+    if ((S.stage === 'lobby' || S.stage === 'game') && (s === 'no-room' || s === 'started' || s === 'closed' || s === 'full')) { toast(t(FLOW_MSG[s])); Sync.leave(true); resetToWelcome(); return; }
     if (S.stage === 'game') { if (S.tab === 'table' && !T.editor) render(); } else renderFlow();
   },
   joined(code) {
@@ -182,7 +182,7 @@ Sync.on({
   counts(c) { T.counts = c; if (S.stage === 'game' && S.tab === 'table') render(); },
   entry(e) {
     if (!e || !e.id || S.log.some(x => x.id === e.id)) return;
-    S.log.push({ id: e.id, turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });
+    S.log.push({ id: e.id, by: e.by || '', turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });
     S.log.sort((a, b) => b.at - a.at); save(); if (S.stage === 'game') { paintOverlay(); if (S.tab === 'table') render(); }
   },
   hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.stage === 'game') afterChange(); }

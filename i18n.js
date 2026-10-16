@@ -352,7 +352,18 @@ const IT = {
 "The game ends for everyone at the table. You can then host a new one.": "La partita finisce per tutti al tavolo. Poi potrai crearne una nuova.",
 "Leave this game?": "Lasciare questa partita?",
 "You leave the table. Your route and notes on this device are erased.": "Lasci il tavolo. Percorso e note su questo dispositivo vengono cancellati.",
-"The host closed this game.": "L'host ha chiuso questa partita."
+"The host closed this game.": "L'host ha chiuso questa partita.",
+"Your suspicion": "Il tuo sospetto",
+"H": "U",
+"A": "A",
+"No idea": "Non so",
+"Suspected Human": "Sospetto Umano",
+"Suspected Alien": "Sospetto Alieno",
+"Map markers": "Segnalini sulla mappa",
+"Last {n} turns": "Ultimi {n} turni",
+"All turns": "Tutti i turni",
+"Tap H or A to mark who you suspect is Human (blue) or Alien (red). Only you see it.": "Tocca U o A per segnare chi sospetti sia Umano (blu) o Alieno (rosso). Lo vedi solo tu.",
+"This table is full (8 players).": "Questo tavolo è pieno (8 giocatori)."
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

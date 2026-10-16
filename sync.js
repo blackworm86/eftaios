@@ -66,6 +66,7 @@
       const mine = (await fb.get(path(code, 'players/' + Sync.uid))).val();
       if (st.status === 'over' && st.result && st.result.reason === 'closed') { setStatus('closed'); return false; }
       if (st.status === 'playing' && !mine) { setStatus('started'); return false; }
+      if (!mine && Object.keys((await fb.get(path(code, 'players'))).val() || {}).length >= 8) { setStatus('full'); return false; }
       if (mine) { if (me.name && me.name !== mine.name) await fb.update(path(code, 'players/' + Sync.uid), { name: me.name }); }
       else await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false });
       listen(code); Sync.h.joined && Sync.h.joined(code); return true;
@@ -92,6 +93,6 @@
     Sync.code = null; Sync.settings = null; Sync.players = {}; Sync.turn = null;
     if (!quiet) setStatus('off');
   };
-  Sync.push = e => { if (Sync.code && db) fb.set(path(Sync.code, 'log/' + e.id), e).catch(console.warn); };
+  Sync.push = e => { if (Sync.code && db) fb.set(path(Sync.code, 'log/' + e.id), Object.assign({ by: Sync.uid }, e)).catch(console.warn); };
   Sync.setHatch = (n, v) => { if (Sync.code && db) fb.set(path(Sync.code, 'hatches/' + n), v ? 1 : 0).catch(console.warn); };
 })();

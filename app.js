@@ -14,7 +14,7 @@ const parseId = s => { const m = /^([A-Za-z])\s*0?(\d{1,2})$/.exec(String(s).tri
 
 /* ---------------- state ---------------- */
 const fresh = () => ({
-  stage: 'welcome', myRole: null, ready: false, items: [], undo: null, char: '', online: false, outSent: false, revealed: false, room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
+  stage: 'welcome', myRole: null, ready: false, items: [], undo: null, sus: {}, shapes: {}, mkAll: false, char: '', online: false, outSent: false, revealed: false, room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
   phase: 'move', res: null, over: null, path: [], log: [],
   hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: []
 });
@@ -112,6 +112,41 @@ function paintCells() {
   }
   paintOverlay();
 }
+/* ---- player markers: one shape per player, neutral or suspected Human (blue) / Alien (red) ---- */
+const SHAPES = 8, MK_RECENT = 5;
+function shapePath(i, r) {
+  const poly = (n, rot, k = 1) => { let d = ''; for (let j = 0; j < n; j++) { const a = rot + j * 2 * Math.PI / n, rr = (k !== 1 && j % 2) ? r * k : r; d += (j ? 'L' : 'M') + (rr * Math.cos(a)).toFixed(2) + ' ' + (rr * Math.sin(a)).toFixed(2); } return d + 'Z'; };
+  const q = -Math.PI / 2;
+  switch (i % SHAPES) {
+    case 0: return `M${-r} 0a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;     // circle
+    case 1: { const s = r * 0.86; return `M${-s} ${-s}H${s}V${s}H${-s}Z`; }                    // square
+    case 2: return poly(3, q);                                                                  // triangle
+    case 3: return poly(4, q);                                                                  // diamond
+    case 4: return poly(5, q);                                                                  // pentagon
+    case 5: return poly(10, q, 0.45);                                                           // star
+    case 6: { const w = r * 0.38; return `M${-w} ${-r}H${w}V${-w}H${r}V${w}H${w}V${r}H${-w}V${w}H${-r}V${-w}H${-w}Z`; } // cross
+    default: return poly(3, Math.PI / 2);                                                       // triangle down
+  }
+}
+const shapeIcon = (i, sus) => `<svg class="shp ${sus || 'neutral'}" viewBox="-10 -10 20 20" aria-hidden="true"><path d="${shapePath(i, 8)}"/></svg>`;
+/* a stable key per player: table players by id, hand-written notes by name */
+function playerKey(e) {
+  if (e.mine || (e.by && window.Sync && e.by === Sync.uid)) return 'me';
+  if (e.by) return 'u:' + e.by;
+  const name = String(e.who || '?').trim().toLowerCase();
+  const ps = (window.Sync && Sync.players) || {};
+  for (const u in ps) if ((ps[u].name || '').toLowerCase() === name) return 'u:' + u;
+  return 'n:' + name;
+}
+function shapeOf(key) {
+  const k = key === 'me' && window.Sync && Sync.uid && Sync.code ? 'u:' + Sync.uid : key;
+  const ord = (window.Sync && Sync.settings && Sync.settings.order) || [];
+  if (k.startsWith('u:')) { const i = ord.indexOf(k.slice(2)); if (i >= 0) return i % SHAPES; }
+  S.shapes = S.shapes || {};
+  if (!(k in S.shapes)) S.shapes[k] = (ord.length + Object.keys(S.shapes).length) % SHAPES;
+  return S.shapes[k];
+}
+const suspicion = key => (key !== 'me' && S.sus && S.sus[key]) || '';
 function paintOverlay() {
   const map = T.map, inPlay = S.role && !T.editor;
   const trail = $('#trail'), marks = $('#marks'), me = $('#me');
@@ -126,14 +161,28 @@ function paintOverlay() {
     const [c, r] = parseId(p.pos), h = hexPos(map, c, r);
     const t = el('text', { x: h.x, y: h.y - 7, class: 'tnum' }, marks); t.textContent = p.turn || 'S';
   }
-  // announcements heard / made
-  const done = new Set();
+  // other players' announcements: latest per player per sector, recent turns only unless "all"
+  const bySector = new Map(), done = new Set();
   for (const e of S.log) {
-    if (!e.sector || !['noise', 'attack', 'spot'].includes(e.kind) || done.has(e.sector)) continue; done.add(e.sector);
-    const p = parseId(e.sector); if (!p) continue; const h = hexPos(map, p[0], p[1]);
-    const g = el('g', { class: 'mk ' + e.kind, transform: `translate(${h.x + 8} ${h.y - 8})` }, marks);
-    el('circle', { r: 7 }, g); const t = el('text', {}, g); t.textContent = e.turn;
+    if (!e.sector || !['noise', 'attack', 'reveal', 'spot'].includes(e.kind)) continue;
+    if (!S.mkAll && S.turn - e.turn >= MK_RECENT) continue;
+    const key = e.kind === 'spot' ? 'spot' : playerKey(e), id = key + '@' + e.sector;
+    if (done.has(id)) continue; done.add(id);
+    if (!bySector.has(e.sector)) bySector.set(e.sector, []);
+    bySector.get(e.sector).push({ e, key });
   }
+  const OFF = [[9, -9], [-9, -9], [9, 9], [-9, 9], [0, -13], [0, 13], [13, 0], [-13, 0]];
+  bySector.forEach((list, sec) => {
+    const p = parseId(sec); if (!p) return; const h = hexPos(map, p[0], p[1]);
+    list.slice(0, OFF.length).forEach(({ e, key }, i) => {
+      const [dx, dy] = list.length === 1 ? OFF[0] : OFF[i], old = S.turn - e.turn >= 2;
+      if (key === 'spot') { const g = el('g', { class: 'mk spot', transform: `translate(${h.x} ${h.y})` }, marks); el('circle', { r: 15 }, g); return; }
+      const sus = suspicion(key);
+      const g = el('g', { class: `mk pm ${e.kind} ${sus || 'neutral'}${old ? ' old' : ''}`, transform: `translate(${h.x + dx} ${h.y + dy})` }, marks);
+      el('path', { d: shapePath(shapeOf(key), 7.5) }, g);
+      const t = el('text', {}, g); t.textContent = e.turn;
+    });
+  });
   if (S.pos) {
     const [c, r] = parseId(S.pos), h = hexPos(map, c, r);
     el('circle', { cx: h.x, cy: h.y, r: 13, class: 'me-ring pulse' }, me);
@@ -197,7 +246,7 @@ const PUBLIC = ['noise', 'attack', 'spot', 'silence', 'hatch', 'item', 'reveal',
 function say(text, kind, sector, extra = {}) {
   const e = Object.assign({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind, sector: sector || null, text: text || kind, mine: true, at: Date.now() }, extra);
   S.log.unshift(e);
-  if (window.Sync && Sync.code && PUBLIC.includes(kind)) Sync.push({ id: e.id, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at, n: e.n || 0, ok: e.ok ? 1 : 0 });
+  if (window.Sync && Sync.code && PUBLIC.includes(kind)) Sync.push({ id: e.id, by: Sync.uid, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at, n: e.n || 0, ok: e.ok ? 1 : 0 });
   if (S.log.length > 400) S.log.length = 400;
 }
 /* announcements are rendered from structured data so each player sees them in their own language */
@@ -247,7 +296,9 @@ const actions = {
   qr() { qrDlg(); },
   lang(b) { setLang(b.dataset.l); },
   cancelpick() { T.pick = null; paintCells(); render(); },
-  noop() { }
+  noop() { },
+  sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
+  mkall(b) { S.mkAll = b.dataset.v === '1'; save(); render(); paintOverlay(); }
 };
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { if (!T.editor) setTab(b.dataset.tab); }));

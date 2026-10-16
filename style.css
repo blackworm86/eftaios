@@ -113,9 +113,14 @@ textarea{font:13px var(--mono);min-height:140px}
 .pulse{animation:pulse 1.8s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes pulse{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(2.2)}}
 .mk{pointer-events:none}
-.mk circle{fill:#000b;stroke:var(--c);stroke-width:2}
-.mk text{font:700 8px var(--mono);fill:var(--c);text-anchor:middle;dominant-baseline:central}
-.mk.noise{--c:#ffd24a}.mk.attack{--c:var(--alien)}.mk.spot{--c:#7fe3ff}.mk.heard{--c:#c9a7ff}
+.mk.spot circle{fill:none;stroke:#7fe3ff;stroke-width:2;stroke-dasharray:3 3}
+.pm path{stroke:#0b1222;stroke-width:1.4;stroke-linejoin:round}
+.pm text{font:700 7px var(--mono);text-anchor:middle;dominant-baseline:central}
+.pm.neutral path{fill:#dfe4ee}.pm.neutral text{fill:#0b1222}
+.pm.human path{fill:#38a3ff}.pm.alien path{fill:#ff4a2b}.pm.human text,.pm.alien text{fill:#fff}
+.pm.attack path{stroke:#ffb41f;stroke-width:2.4}
+.pm.reveal path{stroke:#fff;stroke-width:2.4}
+.pm.old{opacity:.6}
 
 .zoom{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:8px}
 .zoom button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:#0a1120dd;font-size:20px;backdrop-filter:blur(4px)}
@@ -288,3 +293,16 @@ html,body{height:100vh;height:100dvh}
 .plist .mv{display:flex;gap:4px}.plist .mv button{width:40px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}.plist .mv button[disabled]{opacity:.3}
 .mini-link{background:none;border:0;color:var(--amber);font:600 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-left:8px;cursor:pointer;min-height:32px}
 .plist.rev li{flex-wrap:wrap}
+
+/* ---- v7: player shapes & suspicion ---- */
+.shp{width:20px;height:20px;flex:none;vertical-align:middle;margin-right:6px}
+.shp path{stroke:#0b1222;stroke-width:1.5;stroke-linejoin:round}
+.shp.neutral path{fill:#dfe4ee}.shp.human path{fill:#38a3ff}.shp.alien path{fill:#ff4a2b}
+.sus{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
+.sus button{width:38px;min-height:36px;border:0;background:var(--panel2);color:var(--dim);font:700 13px var(--mono)}
+.sus button+button{border-left:1px solid var(--line)}
+.sus button.none[aria-pressed=true]{background:#dfe4ee;color:#0b1222}
+.sus button.human[aria-pressed=true]{background:var(--human);color:#fff}
+.sus button.alien[aria-pressed=true]{background:var(--alien);color:#fff}
+.mkf{align-items:center;margin-top:16px}.mkf .hint{margin:0 4px 0 0}
+.log li span .shp{width:16px;height:16px;margin-right:4px}

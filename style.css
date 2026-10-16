@@ -251,3 +251,17 @@ dialog .row{margin-top:16px}
 .startbtn{margin-top:14px}
 .setup-card .roomcard{margin-top:6px}
 .setup-card .kv{margin-bottom:6px}
+
+/* ---- v4: real-phone sizing ---- */
+html,body{height:100vh;height:100dvh}
+#app,.screen{height:100vh;height:100dvh}
+.screen{display:flex;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.setup-card{margin:auto;width:min(520px,100%)}
+.setup-card h1{font-size:clamp(24px,8vw,40px)}
+.stage{min-height:200px}
+.panel{max-height:44vh;max-height:44dvh}
+.panel h2{font-size:clamp(18px,5.5vw,24px)}
+#panel-body{padding:12px 14px 16px}
+.stat.pos{min-width:0}
+.stat.pos b{font-size:16px;max-width:11ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:420px){.stat small{font-size:10px}.topbar{padding:6px 10px}.stat b{font-size:18px}.chip{padding:4px 8px;font-size:11px}.btn.big{min-height:50px}}

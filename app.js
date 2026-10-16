@@ -416,7 +416,7 @@ function exportMap() {
 /* ---------------- panels ---------------- */
 function setTab(k) { S.tab = k; T.pick = null; save(); render(); paintCells(); hdr(); }
 function hdr() {
-  $('#hd-turn').textContent = S.turn; $('#hd-pos').textContent = S.pos ? label(S.pos) : '—';
+  $('#hd-turn').textContent = S.turn; $('#hd-pos').textContent = S.pos ? ('HA'.includes(at(T.map, S.pos)) ? t('Start') : label(S.pos)) : '—';
   const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.textContent = S.role === 'alien' ? (S.fed ? t('Alien') + ' · ' + t('Fed') : t('Alien')) : t('Human');
   document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab));
 }

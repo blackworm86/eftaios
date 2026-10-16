@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><title>Firebase rules</title>
+<style>
+body{margin:0;background:#070b14;color:#e8ecf5;font:16px/1.5 system-ui,sans-serif;padding:16px;max-width:640px;margin:auto}
+h1{font-size:22px}h2{font-size:15px;color:#ffb41f;text-transform:uppercase;letter-spacing:.08em;margin-top:24px}
+textarea{width:100%;height:240px;background:#0d1424;color:#e8ecf5;border:1px solid #26385a;border-radius:10px;padding:10px;font:12px ui-monospace,monospace}
+button,a.btn{display:block;width:100%;box-sizing:border-box;min-height:52px;margin:10px 0;border:0;border-radius:12px;background:#ffb41f;color:#1a1200;font:700 17px system-ui;text-align:center;line-height:52px;text-decoration:none}
+a.btn{background:#16233c;color:#e8ecf5;border:1px solid #26385a}
+ol{padding-left:20px}li{margin:6px 0}.dim{color:#8c9bb8;font-size:14px}
+</style></head><body>
+<h1>Publish the database rules</h1>
+<p class="dim">Firebase console: Realtime Database → Regole (Rules) / Rules → Pubblica (Publish).</p>
+<h2>1</h2><a class="btn" href="https://console.firebase.google.com/project/eftaios/database/eftaios-default-rtdb/rules" target="_blank" rel="noopener">Open the Rules page</a>
+<h2>2</h2><button id="copy">Copy the rules</button>
+<p id="msg" class="dim" role="status"></p>
+<h2>3</h2>
+<ol><li>Tap in the editor, select all, delete.</li><li>Paste.</li><li>Tap <b>Pubblica</b> (Publish).</li></ol>
+<h2>Rules</h2><textarea id="r" readonly spellcheck="false"></textarea>
+<script>
+const r=document.getElementById('r'),m=document.getElementById('msg');
+fetch('database.rules.json',{cache:'no-store'}).then(x=>x.text()).then(t=>{r.value=t});
+document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(r.value);m.textContent='Copied ✓'}catch(e){r.select();document.execCommand('copy');m.textContent='Copied ✓ (if not, select the text below and copy)'}};
+</script></body></html>

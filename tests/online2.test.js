@@ -1,0 +1,62 @@
+// Digital cards, part 2: items, hand limit, hatches, escape ends the game. Static server on :8123.
+const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp/claude-0/-home-user-eftaios/9c1fb807-3ccb-51aa-b179-90ef8efd54ec/scratchpad';
+(async()=>{
+  const {b,pages,errs}=await setup(3);const [H,P1,P2]=pages;
+  await startTable(pages,{online:true,mode:'advanced'});
+  await H.screenshot({path:S+'/o-lobby.png'});
+  await begin(pages);
+  const roles=await Promise.all(pages.map(p=>p.evaluate(()=>S.role)));const hi=roles.indexOf('human'),human=pages[hi],others=pages.filter((_,i)=>i!==hi);
+  // make it the human's turn
+  async function giveTurn(p){const me=await p.evaluate(()=>Sync.uid);const ord=await H.evaluate(()=>Sync.settings.order);const idx=ord.indexOf(me);await H.evaluate(([i,u])=>Sync.setTurn({n:T.turnState.n,idx:i,uid:u}),[idx,me]);await p.waitForFunction(u=>T.turnState.uid===u,me);await p.waitForTimeout(100)}
+  await giveTurn(human);
+  await human.screenshot({path:S+'/o-move.png'});
+  // ---- adrenaline: only before moving, doubles movement
+  await human.evaluate(()=>{S.items=['adrenaline','teleport','sedatives'];S.pos='K09';S.phase='move';refreshReach();render()});
+  await human.click('[data-act=useitem][data-i=adrenaline]');
+  assert(await human.evaluate(()=>allowance())===2&&await human.evaluate(()=>S.items.length)===2,'Adrenaline: 2 sectors, card consumed');
+  await human.evaluate(()=>{const k=[...T.reach.entries()].find(([id,d])=>d===2&&at(T.map,id)==='.')[0];selectCell(k)});await human.click('[data-act=confirm]');
+  assert(await human.evaluate(()=>S.phase)==='resolve','moved 2 sectors');
+  await human.screenshot({path:S+'/o-resolve.png'});
+  // ---- sedatives replace the card draw
+  const before=await H.evaluate(()=>T.counts.sector.d+T.counts.sector.x);
+  await human.evaluate(()=>{S.pos=[...T.reach.keys()][0]||S.pos});
+  await human.evaluate(()=>{S.pos='K10';S.res={stage:'choose'};render()});
+  await human.click('[data-act=useitem][data-i=sedatives]');
+  assert(await human.evaluate(()=>S.res.stage)==='done'&&await human.evaluate(()=>S.items.join())==='teleport','Sedatives: no card, card consumed');
+  assert(await H.evaluate(()=>T.counts.sector.d+T.counts.sector.x)===before,'no sector card drawn with Sedatives');
+  await H.waitForFunction(()=>T.counts.item.x>=1);assert(true,'used items go to the discard pile');
+  assert(await H.evaluate(()=>S.log.some(e=>e.kind==='item'&&e.text==='sedatives')),'item use is public');
+  // ---- teleport
+  await human.click('[data-act=useitem][data-i=teleport]');
+  assert(await human.evaluate(()=>S.pos)===await human.evaluate(()=>find(T.map,'H')),'Teleport: back to the Human sector');
+  // ---- spotlight reveals positions of players in range
+  await human.evaluate(()=>{S.items=['spotlight'];render()});
+  await others[0].evaluate(()=>{S.pos='K09'});await others[1].evaluate(()=>{S.pos='A14'});
+  await human.click('[data-act=useitem][data-i=spotlight]');
+  await human.evaluate(()=>{const cb=T.pick.cb;T.pick=null;cb('K10')});
+  await human.waitForSelector('dialog[open]',{timeout:15000});
+  const txt=await human.evaluate(()=>document.querySelector('dialog').textContent);
+  assert(txt.includes('K09')&&!txt.includes('A14'),'Spotlight reveals only players in range ('+txt.slice(0,60)+')');
+  assert(await H.evaluate(()=>S.log.some(e=>e.kind==='reveal'&&e.sector==='K09')),'revealed position is public');
+  await human.evaluate(()=>closeDlg());
+  // ---- hand limit
+  await human.evaluate(()=>{S.items=['attack','attack','defense'];render()});
+  await human.evaluate(()=>addItem('adrenaline'));
+  await human.waitForSelector('dialog[open] [data-act=discardpick]');
+  await human.screenshot({path:S+'/o-hand.png'});
+  await human.click('dialog [data-act=discardpick][data-i="3"]');
+  assert(await human.evaluate(()=>S.items.length)===3&&await human.evaluate(()=>!S.items.includes('adrenaline')),'hand limited to 3: chosen card discarded');
+  // ---- hatch: draw card (green) -> escape ends game for the last human
+  await giveTurn(human);
+  await human.evaluate(()=>{S.items=[];S.pos='B03';S.phase='move';T.sel=null;refreshReach();render()});
+  await human.evaluate(()=>{window.__forceCard=null});
+  await human.evaluate(()=>selectCell('B02'));await human.click('[data-act=confirm]');
+  await human.waitForFunction(()=>S.over==='escaped'||(S.res&&S.res.stage==='done'),null,{timeout:15000});
+  const esc=await human.evaluate(()=>S.over==='escaped');
+  console.log('hatch card result:',esc?'green':'red');
+  assert(await H.evaluate(()=>T.counts.hatch.d+T.counts.hatch.x)===6,'hatch card drawn from the 6-card deck');
+  if(esc){await H.waitForFunction(()=>Sync.settings.status==='over',null,{timeout:15000});const r=await H.evaluate(()=>Sync.settings.result);assert(r.aliensWin===false&&r.escaped.length===1,'last human escaped: Humans win');await human.screenshot({path:S+'/o-over.png'})}
+  else{assert(await human.evaluate(()=>S.hatches[1])===1,'red card closes the hatch');}
+  await H.click('[data-tab=table]');await H.screenshot({path:S+'/o-table.png'});
+  console.log('errors',errs);await b.close();
+})();

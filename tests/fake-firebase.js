@@ -5,16 +5,17 @@ window.__FAKE_FB = async () => {
   const seg = p => p.split('/').filter(Boolean);
   const getAt = (t, p) => seg(p).reduce((o, k) => (o == null ? undefined : o[k]), t);
   const setAt = (t, p, v) => { const s = seg(p); let o = t; s.slice(0, -1).forEach(k => o = (o[k] = o[k] && typeof o[k] === 'object' ? o[k] : {})); if (v === null || v === undefined) delete o[s.at(-1)]; else o[s.at(-1)] = v; };
-  const snap = v => ({ val: () => (v === undefined ? null : JSON.parse(JSON.stringify(v))), exists: () => v !== undefined && v !== null });
+  const snap = (v, key) => ({ key, val: () => (v === undefined ? null : JSON.parse(JSON.stringify(v))), exists: () => v !== undefined && v !== null });
   const ls = [];
   const fire = () => { const t = load(); ls.forEach(l => l.check(t)); };
   window.addEventListener('storage', e => { if (e.key === KEY) fire(); });
-  const write = (p, v) => { const t = load(); setAt(t, p, v); saveT(t); setTimeout(fire, 0); };
+  const locked = fn => navigator.locks.request('fakefb', () => { fn(); setTimeout(fire, 0); });
+  const write = (p, v) => locked(() => { const t = load(); setAt(t, p, v); saveT(t); });
   const fb = {
     ref: (db, path) => ({ path }), query: r => r, limitToLast: () => null, serverTimestamp: () => Date.now(),
     get: async r => snap(getAt(load(), r.path)),
     set: async (r, v) => write(r.path, v),
-    update: async (r, o) => { const t = load(); for (const k in o) setAt(t, r.path + '/' + k, o[k]); saveT(t); setTimeout(fire, 0); },
+    update: async (r, o) => locked(() => { const t = load(); for (const k in o) setAt(t, r.path + '/' + k, o[k]); saveT(t); }),
     remove: async r => write(r.path, null),
     onValue(r, cb) {
       if (r.path === '.info/connected') { setTimeout(() => cb(snap(true)), 0); return () => {}; }
@@ -22,7 +23,7 @@ window.__FAKE_FB = async () => {
       ls.push(l); setTimeout(() => cb(snap(getAt(load(), r.path))), 0); return () => ls.splice(ls.indexOf(l), 1);
     },
     onChildAdded(r, cb) {
-      const seen = new Set(); const l = { check: t => { const o = getAt(t, r.path) || {}; for (const k in o) if (!seen.has(k)) { seen.add(k); cb(snap(o[k])); } } };
+      const seen = new Set(); const l = { check: t => { const o = getAt(t, r.path) || {}; for (const k in o) if (!seen.has(k)) { seen.add(k); cb(snap(o[k], k)); } } };
       ls.push(l); setTimeout(() => l.check(load()), 0); return () => ls.splice(ls.indexOf(l), 1);
     }
   };

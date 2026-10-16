@@ -50,7 +50,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   await giveTurn(human);
   await human.evaluate(()=>{S.items=[];S.pos='B03';S.phase='move';T.sel=null;refreshReach();render()});
   await human.evaluate(()=>{window.__forceCard=null});
-  await human.evaluate(()=>selectCell('B02'));await human.click('[data-act=confirm]');
+  await human.evaluate(()=>selectCell('B02'));await human.click('[data-act=confirm]');await human.click('[data-act=hatchdraw]');
   await human.waitForFunction(()=>S.over==='escaped'||(S.res&&S.res.stage==='done'),null,{timeout:15000});
   const esc=await human.evaluate(()=>S.over==='escaped');
   console.log('hatch card result:',esc?'green':'red');

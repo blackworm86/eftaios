@@ -14,7 +14,7 @@ const parseId = s => { const m = /^([A-Za-z])\s*0?(\d{1,2})$/.exec(String(s).tri
 
 /* ---------------- state ---------------- */
 const fresh = () => ({
-  stage: 'welcome', myRole: null, ready: false, items: [], char: '', online: false, outSent: false, revealed: false, room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
+  stage: 'welcome', myRole: null, ready: false, items: [], undo: null, char: '', online: false, outSent: false, revealed: false, room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
   phase: 'move', res: null, over: null, path: [], log: [],
   hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: []
 });

@@ -343,7 +343,11 @@ const IT = {
 "Escape Hatch cards": "Carte Scialuppa",
 "Result": "Risultato",
 "is trapped and out of the game": "è intrappolato e fuori dal gioco",
-"was eliminated": "è stato eliminato"
+"was eliminated": "è stato eliminato",
+"Undo move": "Annulla mossa",
+"Move undone": "Mossa annullata",
+"You reached an Escape Hatch.": "Hai raggiunto un Settore Scialuppa.",
+"Enter the Escape Hatch": "Entra nella scialuppa"
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

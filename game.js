@@ -25,6 +25,7 @@ function physicalEnd() {
 }
 function startMyTurn(silent) {
   if (S.over) { endTurn(); return; }
+  S.undo = null;
   S.phase = 'move'; S.res = null; S.adr = false; T.sel = null; T.itemIcon = false; refreshReach();
   if (!silent) { toast(t('Your turn!')); buzz(); }
   if (S.pos) focusOn(S.pos);
@@ -70,17 +71,22 @@ function showGameOver() {
 /* ---------------- moving & announcing ---------------- */
 function confirmMove() {
   if (!myTurn() || !T.sel || !T.reach.has(T.sel)) return;
+  S.undo = { pos: S.pos, adr: S.adr };
   S.pos = T.sel; S.path.push({ turn: S.turn, pos: S.pos }); T.sel = null; buzz();
   const ty = at(T.map, S.pos);
   S.phase = 'resolve'; S.res = { stage: '1234'.includes(ty) ? 'pod' : 'choose' };
   T.itemIcon = false; S.adr = false;
-  if (S.res.stage === 'pod') {
-    if (basic() || infection()) { actions.podGreen(); return; }
-    if (digital()) { afterChange(); focusOn(S.pos); digitalHatch(); return; }
-  }
   afterChange(); focusOn(S.pos);
 }
-function announce(res) { S.res = Object.assign({ stage: 'done' }, res); afterChange(); }
+/* nothing can be undone once something public or random has happened */
+const commit = () => { S.undo = null; };
+function undoMove() {
+  if (!S.undo || S.phase !== 'resolve' || !S.res || !['choose', 'pod'].includes(S.res.stage)) return;
+  S.path.pop(); S.pos = S.undo.pos; S.adr = S.undo.adr; S.undo = null; S.phase = 'move'; S.res = null; T.sel = null; T.itemIcon = false;
+  afterChange(); focusOn(S.pos); toast(t('Move undone'));
+}
+const undoBtn = () => (S.undo && S.phase === 'resolve' && S.res && ['choose', 'pod'].includes(S.res.stage)) ? `<button class="btn link wide" data-act="undo">↶ ${t('Undo move')}</button>` : '';
+function announce(res) { commit(); S.res = Object.assign({ stage: 'done' }, res); afterChange(); }
 /* common ending of a Sector card: public announcement, then (maybe) an item */
 async function finishCard(kind, sector, hasItem) {
   const res = kind === 'silence' ? { say: t('Silence in all Sectors'), tone: 'silent', logged: say('', 'silence') }
@@ -92,7 +98,7 @@ const iconFlag = () => { const on = T.itemIcon && !basic(); T.itemIcon = false; 
 
 /* ---------------- digital draws ---------------- */
 async function drawSector() {
-  S.res = { stage: 'wait' }; afterChange();
+  commit(); S.res = { stage: 'wait' }; afterChange();
   let rep; try { rep = await Online.request('sector'); } catch (e) { S.res = { stage: 'choose' }; afterChange(); toast(t('The host did not answer. Try again.')); return; }
   const c = rep.card || 'silence', item = c.endsWith('-item') && !basic();
   if (c.startsWith('noise-self')) finishCard('noise', S.pos, item);
@@ -100,7 +106,7 @@ async function drawSector() {
   else finishCard('silence', null, false);
 }
 async function digitalHatch() {
-  S.res = { stage: 'wait' }; afterChange();
+  commit(); S.res = { stage: 'wait' }; afterChange();
   let rep; try { rep = await Online.request('hatch'); } catch (e) { S.res = { stage: 'pod' }; afterChange(); toast(t('The host did not answer. Try again.')); return; }
   if (rep.card === 'red') actions.podRed(); else actions.podGreen();
 }
@@ -123,6 +129,7 @@ function useItem(id) {
   if (S.role !== 'human') return toast(t('Only Humans can use items'));
   if (!myTurn()) return toast(t('You can use items during your turn'));
   if (!S.items.includes(id)) return;
+  commit();
   const dangerous = S.phase === 'resolve' && S.res && S.res.stage === 'choose' && at(T.map, S.pos) === '.';
   if (id === 'defense') return toast(t('Defense is played automatically when you are attacked'));
   if (id === 'adrenaline') { if (S.phase !== 'move') return toast(t('Play Adrenaline before you move')); Online.consumeItem(id); S.adr = true; T.sel = null; afterChange(); return toast(t('You may move up to 2 sectors')); }
@@ -140,7 +147,7 @@ function alertHtml(title, html) { dlg.innerHTML = `<h2>${esc(title)}</h2><p>${ht
 
 /* digital attack, by an Alien or by a Human with an Attack item */
 async function runAttack(fromItem) {
-  const sec = S.pos; say('', 'attack', sec);
+  commit(); const sec = S.pos; say('', 'attack', sec);
   if (!fromItem) { S.res = { stage: 'wait' }; afterChange(); }
   const r = await Online.attack(sec);
   const lines = [];
@@ -168,16 +175,18 @@ Object.assign(actions, {
   quiet() { announce({ say: t('Nothing to announce'), tone: 'silent' }); },
   drawcard() { drawSector(); },
   hatchdraw() { digitalHatch(); },
-  attack() { if (digital()) runAttack(false); else { S.res = { stage: 'attack' }; afterChange(); } },
+  attack() { commit(); if (digital()) runAttack(false); else { S.res = { stage: 'attack' }; afterChange(); } },
   attackDone(b) {
-    const k = b.dataset.k; say('', 'attack', S.pos);
+    commit(); const k = b.dataset.k; say('', 'attack', S.pos);
     let sub = t('Anyone in this sector must declare it and is out of the game.');
     if (k === 'human' && S.role === 'alien' && !S.fed && !infection()) { S.fed = true; sub += ' ' + t('You have FED: from now on you move 1, 2 or 3 sectors.'); }
     announce({ say: t('Attack in Sector {s}', { s: S.pos }), sub, tone: 'alert' });
   },
-  podGreen() { const n = +at(T.map, S.pos); say('', 'hatch', S.pos, { n, ok: 1 }); S.hatches[n] = 1; Sync.setHatch(n, 1); S.over = 'escaped'; afterChange(); },
-  podRed() { const n = +at(T.map, S.pos); S.hatches[n] = 1; Sync.setHatch(n, 1); say('', 'hatch', S.pos, { n, ok: 0 }); announce({ say: t('Escape Hatch {n}: damaged', { n }), sub: t('Reveal the red card. Nobody can enter this hatch again.'), tone: 'alert' }); },
+  podGreen() { commit(); const n = +at(T.map, S.pos); say('', 'hatch', S.pos, { n, ok: 1 }); S.hatches[n] = 1; Sync.setHatch(n, 1); S.over = 'escaped'; afterChange(); },
+  podRed() { commit(); const n = +at(T.map, S.pos); S.hatches[n] = 1; Sync.setHatch(n, 1); say('', 'hatch', S.pos, { n, ok: 0 }); announce({ say: t('Escape Hatch {n}: damaged', { n }), sub: t('Reveal the red card. Nobody can enter this hatch again.'), tone: 'alert' }); },
   next: endTurn,
+  undo: undoMove,
+  enterhatch() { actions.podGreen(); },
   backres() { S.res = { stage: 'choose' }; afterChange(); },
   useitem(b) { useItem(b.dataset.i); },
   discardpick(b) {
@@ -192,7 +201,7 @@ Object.assign(actions, {
   skipturn() { confirmDlg(t('Skip {p}?', { p: pname(T.turnState.uid) }), t('Use this when a player is away. Their turn ends now.'), () => { const nx = nextTurn(); if (nx) Sync.setTurn(nx); }); }
 });
 function manualItem(k) {
-  closeDlg();
+  closeDlg(); commit();
   if (k === 'adrenaline') { if (S.phase !== 'move' || S.role !== 'human') return toast(t('Play Adrenaline before you move')); S.adr = true; say('Adrenaline used', 'info'); T.sel = null; afterChange(); return toast(t('You may move up to 2 sectors')); }
   if (k === 'teleport') { if (S.role !== 'human') return; S.pos = find(T.map, 'H'); S.path.push({ turn: S.turn, pos: S.pos, note: 'teleport' }); say('Teleport used', 'info'); T.sel = null; afterChange(); focusOn(S.pos); return toast(S.phase === 'move' ? t('Teleported. Now make your normal move.') : t('Teleported to the Human sector')); }
   if (k === 'spotlight') return pickSector(t('Spotlight: tap the sector to name'), id => { say('', 'spot', id); afterChange(); toast(t('Announce: Spotlight on Sector {s}', { s: id })); });
@@ -274,9 +283,11 @@ function playPanel() {
   const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };
   const head = `<h2>${esc(label(S.pos))}${'.sHA'.includes(ty) ? ` <span class="dim sub">${esc(typeName(ty))}</span>` : ''}</h2>`;
   if (r.stage === 'wait') return head + `<p class="dim" role="status">${t('Waiting for the host…')}</p>`;
-  if (r.stage === 'pod') return head + (digital()
+  if (r.stage === 'pod') return head + (basic() || infection()
+    ? `<p>${t('You reached an Escape Hatch.')}</p><button class="btn ok big wide" data-act="enterhatch">${t('Enter the Escape Hatch')}</button>`
+    : digital()
     ? `<p>${t('You reached an Escape Hatch. Draw the Escape Hatch card.')}</p><button class="btn primary big wide" data-act="hatchdraw">${t('Draw hatch card')}</button>`
-    : `<p>${t('Declare which hatch you reached, then draw an Escape Hatch card and reveal it.')}</p><div class="row"><button class="btn ok big" data-act="podGreen">${t('Green: escaped')}</button><button class="btn danger big" data-act="podRed">${t('Red: damaged')}</button></div>`);
+    : `<p>${t('Declare which hatch you reached, then draw an Escape Hatch card and reveal it.')}</p><div class="row"><button class="btn ok big" data-act="podGreen">${t('Green: escaped')}</button><button class="btn danger big" data-act="podRed">${t('Red: damaged')}</button></div>`) + undoBtn();
   if (r.stage === 'attack') return head + sayBox(t('Attack in Sector {s}', { s: S.pos }), 'alert') + `<p>${t('Anyone in the sector must declare it. Who was eliminated?')}</p>
       <div class="stack"><button class="btn" data-act="attackDone" data-k="none">${t('Nobody')}</button><button class="btn" data-act="attackDone" data-k="alien">${t('Only Alien(s)')}</button><button class="btn danger" data-act="attackDone" data-k="human">${t('At least one Human')}</button></div>
       <div class="row mini"><button class="btn" data-act="backres">${t('Back')}</button></div>`;
@@ -285,14 +296,14 @@ function playPanel() {
     `<button class="btn primary big wide" data-act="next">${!inRoom() && S.turn >= MAX_TURN ? t('Finish game') : t('End turn')}</button>${handHtml(true)}${extras()}`;
   const safe = ty === 's' || ty === 'H' || ty === 'A';
   if (safe) return head + `<p>${t('Secure sector: no card to draw.')}</p>${alien ? `<button class="btn danger wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
-    <button class="btn primary big wide" data-act="quiet">${t('Done')}</button>${handHtml(true)}${extras()}`;
+    <button class="btn primary big wide" data-act="quiet">${t('Done')}</button>${undoBtn()}${handHtml(true)}${extras()}`;
   if (digital()) return head + `<p>${alien ? t('Attack, or draw a Dangerous Sector card:') : t('Draw a Dangerous Sector card:')}</p>
     ${alien ? `<button class="btn danger big wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
-    <button class="btn primary big wide" data-act="drawcard">${t('Draw a card')}</button>${handHtml(true)}`;
+    <button class="btn primary big wide" data-act="drawcard">${t('Draw a card')}</button>${undoBtn()}${handHtml(true)}`;
   return head + `<p>${alien ? t('Attack, or draw a Dangerous Sector card:') : t('Draw a Dangerous Sector card:')}</p>
     ${alien ? `<button class="btn danger big wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
     <div class="stack"><button class="btn big" data-act="noiseHere">${t('Noise in your sector')}</button><button class="btn big" data-act="noiseAny">${t('Noise in any sector')}</button><button class="btn big" data-act="silence">${t('Silence')}</button></div>
-    ${basic() ? '' : `<button class="btn check" data-act="icon" aria-pressed="${!!T.itemIcon}"><i></i>${t('The card shows an Item icon')}</button>`}${extras()}`;
+    ${basic() ? '' : `<button class="btn check" data-act="icon" aria-pressed="${!!T.itemIcon}"><i></i>${t('The card shows an Item icon')}</button>`}${undoBtn()}${extras()}`;
 }
 
 const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found' };

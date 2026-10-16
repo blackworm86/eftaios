@@ -347,7 +347,12 @@ const IT = {
 "Undo move": "Annulla mossa",
 "Move undone": "Mossa annullata",
 "You reached an Escape Hatch.": "Hai raggiunto un Settore Scialuppa.",
-"Enter the Escape Hatch": "Entra nella scialuppa"
+"Enter the Escape Hatch": "Entra nella scialuppa",
+"Close this game?": "Chiudere questa partita?",
+"The game ends for everyone at the table. You can then host a new one.": "La partita finisce per tutti al tavolo. Poi potrai crearne una nuova.",
+"Leave this game?": "Lasciare questa partita?",
+"You leave the table. Your route and notes on this device are erased.": "Lasci il tavolo. Percorso e note su questo dispositivo vengono cancellati.",
+"The host closed this game.": "L'host ha chiuso questa partita."
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

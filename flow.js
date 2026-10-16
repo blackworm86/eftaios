@@ -58,7 +58,7 @@ function renderFlow() {
   upd();
   const jc = $('#join-code'); if (jc) jc.onkeydown = e => { if (e.key === 'Enter') actions.joinroom(); };
 }
-const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found', started: 'That game has already started' };
+const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found', started: 'That game has already started', closed: 'The host closed this game.' };
 function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="status">${t(FLOW_MSG[Sync.status])}${Sync.status === 'error' && Sync.lastError ? ` <code>${esc(Sync.lastError)}</code>` : ''}</p>` : ''; }
 
 function lobbyHtml() {
@@ -162,7 +162,7 @@ function syncOrder() {
 
 Sync.on({
   status(s) {
-    if (S.stage === 'lobby' && (s === 'no-room' || s === 'started')) { toast(t(FLOW_MSG[s])); leaveToWelcome(); return; }
+    if ((S.stage === 'lobby' || S.stage === 'game') && (s === 'no-room' || s === 'started' || s === 'closed')) { toast(t(FLOW_MSG[s])); Sync.leave(true); resetToWelcome(); return; }
     if (S.stage === 'game') { if (S.tab === 'table' && !T.editor) render(); } else renderFlow();
   },
   joined(code) {
@@ -170,6 +170,7 @@ Sync.on({
     save(); if (S.stage === 'game') { if (S.online && (typeof Online !== 'undefined')) Online.attach(); if (S.tab === 'table') render(); }
   },
   settings(st) {
+    if (st && st.status === 'over' && st.result && st.result.reason === 'closed' && (S.stage === 'lobby' || S.stage === 'game') && !Sync.isHost()) { toast(t('The host closed this game.')); Sync.leave(true); resetToWelcome(); return; }
     if (S.stage === 'lobby') { if (st && st.status === 'playing') beginGame(); else { syncOrder(); renderFlow(); } }
     else if (S.stage === 'game') { if (st && st.status === 'over') showGameOver(); hdr(); if (S.tab === 'play' || S.tab === 'table') render(); }
   },

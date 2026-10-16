@@ -64,6 +64,7 @@
       const st = (await fb.get(path(code, 'settings'))).val();
       if (!st) { setStatus('no-room'); return false; }
       const mine = (await fb.get(path(code, 'players/' + Sync.uid))).val();
+      if (st.status === 'over' && st.result && st.result.reason === 'closed') { setStatus('closed'); return false; }
       if (st.status === 'playing' && !mine) { setStatus('started'); return false; }
       if (mine) { if (me.name && me.name !== mine.name) await fb.update(path(code, 'players/' + Sync.uid), { name: me.name }); }
       else await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false });

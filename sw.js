@@ -1,4 +1,14 @@
-const V='eftaios-v5',FILES=['./','index.html','style.css','app.js','i18n.js','vendor/qrcode.js','i18n.js','vendor/qrcode.js','sync.js','flow.js','game.js','online.js','cards.js','firebase-config.js','maps/maps.json','manifest.webmanifest','icons/icon.svg'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;if(new URL(e.request.url).origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(V).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request)))});
+// Network first (always fresh when online), cache as offline fallback.
+const V = 'eftaios-v6';
+const FILES = ['./', 'index.html', 'style.css', 'firebase-config.js', 'vendor/qrcode.js', 'i18n.js', 'cards.js', 'sync.js', 'app.js', 'game.js', 'online.js', 'flow.js',
+  'maps/maps.json', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png'];
+self.addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
+self.addEventListener('activate', e => e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== V).map(x => caches.delete(x)))).then(() => self.clients.claim())));
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  e.respondWith(fetch(req).then(r => {
+    if (r.ok && !req.url.includes('?')) { const c = r.clone(); caches.open(V).then(x => x.put(req, c)); }
+    return r;
+  }).catch(async () => (await caches.match(req, { ignoreSearch: true })) || (req.mode === 'navigate' ? caches.match('index.html') : Response.error())));
+});

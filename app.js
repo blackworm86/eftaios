@@ -227,7 +227,14 @@ const actions = {
   tab(b) { setTab(b.dataset.tab); },
   addann() { addDlg(); },
   clearlog() { confirmDlg(t('Clear all announcements?'), t('The history on this device will be erased.'), () => { S.log = []; afterChange(); }); },
-  newgame() { confirmDlg(t('Start a new game?'), t('Your route, notes and role will be erased.'), () => { Sync.leave(); const keep = { customMaps: S.customMaps, name: S.name }; S = Object.assign(fresh(), keep); T.turnState = null; save(); boot(); }); },
+  newgame() {
+    const host = !!(Sync.code && Sync.isHost());
+    const [title, body] = !Sync.code ? ['Start a new game?', 'Your route, notes and role will be erased.'] : host ? ['Close this game?', 'The game ends for everyone at the table. You can then host a new one.'] : ['Leave this game?', 'You leave the table. Your route and notes on this device are erased.'];
+    confirmDlg(t(title), t(body), async () => {
+      if (host) await Sync.updateSettings({ status: 'over', result: { reason: 'closed' } });
+      Sync.leave(true); resetToWelcome(host ? 'host' : 'welcome');
+    });
+  },
   map(b) { const m = T.maps.find(x => x.id === b.dataset.id); if (!m || m === T.map) return; confirmDlg(t('Switch map?'), t('Your position resets to the start sector of the new map.'), () => { T.map = m; S.mapId = m.id; S.pos = find(m, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; T.sel = null; S.phase = 'move'; S.res = null; buildMap(); afterChange(); }); },
   edit() { startEditor(); },
   tool(b) { T.editor.tool = b.dataset.t; render(); },
@@ -390,6 +397,8 @@ function editorPanel() {
 
 /* ---------------- boot ---------------- */
 function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); } catch (_) { /* noop */ } applyStatic(); if (S.stage === 'game' && S.role) { render(); hdr(); paintCells(); } else renderFlow(); }
+/* back to the start screen, keeping only the name and custom maps */
+function resetToWelcome(stage) { const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards }; S = Object.assign(fresh(), keep); S.stage = stage || 'welcome'; T.turnState = null; T.counts = null; Sync.status = 'off'; closeDlg(); save(); boot(); }
 function boot() {
   T.editor = null; T.pick = null; T.sel = null;
   const game = S.stage === 'game' && S.role;

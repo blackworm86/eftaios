@@ -306,3 +306,19 @@ html,body{height:100vh;height:100dvh}
 .sus button.alien[aria-pressed=true]{background:var(--alien);color:#fff}
 .mkf{align-items:center;margin-top:16px}.mkf .hint{margin:0 4px 0 0}
 .log li span .shp{width:16px;height:16px;margin-right:4px}
+
+/* ---- v8: non-overlapping markers, per-player focus ---- */
+.pm.mine circle{fill:#0b1222;stroke:var(--amber);stroke-width:1.6}
+.pm.mine text{fill:var(--amber)}
+.pm text{font-family:var(--mono);font-weight:700}
+.mk.dim,.me-ring.dim,.me-dot.dim{opacity:.12}
+.trail.dim{opacity:.12}
+.tl{fill:none;stroke-width:2.2;stroke-dasharray:4 3;stroke-linecap:round;pointer-events:none}
+.tl.neutral{stroke:#dfe4ee}.tl.human{stroke:var(--human)}.tl.alien{stroke:var(--alien)}
+.mkbar{position:absolute;left:8px;right:64px;top:8px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.mkbar::-webkit-scrollbar{display:none}
+.mkbar button{flex:none;display:flex;align-items:center;gap:4px;min-height:36px;padding:4px 10px 4px 6px;border-radius:999px;border:1px solid var(--line);background:#0a1120dd;color:var(--text);font:600 12px var(--font);backdrop-filter:blur(4px)}
+.mkbar button[aria-pressed=true]{border-color:var(--amber);background:#ffb41f26}
+.mkbar .shp{width:18px;height:18px;margin:0}
+.medot{width:12px;height:12px;border-radius:50%;background:var(--amber);margin:0 3px}
+.pm.mine.noise circle,.pm.mine.attack circle,.pm.mine.reveal circle{stroke-dasharray:2.2 1.4}

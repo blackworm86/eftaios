@@ -147,48 +147,93 @@ function shapeOf(key) {
   return S.shapes[k];
 }
 const suspicion = key => (key !== 'me' && S.sus && S.sus[key]) || '';
+/* layout of the markers inside one hex: a ring of evenly spaced slots, never overlapping */
+function slots(n, centre) {
+  if (n === 1 && !centre) return { size: 7.5, pts: [[0, 0]] };
+  const R = n <= 4 ? 10.5 : 12.5, size = n <= 3 ? 7 : n <= 5 ? 5.8 : n <= 7 ? 4.8 : 4.2;
+  return { size, pts: Array.from({ length: n }, (_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [R * Math.cos(a), R * Math.sin(a)]; }) };
+}
 function paintOverlay() {
   const map = T.map, inPlay = S.role && !T.editor;
   const trail = $('#trail'), marks = $('#marks'), me = $('#me');
+  marks.textContent = ''; me.textContent = '';
+  const focus = T.focus || null;
   const pts = inPlay ? S.path.map(p => { const [c, r] = parseId(p.pos), h = hexPos(map, c, r); return h.x + ',' + h.y; }) : [];
   trail.setAttribute('points', pts.join(' '));
-  marks.textContent = ''; me.textContent = '';
+  trail.setAttribute('class', 'trail' + (focus && focus !== 'me' ? ' dim' : ''));
+  renderMkBar();
   if (!inPlay) return;
-  // numbered footprints of my route
-  const seen = new Set();
-  for (const p of S.path.slice().reverse()) {
-    if (seen.has(p.pos) || p.pos === S.pos) continue; seen.add(p.pos);
-    const [c, r] = parseId(p.pos), h = hexPos(map, c, r);
-    const t = el('text', { x: h.x, y: h.y - 7, class: 'tnum' }, marks); t.textContent = p.turn || 'S';
-  }
-  // other players' announcements: latest per player per sector, recent turns only unless "all"
-  const bySector = new Map(), done = new Set();
+  // collect every visit: my own route + other players' public positions
+  const visits = [];
+  S.path.forEach(p => visits.push({ key: 'me', sector: p.pos, turn: p.turn, kind: 'route' }));
   for (const e of S.log) {
     if (!e.sector || !['noise', 'attack', 'reveal', 'spot'].includes(e.kind)) continue;
-    if (!S.mkAll && S.turn - e.turn >= MK_RECENT) continue;
-    const key = e.kind === 'spot' ? 'spot' : playerKey(e), id = key + '@' + e.sector;
-    if (done.has(id)) continue; done.add(id);
-    if (!bySector.has(e.sector)) bySector.set(e.sector, []);
-    bySector.get(e.sector).push({ e, key });
+    visits.push({ key: e.kind === 'spot' ? 'spot' : playerKey(e), sector: e.sector, turn: e.turn, kind: e.kind });
   }
-  const OFF = [[9, -9], [-9, -9], [9, 9], [-9, 9], [0, -13], [0, 13], [13, 0], [-13, 0]];
-  bySector.forEach((list, sec) => {
+  const recent = v => S.mkAll || v.key === focus || v.key === 'me' || S.turn - v.turn < MK_RECENT;
+  // group: sector -> player -> turns
+  const bySector = new Map();
+  for (const v of visits) {
+    if (!recent(v) || (v.key === 'me' && v.sector === S.pos && v.turn === S.turn)) continue;
+    if (!bySector.has(v.sector)) bySector.set(v.sector, new Map());
+    const m = bySector.get(v.sector);
+    if (!m.has(v.key)) m.set(v.key, { key: v.key, turns: [], kind: v.kind });
+    const it = m.get(v.key); if (!it.turns.includes(v.turn)) it.turns.push(v.turn);
+    const rank = { route: 0, noise: 1, attack: 2, reveal: 3, spot: 0 };
+    if (rank[v.kind] > rank[it.kind]) it.kind = v.kind;
+  }
+  const order = k => k === 'me' ? -1 : k === 'spot' ? 99 : shapeOf(k);
+  bySector.forEach((m, sec) => {
     const p = parseId(sec); if (!p) return; const h = hexPos(map, p[0], p[1]);
-    list.slice(0, OFF.length).forEach(({ e, key }, i) => {
-      const [dx, dy] = list.length === 1 ? OFF[0] : OFF[i], old = S.turn - e.turn >= 2;
-      if (key === 'spot') { const g = el('g', { class: 'mk spot', transform: `translate(${h.x} ${h.y})` }, marks); el('circle', { r: 15 }, g); return; }
-      const sus = suspicion(key);
-      const g = el('g', { class: `mk pm ${e.kind} ${sus || 'neutral'}${old ? ' old' : ''}`, transform: `translate(${h.x + dx} ${h.y + dy})` }, marks);
-      el('path', { d: shapePath(shapeOf(key), 7.5) }, g);
-      const t = el('text', {}, g); t.textContent = e.turn;
+    const items = [...m.values()].sort((x, y) => order(x.key) - order(y.key));
+    const spot = items.find(x => x.key === 'spot'), list = items.filter(x => x.key !== 'spot');
+    if (spot) el('circle', { cx: h.x, cy: h.y, r: 17, class: 'mk spot' + (focus ? ' dim' : '') }, marks);
+    if (!list.length) return;
+    const { size, pts: sp } = slots(list.length, sec === S.pos);
+    list.forEach((it, i) => {
+      const [dx, dy] = sp[i], turns = it.turns.sort((x, y) => y - x), last = turns[0];
+      const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
+      const dim = focus && it.key !== focus, old = !focus && S.turn - last >= 2;
+      const g = el('g', { class: `mk pm ${it.kind} ${it.key === 'me' ? 'mine' : suspicion(it.key) || 'neutral'}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
+      if (it.key === 'me') el('circle', { r: size * 0.95 }, g);
+      else el('path', { d: shapePath(shapeOf(it.key), size) }, g);
+      const tx = el('text', { 'font-size': (label.length > 2 ? size * 0.7 : size * 0.95).toFixed(1) }, g); tx.textContent = label;
     });
   });
-  if (S.pos) {
-    const [c, r] = parseId(S.pos), h = hexPos(map, c, r);
-    el('circle', { cx: h.x, cy: h.y, r: 13, class: 'me-ring pulse' }, me);
-    el('circle', { cx: h.x, cy: h.y, r: 8, class: 'me-dot ' + S.role }, me);
-    el('circle', { cx: h.x, cy: h.y, r: 13, class: 'me-ring' }, me);
+  // timeline of the focused player, in turn order
+  if (focus && focus !== 'me') {
+    const tl = visits.filter(v => v.key === focus).sort((x, y) => x.turn - y.turn).map(v => { const q = parseId(v.sector), hh = hexPos(map, q[0], q[1]); return hh.x + ',' + hh.y; });
+    if (tl.length > 1) el('polyline', { points: tl.join(' '), class: 'tl ' + (suspicion(focus) || 'neutral') }, marks);
   }
+  if (S.pos) {
+    const [c, r] = parseId(S.pos), h = hexPos(map, c, r), cls = focus && focus !== 'me' ? ' dim' : '';
+    el('circle', { cx: h.x, cy: h.y, r: 13, class: 'me-ring pulse' + cls }, me);
+    el('circle', { cx: h.x, cy: h.y, r: 8, class: 'me-dot ' + S.role + cls }, me);
+    el('circle', { cx: h.x, cy: h.y, r: 13, class: 'me-ring' + cls }, me);
+  }
+}
+/* floating strip on the map: tap a player to see only their timeline */
+function knownPlayers() {
+  const out = [], seen = new Set(['me']);
+  const ord = (window.Sync && Sync.settings && Sync.settings.order) || [], ps = (window.Sync && Sync.players) || {};
+  ord.forEach(u => { if (ps[u] && u !== Sync.uid) { seen.add('u:' + u); out.push(['u:' + u, ps[u].name]); } });
+  S.log.forEach(e => { if (!e.sector || e.kind === 'spot') return; const k = playerKey(e); if (!seen.has(k)) { seen.add(k); out.push([k, e.who]); } });
+  return out;
+}
+function renderMkBar() {
+  const bar = $('#mkbar'); if (!bar) return;
+  const ps = S.role && !T.editor ? knownPlayers() : [];
+  if (!ps.length) { bar.hidden = true; return; }
+  bar.hidden = false;
+  bar.innerHTML = [['me', t('Me')]].concat(ps).map(([k, n]) => `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" title="${esc(n)}">${k === 'me' ? '<span class="medot"></span>' : shapeIcon(shapeOf(k), suspicion(k))}<span>${esc(String(n).slice(0, 8))}</span></button>`).join('');
+}
+/* zoom so that all the given sectors are visible */
+function frameSectors(ids) {
+  const pts = ids.map(parseId).filter(Boolean).map(([c, r]) => hexPos(T.map, c, r)); if (!pts.length) return;
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y), r = svg.getBoundingClientRect(), pad = 60;
+  const w = Math.max(...xs) - Math.min(...xs) + pad * 2, h = Math.max(...ys) - Math.min(...ys) + pad * 2;
+  view.k = Math.max(fitK, Math.min(fitK * 4, Math.min(r.width / w, r.height / h)));
+  view.x = r.width / 2 - (Math.min(...xs) + Math.max(...xs)) / 2 * view.k; view.y = r.height / 2 - (Math.min(...ys) + Math.max(...ys)) / 2 * view.k; applyView();
 }
 function applyView() {
   $('#vp').setAttribute('transform', `translate(${view.x.toFixed(1)} ${view.y.toFixed(1)}) scale(${view.k.toFixed(3)})`);
@@ -298,6 +343,7 @@ const actions = {
   cancelpick() { T.pick = null; paintCells(); render(); },
   noop() { },
   sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
+  pfocus(b) { const k = b.dataset.k; T.focus = T.focus === k ? null : k; paintOverlay(); if (T.focus) frameSectors(T.focus === 'me' ? S.path.map(p => p.pos) : S.log.filter(e => e.sector && e.kind !== 'spot' && playerKey(e) === T.focus).map(e => e.sector)); if (T.focus) toast(T.focus === 'me' ? t('Showing only your route') : t('Showing only {p}', { p: b.title })); },
   mkall(b) { S.mkAll = b.dataset.v === '1'; save(); render(); paintOverlay(); }
 };
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }

@@ -363,7 +363,9 @@ const IT = {
 "Last {n} turns": "Ultimi {n} turni",
 "All turns": "Tutti i turni",
 "Tap H or A to mark who you suspect is Human (blue) or Alien (red). Only you see it.": "Tocca U o A per segnare chi sospetti sia Umano (blu) o Alieno (rosso). Lo vedi solo tu.",
-"This table is full (8 players).": "Questo tavolo è pieno (8 giocatori)."
+"This table is full (8 players).": "Questo tavolo è pieno (8 giocatori).",
+"Showing only your route": "Mostro solo il tuo percorso",
+"Showing only {p}": "Mostro solo {p}"
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

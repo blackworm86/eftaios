@@ -1,0 +1,1 @@
+{"name":"EFTAIOS Companion","short_name":"EFTAIOS","description":"Companion for the physical board game Escape from the Aliens in Outer Space","start_url":"./","display":"standalone","orientation":"any","background_color":"#070b14","theme_color":"#070b14","icons":[{"src":"icons/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}

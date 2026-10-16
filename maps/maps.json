@@ -1,0 +1,73 @@
+{
+ "maps": [
+  {
+   "id": "galilei",
+   "name": "Galilei",
+   "official": true,
+   "description": "Balanced zone. Ideal for new players (4\u20138).",
+   "oddColumnsLower": true,
+   "rows_data": [
+    "x.sxxs..ss....xsssxxssx",
+    ".1..s..s..sss........2.",
+    ".......s.....sxs..xx..s",
+    "s..x.......s..xsss.x..s",
+    "ss.....x..s.s.s.....s.s",
+    "s..x....x..A....ss....s",
+    "xx.xx.ss.xxxxx...s.s.xx",
+    "x..........H.....s.s.sx",
+    "s.......s.sss.s....x...",
+    "ss.s.s.x.........xxx.ss",
+    "s......x..sss...sxx...s",
+    "s...sxs.xx.....s.s..s.s",
+    "s4...x....x..........3.",
+    "..ssxxssss.s.ss.sxxs.s."
+   ]
+  },
+  {
+   "id": "fermi",
+   "name": "Fermi",
+   "official": true,
+   "description": "Technological zone, demanding (2\u20136).",
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxx3xxx4xxxxxxxxx",
+    "xxxxxxxxxxsx.xxxxxxxxxx",
+    "xxxxxxxxx.s.s.xxxxxxxxx",
+    "xxxxxxxxxs...sxxxxxxxxx",
+    "xxxxxxxxx1xsx2xxxxxxxxx",
+    "xxxxxxxxsxxsxxsxxxxxxxx",
+    "xxxxxxxx.sxsx.sxxxxxxxx",
+    "xxxxxxxxxsssssxxxxxxxxx",
+    "xxxxxxxx.xxAxxsxxxxxxxx",
+    "xxxxxxxsssxHxs.sxxxxxxx",
+    "xxxxxxxsxsssssx.xxxxxxx",
+    "xxxxxxxx.sxsx.sxxxxxxxx",
+    "xxxxxxxxxx.xsxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "galvani",
+   "name": "Galvani",
+   "official": true,
+   "description": "Corridor zone, for experienced players (2\u20138).",
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxx..1xxx.....x2.....sx",
+    "x..xx.s..xxx.s..sx..x.x",
+    ".xx..xx...ssxxs...xx...",
+    ".s.xx..xx..x..xx...x...",
+    ".x.x.xxs.xx.sxs.xs.xxx.",
+    ".x.x.x.xx..A..xx.x.xxx.",
+    ".x.s.x.s.xxxxx.x.x.xxs.",
+    "sx.x.x.x..xHx..x.x.xs..",
+    ".x.x.x..xxs.sxs..x.sxx.",
+    ".4.x..sx..sxx..xx..x.x.",
+    ".s.xx...xx...sx..xx..3.",
+    "..x..xxs.xxsx..xxxx..x.",
+    "xx.xxx..xx..xxxxx..xx..",
+    "xxxxxxxx..sxs.s.s....xx"
+   ]
+  }
+ ]
+}

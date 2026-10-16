@@ -14,7 +14,7 @@ const parseId = s => { const m = /^([A-Za-z])\s*0?(\d{1,2})$/.exec(String(s).tri
 
 /* ---------------- state ---------------- */
 const fresh = () => ({
-  mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
+  room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
   phase: 'move', res: null, over: null, path: [], log: [],
   hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: []
 });
@@ -191,7 +191,9 @@ let fitDone = false;
 
 /* ---------------- game logic ---------------- */
 function say(text, kind, sector, extra = {}) {
-  S.log.unshift(Object.assign({ turn: S.turn, who: S.name || 'Me', kind, sector: sector || null, text, mine: true, at: Date.now() }, extra));
+  const e = Object.assign({ id: Math.random().toString(36).slice(2, 8) + Date.now().toString(36), turn: S.turn, who: S.name || 'Me', kind, sector: sector || null, text, mine: true, at: Date.now() }, extra);
+  S.log.unshift(e);
+  if (window.Sync && Sync.code && ['noise', 'attack', 'spot', 'silence', 'hatch'].includes(kind)) Sync.push({ id: e.id, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at });
   if (S.log.length > 400) S.log.length = 400;
 }
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 2600); }
@@ -242,7 +244,7 @@ const actions = {
   noiseHere() { announce({ say: 'Noise in Sector ' + S.pos, sub: 'Say it aloud.', tone: 'alert', extra: iconNote(), logged: say('Noise in my sector ' + S.pos, 'noise', S.pos) }); },
   noiseAny() { pickSector('Where is the noise? Tap the sector you announce.', id => { announce({ say: 'Noise in Sector ' + id, sub: 'Say it aloud. You may name any sector, even a far-off one.', tone: 'alert', extra: iconNote(), logged: say('Noise in sector ' + id, 'noise', id) }); }); },
   silence() { announce({ say: 'Silence in all Sectors', sub: 'Say it aloud.', tone: 'silent', logged: say('Silence in all sectors', 'silence') }); },
-  quiet() { announce({ say: 'No announcement', sub: S.res && S.res.why || 'Say nothing.', tone: 'silent', logged: say('No announcement', 'silence') }); },
+  quiet() { announce({ say: 'No announcement', sub: S.res && S.res.why || 'Say nothing.', tone: 'silent', logged: say('No announcement', 'info') }); },
   sedatives() { announce({ say: 'No card, no announcement', sub: 'Sedatives: you skip the card draw.', tone: 'silent', logged: say('Sedatives used', 'info') }); },
   attack() { S.res = { stage: 'attack', attackItem: S.role === 'human' }; afterChange(); },
   attackDone(b) {
@@ -252,18 +254,18 @@ const actions = {
     if (k === 'human' && S.role === 'alien' && !S.fed && !infection()) { S.fed = true; sub += ' You have FED: from now on you move 1, 2 or 3 sectors.'; }
     announce({ say: 'I attack in sector ' + S.pos, sub, tone: 'alert' });
   },
-  podGreen() { const n = at(T.map, S.pos); say(`Escape Hatch ${n} — escaped!`, 'hatch', S.pos); S.hatches[n] = 1; S.over = 'escaped'; afterChange(); },
-  podRed() { const n = at(T.map, S.pos); S.hatches[n] = 1; say(`Escape Hatch ${n} — damaged`, 'hatch', S.pos); announce({ say: `Escape Hatch ${n} is damaged`, sub: 'Reveal the red card. No one may enter this hatch again. Head for another one.', tone: 'alert' }); },
+  podGreen() { const n = at(T.map, S.pos); say(`Escape Hatch ${n} — escaped!`, 'hatch', S.pos); S.hatches[n] = 1; Sync.setHatch(n, 1); S.over = 'escaped'; afterChange(); },
+  podRed() { const n = at(T.map, S.pos); S.hatches[n] = 1; Sync.setHatch(n, 1); say(`Escape Hatch ${n} — damaged`, 'hatch', S.pos); announce({ say: `Escape Hatch ${n} is damaged`, sub: 'Reveal the red card. No one may enter this hatch again. Head for another one.', tone: 'alert' }); },
   next: endTurn,
   backres() { S.res = { stage: 'choose' }; afterChange(); },
   item(b) { itemAction(b.dataset.i); },
   caught(b) { caughtAction(b.dataset.k); },
   tab(b) { setTab(b.dataset.tab); },
-  hatch(b) { const n = b.dataset.n; S.hatches[n] = S.hatches[n] ? 0 : 1; afterChange(); },
+  hatch(b) { const n = b.dataset.n; S.hatches[n] = S.hatches[n] ? 0 : 1; Sync.setHatch(n, S.hatches[n]); afterChange(); },
   addNote() { addNote(); },
   notetype(b) { T.noteType = b.dataset.k; render(); },
   clearlog() { confirmDlg('Clear all notes?', 'Your announcement history will be erased.', () => { S.log = []; afterChange(); }); },
-  newgame() { confirmDlg('Start a new game?', 'Your route, notes and role will be erased.', () => { S = Object.assign(fresh(), { customMaps: S.customMaps }); save(); boot(); }); },
+  newgame() { confirmDlg('Start a new game?', 'Your route, notes and role will be erased.', () => { Sync.leave(); S = Object.assign(fresh(), { customMaps: S.customMaps }); save(); boot(); }); },
   turnminus() { S.turn = Math.max(1, S.turn - 1); afterChange(); },
   turnplus() { S.turn = Math.min(MAX_TURN, S.turn + 1); afterChange(); },
   map(b) { const m = T.maps.find(x => x.id === b.dataset.id); if (!m) return; confirmDlg('Switch map?', 'Your position resets to the start sector of the new map.', () => { T.map = m; S.mapId = m.id; S.pos = find(m, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; T.sel = null; S.phase = 'move'; S.res = null; buildMap(); afterChange(); }); },
@@ -274,6 +276,10 @@ const actions = {
   eexport() { exportMap(); },
   eimport() { importDlg(); },
   edel(b) { S.customMaps = S.customMaps.filter(m => m.id !== b.dataset.id); loadMaps().then(() => { if (!T.maps.includes(T.map)) { T.map = T.maps.find(m => m.id === T.map.id) || T.maps[0]; S.mapId = T.map.id; } afterChange(); }); },
+  syncnew() { Sync.join(Sync.newCode(), true); },
+  syncjoin() { Sync.join($('#room-code').value, false); },
+  syncleave() { Sync.leave(); S.room = null; save(); render(); },
+  copycode() { navigator.clipboard && navigator.clipboard.writeText(Sync.code).then(() => toast('Room code copied')); },
   cancelpick() { T.pick = null; paintCells(); render(); }
 };
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { if (!T.editor) setTab(b.dataset.tab); }));
@@ -447,9 +453,18 @@ function overPanel() {
   const m = { escaped: ['Escaped!', 'You left the ship and win. That hatch is now blocked.', 'ok'], time: ['39 rounds played', 'Humans still on board are eliminated: the Aliens win.', ''], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.', ''], trapped: ['No way out', 'Every Escape Hatch is blocked or damaged. You are eliminated.', ''] }[S.over];
   return `<p class="step">Game over</p><h2>${m[0]}</h2><p>${m[1]}</p><button class="btn primary big" style="width:100%" data-act="newgame">New game</button>`;
 }
+const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter a 4+ character code', 'no-room': 'Room not found', off: '' };
+function syncBlock() {
+  if (!Sync.enabled) return `<h3>Table sync</h3><p class="dim" style="font-size:13px">Not configured. Add your Firebase config in <code>firebase-config.js</code> to share announcements between devices.</p>`;
+  if (Sync.code) return `<h3>Table sync</h3><div class="say silent" style="margin:0 0 8px"><small>Room · ${esc(SYNC_MSG[Sync.status] || '')}</small><b style="letter-spacing:.3em">${esc(Sync.code)}</b></div>
+    <div class="row"><button class="btn" data-act="copycode">Copy code</button><button class="btn" data-act="syncleave">Leave</button></div><p class="dim" style="font-size:13px">Only announcements and hatch status are shared. Your position stays private.</p>`;
+  return `<h3>Table sync</h3><div class="stack"><button class="btn" data-act="syncnew">Create room</button>
+    <div class="inline"><input id="room-code" type="text" maxlength="8" autocapitalize="characters" placeholder="Room code" aria-label="Room code"><button class="btn" data-act="syncjoin">Join</button></div>
+    <p class="dim" style="font-size:13px;margin:0">${esc(SYNC_MSG[Sync.status] || 'Share a room code so everyone sees announcements automatically.')}</p></div>`;
+}
 function notesPanel() {
   const t = T.noteType, ln = S.log.map(e => `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>T${e.turn}</time><span><b>${esc(e.who)}</b> · ${esc(e.text)}</span></li>`).join('');
-  return `<p class="step">Shared table</p><h2>Notes</h2>
+  return `<p class="step">Shared table</p><h2>Notes</h2>${syncBlock()}
     <h3>Round</h3><div class="inline"><button class="btn" data-act="turnminus" aria-label="Previous turn">−</button><div class="btn" style="flex:1;cursor:default">Turn ${S.turn} of ${MAX_TURN}</div><button class="btn" data-act="turnplus" aria-label="Next turn">+</button></div>
     <h3>Escape hatches <span class="dim" style="text-transform:none;font-size:12px;letter-spacing:0">tap to close / reopen</span></h3>
     <div class="hatches">${[1, 2, 3, 4].map(n => `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}">${n}<small>${S.hatches[n] ? 'Closed' : 'Open'}</small></button>`).join('')}</div>
@@ -509,5 +524,15 @@ function boot() {
   fitDone = false; buildMap(); refreshReach(); render(); paintCells(); hdr();
   requestAnimationFrame(() => { fit(); fitDone = true; if (S.pos) focusOn(S.pos); });
 }
-loadMaps().then(boot);
+Sync.on({
+  status() { if (S.tab === 'notes' && !T.editor) render(); },
+  joined(code) { S.room = code; save(); if (S.tab === 'notes') render(); },
+  entry(e) {
+    if (!e || !e.id || S.log.some(x => x.id === e.id)) return;
+    S.log.push({ id: e.id, turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, mine: false, at: e.at, remote: true });
+    S.log.sort((a, b) => b.at - a.at); save(); if (S.role) { paintOverlay(); if (S.tab === 'notes') render(); }
+  },
+  hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.role) { afterChange(); } }
+});
+loadMaps().then(() => { boot(); if (S.room && S.role) Sync.join(S.room, false); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { /* optional */ });

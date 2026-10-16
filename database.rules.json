@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
+        ".write": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
+        "created": { ".validate": "newData.isNumber()" },
+        "hatches": { "$n": { ".validate": "$n.matches(/^[1-4]$/) && (newData.val() === 0 || newData.val() === 1)" } },
+        "log": {
+          "$id": {
+            ".validate": "newData.hasChildren(['id','turn','who','kind','text','at']) && newData.child('text').val().length <= 80 && newData.child('who').val().length <= 20 && newData.child('kind').val().matches(/^(noise|attack|spot|silence|hatch)$/)"
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

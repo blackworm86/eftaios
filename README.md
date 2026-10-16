@@ -11,3 +11,15 @@ Web companion for the physical board game *Escape from the Aliens in Outer Space
 Run: `python3 -m http.server` in this folder and open http://localhost:8000.
 
 Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 01..14, columns A..W): `.` dangerous, `s` secure, `x` empty space, `H` human, `A` alien, `1`-`4` hatches.
+
+## Deploy: GitHub Pages + Firebase
+
+**GitHub Pages** (static hosting): in the repo go to *Settings → Pages → Source: GitHub Actions*. `.github/workflows/pages.yml` publishes the site on every push to `main`.
+
+**Firebase** (optional table sync between devices, Realtime Database):
+1. Create a Firebase project, add a Web app, enable *Authentication → Anonymous* and create a *Realtime Database*.
+2. Paste the web config into `firebase-config.js` (safe to commit).
+3. Publish the rules: `npx firebase-tools deploy --only database` (uses `database.rules.json`).
+4. In the Firebase console *Authentication → Settings → Authorized domains*, add `<user>.github.io`.
+
+Players then open *Notes → Table sync*: one creates a room, the others join with the 4-letter code. Only announcements and hatch status are shared; positions never leave the device.

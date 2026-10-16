@@ -14,7 +14,7 @@ const parseId = s => { const m = /^([A-Za-z])\s*0?(\d{1,2})$/.exec(String(s).tri
 
 /* ---------------- state ---------------- */
 const fresh = () => ({
-  room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
+  stage: 'welcome', myRole: null, ready: false, room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
   phase: 'move', res: null, over: null, path: [], log: [],
   hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: []
 });
@@ -213,17 +213,6 @@ function entryText(e) {
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 2600); }
 const buzz = () => { try { navigator.vibrate && navigator.vibrate(15); } catch (_) { /* noop */ } };
 
-function startGame(role) {
-  const id = $('#setup-map').value; T.map = T.maps.find(m => m.id === id) || T.maps[0];
-  const keep = S.customMaps, name = $('#setup-name').value.trim(), mode = $('#setup-mode').value;
-  const room = ($('#setup-room').value || T.pendingRoom || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  S = Object.assign(fresh(), { mapId: T.map.id, role, name, mode, customMaps: keep });
-  S.pos = find(T.map, role === 'human' ? 'H' : 'A');
-  if (!S.pos) { alert(t('This map has no start sector for your role.')); S.role = null; return; }
-  S.path = [{ turn: 0, pos: S.pos }];
-  save(); boot();
-  if (room.length >= 4) { T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } S.tab = 'table'; Sync.join(room, false); setTab('table'); }
-}
 function selectCell(id) { T.sel = id; refreshReach(); render(); paintCells(); }
 function refreshReach() { T.reach = S.phase === 'move' && !S.over && S.role && !T.editor ? reachable(T.map, S.pos, allowance(), S.role) : new Map(); }
 
@@ -245,7 +234,6 @@ function afterChange() { if (S.role === 'human' && !S.over && [1, 2, 3, 4].every
 
 const roomUrl = () => location.origin + location.pathname + '?room=' + Sync.code;
 const actions = {
-  start: b => startGame(b.dataset.role),
   hide() { $('#cover').hidden = false; },
   unhide() { $('#cover').hidden = true; },
   zin() { const r = svg.getBoundingClientRect(); zoomAt(1.4, r.width / 2, r.height / 2); },
@@ -277,7 +265,7 @@ const actions = {
   hatch(b) { const n = b.dataset.n; S.hatches[n] = S.hatches[n] ? 0 : 1; Sync.setHatch(n, S.hatches[n]); afterChange(); },
   addann() { addDlg(); },
   clearlog() { confirmDlg(t('Clear all announcements?'), t('The history on this device will be erased.'), () => { S.log = []; afterChange(); }); },
-  newgame() { confirmDlg(t('Start a new game?'), t('Your route, notes and role will be erased.'), () => { Sync.leave(); S = Object.assign(fresh(), { customMaps: S.customMaps }); save(); boot(); }); },
+  newgame() { confirmDlg(t('Start a new game?'), t('Your route, notes and role will be erased.'), () => { Sync.leave(); const keep = { customMaps: S.customMaps, name: S.name }; S = Object.assign(fresh(), keep); save(); boot(); }); },
   turnminus() { S.turn = Math.max(1, S.turn - 1); afterChange(); },
   turnplus() { S.turn = Math.min(MAX_TURN, S.turn + 1); afterChange(); },
   map(b) { const m = T.maps.find(x => x.id === b.dataset.id); if (!m || m === T.map) return; confirmDlg(t('Switch map?'), t('Your position resets to the start sector of the new map.'), () => { T.map = m; S.mapId = m.id; S.pos = find(m, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; T.sel = null; S.phase = 'move'; S.res = null; buildMap(); afterChange(); }); },
@@ -288,9 +276,6 @@ const actions = {
   eexport() { exportMap(); },
   eimport() { importDlg(); },
   edel(b) { S.customMaps = S.customMaps.filter(m => m.id !== b.dataset.id); loadMaps().then(() => { if (!T.maps.includes(T.map)) { T.map = T.maps.find(m => m.id === T.map.id) || T.maps[0]; S.mapId = T.map.id; } afterChange(); }); },
-  syncnew() { Sync.join(Sync.newCode(), true); },
-  syncjoin() { Sync.join($('#room-code').value, false); },
-  syncleave() { confirmDlg(t('Leave this table?'), t('You will stop receiving announcements.'), () => { Sync.leave(); S.room = null; save(); render(); }); },
   share() { const url = roomUrl(), data = { title: 'EFTAIOS', text: t('Join my table: {c}', { c: Sync.code }), url }; if (navigator.share) navigator.share(data).catch(() => {}); else copyText(url, t('Link copied')); },
   qr() { qrDlg(); },
   lang(b) { setLang(b.dataset.l); }
@@ -397,7 +382,7 @@ function importDlg() {
     try {
       const j = JSON.parse($('#imp').value), list = (j.maps || [j]).map(m => { const p = parseMap(m); return { id: m.id || 'custom-' + Date.now(), name: p.name, rows_data: m.rows_data, oddColumnsLower: p.odd }; });
       list.forEach(m => { S.customMaps = S.customMaps.filter(x => x.id !== m.id).concat(m); });
-      loadMaps().then(() => { fillMapSelect(); afterChange(); closeDlg(); toast(t('Map imported')); });
+      loadMaps().then(() => { afterChange(); closeDlg(); toast(t('Map imported')); });
     } catch (e) { $('#imp-err').textContent = t('Could not import: {m}', { m: e.message }); }
   };
 }
@@ -487,12 +472,9 @@ function overPanel() {
 
 const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found' };
 function roomBlock() {
-  if (!Sync.enabled) return `<p class="dim">${t('Table sharing is not available.')}</p>`;
-  if (Sync.code) return `<div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code)}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
-    <div class="row"><button class="btn primary" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button><button class="btn" data-act="syncleave">${t('Leave')}</button></div></div>`;
-  return `<button class="btn primary big wide" data-act="syncnew">${t('Create a table')}</button>
-    <div class="inline" style="margin-top:10px"><input id="room-code" type="text" maxlength="8" autocapitalize="characters" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="syncjoin">${t('Join')}</button></div>
-    ${SYNC_MSG[Sync.status] ? `<p class="dim" role="status">${t(SYNC_MSG[Sync.status])}</p>` : ''}`;
+  if (!Sync.code) return `<p class="dim">${t('You are playing without a table.')}</p>`;
+  return `<div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code)}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
+    <div class="row"><button class="btn primary" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div></div>`;
 }
 function tablePanel() {
   const ln = S.log.map(e => `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span><b>${esc(e.who)}</b> · ${esc(entryText(e))}</span></li>`).join('');
@@ -531,31 +513,15 @@ function editorPanel() {
 }
 
 /* ---------------- boot ---------------- */
-function fillMapSelect() { const cur = $('#setup-map').value; $('#setup-map').innerHTML = T.maps.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join(''); if (cur) $('#setup-map').value = cur; }
-function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); } catch (_) { /* noop */ } applyStatic(); if (S.role) { render(); hdr(); paintCells(); } else { fillMapSelect(); showJoinBanner(); } }
-function showJoinBanner() { const b = $('#join-banner'); b.hidden = !T.pendingRoom; if (T.pendingRoom) b.textContent = t('You are joining table {c}. Pick your role to continue.', { c: T.pendingRoom }); }
+function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); } catch (_) { /* noop */ } applyStatic(); if (S.stage === 'game' && S.role) { render(); hdr(); paintCells(); } else renderFlow(); }
 function boot() {
   T.editor = null; T.pick = null; T.sel = null;
-  const setup = !S.role;
-  $('#setup').hidden = !setup; $('#app').hidden = setup;
+  const game = S.stage === 'game' && S.role;
+  $('#flow').hidden = !!game; $('#app').hidden = !game;
   applyStatic();
-  if (setup) { fillMapSelect(); showJoinBanner(); return; }
+  if (!game) { if (S.stage === 'game') S.stage = 'welcome'; renderFlow(); return; }
   T.map = T.maps.find(m => m.id === S.mapId) || T.maps[0]; S.mapId = T.map.id;
   if (!S.pos || !parseId(S.pos)) { S.pos = find(T.map, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; }
   fitDone = false; buildMap(); refreshReach(); render(); paintCells(); hdr();
   requestAnimationFrame(() => { fit(); fitDone = true; if (S.pos) focusOn(S.pos); });
 }
-Sync.on({
-  status() { if (S.tab === 'table' && !T.editor && S.role) render(); },
-  joined(code) { S.room = code; save(); if (S.tab === 'table' && S.role) render(); },
-  entry(e) {
-    if (!e || !e.id || S.log.some(x => x.id === e.id)) return;
-    S.log.push({ id: e.id, turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });
-    S.log.sort((a, b) => b.at - a.at); save(); if (S.role) { paintOverlay(); if (S.tab === 'table') render(); }
-  },
-  hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.role) afterChange(); }
-});
-{ const q = new URLSearchParams(location.search).get('room'); if (q) T.pendingRoom = q.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); }
-$('#setup .lang-switch').addEventListener('click', e => { const b = e.target.closest('[data-l]'); if (b) setLang(b.dataset.l); });
-loadMaps().then(() => { boot(); if (S.role && T.pendingRoom && T.pendingRoom !== S.room) { S.tab = 'table'; Sync.join(T.pendingRoom, false); T.pendingRoom = null; setTab('table'); } else if (S.room && S.role) Sync.join(S.room, false); });
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { /* optional */ });

@@ -16,32 +16,7 @@
 <div id="stars" aria-hidden="true"></div>
 
 <!-- SETUP -->
-<main id="setup" class="screen" hidden>
-  <div class="setup-card">
-    <div class="lang-switch" role="group" aria-label="Language"><button data-l="en">EN</button><button data-l="it">IT</button></div>
-    <p class="eyebrow" data-i18n="Companion app · physical game required">Companion app · physical game required</p>
-    <h1><span data-i18n="Escape from the">Escape from the</span><br><span class="red" data-i18n="Aliens">Aliens</span> <span data-i18n="in Outer Space">in Outer Space</span></h1>
-    <p class="lead" data-i18n="Your private navigation computer. Plan your route, track your turns and get the exact words to announce. Cards stay in the box.">Your private navigation computer. Plan your route, track your turns and get the exact words to announce. Cards stay in the box.</p>
-    <p id="join-banner" class="banner" hidden></p>
-
-    <label class="field"><span data-i18n="Map">Map</span><select id="setup-map"></select></label>
-    <label class="field"><span><span data-i18n="Your name">Your name</span> <em data-i18n="(optional)">(optional)</em></span>
-      <input id="setup-name" type="text" maxlength="20" autocomplete="off" data-i18n-ph="Player" placeholder="Player"></label>
-    <details class="acc opts"><summary data-i18n="Options">Options</summary>
-      <label class="field"><span data-i18n="Rules">Rules</span>
-        <select id="setup-mode"><option value="advanced" data-i18n="Advanced game">Advanced game</option><option value="basic" data-i18n="Basic game">Basic game</option><option value="infection" data-i18n="Infection scenario">Infection scenario</option></select></label>
-      <label class="field"><span><span data-i18n="Table code">Table code</span> <em data-i18n="(optional)">(optional)</em></span>
-        <input id="setup-room" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="ABCD"></label>
-    </details>
-
-    <fieldset class="roles">
-      <legend data-i18n="Your secret role card says…">Your secret role card says…</legend>
-      <button class="role-btn human" data-act="start" data-role="human"><b data-i18n="Human">Human</b><small data-i18n="Reach an escape hatch">Reach an escape hatch</small></button>
-      <button class="role-btn alien" data-act="start" data-role="alien"><b data-i18n="Alien">Alien</b><small data-i18n="Hunt the crew">Hunt the crew</small></button>
-    </fieldset>
-    <p class="fine" data-i18n="Look at your role card privately, then tap here. Keep this screen hidden from the others.">Look at your role card privately, then tap here. Keep this screen hidden from the others.</p>
-  </div>
-</main>
+<main id="flow" class="screen" hidden><div class="setup-card" id="flow-card"></div></main>
 
 <!-- APP -->
 <div id="app" hidden>
@@ -96,5 +71,6 @@
 <script src="i18n.js"></script>
 <script src="sync.js"></script>
 <script src="app.js"></script>
+<script src="flow.js"></script>
 </body>
 </html>

@@ -1,0 +1,150 @@
+'use strict';
+/* Pre-game flow: welcome -> (host setup | join) -> lobby -> game.  Solo play skips the table. */
+const MODES = { advanced: ['Advanced game', 'Items and Escape Hatch cards. Play on until every Human has escaped or died.'], basic: ['Basic game', 'No items. The game ends when the first Human reaches a hatch.'], infection: ['Infection scenario', 'Eliminated Humans become Aliens. All hatches open, each works once.'] };
+const tableMaps = () => T.maps.filter(m => m.official);
+const isHost = () => Sync.isHost();
+const langSwitch = () => `<div class="lang-switch" role="group" aria-label="Language">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l.toUpperCase()}</button>`).join('')}</div>`;
+const hero = () => `${langSwitch()}<p class="eyebrow">${t('Companion app · physical game required')}</p>
+  <h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>`;
+const nameField = () => `<label class="field"><span>${t('Your name')}</span><input id="flow-name" type="text" maxlength="20" autocomplete="off" placeholder="${t('Player')}" value="${esc(S.name || '')}"></label>`;
+const mapSelect = (list, cur) => `<label class="field"><span>${t('Map')}</span><select id="f-map">${list.map(m => `<option value="${esc(m.id)}"${m.id === cur ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
+  <p class="dim hintline" id="f-map-desc"></p>`;
+const modeSelect = cur => `<label class="field"><span>${t('Rules')}</span><select id="f-mode">${Object.entries(MODES).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(v[0])}</option>`).join('')}</select></label>
+  <p class="dim hintline" id="f-mode-desc"></p>`;
+const myName = () => (S.name || '').trim() || t('Player');
+const readName = () => { const el = $('#flow-name'); if (el) S.name = el.value.trim(); return myName(); };
+
+function renderFlow() {
+  const card = $('#flow-card'); let h = '';
+  const st = S.stage;
+  if (st === 'host') {
+    const cur = S.mapId || 'galilei', m0 = S.mode || 'advanced';
+    h = `${hero()}<h2 class="step2">${t('Host a table')}</h2>${nameField()}${mapSelect(tableMaps(), cur)}${modeSelect(m0)}
+      <button class="btn primary big wide" data-act="hostcreate">${t('Create table')}</button>${flowStatus()}
+      <button class="btn link wide" data-act="back">${t('Back')}</button>`;
+  } else if (st === 'solo') {
+    h = `${hero()}<h2 class="step2">${t('Play without a table')}</h2>${nameField()}${mapSelect(T.maps, S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}
+      <fieldset class="roles"><legend>${t('Your secret role card says…')}</legend>
+      <button class="role-btn human" data-act="solostart" data-role="human"><b>${t('Human')}</b><small>${t('Reach an escape hatch')}</small></button>
+      <button class="role-btn alien" data-act="solostart" data-role="alien"><b>${t('Alien')}</b><small>${t('Hunt the crew')}</small></button></fieldset>
+      <button class="btn link wide" data-act="back">${t('Back')}</button>`;
+  } else if (st === 'lobby') {
+    h = lobbyHtml();
+  } else {
+    h = `${hero()}<p class="lead">${t('Your private navigation computer. Plan your route, track your turns and get the exact words to announce. Cards stay in the box.')}</p>
+      ${T.pendingRoom ? `<p class="banner">${t('You are invited to table {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${nameField()}
+      ${T.pendingRoom ? `<button class="btn primary big wide" data-act="joinroom">${t('Join table {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button>`
+      : `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>
+        <div class="or"><span>${t('or')}</span></div>
+        <div class="inline"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="joinroom">${t('Join')}</button></div>
+        <button class="btn link wide" data-act="solo">${t('Play without a table')}</button>`}
+      ${flowStatus()}`;
+  }
+  card.innerHTML = h;
+  const fm = $('#f-map'), fd = $('#f-mode');
+  const upd = () => { if (fm) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-desc').textContent = m && m.description ? t(m.description) : ''; } if (fd) $('#f-mode-desc').textContent = t(MODES[fd.value][1]); };
+  if (fm) fm.onchange = () => { S.mapId = fm.value; upd(); if (st === 'lobby') Sync.updateSettings({ map: fm.value }); };
+  if (fd) fd.onchange = () => { S.mode = fd.value; upd(); if (st === 'lobby') Sync.updateSettings({ mode: fd.value }); };
+  upd();
+  const jc = $('#join-code'); if (jc) jc.onkeydown = e => { if (e.key === 'Enter') actions.joinroom(); };
+}
+const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found', started: 'That game has already started' };
+function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="status">${t(FLOW_MSG[Sync.status])}</p>` : ''; }
+
+function lobbyHtml() {
+  const st = Sync.settings || {}, host = isHost(), players = Object.entries(Sync.players || {});
+  const map = T.maps.find(m => m.id === st.map) || T.maps[0], mode = MODES[st.mode] || MODES.advanced;
+  const allReady = players.length >= 2 && players.every(([, p]) => p.ready);
+  const rows = players.map(([id, p]) => `<li class="${p.ready ? 'ok' : ''}"><span class="pname">${esc(p.name)}${id === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}${st.host === id ? ` <em class="hostt">${t('Host')}</em>` : ''}</span><span class="pst">${p.ready ? '✓ ' + t('Ready') : t('Choosing…')}</span></li>`).join('');
+  const faction = ['human', 'alien'].map(r => `<button class="role-btn ${r}" data-act="faction" data-r="${r}" aria-pressed="${S.myRole === r}"><b>${t(r === 'human' ? 'Human' : 'Alien')}</b></button>`).join('');
+  return `${langSwitch()}<p class="eyebrow">${t('Table')}</p>
+    <div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
+      <div class="row"><button class="btn primary" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div></div>
+    <h3>${t('Game')}</h3>
+    ${host ? mapSelect(tableMaps(), st.map) + modeSelect(st.mode) : `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(mode[0])}</dd></dl><p class="dim hintline">${t(mode[1])}</p>`}
+    <h3>${t('Players')} (${players.length})</h3><ul class="plist">${rows}</ul>
+    <h3>${t('Your faction')}</h3>
+    <p class="dim hintline">${t('Draw your Character card from the physical deck, look at it in secret, then pick it here. Nobody else sees your choice.')}</p>
+    <div class="factions" role="group" aria-label="${t('Your faction')}">${faction}</div>
+    <button class="btn big wide ${S.ready ? 'ok' : 'primary'}" data-act="ready" ${S.myRole ? '' : 'disabled'}>${S.ready ? '✓ ' + t('Ready (tap to change)') : t("I'm ready")}</button>
+    ${host ? `<button class="btn primary big wide startbtn" data-act="startgame" ${allReady ? '' : 'disabled'}>${t('Start game')}</button>
+      <p class="dim hintline">${allReady ? t('Everyone is ready.') : players.length < 2 ? t('Waiting for at least one more player.') : t('Waiting for everyone to be ready.')}</p>`
+      : `<p class="dim hintline">${S.ready ? t('Waiting for the host to start the game…') : ''}</p>`}
+    <button class="btn link wide" data-act="leavelobby">${t('Leave table')}</button>`;
+}
+
+function beginGame() {
+  const st = Sync.settings; if (!st || S.stage !== 'lobby') return;
+  if (!S.myRole || !S.ready) { toast(t('The game started without you. Ask the host.')); leaveToWelcome(); return; }
+  T.map = T.maps.find(m => m.id === st.map) || T.maps[0];
+  const keep = S.customMaps, name = S.name, room = S.room, role = S.myRole;
+  S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, role, name, room, customMaps: keep, tab: 'play' });
+  S.pos = find(T.map, role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }];
+  save(); boot();
+  if (st.first) alertDlg(t('The game begins!'), t('First player: {p}.', { p: st.first }));
+}
+function leaveToWelcome() { Sync.leave(); S.room = null; S.stage = 'welcome'; S.myRole = null; S.ready = false; save(); renderFlow(); }
+
+function soloStart(role) {
+  const id = $('#f-map').value; T.map = T.maps.find(m => m.id === id) || T.maps[0];
+  const keep = S.customMaps, name = readName(), mode = $('#f-mode').value;
+  S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, role, name: name === t('Player') ? '' : name, mode, customMaps: keep });
+  S.pos = find(T.map, role === 'human' ? 'H' : 'A');
+  if (!S.pos) { alert(t('This map has no start sector for your role.')); S.stage = 'solo'; S.role = null; return; }
+  S.path = [{ turn: 0, pos: S.pos }]; save(); boot();
+}
+
+Object.assign(actions, {
+  hostsetup() { readName(); S.stage = 'host'; save(); renderFlow(); },
+  solo() { S.stage = 'solo'; save(); renderFlow(); },
+  back() { S.stage = 'welcome'; Sync.status = 'off'; save(); renderFlow(); },
+  ignoreinvite() { T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); },
+  async hostcreate() {
+    const name = readName(); S.mapId = $('#f-map').value; S.mode = $('#f-mode').value;
+    const ok = await Sync.create({ map: S.mapId, mode: S.mode }, { name });
+    if (!ok) renderFlow();
+  },
+  async joinroom() {
+    const name = readName(), code = T.pendingRoom || ($('#join-code') || {}).value || '';
+    const ok = await Sync.join(code, { name });
+    if (!ok) renderFlow();
+  },
+  faction(b) { S.myRole = b.dataset.r; S.ready = false; Sync.setMe({ ready: false }); save(); renderFlow(); },
+  ready() { if (!S.myRole) return; S.ready = !S.ready; Sync.setMe({ ready: S.ready }); save(); renderFlow(); },
+  startgame() {
+    const ps = Object.values(Sync.players || {});
+    if (ps.length < 2 || !ps.every(p => p.ready)) return;
+    Sync.startGame(ps[Math.random() * ps.length | 0].name);
+  },
+  leavelobby() { confirmDlg(t('Leave this table?'), t('You will stop receiving announcements.'), leaveToWelcome); },
+  solostart(b) { soloStart(b.dataset.role); }
+});
+
+Sync.on({
+  status(s) {
+    if (S.stage === 'lobby' && (s === 'no-room' || s === 'started')) { toast(t(FLOW_MSG[s])); leaveToWelcome(); return; }
+    if (S.stage === 'game') { if (S.tab === 'table' && !T.editor) render(); } else renderFlow();
+  },
+  joined(code) {
+    S.room = code; if (S.stage !== 'game') { S.stage = 'lobby'; T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); }
+    save(); if (S.stage === 'game' && S.tab === 'table') render();
+  },
+  settings(st) {
+    if (S.stage === 'lobby') { if (st && st.status === 'playing') beginGame(); else renderFlow(); }
+  },
+  players() { if (S.stage === 'lobby') renderFlow(); },
+  entry(e) {
+    if (!e || !e.id || S.log.some(x => x.id === e.id)) return;
+    S.log.push({ id: e.id, turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });
+    S.log.sort((a, b) => b.at - a.at); save(); if (S.stage === 'game') { paintOverlay(); if (S.tab === 'table') render(); }
+  },
+  hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.stage === 'game') afterChange(); }
+});
+
+{ const q = new URLSearchParams(location.search).get('room'); if (q) { const c = q.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); if (S.stage === 'game') { try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } } else T.pendingRoom = c; } }
+loadMaps().then(() => {
+  boot();
+  if (S.room && (S.stage === 'lobby' || S.stage === 'game')) Sync.join(S.room, { name: S.name || t('Player') });
+  else if (S.stage === 'lobby') { S.stage = 'welcome'; renderFlow(); }
+});
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { /* optional */ });

@@ -50,7 +50,7 @@
       await fb.set(path(code, 'settings'), { map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', online: !!settings.online, order: [Sync.uid] });
       await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false });
       listen(code); Sync.h.joined && Sync.h.joined(code); return true;
-    } catch (e) { console.warn(e); setStatus('error'); return false; }
+    } catch (e) { console.warn(e); Sync.lastError = String(e && (e.code || e.message) || e).slice(0, 80); setStatus('error'); return false; }
   };
 
   /* guest (or returning player): join an existing table */
@@ -68,7 +68,7 @@
       if (mine) { if (me.name && me.name !== mine.name) await fb.update(path(code, 'players/' + Sync.uid), { name: me.name }); }
       else await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false });
       listen(code); Sync.h.joined && Sync.h.joined(code); return true;
-    } catch (e) { console.warn(e); setStatus('error'); return false; }
+    } catch (e) { console.warn(e); Sync.lastError = String(e && (e.code || e.message) || e).slice(0, 80); setStatus('error'); return false; }
   };
   Sync.isHost = () => !!(Sync.settings && Sync.uid && Sync.settings.host === Sync.uid);
   Sync.updateSettings = p => Sync.code && fb.update(path(Sync.code, 'settings'), p).catch(console.warn);

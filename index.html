@@ -18,34 +18,28 @@
 <!-- SETUP -->
 <main id="setup" class="screen" hidden>
   <div class="setup-card">
-    <p class="eyebrow">Companion app · physical game required</p>
-    <h1>Escape from the<br><span>Aliens</span> in Outer Space</h1>
-    <p class="lead">Your private navigation computer. Plan your route, track your turns and get the exact words to announce. Cards stay in the box.</p>
+    <div class="lang-switch" role="group" aria-label="Language"><button data-l="en">EN</button><button data-l="it">IT</button></div>
+    <p class="eyebrow" data-i18n="Companion app · physical game required">Companion app · physical game required</p>
+    <h1><span data-i18n="Escape from the">Escape from the</span><br><span class="red" data-i18n="Aliens">Aliens</span> <span data-i18n="in Outer Space">in Outer Space</span></h1>
+    <p class="lead" data-i18n="Your private navigation computer. Plan your route, track your turns and get the exact words to announce. Cards stay in the box.">Your private navigation computer. Plan your route, track your turns and get the exact words to announce. Cards stay in the box.</p>
+    <p id="join-banner" class="banner" hidden></p>
 
-    <label class="field">
-      <span>Map</span>
-      <select id="setup-map"></select>
-    </label>
-    <label class="field">
-      <span>Your name <em>(optional)</em></span>
-      <input id="setup-name" type="text" maxlength="20" autocomplete="off" placeholder="Player">
-    </label>
-
-    <label class="field">
-      <span>Rules</span>
-      <select id="setup-mode"><option value="advanced">Advanced game (items &amp; hatch cards)</option><option value="basic">Basic game</option><option value="infection">Infection scenario</option></select>
-    </label>
+    <label class="field"><span data-i18n="Map">Map</span><select id="setup-map"></select></label>
+    <label class="field"><span><span data-i18n="Your name">Your name</span> <em data-i18n="(optional)">(optional)</em></span>
+      <input id="setup-name" type="text" maxlength="20" autocomplete="off" data-i18n-ph="Player" placeholder="Player"></label>
+    <details class="acc opts"><summary data-i18n="Options">Options</summary>
+      <label class="field"><span data-i18n="Rules">Rules</span>
+        <select id="setup-mode"><option value="advanced" data-i18n="Advanced game">Advanced game</option><option value="basic" data-i18n="Basic game">Basic game</option><option value="infection" data-i18n="Infection scenario">Infection scenario</option></select></label>
+      <label class="field"><span><span data-i18n="Table code">Table code</span> <em data-i18n="(optional)">(optional)</em></span>
+        <input id="setup-room" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="ABCD"></label>
+    </details>
 
     <fieldset class="roles">
-      <legend>Your secret role card says…</legend>
-      <button class="role-btn human" data-act="start" data-role="human">
-        <b>Human</b><small>Reach an escape hatch</small>
-      </button>
-      <button class="role-btn alien" data-act="start" data-role="alien">
-        <b>Alien</b><small>Hunt the crew</small>
-      </button>
+      <legend data-i18n="Your secret role card says…">Your secret role card says…</legend>
+      <button class="role-btn human" data-act="start" data-role="human"><b data-i18n="Human">Human</b><small data-i18n="Reach an escape hatch">Reach an escape hatch</small></button>
+      <button class="role-btn alien" data-act="start" data-role="alien"><b data-i18n="Alien">Alien</b><small data-i18n="Hunt the crew">Hunt the crew</small></button>
     </fieldset>
-    <p class="fine">Take a peek at your role card privately, then tap here. Keep this screen hidden from the others.</p>
+    <p class="fine" data-i18n="Look at your role card privately, then tap here. Keep this screen hidden from the others.">Look at your role card privately, then tap here. Keep this screen hidden from the others.</p>
   </div>
 </main>
 
@@ -53,10 +47,10 @@
 <div id="app" hidden>
   <header class="topbar">
     <div class="brand" aria-hidden="true">EFTAIOS</div>
-    <div class="stat" aria-live="polite"><small>Turn</small><b id="hd-turn">1</b><i>/39</i></div>
+    <div class="stat" aria-live="polite"><small data-i18n="Turn">Turn</small><b id="hd-turn">1</b><i>/39</i></div>
     <div id="hd-role" class="chip"></div>
-    <div class="pos stat"><small>Sector</small><b id="hd-pos">—</b></div>
-    <button id="hide-btn" class="icon-btn" data-act="hide" aria-label="Hide screen">
+    <div class="pos stat"><small data-i18n="Sector">Sector</small><b id="hd-pos">—</b></div>
+    <button id="hide-btn" class="icon-btn" data-act="hide" data-i18n-aria="Hide screen" aria-label="Hide screen">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><path d="M4 4l16 16"/></svg>
     </button>
   </header>
@@ -66,10 +60,10 @@
       <svg id="map" role="img" aria-label="Hex map of the space station"></svg>
       <div id="inspect" class="inspect" hidden></div>
       <div class="zoom">
-        <button data-act="zin" aria-label="Zoom in">+</button>
-        <button data-act="zout" aria-label="Zoom out">−</button>
-        <button data-act="fit" aria-label="Fit map to screen">⤢</button>
-        <button data-act="focus" aria-label="Center on my position">◎</button>
+        <button data-act="zin" data-i18n-aria="Zoom in" aria-label="Zoom in">+</button>
+        <button data-act="zout" data-i18n-aria="Zoom out" aria-label="Zoom out">−</button>
+        <button data-act="fit" data-i18n-aria="Fit map to screen" aria-label="Fit map to screen">⤢</button>
+        <button data-act="focus" data-i18n-aria="Center on my position" aria-label="Center on my position">◎</button>
       </div>
     </section>
 
@@ -78,20 +72,19 @@
     </aside>
   </div>
 
-  <nav class="tabs" role="tablist" aria-label="Sections">
-    <button role="tab" data-tab="play">Play</button>
-    <button role="tab" data-tab="notes">Notes</button>
-    <button role="tab" data-tab="rules">Rules</button>
-    <button role="tab" data-tab="menu">Menu</button>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="play" data-i18n="Play">Play</button>
+    <button role="tab" data-tab="table" data-i18n="Table">Table</button>
+    <button role="tab" data-tab="more" data-i18n="More">More</button>
   </nav>
 </div>
 
 <div id="cover" class="cover" hidden>
   <div>
     <div class="cover-ico">⬢</div>
-    <h2>Screen hidden</h2>
-    <p>Nobody can see your position.</p>
-    <button class="btn primary" data-act="unhide">Show screen</button>
+    <h2 data-i18n="Screen hidden">Screen hidden</h2>
+    <p data-i18n="Nobody can see your position.">Nobody can see your position.</p>
+    <button class="btn primary" data-act="unhide" data-i18n="Show screen">Show screen</button>
   </div>
 </div>
 
@@ -99,6 +92,8 @@
 <dialog id="dlg"></dialog>
 
 <script src="firebase-config.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="i18n.js"></script>
 <script src="sync.js"></script>
 <script src="app.js"></script>
 </body>

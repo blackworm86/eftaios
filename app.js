@@ -20,6 +20,7 @@ const fresh = () => ({
 });
 let S = fresh();
 try { Object.assign(S, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch (e) { /* ignore */ }
+S.tab = { play: 'play', table: 'table', notes: 'table', rules: 'more', menu: 'more', more: 'more' }[S.tab] || 'play';
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
 
 /* transient (not persisted) */
@@ -48,7 +49,7 @@ function neighbors(map, c, r) {
 const at = (map, id) => { const p = parseId(id); return p && p[0] < map.cols && p[1] < map.rows ? map.grid[p[1]][p[0]] : null; };
 function find(map, ch) { for (let r = 0; r < map.rows; r++) for (let c = 0; c < map.cols; c++) if (map.grid[r][c] === ch) return cid(c, r); return null; }
 const hatchOpen = n => !S.hatches[n];
-const label = id => { const t = at(T.map, id); return t === 'H' ? 'Human start' : t === 'A' ? 'Alien start' : '1234'.includes(t) ? 'Hatch ' + t : id; };
+const label = id => { const ty = at(T.map, id); return ty === 'H' ? t('Human start') : ty === 'A' ? t('Alien start') : '1234'.includes(ty) ? t('Escape Hatch {n}', { n: ty }) : id; };
 const basic = () => S.mode === 'basic', infection = () => S.mode === 'infection';
 
 /* movement: start sectors are never enterable; pods stop movement; aliens cannot enter pods; closed pods impassable */
@@ -68,7 +69,7 @@ function reachable(map, from, steps, role) {
   return out;
 }
 const allowance = () => S.role === 'alien' ? (S.fed ? 3 : 2) : (S.adr ? 2 : 1);
-const typeName = t => ({ '.': 'Dangerous sector', s: 'Safe sector', x: 'Empty space', H: 'Human start', A: 'Alien start' }[t] || 'Escape Hatch ' + t);
+const typeName = ty => ({ '.': t('Dangerous sector'), s: t('Secure sector'), x: t('Empty space'), H: t('Human start'), A: t('Alien start') }[ty] || t('Escape Hatch {n}', { n: ty }));
 
 /* ---------------- map rendering ---------------- */
 const view = { k: 1, x: 0, y: 0 }; let fitK = 1, mapW = 0, mapH = 0;
@@ -93,6 +94,7 @@ function buildMap() {
   el('g', { id: 'marks' }, vp); el('g', { id: 'me' }, vp);
   paintCells(); fit();
 }
+const tr = s => window.t ? window.t(s) : s; // map symbols are painted before/after language changes
 function paintCells() {
   svg.classList.toggle('editing', !!T.editor);
   const map = T.map, reach = T.reach || new Map();
@@ -105,7 +107,7 @@ function paintCells() {
     if (T.pick) cls += ' pick';
     if (T.inspect === id) cls += ' inspected';
     poly.setAttribute('class', cls);
-    const txt = t === 'H' ? 'HUMAN' : t === 'A' ? 'ALIEN' : '1234'.includes(t) ? t : '';
+    const txt = t === 'H' ? tr('HUMANS') : t === 'A' ? tr('ALIENS') : '1234'.includes(t) ? t : '';
     g.children[1].textContent = txt ? '' : id; sym.textContent = txt; sym.setAttribute('class', 'sym' + (txt.length > 1 ? ' sm' : ''));
   }
   paintOverlay();
@@ -190,46 +192,58 @@ new ResizeObserver(() => { if (T.map && !fitDone) { fit(); fitDone = true; } }).
 let fitDone = false;
 
 /* ---------------- game logic ---------------- */
+const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
+const PUBLIC = ['noise', 'attack', 'spot', 'silence', 'hatch'];
 function say(text, kind, sector, extra = {}) {
-  const e = Object.assign({ id: Math.random().toString(36).slice(2, 8) + Date.now().toString(36), turn: S.turn, who: S.name || 'Me', kind, sector: sector || null, text, mine: true, at: Date.now() }, extra);
+  const e = Object.assign({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind, sector: sector || null, text: text || kind, mine: true, at: Date.now() }, extra);
   S.log.unshift(e);
-  if (window.Sync && Sync.code && ['noise', 'attack', 'spot', 'silence', 'hatch'].includes(kind)) Sync.push({ id: e.id, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at });
+  if (window.Sync && Sync.code && PUBLIC.includes(kind)) Sync.push({ id: e.id, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at, n: e.n || 0, ok: e.ok ? 1 : 0 });
   if (S.log.length > 400) S.log.length = 400;
 }
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 2600); }
+/* announcements are rendered from structured data so each player sees them in their own language */
+function entryText(e) {
+  const s = e.sector;
+  if (e.kind === 'noise') return t('Noise in Sector {s}', { s });
+  if (e.kind === 'attack') return t('Attack in Sector {s}', { s });
+  if (e.kind === 'spot') return t('Spotlight on Sector {s}', { s });
+  if (e.kind === 'silence') return t('Silence in all Sectors');
+  if (e.kind === 'hatch' && e.n) return t(e.ok ? 'Escape Hatch {n}: escaped' : 'Escape Hatch {n}: damaged', { n: e.n });
+  return t(e.text);
+}
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 2600); }
 const buzz = () => { try { navigator.vibrate && navigator.vibrate(15); } catch (_) { /* noop */ } };
 
 function startGame(role) {
   const id = $('#setup-map').value; T.map = T.maps.find(m => m.id === id) || T.maps[0];
   const keep = S.customMaps, name = $('#setup-name').value.trim(), mode = $('#setup-mode').value;
+  const room = ($('#setup-room').value || T.pendingRoom || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   S = Object.assign(fresh(), { mapId: T.map.id, role, name, mode, customMaps: keep });
   S.pos = find(T.map, role === 'human' ? 'H' : 'A');
-  if (!S.pos) { alert('This map has no ' + (role === 'human' ? 'Human' : 'Alien') + ' start sector.'); S.role = null; return; }
+  if (!S.pos) { alert(t('This map has no start sector for your role.')); S.role = null; return; }
   S.path = [{ turn: 0, pos: S.pos }];
   save(); boot();
+  if (room.length >= 4) { T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } S.tab = 'table'; Sync.join(room, false); setTab('table'); }
 }
-function selectCell(id) {
-  T.sel = id; refreshReach(); render(); paintCells();
-}
+function selectCell(id) { T.sel = id; refreshReach(); render(); paintCells(); }
 function refreshReach() { T.reach = S.phase === 'move' && !S.over && S.role && !T.editor ? reachable(T.map, S.pos, allowance(), S.role) : new Map(); }
 
 function confirmMove() {
   if (!T.sel || !T.reach.has(T.sel)) return;
   S.pos = T.sel; S.path.push({ turn: S.turn, pos: S.pos }); T.sel = null; buzz();
-  const t = at(T.map, S.pos);
-  S.phase = 'resolve'; S.res = { stage: '1234'.includes(t) ? 'pod' : 'choose', msg: null, tone: null };
-  T.itemIcon = false;
+  const ty = at(T.map, S.pos);
+  S.phase = 'resolve'; S.res = { stage: '1234'.includes(ty) ? 'pod' : 'choose' };
+  T.itemIcon = false; S.adr = false; // adrenaline lasts one move
   if (S.res.stage === 'pod' && (basic() || infection())) { actions.podGreen(); return; }
-  S.adr = false; // adrenaline lasts one move
   afterChange(); focusOn(S.pos);
 }
 function announce(res) { S.res = Object.assign({ stage: 'done' }, res); afterChange(); }
 function endTurn() {
-  if (S.turn >= MAX_TURN) { S.over = 'time'; } else { S.turn++; S.phase = 'move'; S.res = null; }
+  if (S.turn >= MAX_TURN) S.over = 'time'; else { S.turn++; S.phase = 'move'; S.res = null; }
   T.sel = null; afterChange(); if (!S.over) focusOn(S.pos);
 }
 function afterChange() { if (S.role === 'human' && !S.over && [1, 2, 3, 4].every(n => S.hatches[n])) S.over = 'trapped'; save(); refreshReach(); render(); paintCells(); hdr(); }
 
+const roomUrl = () => location.origin + location.pathname + '?room=' + Sync.code;
 const actions = {
   start: b => startGame(b.dataset.role),
   hide() { $('#cover').hidden = false; },
@@ -239,300 +253,309 @@ const actions = {
   fit, focus() { S.pos && focusOn(S.pos); },
   confirm: confirmMove,
   clearsel() { T.sel = null; afterChange(); },
-  go() { const v = $('#go-input').value, id = parseId(v) && cid(...parseId(v)); if (id && T.reach.has(id)) { selectCell(id); focusOn(id); } else toast(v ? `${v.toUpperCase()} is not reachable this turn` : 'Type a sector, e.g. L07'); },
-  icon(b) { T.itemIcon = !T.itemIcon; render(); },
-  noiseHere() { announce({ say: 'Noise in Sector ' + S.pos, sub: 'Say it aloud.', tone: 'alert', extra: iconNote(), logged: say('Noise in my sector ' + S.pos, 'noise', S.pos) }); },
-  noiseAny() { pickSector('Where is the noise? Tap the sector you announce.', id => { announce({ say: 'Noise in Sector ' + id, sub: 'Say it aloud. You may name any sector, even a far-off one.', tone: 'alert', extra: iconNote(), logged: say('Noise in sector ' + id, 'noise', id) }); }); },
-  silence() { announce({ say: 'Silence in all Sectors', sub: 'Say it aloud.', tone: 'silent', logged: say('Silence in all sectors', 'silence') }); },
-  quiet() { announce({ say: 'No announcement', sub: S.res && S.res.why || 'Say nothing.', tone: 'silent', logged: say('No announcement', 'info') }); },
-  sedatives() { announce({ say: 'No card, no announcement', sub: 'Sedatives: you skip the card draw.', tone: 'silent', logged: say('Sedatives used', 'info') }); },
-  attack() { S.res = { stage: 'attack', attackItem: S.role === 'human' }; afterChange(); },
+  go() { const v = $('#go-input').value, p = parseId(v), id = p && cid(...p); if (id && T.reach.has(id)) { selectCell(id); focusOn(id); } else toast(v ? t('{s} is not reachable this turn', { s: v.toUpperCase() }) : t('Type a sector, e.g. L07')); },
+  icon() { T.itemIcon = !T.itemIcon; render(); },
+  noiseHere() { announce({ say: t('Noise in Sector {s}', { s: S.pos }), tone: 'alert', extra: iconNote(), logged: say('', 'noise', S.pos) }); },
+  noiseAny() { pickSector(t('Tap the sector you announce'), id => announce({ say: t('Noise in Sector {s}', { s: id }), sub: t('You may name any sector, even a far-off one.'), tone: 'alert', extra: iconNote(), logged: say('', 'noise', id) })); },
+  silence() { announce({ say: t('Silence in all Sectors'), tone: 'silent', logged: say('', 'silence') }); },
+  quiet() { announce({ say: t('Nothing to announce'), tone: 'silent' }); },
+  sedatives() { say('Sedatives used', 'info'); announce({ say: t('Nothing to announce'), sub: t('Sedatives: no card this turn.'), tone: 'silent' }); },
+  attack() { S.res = { stage: 'attack' }; afterChange(); },
   attackDone(b) {
-    const k = b.dataset.k, txt = { none: 'nobody there', alien: 'only Aliens eliminated', human: 'Human eliminated' }[k];
-    say('I attack in sector ' + S.pos + ' — ' + txt, 'attack', S.pos);
-    let sub = 'Anyone in this sector must declare it and is out of the game.';
-    if (k === 'human' && S.role === 'alien' && !S.fed && !infection()) { S.fed = true; sub += ' You have FED: from now on you move 1, 2 or 3 sectors.'; }
-    announce({ say: 'I attack in sector ' + S.pos, sub, tone: 'alert' });
+    const k = b.dataset.k; say('', 'attack', S.pos);
+    let sub = t('Anyone in this sector must declare it and is out of the game.');
+    if (k === 'human' && S.role === 'alien' && !S.fed && !infection()) { S.fed = true; sub += ' ' + t('You have FED: from now on you move 1, 2 or 3 sectors.'); }
+    announce({ say: t('Attack in Sector {s}', { s: S.pos }), sub, tone: 'alert' });
   },
-  podGreen() { const n = at(T.map, S.pos); say(`Escape Hatch ${n} — escaped!`, 'hatch', S.pos); S.hatches[n] = 1; Sync.setHatch(n, 1); S.over = 'escaped'; afterChange(); },
-  podRed() { const n = at(T.map, S.pos); S.hatches[n] = 1; Sync.setHatch(n, 1); say(`Escape Hatch ${n} — damaged`, 'hatch', S.pos); announce({ say: `Escape Hatch ${n} is damaged`, sub: 'Reveal the red card. No one may enter this hatch again. Head for another one.', tone: 'alert' }); },
+  podGreen() { const n = +at(T.map, S.pos); say('', 'hatch', S.pos, { n, ok: 1 }); S.hatches[n] = 1; Sync.setHatch(n, 1); S.over = 'escaped'; afterChange(); },
+  podRed() { const n = +at(T.map, S.pos); S.hatches[n] = 1; Sync.setHatch(n, 1); say('', 'hatch', S.pos, { n, ok: 0 }); announce({ say: t('Escape Hatch {n}: damaged', { n }), sub: t('Reveal the red card. Nobody can enter this hatch again.'), tone: 'alert' }); },
   next: endTurn,
   backres() { S.res = { stage: 'choose' }; afterChange(); },
   item(b) { itemAction(b.dataset.i); },
   caught(b) { caughtAction(b.dataset.k); },
   tab(b) { setTab(b.dataset.tab); },
   hatch(b) { const n = b.dataset.n; S.hatches[n] = S.hatches[n] ? 0 : 1; Sync.setHatch(n, S.hatches[n]); afterChange(); },
-  addNote() { addNote(); },
-  notetype(b) { T.noteType = b.dataset.k; render(); },
-  clearlog() { confirmDlg('Clear all notes?', 'Your announcement history will be erased.', () => { S.log = []; afterChange(); }); },
-  newgame() { confirmDlg('Start a new game?', 'Your route, notes and role will be erased.', () => { Sync.leave(); S = Object.assign(fresh(), { customMaps: S.customMaps }); save(); boot(); }); },
+  addann() { addDlg(); },
+  clearlog() { confirmDlg(t('Clear all announcements?'), t('The history on this device will be erased.'), () => { S.log = []; afterChange(); }); },
+  newgame() { confirmDlg(t('Start a new game?'), t('Your route, notes and role will be erased.'), () => { Sync.leave(); S = Object.assign(fresh(), { customMaps: S.customMaps }); save(); boot(); }); },
   turnminus() { S.turn = Math.max(1, S.turn - 1); afterChange(); },
   turnplus() { S.turn = Math.min(MAX_TURN, S.turn + 1); afterChange(); },
-  map(b) { const m = T.maps.find(x => x.id === b.dataset.id); if (!m) return; confirmDlg('Switch map?', 'Your position resets to the start sector of the new map.', () => { T.map = m; S.mapId = m.id; S.pos = find(m, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; T.sel = null; S.phase = 'move'; S.res = null; buildMap(); afterChange(); }); },
+  map(b) { const m = T.maps.find(x => x.id === b.dataset.id); if (!m || m === T.map) return; confirmDlg(t('Switch map?'), t('Your position resets to the start sector of the new map.'), () => { T.map = m; S.mapId = m.id; S.pos = find(m, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; T.sel = null; S.phase = 'move'; S.res = null; buildMap(); afterChange(); }); },
   edit() { startEditor(); },
   tool(b) { T.editor.tool = b.dataset.t; render(); },
   esave() { saveEditor(); },
-  ecancel() { T.map = T.editor.orig; T.editor = null; setTab('menu'); buildMap(); afterChange(); },
+  ecancel() { T.map = T.editor.orig; T.editor = null; setTab('more'); buildMap(); afterChange(); },
   eexport() { exportMap(); },
   eimport() { importDlg(); },
   edel(b) { S.customMaps = S.customMaps.filter(m => m.id !== b.dataset.id); loadMaps().then(() => { if (!T.maps.includes(T.map)) { T.map = T.maps.find(m => m.id === T.map.id) || T.maps[0]; S.mapId = T.map.id; } afterChange(); }); },
   syncnew() { Sync.join(Sync.newCode(), true); },
   syncjoin() { Sync.join($('#room-code').value, false); },
-  syncleave() { Sync.leave(); S.room = null; save(); render(); },
-  copycode() { navigator.clipboard && navigator.clipboard.writeText(Sync.code).then(() => toast('Room code copied')); },
-  cancelpick() { T.pick = null; paintCells(); render(); }
+  syncleave() { confirmDlg(t('Leave this table?'), t('You will stop receiving announcements.'), () => { Sync.leave(); S.room = null; save(); render(); }); },
+  share() { const url = roomUrl(), data = { title: 'EFTAIOS', text: t('Join my table: {c}', { c: Sync.code }), url }; if (navigator.share) navigator.share(data).catch(() => {}); else copyText(url, t('Link copied')); },
+  qr() { qrDlg(); },
+  lang(b) { setLang(b.dataset.l); }
 };
+function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { if (!T.editor) setTab(b.dataset.tab); }));
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const f = actions[b.dataset.act]; if (f) { e.preventDefault(); f(b); }
 });
 
-const iconNote = () => { const on = T.itemIcon && !basic(); T.itemIcon = false; return on ? 'Draw an Item card (hold max 3)' : null; };
-function pickSector(label, cb) { T.pick = { label, cb }; S.tab = 'play'; render(); paintCells(); hdr(); }
+const iconNote = () => { const on = T.itemIcon && !basic(); T.itemIcon = false; return on ? t('Draw an Item card (max 3)') : null; };
+function pickSector(label_, cb) { T.pick = { label: label_, cb }; S.tab = 'play'; render(); paintCells(); hdr(); }
 function onCell(id) {
   if (T.editor) { paintEditor(id); return; }
   if (T.pick) { const cb = T.pick.cb; T.pick = null; paintCells(); cb(id); return; }
   if (S.role && S.phase === 'move' && !S.over && T.reach.has(id)) { selectCell(id); buzz(); return; }
   T.inspect = id; paintCells();
-  const i = $('#inspect'); i.hidden = false; i.innerHTML = `<b>${id}</b>${typeName(at(T.map, id))}`;
+  const i = $('#inspect'); i.hidden = false; i.innerHTML = `<b>${'HA1234'.includes(at(T.map, id)) ? '' : id}</b>${esc(typeName(at(T.map, id)))}`;
   clearTimeout(onCell.h); onCell.h = setTimeout(() => { T.inspect = null; i.hidden = true; paintCells(); }, 3500);
 }
 
 function itemAction(k) {
   closeDlg();
-  if (k === 'adrenaline') { if (S.phase !== 'move' || S.role !== 'human') return toast('Play Adrenaline before you move'); S.adr = true; say('Adrenaline used', 'info'); T.sel = null; afterChange(); return toast('You may move up to 2 sectors'); }
-  if (k === 'teleport') { if (S.role !== 'human') return; S.pos = find(T.map, 'H'); S.path.push({ turn: S.turn, pos: S.pos, note: 'teleport' }); say('Teleport used', 'info'); T.sel = null; afterChange(); focusOn(S.pos); return toast(S.phase === 'move' ? 'Teleported. Now make your normal move from the Human sector' : 'Teleported to the Human sector'); }
-  if (k === 'spotlight') return pickSector('Spotlight: tap the sector to name.', id => { say('Spotlight on ' + id, 'spot', id); afterChange(); toast('Announce: Spotlight on Sector ' + id); });
-  if (k === 'sedatives') { if (S.phase !== 'resolve' || S.res.stage !== 'choose') return toast('Use Sedatives in place of drawing a card'); return actions.sedatives(); }
-  if (k === 'attack') { if (S.phase !== 'resolve' || S.res.stage === 'done') return toast('Use Attack after moving'); return actions.attack(); }
+  if (k === 'adrenaline') { if (S.phase !== 'move' || S.role !== 'human') return toast(t('Play Adrenaline before you move')); S.adr = true; say('Adrenaline used', 'info'); T.sel = null; afterChange(); return toast(t('You may move up to 2 sectors')); }
+  if (k === 'teleport') { if (S.role !== 'human') return; S.pos = find(T.map, 'H'); S.path.push({ turn: S.turn, pos: S.pos, note: 'teleport' }); say('Teleport used', 'info'); T.sel = null; afterChange(); focusOn(S.pos); return toast(S.phase === 'move' ? t('Teleported. Now make your normal move.') : t('Teleported to the Human sector')); }
+  if (k === 'spotlight') return pickSector(t('Spotlight: tap the sector to name'), id => { say('', 'spot', id); afterChange(); toast(t('Announce: Spotlight on Sector {s}', { s: id })); });
+  if (k === 'sedatives') { if (S.phase !== 'resolve' || S.res.stage !== 'choose') return toast(t('Use Sedatives instead of drawing a card')); return actions.sedatives(); }
+  if (k === 'attack') { if (S.phase !== 'resolve' || S.res.stage === 'done') return toast(t('Use Attack after moving')); return actions.attack(); }
 }
 function caughtAction(k) {
   closeDlg();
-  if (k === 'become') { S.role = 'alien'; S.fed = false; say('Eliminated — continuing as an Alien (Infection)', 'info'); S.phase = 'move'; S.res = null; T.sel = null; afterChange(); toast('You are now an Alien, moving from where you fell'); }
+  if (k === 'become') { S.role = 'alien'; S.fed = false; say('Eliminated, continuing as an Alien', 'info'); S.phase = 'move'; S.res = null; T.sel = null; afterChange(); toast(t('You are now an Alien, moving from where you fell')); }
   else if (k === 'dead') { S.over = 'dead'; say('Eliminated', 'info'); afterChange(); }
   else if (k === 'survive') { say('Survived an attack (Defense)', 'info'); afterChange(); }
 }
 
-/* ---------------- notes ---------------- */
-const NOTE_TYPES = { noise: ['Noise', true], attack: ['Attack', true], spot: ['Spotlight', true], silence: ['Silence', false], hatch: ['Pod result', true], info: ['Other', false] };
-function addNote() {
-  const who = ($('#note-who') || {}).value || ''; T.noteWho = who;
-  const k = T.noteType, [label, needsSector] = NOTE_TYPES[k], finish = sec => {
-    const d = k === 'noise' ? 'Noise in ' + sec : k === 'attack' ? 'Attack in ' + sec : k === 'spot' ? 'Spotlight on ' + sec : k === 'hatch' ? 'Pod at ' + sec : label;
-    const text = (needsSector ? d : k === 'silence' ? 'Silence in all sectors' : ($('#note-text') && $('#note-text').value || 'Note'));
-    S.log.unshift({ turn: S.turn, who: who || 'Someone', kind: k, sector: sec || null, text, mine: false, at: Date.now() });
-    afterChange(); setTab('notes');
-    if (k === 'spot' && S.pos && !S.over) { const q = parseId(sec); const near = q && (sec === S.pos || neighbors(T.map, q[0], q[1]).some(([a, b]) => cid(a, b) === S.pos)); if (near) alertDlg('Spotlight!', `You are in range. Announce your exact location now: ${label(S.pos)}.`); }
+/* ---------------- announcements ---------------- */
+const NOTE_TYPES = { noise: ['Noise', true], attack: ['Attack', true], spot: ['Spotlight', true], silence: ['Silence', false], info: ['Other', false] };
+function addDlg() {
+  dlg.innerHTML = `<h2>${t('Record an announcement')}</h2><p class="dim">${t('Something another player just announced.')}</p>
+    <div class="chips" role="group" aria-label="${t('Type')}">${Object.entries(NOTE_TYPES).map(([k, v]) => `<button data-k="${k}" aria-pressed="${k === T.noteType}">${t(v[0])}</button>`).join('')}</div>
+    <div class="stack" style="margin-top:12px"><input id="note-who" type="text" maxlength="20" placeholder="${t('Player name')}" value="${esc(T.noteWho)}" aria-label="${t('Player name')}">
+    <input id="note-text" type="text" maxlength="80" placeholder="${t('Note')}" aria-label="${t('Note')}" ${T.noteType === 'info' ? '' : 'hidden'}></div>
+    <div class="row"><button class="btn" id="d-no">${t('Cancel')}</button><button class="btn primary" id="d-yes">${t('Next')}</button></div>`;
+  dlg.showModal(); $('#d-no').onclick = closeDlg;
+  dlg.querySelectorAll('.chips button').forEach(b => b.onclick = () => { T.noteType = b.dataset.k; dlg.querySelectorAll('.chips button').forEach(x => x.setAttribute('aria-pressed', x === b)); $('#note-text').hidden = T.noteType !== 'info'; });
+  $('#d-yes').onclick = () => { const who = $('#note-who').value.trim(), text = $('#note-text').value.trim(); T.noteWho = who; closeDlg(); addNote(who, text); };
+}
+function addNote(who, text) {
+  const k = T.noteType, needsSector = NOTE_TYPES[k][1], finish = sec => {
+    S.log.unshift({ id: uid(), turn: S.turn, who: who || t('Someone'), kind: k, sector: sec || null, text: text || 'Note', mine: false, at: Date.now() });
+    afterChange(); setTab('table');
+    if (k === 'spot' && S.pos && !S.over) { const q = parseId(sec), near = q && (sec === S.pos || neighbors(T.map, q[0], q[1]).some(([a, b]) => cid(a, b) === S.pos)); if (near) alertDlg(t('Spotlight!'), t('You are in range. Announce your exact location now: {p}.', { p: label(S.pos) })); }
   };
-  if (needsSector) pickSector(`${label}: tap the sector announced by ${who || 'the player'}.`, finish); else finish(null);
+  if (needsSector) pickSector(t('Tap the sector announced by {w}', { w: who || t('the player') }), finish); else finish(null);
 }
 
 /* ---------------- dialogs ---------------- */
 const dlg = $('#dlg');
 const closeDlg = () => { if (dlg.open) dlg.close(); };
 function confirmDlg(title, body, ok) {
-  dlg.innerHTML = `<h2>${esc(title)}</h2><p>${esc(body)}</p><div class="row"><button class="btn" id="d-no">Cancel</button><button class="btn danger" id="d-yes">Confirm</button></div>`;
+  dlg.innerHTML = `<h2>${esc(title)}</h2><p>${esc(body)}</p><div class="row"><button class="btn" id="d-no">${t('Cancel')}</button><button class="btn danger" id="d-yes">${t('Confirm')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg; $('#d-yes').onclick = () => { closeDlg(); ok(); };
 }
 function alertDlg(title, body) { dlg.innerHTML = `<h2>${esc(title)}</h2><p>${esc(body)}</p><div class="row"><button class="btn primary" id="d-no">OK</button></div>`; dlg.showModal(); $('#d-no').onclick = closeDlg; }
 function itemsDlg() {
-  const it = (k, n, d) => `<button class="btn" data-act="item" data-i="${k}">${n}<small>${d}</small></button>`;
-  dlg.innerHTML = `<h2>Item played</h2><p class="dim">Tell the app which item card you played. The card text in your rulebook is authoritative.</p><div class="stack">
+  const it = (k, n, d) => `<button class="btn" data-act="item" data-i="${k}">${t(n)}<small>${t(d)}</small></button>`;
+  dlg.innerHTML = `<h2>${t('Item played')}</h2><div class="stack">
     ${it('adrenaline', 'Adrenaline', 'Move 2 sectors this turn')}${it('sedatives', 'Sedatives', 'No Dangerous Sector card this turn')}
     ${it('teleport', 'Teleport', 'Jump to the Human sector, plus your normal move')}
     ${it('spotlight', 'Spotlight', 'Name a sector: it and its 6 neighbours must reveal')}${it('attack', 'Attack', 'Attack as an Alien would')}</div>
-    <div class="row"><button class="btn" id="d-no">Close</button></div>`;
+    <div class="row"><button class="btn" id="d-no">${t('Close')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 function caughtDlg() {
   const h = S.role === 'human';
-  dlg.innerHTML = `<h2>I was attacked</h2><p class="dim">${h && !basic() ? 'Play a Defense card to survive.' : 'You must declare your presence.'}</p><div class="stack">
-    ${h && !basic() ? `<button class="btn ok" data-act="caught" data-k="survive">I survived (Defense card)</button>` : ''}
-    <button class="btn danger" data-act="caught" data-k="dead">I was eliminated — out of the game</button>
-    ${h && infection() ? `<button class="btn danger" data-act="caught" data-k="become">Eliminated — I become an Alien (Infection)</button>` : ''}
-  </div><div class="row"><button class="btn" id="d-no">Close</button></div>`;
+  dlg.innerHTML = `<h2>${t('I was attacked')}</h2><p class="dim">${h && !basic() ? t('Play a Defense card to survive.') : t('You must declare your presence.')}</p><div class="stack">
+    ${h && !basic() ? `<button class="btn ok" data-act="caught" data-k="survive">${t('I survived (Defense card)')}</button>` : ''}
+    <button class="btn danger" data-act="caught" data-k="dead">${t('I was eliminated: out of the game')}</button>
+    ${h && infection() ? `<button class="btn danger" data-act="caught" data-k="become">${t('Eliminated: I become an Alien (Infection)')}</button>` : ''}
+  </div><div class="row"><button class="btn" id="d-no">${t('Close')}</button></div>`;
+  dlg.showModal(); $('#d-no').onclick = closeDlg;
+}
+function qrSvg(text) {
+  const q = qrcode(0, 'M'); q.addData(text); q.make(); const n = q.getModuleCount(); let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c + 2} ${r + 2}h1v1h-1z`;
+  return `<svg viewBox="0 0 ${n + 4} ${n + 4}" role="img" aria-label="QR code" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+function qrDlg() {
+  const url = roomUrl();
+  dlg.innerHTML = `<h2>${t('Join my table')}</h2><p class="dim">${t('Scan with the phone camera, or enter the code in the app.')}</p>
+    <div class="qr">${qrSvg(url)}</div><div class="say silent" style="margin:12px 0 0;text-align:center"><small>${t('Table code')}</small><b style="letter-spacing:.3em;color:var(--text)">${esc(Sync.code)}</b></div>
+    <div class="row"><button class="btn" id="d-no">${t('Close')}</button><button class="btn primary" data-act="share">${t('Share link')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 function importDlg() {
-  dlg.innerHTML = `<h2>Import map</h2><p class="dim">Paste map JSON (see README) or choose a file.</p>
-    <textarea id="imp" spellcheck="false" aria-label="Map JSON"></textarea><input id="imp-file" type="file" accept=".json,application/json" style="margin-top:10px">
-    <p id="imp-err" style="color:#ff9d8a"></p><div class="row"><button class="btn" id="d-no">Cancel</button><button class="btn primary" id="d-yes">Import</button></div>`;
+  dlg.innerHTML = `<h2>${t('Import map')}</h2><p class="dim">${t('Paste map JSON or choose a file.')}</p>
+    <textarea id="imp" spellcheck="false" aria-label="JSON"></textarea><input id="imp-file" type="file" accept=".json,application/json" style="margin-top:10px">
+    <p id="imp-err" style="color:#ff9d8a"></p><div class="row"><button class="btn" id="d-no">${t('Cancel')}</button><button class="btn primary" id="d-yes">${t('Import')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
   $('#imp-file').onchange = async e => { const f = e.target.files[0]; if (f) $('#imp').value = await f.text(); };
   $('#d-yes').onclick = () => {
     try {
       const j = JSON.parse($('#imp').value), list = (j.maps || [j]).map(m => { const p = parseMap(m); return { id: m.id || 'custom-' + Date.now(), name: p.name, rows_data: m.rows_data, oddColumnsLower: p.odd }; });
       list.forEach(m => { S.customMaps = S.customMaps.filter(x => x.id !== m.id).concat(m); });
-      loadMaps().then(() => { fillMapSelect(); afterChange(); closeDlg(); toast('Map imported'); });
-    } catch (e) { $('#imp-err').textContent = 'Could not import: ' + e.message; }
+      loadMaps().then(() => { fillMapSelect(); afterChange(); closeDlg(); toast(t('Map imported')); });
+    } catch (e) { $('#imp-err').textContent = t('Could not import: {m}', { m: e.message }); }
   };
 }
 
-/* ---------------- editor ---------------- */
+/* ---------------- map editor ---------------- */
 function startEditor() {
-  const m = T.map; T.editor = { tool: '.', name: m.name.replace(' (unofficial)', '') + ' (copy)', odd: m.odd, grid: m.grid.map(r => r.slice()), orig: m };
+  const m = T.map; T.editor = { tool: '.', name: m.name + ' (2)', odd: m.odd, grid: m.grid.map(r => r.slice()), orig: m };
   T.sel = null; T.pick = null; T.reach = new Map(); setTab('play');
   T.map = Object.assign({}, m, { grid: T.editor.grid }); buildMap(); render();
 }
 function paintEditor(id) {
-  const [c, r] = parseId(id), t = T.editor.tool, g = T.editor.grid;
-  if ('HA1234'.includes(t)) for (const row of g) for (let i = 0; i < row.length; i++) if (row[i] === t) row[i] = '.';
-  g[r][c] = t; paintCells();
+  const [c, r] = parseId(id), tool = T.editor.tool, g = T.editor.grid;
+  if ('HA1234'.includes(tool)) for (const row of g) for (let i = 0; i < row.length; i++) if (row[i] === tool) row[i] = '.';
+  g[r][c] = tool; paintCells();
 }
 function saveEditor() {
   const g = T.editor.grid, name = ($('#ed-name').value || 'Custom map').trim();
-  const miss = ['H', 'A'].filter(ch => !g.some(r => r.includes(ch))).map(ch => ch === 'H' ? 'Human start' : 'Alien start');
-  if (miss.length) return toast('Place: ' + miss.join(', '));
+  if (!g.some(r => r.includes('H')) || !g.some(r => r.includes('A'))) return toast(t('Place the Human and Alien start sectors'));
   const id = 'custom-' + Date.now();
   S.customMaps.push({ id, name, rows_data: g.map(r => r.join('')), oddColumnsLower: T.editor.odd });
-  T.editor = null; loadMaps().then(() => { T.map = T.maps.find(m => m.id === id); S.mapId = id; if (S.role) { S.pos = find(T.map, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; S.phase = 'move'; S.res = null; } buildMap(); afterChange(); setTab('menu'); toast('Map saved'); });
+  T.editor = null; loadMaps().then(() => { T.map = T.maps.find(m => m.id === id); S.mapId = id; if (S.role) { S.pos = find(T.map, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; S.phase = 'move'; S.res = null; } buildMap(); afterChange(); setTab('more'); toast(t('Map saved')); });
 }
 function exportMap() {
   const m = T.map, json = JSON.stringify({ id: m.id, name: m.name, oddColumnsLower: m.odd, rows_data: m.grid.map(r => r.join('')) }, null, 1);
-  dlg.innerHTML = `<h2>Export map</h2><p class="dim">Copy this JSON or save it as a file.</p><textarea readonly id="exp">${esc(json)}</textarea>
-    <div class="row"><button class="btn" id="d-no">Close</button><button class="btn primary" id="d-copy">Copy</button></div>`;
+  dlg.innerHTML = `<h2>${t('Export map')}</h2><textarea readonly id="exp">${esc(json)}</textarea>
+    <div class="row"><button class="btn" id="d-no">${t('Close')}</button><button class="btn primary" id="d-copy">${t('Copy')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
-  $('#d-copy').onclick = async () => { try { await navigator.clipboard.writeText(json); toast('Copied'); } catch (_) { $('#exp').select(); toast('Press Ctrl/Cmd+C'); } };
+  $('#d-copy').onclick = () => copyText(json, t('Copied'));
 }
 
-/* ---------------- panel rendering ---------------- */
-function setTab(t) { S.tab = t; T.pick = null; save(); render(); paintCells(); document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab)); }
+/* ---------------- panels ---------------- */
+function setTab(k) { S.tab = k; T.pick = null; save(); render(); paintCells(); hdr(); }
 function hdr() {
   $('#hd-turn').textContent = S.turn; $('#hd-pos').textContent = S.pos ? label(S.pos) : '—';
-  const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.textContent = S.role === 'alien' ? (S.fed ? 'Alien · Fed' : 'Alien') : 'Human';
+  const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.textContent = S.role === 'alien' ? (S.fed ? t('Alien') + ' · ' + t('Fed') : t('Alien')) : t('Human');
   document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab));
 }
 function render() {
   const p = $('#panel-body'); let h = '';
-  if (T.pick) h = `<div class="banner"><span>${esc(T.pick.label)}</span><button class="btn" data-act="cancelpick">Cancel</button></div>`;
+  if (T.pick) h = `<div class="banner"><span>${esc(T.pick.label)}</span><button class="btn" data-act="cancelpick">${t('Cancel')}</button></div>`;
   if (T.editor) h = editorPanel();
   else if (S.tab === 'play') h += playPanel();
-  else if (S.tab === 'notes') h += notesPanel();
-  else if (S.tab === 'rules') h += rulesPanel();
-  else h += menuPanel();
+  else if (S.tab === 'table') h += tablePanel();
+  else h += morePanel();
   p.innerHTML = h;
   const gi = $('#go-input'); if (gi) gi.onkeydown = e => { if (e.key === 'Enter') actions.go(); };
+  const rc = $('#room-code'); if (rc) rc.onkeydown = e => { if (e.key === 'Enter') actions.syncjoin(); };
 }
-const itemsBtn = () => `<div class="row" style="margin-top:14px">${basic() || S.role !== 'human' ? '' : '<button class="btn" onclick="itemsDlg()">Item played…</button>'}<button class="btn" onclick="caughtDlg()">I was attacked…</button></div>`;
+actions.cancelpick = () => { T.pick = null; paintCells(); render(); };
+const extras = () => `<div class="row mini">${basic() || S.role !== 'human' ? '' : `<button class="btn" onclick="itemsDlg()">${t('Item played')}</button>`}<button class="btn" onclick="caughtDlg()">${t('I was attacked')}</button></div>`;
 window.itemsDlg = itemsDlg; window.caughtDlg = caughtDlg;
+const sayBox = (txt, tone, small) => `<div class="say ${tone || ''}"><small>${t(small || 'Say aloud')}</small><b>${esc(txt)}</b></div>`;
 
 function playPanel() {
   if (T.pick) return '';
   if (S.over) return overPanel();
-  const n = allowance(), who = S.role === 'alien';
+  const n = allowance(), alien = S.role === 'alien';
   if (S.phase === 'move') {
     const sel = T.sel;
-    return `<p class="step">Turn ${S.turn} · Step 1 of 2 · Move</p>
-      <h2>${sel ? 'Move to ' + sel : 'Choose your destination'}</h2>
-      <p>${who ? `Aliens move 1 to <b>${n}</b> sectors${S.fed ? ' (fed)' : ''}.` : `Humans move <b>${n === 1 ? 'only 1 sector' : 'up to ' + n + ' sectors'}</b>${S.adr ? ' (Adrenaline)' : ''}.`} You must move and cannot end where you started.</p>
-      ${sel ? `<div class="kv" style="margin-bottom:12px"><dt>Sector</dt><dd>${typeName(at(T.map, sel))}</dd><dt>Distance</dt><dd>${T.reach.get(sel)} step${T.reach.get(sel) > 1 ? 's' : ''}</dd></div>
-        <div class="row"><button class="btn" data-act="clearsel">Change</button><button class="btn primary big" data-act="confirm">Confirm move</button></div>`
-      : `<div class="inline"><input id="go-input" type="text" inputmode="text" maxlength="3" autocapitalize="characters" placeholder="or type sector, e.g. L07" aria-label="Destination sector"><button class="btn" data-act="go">Go</button></div>`}
-      ${itemsBtn()}`;
+    const rule = alien ? t('Aliens move 1 to {n} sectors.', { n }) : (n === 1 ? t('Humans move 1 sector.') : t('Humans move up to {n} sectors.', { n }));
+    return `<h2>${sel ? esc(t('Move to {s}', { s: label(sel) })) : t('Choose your destination')}</h2>
+      <p class="dim">${rule} ${t('You must move.')}</p>
+      ${sel ? `<p>${esc(typeName(at(T.map, sel)))}</p><div class="row"><button class="btn" data-act="clearsel">${t('Change')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>`
+        : `<div class="inline"><input id="go-input" type="text" maxlength="3" autocapitalize="characters" placeholder="${t('or type a sector, e.g. L07')}" aria-label="${t('Destination sector')}"><button class="btn" data-act="go">${t('Go')}</button></div>`}
+      ${extras()}`;
   }
-  const t = at(T.map, S.pos), r = S.res || { stage: 'choose' };
-  const head = `<p class="step">Turn ${S.turn} · Step 2 of 2 · ${r.stage === 'done' ? 'Done' : 'Your sector'}</p><h2>${esc(label(S.pos))} <span class="dim" style="font-size:16px">${'.sHA'.includes(t) ? '· ' + typeName(t) : ''}</span></h2>`;
-  if (r.stage === 'pod') return head + `<p>You reached <b>Escape Hatch ${t}</b>. Declare which hatch it is, then draw an <b>Escape Hatch</b> card from the physical deck and reveal it.</p><div class="row"><button class="btn ok big" data-act="podGreen">Green — escaped</button><button class="btn danger big" data-act="podRed">Red — damaged</button></div>`;
-  if (r.stage === 'attack') return head + `<div class="say alert"><small>Say aloud</small><b>I attack in Sector ${esc(S.pos)}</b></div>
-      <p>Anyone in the sector must declare it. Who was eliminated?</p>
-      <div class="stack"><button class="btn" data-act="attackDone" data-k="none">Nobody</button><button class="btn" data-act="attackDone" data-k="alien">Only Alien(s)</button><button class="btn danger" data-act="attackDone" data-k="human">At least one Human</button></div>
-      <div class="row" style="margin-top:12px"><button class="btn" data-act="backres">Back</button></div>`;
-  if (r.stage === 'done') return head + `<div class="say ${r.tone || ''}"><small>Say aloud</small><b>${esc(r.say)}</b></div>${r.extra ? `<div class="say alert"><small>Also say</small><b>${esc(r.extra)}</b></div>` : ''}<p class="dim">${esc(r.sub || '')}</p><button class="btn primary big" style="width:100%" data-act="next">${S.turn >= MAX_TURN ? 'Finish game' : 'End turn ' + S.turn}</button>${itemsBtn()}`;
-  // choose
-  const safe = t === 's', start = t === 'H' || t === 'A';
-  if (safe || start) return head + `<p>${safe ? 'Secure Sector: no card, your turn is over.' : 'Nothing to draw here.'}${who ? '' : ''}</p>
-    ${who ? `<button class="btn danger" style="width:100%;margin-bottom:10px" data-act="attack">Attack this sector</button>` : ''}
-    <button class="btn primary big" style="width:100%" data-act="quiet">Done — announce nothing</button>${itemsBtn()}`;
-  return head + `<p>${who ? 'Attack, or draw' : 'Draw'} a <b>Dangerous Sector</b> card and pick what it says.</p>
-    ${basic() ? '' : `<button class="btn" style="width:100%;margin-bottom:12px" data-act="icon" aria-pressed="${!!T.itemIcon}">${T.itemIcon ? '☑' : '☐'} Card shows an Item icon</button>`}
-    ${who ? `<button class="btn danger big" style="width:100%;margin-bottom:12px" data-act="attack">Attack this sector<small>Instead of drawing</small></button>` : ''}
-    <div class="stack"><button class="btn big" data-act="noiseHere">Noise in your sector</button><button class="btn big" data-act="noiseAny">Noise in any sector</button><button class="btn big" data-act="silence">Silence in all sectors</button></div>${itemsBtn()}`;
+  const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };
+  const head = `<h2>${esc(label(S.pos))}${'.sHA'.includes(ty) ? ` <span class="dim sub">${esc(typeName(ty))}</span>` : ''}</h2>`;
+  if (r.stage === 'pod') return head + `<p>${t('Declare which hatch you reached, then draw an Escape Hatch card and reveal it.')}</p><div class="row"><button class="btn ok big" data-act="podGreen">${t('Green: escaped')}</button><button class="btn danger big" data-act="podRed">${t('Red: damaged')}</button></div>`;
+  if (r.stage === 'attack') return head + sayBox(t('Attack in Sector {s}', { s: S.pos }), 'alert') + `<p>${t('Anyone in the sector must declare it. Who was eliminated?')}</p>
+      <div class="stack"><button class="btn" data-act="attackDone" data-k="none">${t('Nobody')}</button><button class="btn" data-act="attackDone" data-k="alien">${t('Only Alien(s)')}</button><button class="btn danger" data-act="attackDone" data-k="human">${t('At least one Human')}</button></div>
+      <div class="row mini"><button class="btn" data-act="backres">${t('Back')}</button></div>`;
+  if (r.stage === 'done') return head + sayBox(r.say, r.tone) + (r.extra ? sayBox(r.extra, 'alert', 'Also') : '') + (r.sub ? `<p class="dim">${esc(r.sub)}</p>` : '') +
+    `<button class="btn primary big wide" data-act="next">${S.turn >= MAX_TURN ? t('Finish game') : t('End turn')}</button>${extras()}`;
+  const safe = ty === 's' || ty === 'H' || ty === 'A';
+  if (safe) return head + `<p>${t('Secure sector: no card to draw.')}</p>${alien ? `<button class="btn danger wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
+    <button class="btn primary big wide" data-act="quiet">${t('Done')}</button>${extras()}`;
+  return head + `<p>${alien ? t('Attack, or draw a Dangerous Sector card:') : t('Draw a Dangerous Sector card:')}</p>
+    ${alien ? `<button class="btn danger big wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
+    <div class="stack"><button class="btn big" data-act="noiseHere">${t('Noise in your sector')}</button><button class="btn big" data-act="noiseAny">${t('Noise in any sector')}</button><button class="btn big" data-act="silence">${t('Silence')}</button></div>
+    ${basic() ? '' : `<button class="btn check" data-act="icon" aria-pressed="${!!T.itemIcon}"><i></i>${t('The card shows an Item icon')}</button>`}${extras()}`;
 }
 function overPanel() {
-  const m = { escaped: ['Escaped!', 'You left the ship and win. That hatch is now blocked.', 'ok'], time: ['39 rounds played', 'Humans still on board are eliminated: the Aliens win.', ''], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.', ''], trapped: ['No way out', 'Every Escape Hatch is blocked or damaged. You are eliminated.', ''] }[S.over];
-  return `<p class="step">Game over</p><h2>${m[0]}</h2><p>${m[1]}</p><button class="btn primary big" style="width:100%" data-act="newgame">New game</button>`;
+  const m = { escaped: ['Escaped!', 'You left the ship and win. That hatch is now blocked.'], time: ['39 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Hatch is blocked or damaged. You are eliminated.'] }[S.over];
+  return `<h2>${t(m[0])}</h2><p>${t(m[1])}</p><button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`;
 }
-const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter a 4+ character code', 'no-room': 'Room not found', off: '' };
-function syncBlock() {
-  if (!Sync.enabled) return `<h3>Table sync</h3><p class="dim" style="font-size:13px">Not configured. Add your Firebase config in <code>firebase-config.js</code> to share announcements between devices.</p>`;
-  if (Sync.code) return `<h3>Table sync</h3><div class="say silent" style="margin:0 0 8px"><small>Room · ${esc(SYNC_MSG[Sync.status] || '')}</small><b style="letter-spacing:.3em">${esc(Sync.code)}</b></div>
-    <div class="row"><button class="btn" data-act="copycode">Copy code</button><button class="btn" data-act="syncleave">Leave</button></div><p class="dim" style="font-size:13px">Only announcements and hatch status are shared. Your position stays private.</p>`;
-  return `<h3>Table sync</h3><div class="stack"><button class="btn" data-act="syncnew">Create room</button>
-    <div class="inline"><input id="room-code" type="text" maxlength="8" autocapitalize="characters" placeholder="Room code" aria-label="Room code"><button class="btn" data-act="syncjoin">Join</button></div>
-    <p class="dim" style="font-size:13px;margin:0">${esc(SYNC_MSG[Sync.status] || 'Share a room code so everyone sees announcements automatically.')}</p></div>`;
+
+const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found' };
+function roomBlock() {
+  if (!Sync.enabled) return `<p class="dim">${t('Table sharing is not available.')}</p>`;
+  if (Sync.code) return `<div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code)}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
+    <div class="row"><button class="btn primary" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button><button class="btn" data-act="syncleave">${t('Leave')}</button></div></div>`;
+  return `<button class="btn primary big wide" data-act="syncnew">${t('Create a table')}</button>
+    <div class="inline" style="margin-top:10px"><input id="room-code" type="text" maxlength="8" autocapitalize="characters" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="syncjoin">${t('Join')}</button></div>
+    ${SYNC_MSG[Sync.status] ? `<p class="dim" role="status">${t(SYNC_MSG[Sync.status])}</p>` : ''}`;
 }
-function notesPanel() {
-  const t = T.noteType, ln = S.log.map(e => `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>T${e.turn}</time><span><b>${esc(e.who)}</b> · ${esc(e.text)}</span></li>`).join('');
-  return `<p class="step">Shared table</p><h2>Notes</h2>${syncBlock()}
-    <h3>Round</h3><div class="inline"><button class="btn" data-act="turnminus" aria-label="Previous turn">−</button><div class="btn" style="flex:1;cursor:default">Turn ${S.turn} of ${MAX_TURN}</div><button class="btn" data-act="turnplus" aria-label="Next turn">+</button></div>
-    <h3>Escape hatches <span class="dim" style="text-transform:none;font-size:12px;letter-spacing:0">tap to close / reopen</span></h3>
-    <div class="hatches">${[1, 2, 3, 4].map(n => `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}">${n}<small>${S.hatches[n] ? 'Closed' : 'Open'}</small></button>`).join('')}</div>
-    <h3>Record what you heard</h3>
-    <div class="chips" role="group" aria-label="Announcement type">${Object.entries(NOTE_TYPES).map(([k, v]) => `<button data-act="notetype" data-k="${k}" aria-pressed="${k === t}">${v[0]}</button>`).join('')}</div>
-    <div class="stack" style="margin-top:10px"><input id="note-who" type="text" maxlength="20" placeholder="Player name" value="${esc(T.noteWho)}" aria-label="Player name">
-    ${t === 'info' ? '<input id="note-text" type="text" maxlength="80" placeholder="Note" aria-label="Note">' : ''}
-    <button class="btn primary" data-act="addNote">${NOTE_TYPES[t][1] ? 'Pick sector on map' : 'Add note'}</button></div>
-    <h3>History</h3>${ln ? `<ul class="log">${ln}</ul><button class="btn" style="width:100%;margin-top:12px" data-act="clearlog">Clear notes</button>` : '<p class="dim">Nothing yet. Your announcements are logged automatically.</p>'}`;
+function tablePanel() {
+  const ln = S.log.map(e => `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span><b>${esc(e.who)}</b> · ${esc(entryText(e))}</span></li>`).join('');
+  return `<h2>${t('Table')}</h2>${roomBlock()}
+    <h3>${t('Escape hatches')} <span class="hint">${t('tap to close or reopen')}</span></h3>
+    <div class="hatches">${[1, 2, 3, 4].map(n => `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}">${n}<small>${S.hatches[n] ? t('Closed') : t('Open')}</small></button>`).join('')}</div>
+    <h3>${t('Announcements')}</h3><button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>
+    ${ln ? `<ul class="log" style="margin-top:12px">${ln}</ul>` : `<p class="dim">${t('Nothing yet. Yours are logged automatically.')}</p>`}`;
 }
-function rulesPanel() {
-  return `<div class="rules"><p class="step">Quick reference</p><h2>How to play</h2>
-  <p class="dim">A summary of the official rulebook to speed up play. The rulebook is authoritative.</p>
-  <h3>Goal</h3><ul><li><b>Humans</b> reach an Escape Hatch. <b>Aliens</b> hunt every Human down.</li>
-  <li><b>Basic game:</b> it ends when the first Human reaches a hatch. Aliens win if all Humans die or 39 rounds pass.</li>
-  <li><b>Advanced game:</b> adds Items and Escape Hatch cards. Play continues until every Human has escaped or been eliminated. Humans still aboard after 39 rounds are eliminated.</li></ul>
-  <h3>Your turn</h3><ul><li><b>Move</b> (mandatory, never ending where you started). Humans 1 sector. Aliens 1–2 sectors, or 1–3 after feeding.</li>
-  <li><b>Secure sector:</b> your turn is over.</li>
-  <li><b>Dangerous sector:</b> draw a card: <i>Noise in your sector</i>, <i>Noise in any sector</i> or <i>Silence</i>.</li>
-  <li><b>Alien attack:</b> after moving, say “I attack in Sector X” instead of drawing. Anyone there (Human or Alien) is eliminated and reveals their card. Humans cannot attack without an Attack item.</li></ul>
-  <h3>Sectors</h3><div class="legend">
-  <div><i style="background:var(--hex)"></i>Dangerous: draw a card</div><div><i style="background:var(--hex-safe)"></i>Secure: nothing happens</div>
-  <div><i style="background:#1c5d93"></i>Human sector: nobody may enter or cross it</div><div><i style="background:#a53312"></i>Alien sector: nobody may enter or cross it</div>
-  <div><i style="background:#1e8a4f"></i>Escape Hatch: Humans only</div></div>
-  <h3>Escape Hatches (Advanced)</h3><ul><li>Declare which hatch you reached, draw an Escape Hatch card and reveal it.</li><li><b>Red:</b> hatch damaged, closed for everyone. <b>Green:</b> you escaped; the hatch is blocked.</li><li>If every hatch is closed you are eliminated.</li></ul>
-  <h3>Items (Advanced)</h3><ul><li>A Noise card with an Item icon makes you draw an Item card (Aliens too). Max 3 held. Only Humans can use them.</li>
-  <li><b>Attack</b> as an Alien would. <b>Teleport</b> to the Human sector, plus your normal move. <b>Sedatives</b> no card this turn. <b>Spotlight</b> name a sector: it and its 6 neighbours must announce exact coordinates. <b>Defense</b> survive an attack. <b>Adrenaline</b> move 2 sectors.</li></ul>
-  <h3>Infection scenario</h3><ul><li>Eliminated Humans become Aliens where they fell. All hatches start open and each works once. Aliens do not speed up after feeding.</li></ul>
-  <h3>Using this app</h3><ul><li>Everything stays on this device. Tap <b>Hide</b> (top right) when you put it down.</li><li>Hatches, the Human and Alien sectors have no coordinates, as in the printed maps.</li></ul></div>`;
-}
-function menuPanel() {
-  const maps = T.maps.map(m => `<div class="inline" style="margin-bottom:8px"><button class="btn" style="flex:1;text-align:left;${m.id === T.map.id ? 'border-color:var(--amber)' : ''}" data-act="map" data-id="${esc(m.id)}">${esc(m.name)}${m.description ? '<small>' + esc(m.description) + '</small>' : ''}</button>${(S.customMaps || []).some(c => c.id === m.id) ? `<button class="btn danger" data-act="edel" data-id="${esc(m.id)}" aria-label="Delete ${esc(m.name)}">✕</button>` : ''}</div>`).join('');
-  return `<p class="step">Settings</p><h2>Menu</h2>
-    <h3>Maps</h3>${maps}
-    <div class="row"><button class="btn" data-act="edit">Edit this map</button><button class="btn" data-act="eexport">Export</button><button class="btn" data-act="eimport">Import</button></div>
-    <p class="dim" style="font-size:13px;margin-top:10px">Galilei, Fermi and Galvani come from the Black Edition maps. Add your own via the editor or import.</p>
-    <h3>Game</h3><div class="stack"><button class="btn" data-act="hide">Hide screen</button><button class="btn danger" data-act="newgame">New game</button></div>
-    <h3>About</h3><p class="dim" style="font-size:13px">Unofficial fan companion for <i>Escape from the Aliens in Outer Space</i> by Mario Porpora. Requires the physical game; no cards are included.</p>`;
+
+const RULES = [
+  ['Goal', ['<b>Humans</b> reach an Escape Hatch. <b>Aliens</b> hunt every Human down.', '<b>Basic game:</b> it ends when the first Human reaches a hatch. Aliens win if all Humans die or 39 rounds pass.', '<b>Advanced game:</b> adds Items and Escape Hatch cards. Play continues until every Human has escaped or been eliminated. Humans still aboard after 39 rounds are eliminated.']],
+  ['Your turn', ['<b>Move</b> (mandatory, never ending where you started). Humans 1 sector. Aliens 1–2 sectors, or 1–3 after feeding.', '<b>Secure sector:</b> your turn is over.', '<b>Dangerous sector:</b> draw a card: Noise in your sector, Noise in any sector or Silence.', '<b>Alien attack:</b> after moving, announce the attack instead of drawing. Anyone there (Human or Alien) is eliminated and reveals their card. Humans cannot attack without an Attack item.']],
+  ['Sectors', ['Dangerous: draw a card. Secure: nothing happens.', 'Human and Alien start sectors: nobody may enter or cross them.', 'Escape Hatches: Humans only. They have no coordinates.']],
+  ['Escape Hatches (Advanced)', ['Declare which hatch you reached, draw an Escape Hatch card and reveal it.', '<b>Red:</b> hatch damaged, closed for everyone. <b>Green:</b> you escaped and the hatch is blocked.', 'If every hatch is closed you are eliminated.']],
+  ['Items (Advanced)', ['A Noise card with an Item icon makes you draw an Item card (Aliens too). Max 3 held. Only Humans can use them.', '<b>Attack</b> as an Alien would. <b>Teleport</b> to the Human sector, plus your normal move. <b>Sedatives</b> no card this turn. <b>Spotlight</b> name a sector: it and its 6 neighbours must announce exact coordinates. <b>Defense</b> survive an attack. <b>Adrenaline</b> move 2 sectors.']],
+  ['Infection scenario', ['Eliminated Humans become Aliens where they fell. All hatches start open and each works once. Aliens do not speed up after feeding.']]
+];
+function morePanel() {
+  const maps = T.maps.map(m => `<div class="inline" style="margin-bottom:8px"><button class="btn mapbtn${m.id === T.map.id ? ' on' : ''}" data-act="map" data-id="${esc(m.id)}">${esc(m.name)}${m.description ? '<small>' + esc(t(m.description)) + '</small>' : ''}</button>${(S.customMaps || []).some(c => c.id === m.id) ? `<button class="btn danger" data-act="edel" data-id="${esc(m.id)}" aria-label="${t('Delete')}">✕</button>` : ''}</div>`).join('');
+  return `<h2>${t('More')}</h2>
+    <details class="acc"><summary>${t('How to play')}</summary><div class="rules"><p class="dim">${t('A summary of the official rulebook. The rulebook is authoritative.')}</p>
+      ${RULES.map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}</div></details>
+    <details class="acc"><summary>${t('Map')}</summary>${maps}<div class="row"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div></details>
+    <details class="acc"><summary>${t('Game')}</summary><div class="inline"><button class="btn" data-act="turnminus" aria-label="−">−</button><div class="btn static">${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</div><button class="btn" data-act="turnplus" aria-label="+">+</button></div>
+      <div class="stack" style="margin-top:10px"><button class="btn" data-act="hide">${t('Hide screen')}</button><button class="btn" data-act="clearlog">${t('Clear announcements')}</button><button class="btn danger" data-act="newgame">${t('New game')}</button></div></details>
+    <details class="acc"><summary>${t('Language')}</summary><div class="chips">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l === 'en' ? 'English' : 'Italiano'}</button>`).join('')}</div></details>
+    <p class="dim fine2">${t('Unofficial fan companion for Escape from the Aliens in Outer Space. Requires the physical game; no cards are included.')}</p>`;
 }
 function editorPanel() {
-  const tl = [['.', 'Dangerous', '#59627a'], ['s', 'Safe', '#ece6d3'], ['x', 'Empty', '#0b1222'], ['H', 'Human', '#1c5d93'], ['A', 'Alien', '#a53312'], ['1', 'Pod 1', '#1e8a4f'], ['2', 'Pod 2', '#1e8a4f'], ['3', 'Pod 3', '#1e8a4f'], ['4', 'Pod 4', '#1e8a4f']];
-  return `<p class="step">Map editor</p><h2>Edit map</h2><p>Pick a tool, then tap sectors. Start sectors and pods are unique.</p>
-    <div class="tools" role="group" aria-label="Tools">${tl.map(([k, n, c]) => `<button data-act="tool" data-t="${k}" aria-pressed="${T.editor.tool === k}"><i style="background:${c};outline:1px solid #fff3"></i>${n}</button>`).join('')}</div>
-    <label class="field" style="margin-top:14px"><span>Map name</span><input id="ed-name" type="text" maxlength="40" value="${esc(T.editor.name)}"></label>
-    <div class="row"><button class="btn" data-act="ecancel">Cancel</button><button class="btn primary" data-act="esave">Save map</button></div>`;
+  const tl = [['.', 'Dangerous', '#59627a'], ['s', 'Secure', '#ece6d3'], ['x', 'Empty', '#0b1222'], ['H', 'Human', '#1c5d93'], ['A', 'Alien', '#a53312'], ['1', 'Hatch 1', '#1e8a4f'], ['2', 'Hatch 2', '#1e8a4f'], ['3', 'Hatch 3', '#1e8a4f'], ['4', 'Hatch 4', '#1e8a4f']];
+  return `<h2>${t('Edit map')}</h2><p class="dim">${t('Pick a tool, then tap sectors. Start sectors and hatches are unique.')}</p>
+    <div class="tools" role="group">${tl.map(([k, n, c]) => `<button data-act="tool" data-t="${k}" aria-pressed="${T.editor.tool === k}"><i style="background:${c};outline:1px solid #fff3"></i>${t(n)}</button>`).join('')}</div>
+    <label class="field" style="margin-top:14px"><span>${t('Map name')}</span><input id="ed-name" type="text" maxlength="40" value="${esc(T.editor.name)}"></label>
+    <div class="row"><button class="btn" data-act="ecancel">${t('Cancel')}</button><button class="btn primary" data-act="esave">${t('Save map')}</button></div>`;
 }
 
 /* ---------------- boot ---------------- */
-function fillMapSelect() { $('#setup-map').innerHTML = T.maps.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join(''); }
+function fillMapSelect() { const cur = $('#setup-map').value; $('#setup-map').innerHTML = T.maps.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join(''); if (cur) $('#setup-map').value = cur; }
+function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); } catch (_) { /* noop */ } applyStatic(); if (S.role) { render(); hdr(); paintCells(); } else { fillMapSelect(); showJoinBanner(); } }
+function showJoinBanner() { const b = $('#join-banner'); b.hidden = !T.pendingRoom; if (T.pendingRoom) b.textContent = t('You are joining table {c}. Pick your role to continue.', { c: T.pendingRoom }); }
 function boot() {
   T.editor = null; T.pick = null; T.sel = null;
   const setup = !S.role;
   $('#setup').hidden = !setup; $('#app').hidden = setup;
-  if (setup) { fillMapSelect(); return; }
+  applyStatic();
+  if (setup) { fillMapSelect(); showJoinBanner(); return; }
   T.map = T.maps.find(m => m.id === S.mapId) || T.maps[0]; S.mapId = T.map.id;
   if (!S.pos || !parseId(S.pos)) { S.pos = find(T.map, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; }
   fitDone = false; buildMap(); refreshReach(); render(); paintCells(); hdr();
   requestAnimationFrame(() => { fit(); fitDone = true; if (S.pos) focusOn(S.pos); });
 }
 Sync.on({
-  status() { if (S.tab === 'notes' && !T.editor) render(); },
-  joined(code) { S.room = code; save(); if (S.tab === 'notes') render(); },
+  status() { if (S.tab === 'table' && !T.editor && S.role) render(); },
+  joined(code) { S.room = code; save(); if (S.tab === 'table' && S.role) render(); },
   entry(e) {
     if (!e || !e.id || S.log.some(x => x.id === e.id)) return;
-    S.log.push({ id: e.id, turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, mine: false, at: e.at, remote: true });
-    S.log.sort((a, b) => b.at - a.at); save(); if (S.role) { paintOverlay(); if (S.tab === 'notes') render(); }
+    S.log.push({ id: e.id, turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });
+    S.log.sort((a, b) => b.at - a.at); save(); if (S.role) { paintOverlay(); if (S.tab === 'table') render(); }
   },
-  hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.role) { afterChange(); } }
+  hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.role) afterChange(); }
 });
-loadMaps().then(() => { boot(); if (S.room && S.role) Sync.join(S.room, false); });
+{ const q = new URLSearchParams(location.search).get('room'); if (q) T.pendingRoom = q.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); }
+$('#setup .lang-switch').addEventListener('click', e => { const b = e.target.closest('[data-l]'); if (b) setLang(b.dataset.l); });
+loadMaps().then(() => { boot(); if (S.role && T.pendingRoom && T.pendingRoom !== S.room) { S.tab = 'table'; Sync.join(T.pendingRoom, false); T.pendingRoom = null; setTab('table'); } else if (S.room && S.role) Sync.join(S.room, false); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { /* optional */ });

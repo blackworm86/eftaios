@@ -195,3 +195,40 @@ dialog .row{margin-top:16px}
 .btn small{display:block}
 
 @media (max-width:520px){.brand{display:none}.topbar{gap:8px;justify-content:space-between}.stat b{font-size:20px}.btn.big{min-height:52px}}
+
+/* ---- v2: simplified UI ---- */
+.red{color:var(--alien)}
+.lang-switch{width:max-content;margin:-6px 0 14px auto;display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.setup-card{position:relative}
+.lang-switch button,.chips button{background:none;border:0}
+.lang-switch button{min-height:36px;min-width:44px;font:700 12px var(--mono);letter-spacing:.1em;color:var(--dim)}
+.lang-switch button[aria-pressed=true],html[lang=en] .lang-switch [data-l=en],html[lang=it] .lang-switch [data-l=it]{background:var(--amber);color:#1a1200}
+.chips button{border:1.5px solid var(--line)}
+#join-banner{margin:0 0 14px;display:block}
+.wide{width:100%;display:block}
+.mini{margin-top:16px}.mini .btn{min-height:40px;font-size:14px;font-weight:500;color:var(--dim)}
+.sub{font-size:15px;font-weight:400}
+.panel h2 .sub{text-transform:none;letter-spacing:0}
+.hint{font:400 12px var(--font);color:var(--dim);text-transform:none;letter-spacing:0;margin-left:6px}
+.check{display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;min-height:44px;font-weight:500}
+.check i{width:22px;height:22px;border-radius:6px;border:2px solid var(--dim);flex:none;display:grid;place-items:center}
+.check[aria-pressed=true] i{background:var(--amber);border-color:var(--amber)}
+.check[aria-pressed=true] i::after{content:"✓";color:#1a1200;font-weight:800;font-size:14px}
+.roomcard{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px}
+.roomcard small{display:block;font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.roomcard b{display:block;font:700 34px var(--font-head);letter-spacing:.3em;margin:2px 0 4px}
+.stat-line{font-size:13px;color:var(--dim)}.stat-line.online{color:var(--pod)}.stat-line.error,.stat-line.offline{color:var(--alien)}
+.roomcard .row{margin-top:12px}.roomcard .row>*{flex:1 1 90px}
+.qr{background:#fff;border-radius:12px;padding:8px;width:min(280px,100%);margin:12px auto 0}.qr svg{display:block;width:100%;height:auto}
+.acc{border:1px solid var(--line);border-radius:12px;margin:0 0 10px;background:var(--bg2);padding:0 14px}
+.acc>summary{min-height:var(--tap);display:flex;align-items:center;cursor:pointer;font:700 14px var(--font-head);letter-spacing:.1em;text-transform:uppercase;list-style:none}
+.acc>summary::-webkit-details-marker{display:none}
+.acc>summary::after{content:"+";margin-left:auto;color:var(--amber);font-size:20px}
+.acc[open]>summary::after{content:"−"}
+.acc[open]{padding-bottom:14px}
+.opts{margin-top:4px}.opts .field:last-child{margin-bottom:0}
+.rules h4{font:700 14px var(--font-head);letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin:16px 0 4px}
+.mapbtn{flex:1;text-align:left}.mapbtn.on{border-color:var(--amber)}
+.btn.static{flex:1;cursor:default}
+.fine2{font-size:13px;margin-top:16px}
+.panel h3{margin-top:22px}

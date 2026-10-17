@@ -262,7 +262,7 @@ function orderList() {
 }
 function waitPanel() {
   const cur = T.turnState;
-  return `<h2>${t('{p} is playing', { p: esc(pname(cur.uid)) })}</h2><p class="dim">${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })} · ${t('Wait for your turn.')}</p>
+  return `<h2>${t('{p} is playing', { p: esc(pname(cur.uid)) })}</h2>
     ${orderList()}${handHtml()}${digital() ? '' : `<div class="row mini"><button class="btn" onclick="caughtDlg()">${t('I was attacked')}</button></div>`}`;
 }
 function overPanel() {
@@ -287,8 +287,8 @@ function playPanel() {
   const n = allowance(), alien = S.role === 'alien';
   if (S.phase === 'move') {
     const sel = T.sel;
-    return `<h2>${sel ? esc(t('Move to {s}', { s: label(sel) })) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Choose your destination')}</h2>
-      ${sel ? `<div class="row"><button class="btn" data-act="clearsel">${t('Change')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>` : `<p class="dim">${t('Tap a highlighted sector on the map.')}</p>`}
+    return `<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>
+      ${sel ? `<div class="row confirmrow"><button class="btn" data-act="clearsel" aria-label="${t('Change')}">✕</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>` : ''}
       ${handHtml()}${extras()}`;
   }
   const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };
@@ -302,7 +302,7 @@ function playPanel() {
   if (r.stage === 'attack') return head + sayBox(t('Attack in Sector {s}', { s: S.pos }), 'alert') + `<p>${t('Anyone in the sector must declare it. Who was eliminated?')}</p>
       <div class="stack"><button class="btn" data-act="attackDone" data-k="none">${t('Nobody')}</button><button class="btn" data-act="attackDone" data-k="alien">${t('Only Alien(s)')}</button><button class="btn danger" data-act="attackDone" data-k="human">${t('At least one Human')}</button></div>
       <div class="row mini"><button class="btn" data-act="backres">${t('Back')}</button></div>`;
-  if (r.stage === 'done') return head + sayBox(r.say, r.tone) + (r.extra ? sayBox(r.extra, 'alert', 'Also') : '') +
+  if (r.stage === 'done') return head + sayBox(r.say, r.tone) + (r.extra ? sayBox(r.extra, 'alert also', 'Also') : '') +
     (r.report ? `<ul class="report">${r.report.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '') + (r.sub ? `<p class="dim">${esc(r.sub)}</p>` : '') +
     `<button class="btn primary big wide" data-act="next">${!inRoom() && S.turn >= MAX_TURN ? t('Finish game') : t('End turn')}</button>${handHtml()}${extras()}`;
   const safe = ty === 's' || ty === 'H' || ty === 'A';
@@ -315,11 +315,12 @@ function playPanel() {
 
 const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found' };
 function roomBlock() {
-  if (S.hot) return `<p class="dim">${t('Pass and play: one device, digital cards.')}</p>`;
-  if (!Sync.code) return `<p class="dim">${t('You are playing without a table.')}</p>`;
+  if (!Sync.code) return '';
   return `<div class="roomrow"><div><small>${t('Table code')}</small><b>${esc(Sync.code)}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
     <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>`;
 }
+/* what the border of a marker means */
+const legendHtml = () => `<p class="legend">${[['me', 'Me'], ['', 'Unknown'], ['human', 'Human'], ['alien', 'Alien']].map(([k, l]) => `<span><svg class="dot" viewBox="-10 -10 20 20" aria-hidden="true">${k === 'me' ? '<circle r="9.4" fill="#fff"/>' : ''}<circle r="7" fill="#3a465e" stroke="${BORDER[k]}" stroke-width="3"/></svg>${t(l)}</span>`).join('')}</p>`;
 function decksHtml() {
   const c = T.counts || {}; if (!digital() || !c.sector) return '';
   const cell = (k, n) => `<span><b>${c[k].d}</b>/${c[k].d + c[k].x} ${t(n)}</span>`;
@@ -328,14 +329,18 @@ function decksHtml() {
 function tablePanel() {
   const ln = S.log.map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k); return `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${esc(entryText(e))}</span></li>`; }).join('');
   // players known from hand-written notes (no table): one row each, with suspicion buttons
-  const noted = []; if (!inRoom()) { const seenK = new Set(); S.log.forEach(e => { if (e.mine || !e.sector) return; const k = playerKey(e); if (k === 'me' || seenK.has(k)) return; seenK.add(k); noted.push([k, e.who]); }); }
-  const notedHtml = noted.length ? `<h3>${t('Players')}</h3><ol class="turnlist">${noted.map(([k, n]) => `<li>${dotIcon(k)}<span class="pname">${esc(n)}</span>${susBtns(k)}</li>`).join('')}</ol>` : '';
+  const noted = []; if (!inRoom() && !S.hot) { const seenK = new Set(); knownPlayers().forEach(([k, n]) => { if (!seenK.has(k)) { seenK.add(k); noted.push([k, n]); } }); }
+  const notedHtml = noted.length ? `<ol class="turnlist">${noted.map(([k, n]) => `<li>${dotIcon(k)}<span class="pname">${esc(n)}</span>${susBtns(k)}</li>`).join('')}</ol>` : `<p class="dim">${t('Players appear here when you record their announcements.')}</p>`;
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
-  return `${roomBlock()}
-    ${inRoom() || S.hot ? `<h3>${t('Players')} <span class="hint">${t('H / A: your private guess')}</span></h3>${orderList()}${skip}` : notedHtml}
-    <h3>${t('Escape hatches')} <span class="hint">${digital() ? '' : t('tap to close or reopen')}</span></h3>
-    <div class="hatches compact">${mapHatches().map(n => `<button data-act="${digital() ? 'noop' : 'hatch'}" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${t('Escape Hatch {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}">${n}</button>`).join('')}</div>
-    ${decksHtml()}
-    <h3>${t('Announcements')}</h3>${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
-    ${ln ? `<ul class="log" style="margin-top:12px">${ln}</ul>` : `<p class="dim">${t('Nothing yet. Yours are logged automatically.')}</p>`}`;
+  const sec = T.tableSec || 'log', hatchAct = digital() ? '' : 'hatch';
+  const secs = [['log', 'Announcements'], ['players', 'Players'], ['hatches', 'Hatches']];
+  return `<div class="subtabs" role="tablist">${secs.map(([k, l]) => `<button role="tab" data-act="tsec" data-k="${k}" aria-selected="${sec === k}">${t(l)}</button>`).join('')}</div>
+    <div class="tsecs">
+    <section class="sec log${sec === 'log' ? ' on' : ''}"><h3>${t('Announcements')}</h3>${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
+      ${ln ? `<ul class="log">${ln}</ul>` : `<p class="dim">${t('No announcements yet.')}</p>`}</section>
+    <section class="sec players${sec === 'players' ? ' on' : ''}">${roomBlock()}<h3>${t('Players')}</h3>${legendHtml()}${inRoom() || S.hot ? orderList() + skip : notedHtml}</section>
+    <section class="sec hatches${sec === 'hatches' ? ' on' : ''}"><h3>${t('Escape hatches')}${hatchAct ? ` <span class="hint">${t('tap to close or reopen')}</span>` : ''}</h3>
+      <div class="hatches compact">${mapHatches().map(n => { const lbl = `${t('Escape Hatch {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}`; return hatchAct ? `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${lbl}">${n}</button>` : `<span class="hb${S.hatches[n] ? ' closed' : ''}" role="img" aria-label="${lbl}">${n}</span>`; }).join('')}</div>
+      ${decksHtml()}</section>
+    </div>`;
 }

@@ -10,8 +10,8 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
    ['Anna','Bruno','Carla','Dario','Elena'].forEach((n,i)=>add(n,2+i%3,'K10'));add('Anna',5,'K10');add('Anna',3,'M10');add('Anna',4,'N10','attack');add('Bruno',5,'J10');
    paintOverlay();focusOn('K10');
  });
- const boxes=await p.evaluate(()=>{const svgEl=document.querySelector('#map');const res={};document.querySelectorAll('#marks .pm').forEach(g=>{const m=/translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute('transform'));const r=g.firstChild.getBBox();(res[g.dataset.s||'']=res[g.dataset.s||'']||[]).push({x:+m[1]+r.x,y:+m[2]+r.y,w:r.width,h:r.height,t:g.textContent})});return res['']});
- const ov=(a,c)=>a.x<c.x+c.w-0.3&&c.x<a.x+a.w-0.3&&a.y<c.y+c.h-0.3&&c.y<a.y+a.h-0.3;
+ const boxes=await p.evaluate(()=>{const svgEl=document.querySelector('#map');const res={};document.querySelectorAll('#marks .pm').forEach(g=>{const m=/translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute('transform'));const r=+g.firstChild.getAttribute('r');(res[g.dataset.s||'']=res[g.dataset.s||'']||[]).push({x:+m[1],y:+m[2],r,t:g.textContent})});return res['']});
+ const ov=(a,c)=>Math.hypot(a.x-c.x,a.y-c.y)<a.r+c.r-0.3;
  let clash=0;for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)if(ov(boxes[i],boxes[j]))clash++;
  assert(clash===0,'no two markers overlap ('+boxes.length+' markers)');
  const labels=boxes.map(b=>b.t);

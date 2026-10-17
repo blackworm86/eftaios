@@ -8,7 +8,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const SS='/tm
     await p.evaluate(()=>{S.phase='resolve';S.res={stage:'choose'};S.pos='K10';render()});await p.click('[data-act=noiseAny]');await p.evaluate(sec=>{const cb=T.pick.cb;T.pick=null;cb(sec)},['M10','N10','O10'][k]);
     await p.click('[data-act=next]');await A.waitForFunction(i=>T.turnState.idx!==i||T.turnState.n>1,i0)}
   await A.waitForFunction(()=>S.log.filter(e=>e.kind==='noise').length>=3);
-  const mk=await A.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine)')].map(g=>{const c=g.querySelector('circle');return {d:c.getAttribute('fill'),c:c.getAttribute('stroke')}}));
+  const mk=await A.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine)')].map(g=>{const c=g.querySelector('circle:not(.mko)');return {d:c.getAttribute('fill'),c:c.getAttribute('stroke')}}));
   assert(mk.length===2,'the other two players appear as markers ('+mk.length+')');
   assert(new Set(mk.map(m=>m.d)).size===2,'each player has a different colour');
   assert(mk.every(m=>m.c==='#ffd23f'),'opponents start with a yellow (undecided) border');
@@ -18,12 +18,12 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const SS='/tm
   const [sa,sb,sc]=[await view(A),await view(B),await view(C)];
   assert(JSON.stringify(sa)===JSON.stringify(sb)&&JSON.stringify(sb)===JSON.stringify(sc)&&new Set(sa).size===3,'every device gives each player the same, distinct colour');
   // A suspects B is an alien and C is human
-  await A.click('[data-tab=table]');
+  await A.click('[data-tab=table]');await A.click('[data-act=tsec][data-k=players]');
   const uB=await B.evaluate(()=>Sync.uid),uC=await C.evaluate(()=>Sync.uid);
   await A.click(`[data-act=sus][data-k="u:${uB}"][data-v=alien]`);await A.click(`[data-act=sus][data-k="u:${uC}"][data-v=human]`);
-  const cls=await A.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine) circle')].map(c=>c.getAttribute('stroke')).join(' '));
+  const cls=await A.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine) circle[stroke]')].map(c=>c.getAttribute('stroke')).join(' '));
   assert(cls.includes('#ff3b30')&&cls.includes('#2f7dff'),'suspicion recolours that player\'s markers (red / blue)');
-  assert(await B.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine) circle')].every(c=>c.getAttribute('stroke')==='#ffd23f')),'suspicions are private to the device');
+  assert(await B.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine) circle[stroke]')].every(c=>c.getAttribute('stroke')==='#ffd23f')),'suspicions are private to the device');
   assert(await A.locator(`[data-act=sus][data-k="me"]`).count()===0,'you cannot tag yourself');
   await A.screenshot({path:SS+'/m-table.png'});await A.click('[data-tab=play]');await A.evaluate(()=>{focusOn('N10')});await A.screenshot({path:SS+'/m-map.png'});
   // table full at 8

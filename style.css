@@ -30,8 +30,8 @@ h1,h2,h3{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.0
 .setup-card h1 span{color:var(--alien)}
 .lead{color:var(--dim);margin:14px 0 20px}
 .field{display:block;margin:0 0 14px}
-.field span{display:block;font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
-.field em{text-transform:none;letter-spacing:0;font-style:normal;opacity:.7}
+.field>span{display:block;font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.field>span em{text-transform:none;letter-spacing:0;font-style:normal;opacity:.7}
 select,input[type=text],textarea{width:100%;min-height:var(--tap);background:var(--bg2);color:var(--text);border:1px solid var(--line);
   border-radius:10px;padding:10px 12px;font:inherit}
 textarea{font:13px var(--mono);min-height:140px}
@@ -63,10 +63,10 @@ textarea{font:13px var(--mono);min-height:140px}
 .stage{position:relative;flex:1;min-height:200px;background:radial-gradient(ellipse at 50% 50%,#0f1a33,#070b14 75%);overflow:hidden}
 #map{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
 #map:active{cursor:grabbing}
-.panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border-top:1px solid var(--line);max-height:46vh;overflow:auto;
-  overscroll-behavior:contain;z-index:2}
-#panel-body{padding:14px 16px 18px;max-width:640px;margin:0 auto}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);background:#0a1120;border-top:1px solid var(--line);
+.panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border-top:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;z-index:2;
+  max-height:calc(44vh + 54px + env(safe-area-inset-bottom));max-height:calc(44dvh + 54px + env(safe-area-inset-bottom))}
+#panel-body{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:14px 16px 18px;width:100%;max-width:640px;margin:0 auto}
+.tabs{flex:none;display:grid;grid-template-columns:repeat(3,1fr);background:#0a1120;border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom);z-index:3}
 .tabs button{min-height:54px;background:none;border:0;border-top:3px solid transparent;font:700 13px var(--font-head);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
 .tabs button[aria-selected=true]{color:var(--amber);border-top-color:var(--amber);background:#ffb41f10}
@@ -74,7 +74,7 @@ textarea{font:13px var(--mono);min-height:140px}
 @media (min-width:900px){
   #layout{flex-direction:row}
   .panel{width:400px;max-height:none;border-top:0;border-left:1px solid var(--line);flex:none}
-  .topbar{order:-2}
+  #panel-body{flex:1 1 auto}
   .tabs{order:-1;border-top:0;border-bottom:1px solid var(--line);padding-bottom:0}
   .tabs button{border-top:0;border-bottom:3px solid transparent;min-height:46px}
   .tabs button[aria-selected=true]{border-bottom-color:var(--amber)}
@@ -82,7 +82,8 @@ textarea{font:13px var(--mono);min-height:140px}
 }
 @media (min-width:1400px){.panel{width:460px}}
 @media (max-height:520px) and (orientation:landscape){
-  #layout{flex-direction:row}.panel{width:330px;max-height:none;border-top:0;border-left:1px solid var(--line)}
+  #layout{flex-direction:row}.panel{width:330px;max-height:none;border-top:0;border-left:1px solid var(--line)}#panel-body{flex:1 1 auto}
+  .tabs{order:-1;border-top:0;border-bottom:1px solid var(--line);padding-bottom:0}.tabs button{min-height:42px}
   .topbar{min-height:46px;padding:4px 10px}
 }
 
@@ -255,7 +256,6 @@ html,body{height:100vh;height:100dvh}
 .setup-card{margin:auto;width:min(520px,100%)}
 .setup-card h1{font-size:clamp(24px,8vw,40px)}
 .stage{min-height:200px}
-.panel{max-height:44vh;max-height:44dvh}
 .panel h2{font-size:clamp(18px,5.5vw,24px)}
 #panel-body{padding:12px 14px 16px}
 .stat.pos{min-width:0}
@@ -395,3 +395,106 @@ html,body{height:100vh;height:100dvh}
 #map.classic .hex.sel{fill:#fff;stroke:#e08a00;stroke-width:3}
 #map.classic .lbl{opacity:.8;fill:#222;font-weight:700}
 #map.classic .s .lbl{fill:#222}
+
+/* ---------- v12: usability pass ---------- */
+/* feedback sits at the top of the map, never over the action buttons */
+.toast{top:calc(64px + env(safe-area-inset-top));bottom:auto}
+/* map controls: one icon family; touch screens pinch to zoom, so + and − are only shown with a mouse */
+.zoom button{display:grid;place-items:center;color:var(--text);padding:0}
+@media (hover:none) and (pointer:coarse){.zoom .zb{display:none}}
+.stage.classic .zoom button,.stage.classic .mkbar button{background:#ffffffe6;border-color:#9aa;color:#111}
+.stage.classic .mkbar .mkt span{color:#555}.stage.classic .mkbar .mkt b{color:#a86a00}
+.stage.classic .mkbar button[aria-pressed=true]{background:#ffe2a6;border-color:#d08a00}
+/* markers */
+.mko{fill:#0b1222}.mko.me{fill:#fff}
+.abadge circle{fill:#ff3b30;stroke:#fff;stroke-width:.8}.abadge path{stroke:#fff;stroke-linecap:round}
+.pm.attack circle{filter:none}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 8px;font-size:12px;color:var(--dim)}
+.legend span{display:flex;align-items:center}.legend .dot{width:16px;height:16px;margin-right:4px}
+
+/* setup: compact sub-screen header, frameless on phones */
+.fhead{display:flex;align-items:center;gap:8px;margin:-6px 0 14px -6px}
+.fhead h2{font-size:22px;flex:1}
+.fhead .icon-btn{border:0;background:none;color:var(--text)}
+.flabel{display:flex;align-items:center;gap:6px}
+.info{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--dim);background:none;color:var(--dim);font:700 12px/1 Georgia,serif;font-style:italic;padding:0;display:grid;place-items:center}
+.info::before{content:"";position:absolute;width:44px;height:44px}
+.info{position:relative}
+.seg{display:flex;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg2)}
+.seg button{flex:1 1 0;min-height:44px;border:0;background:none;color:var(--dim);font-weight:600;font-size:14px;padding:6px 8px;line-height:1.15}
+.seg button+button{border-left:1.5px solid var(--line)}
+.seg button[aria-checked=true]{background:#ffb41f1f;color:var(--amber);box-shadow:inset 0 0 0 2px var(--amber);border-radius:10px}
+.optinfo{margin:0}.optinfo dt{font:700 14px var(--font-head);letter-spacing:.06em;text-transform:uppercase;color:var(--amber);margin-top:12px}.optinfo dd{margin:2px 0 0;color:#c4cde0}
+.mapcard .prevbox{padding:4px}.mapcard .mapprev{max-height:110px}
+.mapname{align-items:center;padding:6px 12px}.mapname b{flex:none}.mapname small{flex:1;color:var(--dim);font-size:12px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chev{font-style:normal;color:var(--amber);font-size:22px;line-height:1}
+.joinrow{margin-top:10px}
+.row.two>*{flex:1 1 0}.row.two .btn{min-height:56px}
+.roles{margin-top:6px}.roles .role-btn{min-height:80px}
+.hotnames{grid-template-columns:1fr 1fr;gap:6px}
+.hotnames li{position:relative}.hotnames input{padding-right:40px;min-height:44px}
+.hotnames .x{position:absolute;right:2px;top:2px;width:40px;height:40px;border:0;background:none;color:var(--dim);font-size:15px}
+.hotnames .addp{width:100%;min-height:44px;padding:6px}
+.setup-card .flabel{margin-bottom:6px}
+.setup-card .field{margin-bottom:12px}
+.setup-card .roomcard{display:flex;align-items:center;gap:8px;margin:0}
+.setup-card .roomcard>div{flex:1;min-width:0}.setup-card .roomcard .btn{flex:none;min-height:44px;padding:8px 12px}
+.setcard{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;margin-top:10px;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:8px}
+.setcard .prevbox{margin:0;padding:2px;border:0}.setcard .mapprev{max-height:64px}
+.setcard .mapcard.mini{border-radius:10px}
+.setcard .kv{grid-template-columns:auto 1fr;gap:1px 10px;font-size:13px;margin:0}.setcard .kv dt{font-size:10px;align-self:center}
+.setcard .edit{min-height:40px;padding:6px 10px;font-size:13px}
+.setup-card h3 .hint{font-size:11px}
+.lobbyact{margin-top:10px}.lobbyact>*{flex:1 1 0}.lobbyact .btn small{font-size:11px}
+.center{text-align:center}
+@media (max-width:520px){
+  .screen{padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+  .setup-card{background:none;border:0;box-shadow:none;padding:4px 0}
+  .setup-card.home{margin:auto 0}
+}
+@media (max-height:700px){.mapcard .mapprev{max-height:86px}.setup-card h1{font-size:clamp(22px,7vw,34px)}}
+
+/* game panel */
+.confirmrow .btn:first-child{flex:0 0 56px;font-size:18px;padding:0}
+.subtabs{display:flex;gap:4px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:3px;margin-bottom:10px;position:sticky;top:0;z-index:1}
+.subtabs button{flex:1 1 0;min-height:38px;border:0;border-radius:9px;background:none;color:var(--dim);font:700 12px var(--font-head);letter-spacing:.08em;text-transform:uppercase}
+.subtabs button[aria-selected=true]{background:var(--panel2);color:var(--amber)}
+.tsecs{display:flex;flex-direction:column}
+.sec h3:first-child{margin-top:0}
+.sec:not(.on){display:none}
+.subtabs+.tsecs .sec>h3:first-child{display:none}
+.sec.players .roomrow{margin-bottom:10px}
+.sec .log{margin-top:10px}
+.hatches .hb{min-height:44px;display:grid;place-items:center;border-radius:12px;border:2px solid var(--pod);background:#1e8a4f22;font:700 18px var(--font-head)}
+.hatches .hb.closed{border-color:#7a4a58;background:#3a263066;color:#ba8794;text-decoration:line-through}
+@media (min-width:900px),(max-height:520px) and (orientation:landscape){
+  .subtabs{display:none}
+  .sec:not(.on){display:block}
+  .subtabs+.tsecs .sec>h3:first-child{display:block}
+  .sec.log{order:9}
+  .sec+.sec{margin-top:18px}
+}
+/* More: a short settings list, long content opens full screen */
+.menu{display:grid;gap:8px}
+.mrow{display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);text-align:left;font:700 14px var(--font-head);letter-spacing:.1em;text-transform:uppercase}
+.mrow small{flex:1;text-align:right;font:400 13px var(--font);letter-spacing:0;text-transform:none;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow i{font-style:normal;color:var(--amber);font-size:22px;margin-left:auto}.mrow small+i{margin-left:0}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;padding:4px 4px 4px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg2)}
+.setrow>span{font:700 14px var(--font-head);letter-spacing:.1em;text-transform:uppercase}
+.setrow .seg{flex:0 1 220px}.setrow .seg button{min-height:40px;font-size:13px}
+.stepper{display:flex;align-items:center;gap:6px}.stepper .btn{width:44px;min-height:40px;padding:0;font-size:18px}.stepper b{font:700 18px var(--mono);min-width:5ch;text-align:center}.stepper small{color:var(--dim);font-size:12px}
+.menuact{margin-top:12px}.menuact>*{flex:1 1 0}
+.gwrap{position:relative;display:flex}.gwrap .gcard{flex:1}.gdel{position:absolute;top:6px;right:6px;min-height:36px;width:36px;padding:0}
+#overlay .rules{max-width:680px;margin:0 auto}
+.setup-card .flabel{display:flex;font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.setup-card.home h1{margin-bottom:22px}
+.say.also{padding:8px 12px}.panel .say.also b{font-size:17px}
+.setrow>span{white-space:nowrap}.setrow .seg{flex:1 1 auto;max-width:220px}
+.field>.flabel{display:flex}
+/* lobby: compact so a full table fits on a phone */
+.setup-card h3{margin:14px 0 6px}
+.setup-card .roomcard{padding:6px 10px}.setup-card .roomcard b{font-size:24px;margin:0}
+.setup-card .plist li{min-height:40px;padding:4px 8px 4px 10px}
+.plist .mv button{height:32px;width:36px}
+.setup-card .factions{margin-bottom:0}.setup-card .factions .role-btn{min-height:56px}.setup-card .factions .role-btn b{font-size:22px}
+.setcard{margin-top:8px;padding:6px}

@@ -162,12 +162,12 @@ function colorOf(key) {
   return S.shapes[k];
 }
 const borderOf = key => key === 'me' ? BORDER.me : BORDER[suspicion(key)] || BORDER[''];
-const dotIcon = (key, asMe) => { const [f] = PALETTE[colorOf(key)], me = asMe || key === 'me'; return `<svg class="dot" viewBox="-10 -10 20 20" aria-hidden="true">${me ? '<circle r="9.2" fill="#ffffff66"/>' : ''}<circle r="7" fill="${f}" stroke="${me ? BORDER.me : borderOf(key)}" stroke-width="3"/></svg>`; };
+const dotIcon = (key, asMe) => { const [f] = PALETTE[colorOf(key)], me = asMe || key === 'me'; return `<svg class="dot" viewBox="-10 -10 20 20" aria-hidden="true">${me ? '<circle r="9.4" fill="#fff"/>' : '<circle r="9.2" fill="#0b1222"/>'}<circle r="7" fill="${f}" stroke="${me ? BORDER.me : borderOf(key)}" stroke-width="3"/></svg>`; };
 const suspicion = key => (key !== 'me' && S.sus && S.sus[key]) || '';
 /* layout of the markers inside one hex: a ring of evenly spaced slots, never overlapping */
 function slots(n) {
   if (n === 1) return { size: 8, pts: [[0, 0]] };
-  const R = n <= 4 ? 10.5 : 12.5, size = n <= 3 ? 7 : n <= 5 ? 5.8 : n <= 7 ? 4.8 : 4.2;
+  const R = n <= 4 ? 10.5 : n <= 6 ? 12.5 : 13.5, size = Math.min(n <= 3 ? 7 : 5.8, (R * Math.sin(Math.PI / n) - 0.8) / 1.16);  // room for the border and outline
   return { size, pts: Array.from({ length: n }, (_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [R * Math.cos(a), R * Math.sin(a)]; }) };
 }
 function paintOverlay() {
@@ -221,10 +221,15 @@ function paintOverlay() {
       const own = mine(it.key), ck = own ? 'me' : it.key, [fill, ink] = PALETTE[colorOf(ck)], bluff = it.key === 'bluff';
       const dim = focus && !(it.key === focus || (focus === 'me' && own)), old = !focus && !bluff && S.turn - last >= 2;
       const g = el('g', { class: `mk pm ${it.kind}${own ? ' mine' : ''}${bluff ? ' bluff' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
-      if (it.key === 'me') el('circle', { r: size * 1.3, fill: '#ffffff55' }, g);
-      el('circle', { r: size, fill, stroke: borderOf(ck), 'stroke-width': (size * 0.32).toFixed(2) }, g);
+      const sw = size * 0.32;
+      el('circle', { r: (size + sw / 2 + 0.5).toFixed(2), class: own ? 'mko me' : 'mko' }, g);   // outline: white around my black border, dark around the others
+      el('circle', { r: size, fill, stroke: borderOf(ck), 'stroke-width': sw.toFixed(2) }, g);
       if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; el('circle', Object.assign({ r: size + 4.5, class: 'me-ring pulse' + cls }, at_), me); el('circle', Object.assign({ r: size + 3, class: 'me-ring' + cls }, at_), me); }
       const tx = el('text', { fill: ink, 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
+      if (it.kind === 'attack') {   // attack badge: red disc with a white cross
+        const bg = el('g', { class: 'abadge', transform: `translate(${(size * 0.78).toFixed(1)} ${(-size * 0.78).toFixed(1)})` }, g), q = size * 0.22;
+        el('circle', { r: (size * 0.46).toFixed(2) }, bg); el('path', { d: `M${-q} ${-q}L${q} ${q}M${q} ${-q}L${-q} ${q}`, 'stroke-width': (size * 0.13).toFixed(2) }, bg);
+      }
     });
   });
   // timeline of the focused player, in turn order
@@ -287,7 +292,7 @@ function renderMkBar() {
   if (!ps.length && !manual) { bar.hidden = true; return; }
   bar.hidden = false;
   const sus = k => `<div class="msus" role="group" aria-label="${t('Your suspicion')}">${[['', '?'], ['human', t('H')], ['alien', t('A')]].map(([v, l]) => `<button data-act="sus" data-k="${esc(k)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(k) === v}">${l}</button>`).join('')}</div>`;
-  bar.innerHTML = `<button class="mkt" data-act="mkall" data-v="${S.mkAll ? 0 : 1}" aria-pressed="${!!S.mkAll}" aria-label="${S.mkAll ? t('All turns') : t('Last {n} turns', { n: MK_RECENT })}"><b>${S.mkAll ? '∞' : MK_RECENT}</b><span>${t('turns')}</span></button>` +
+  bar.innerHTML = `<button class="mkt" data-act="mkall" data-v="${S.mkAll ? 0 : 1}" aria-pressed="${!!S.mkAll}" aria-label="${S.mkAll ? t('All turns') : t('Last {n} turns', { n: MK_RECENT })}"><b>${S.mkAll ? t('All') : MK_RECENT}</b><span>${t('turns')}</span></button>` +
     (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Mark players by hand')}"><b>✎</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
@@ -397,8 +402,8 @@ const actions = {
       Sync.leave(true); resetToWelcome(host ? 'host' : 'welcome');
     });
   },
-  map(b) { const m = T.maps.find(x => x.id === b.dataset.id); if (!m || m === T.map) return; confirmDlg(t('Switch map?'), t('Your position resets to the start sector of the new map.'), () => { T.map = m; S.mapId = m.id; S.pos = find(m, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; T.sel = null; S.phase = 'move'; S.res = null; buildMap(); afterChange(); }); },
-  edit() { startEditor(); },
+  map(b) { actions.ovclose(); const m = T.maps.find(x => x.id === b.dataset.id); if (!m || m === T.map) return; confirmDlg(t('Switch map?'), t('Your position resets to the start sector of the new map.'), () => { T.map = m; S.mapId = m.id; S.pos = find(m, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; T.sel = null; S.phase = 'move'; S.res = null; buildMap(); afterChange(); }); },
+  edit() { actions.ovclose(); startEditor(); },
   tool(b) { T.editor.tool = b.dataset.t; render(); },
   esave() { saveEditor(); },
   ecancel() { T.map = T.editor.orig; T.editor = null; setTab('more'); buildMap(); afterChange(); },
@@ -408,17 +413,21 @@ const actions = {
   share() { const url = roomUrl(), data = { title: 'EFTAIOS', text: t('Join my table: {c}', { c: Sync.code }), url }; if (navigator.share) navigator.share(data).catch(() => {}); else copyText(url, t('Link copied')); },
   qr() { qrDlg(); },
   lang(b) { setLang(b.dataset.l); },
-  mapstyle(b) { setMapStyle(b.dataset.v); b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); },
+  mapstyle(b) { setMapStyle(b.dataset.v); b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); },
   cancelpick() { T.pick = null; paintCells(); render(); },
   noop() { },
   sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
-  pfocus(b) { const k = b.dataset.k; T.focus = T.focus === k ? null : k; paintOverlay(); if (T.focus) frameSectors(T.focus === 'me' ? S.path.map(p => p.pos).concat(S.log.filter(e => e.kind === 'noise' && e.sector && playerKey(e) === 'me').map(e => e.sector)) : S.log.filter(e => e.sector && e.kind !== 'spot' && playerKey(e) === T.focus).map(e => e.sector)); if (T.focus) toast(T.focus === 'me' ? t('Showing only your route') : t('Showing only {p}', { p: b.title })); },
+  pfocus(b) { const k = b.dataset.k; T.focus = T.focus === k ? null : k; paintOverlay(); if (T.focus) frameSectors(T.focus === 'me' ? S.path.map(p => p.pos).concat(S.log.filter(e => e.kind === 'noise' && e.sector && playerKey(e) === 'me').map(e => e.sector)) : S.log.filter(e => e.sector && e.kind !== 'spot' && playerKey(e) === T.focus).map(e => e.sector)); },
   markmode() { T.markMode = !T.markMode; T.markTurn = S.turn; T.focus = null; if (T.markMode && !T.markKey) { const ps = knownPlayers(); if (ps.length === 1) T.markKey = ps[0][0]; } render(); paintOverlay(); },
   markwho(b) { T.markKey = b.dataset.k; render(); paintOverlay(); },
   mturn(b) { T.markTurn = Math.max(1, Math.min(MAX_TURN, (T.markTurn || S.turn) + +b.dataset.d)); render(); },
   addplayer() { const n = (prompt(t('Player name')) || '').trim().slice(0, 20); if (!n) return; S.extraPlayers = (S.extraPlayers || []).concat([n]); T.markKey = 'n:' + n.toLowerCase(); save(); render(); paintOverlay(); },
   notemode() { pickSector(t('Tap the sector for your note'), sec => noteDlg(sec)); },
   noteedit(b) { $('#inspect').hidden = true; noteDlg(b.dataset.s); },
+  tsec(b) { T.tableSec = b.dataset.k; render(); },
+  rules() { overlay(t('How to play'), rulesHtml()); },
+  maps() { overlay(t('Map'), mapsHtml()); },
+  ovclose() { const o = $('#overlay'); if (o) o.remove(); },
   mkall(b) { S.mkAll = b.dataset.v === '1'; save(); render(); paintOverlay(); }
 };
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
@@ -551,17 +560,29 @@ const RULES = [
   ['Items (Advanced)', ['A Noise card with an Item icon makes you draw an Item card (Aliens too). Max 3 held. Only Humans can use them.', '<b>Attack</b> as an Alien would. <b>Teleport</b> to the Human sector, plus your normal move. <b>Sedatives</b> no card this turn. <b>Spotlight</b> name a sector: it and its 6 neighbours must announce exact coordinates. <b>Defense</b> survive an attack. <b>Adrenaline</b> move 2 sectors.']],
   ['Infection scenario', ['Eliminated Humans become Aliens where they fell. All hatches start open and each works once. Aliens do not speed up after feeding.']]
 ];
+/* full-screen sheet for long content (rules, map list): read without squeezing it into the panel */
+function overlay(title, html) {
+  actions.ovclose();
+  const g = document.createElement('div'); g.id = 'overlay'; g.className = 'gallery'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true'); g.setAttribute('aria-label', title);
+  g.innerHTML = `<header><h2>${esc(title)}</h2><button class="icon-btn" data-act="ovclose" aria-label="${t('Close')}">✕</button></header><div class="gbody">${html}</div>`;
+  document.body.appendChild(g); g.querySelector('[data-act=ovclose]').focus();
+}
+const rulesHtml = () => `<div class="rules">${RULES.map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}
+  <p class="dim fine2">${t('A summary of the official rulebook. The rulebook is authoritative.')} ${t('Unofficial fan companion for Escape from the Aliens in Outer Space.')}</p></div>`;
+const mapsHtml = () => `<div class="ggrid">${T.maps.map(m => `<div class="gwrap"><button class="gcard" data-act="map" data-id="${esc(m.id)}" aria-pressed="${m.id === T.map.id}">${mapPreview(m)}<b>${esc(m.name)}</b></button>${(S.customMaps || []).some(c => c.id === m.id) ? `<button class="btn danger gdel" data-act="edel" data-id="${esc(m.id)}" aria-label="${t('Delete')}">✕</button>` : ''}</div>`).join('')}</div>
+  <div class="row" style="margin-top:16px"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div>`;
+const segRow = (label_, act, key, cur, opts) => `<div class="setrow"><span>${t(label_)}</span><div class="seg" role="radiogroup" aria-label="${t(label_)}">${opts.map(([v, l]) => `<button role="radio" data-act="${act}" data-${key}="${v}" aria-checked="${cur === v}">${l}</button>`).join('')}</div></div>`;
 function morePanel() {
-  const maps = T.maps.map(m => `<div class="inline" style="margin-bottom:8px"><button class="btn mapbtn${m.id === T.map.id ? ' on' : ''}" data-act="map" data-id="${esc(m.id)}">${esc(m.name)}${m.description ? '<small>' + esc(t(m.description)) + '</small>' : ''}</button>${(S.customMaps || []).some(c => c.id === m.id) ? `<button class="btn danger" data-act="edel" data-id="${esc(m.id)}" aria-label="${t('Delete')}">✕</button>` : ''}</div>`).join('');
-  const solo = !Sync.code && !S.hot;
-  return `<details class="acc"><summary>${t('How to play')}</summary><div class="rules"><p class="dim">${t('A summary of the official rulebook. The rulebook is authoritative.')}</p>
-      ${RULES.map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}</div></details>
-    ${solo ? `<details class="acc"><summary>${t('Map')}</summary>${maps}<div class="row"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div></details>` : ''}
-    <details class="acc"><summary>${t('Game')}</summary>${Sync.code ? `<p>${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</p>` : `<div class="inline"><button class="btn" data-act="turnminus" aria-label="−">−</button><div class="btn static">${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</div><button class="btn" data-act="turnplus" aria-label="+">+</button></div>`}
-      <div class="stack" style="margin-top:10px"><button class="btn" data-act="clearlog">${t('Clear announcements')}</button><button class="btn danger" data-act="newgame">${t('New game')}</button></div></details>
-    <details class="acc"><summary>${t('Map style')}</summary><div class="chips">${['dark', 'classic'].map(v => `<button data-act="mapstyle" data-v="${v}" aria-pressed="${MAP_STYLE === v}">${t(v === 'dark' ? 'Dark' : 'Classic')}</button>`).join('')}</div></details>
-    <details class="acc"><summary>${t('Language')}</summary><div class="chips">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l === 'en' ? 'English' : 'Italiano'}</button>`).join('')}</div></details>
-    <p class="dim fine2">${t('Unofficial fan companion for Escape from the Aliens in Outer Space. Requires the physical game; no cards are included.')}</p>`;
+  const solo = !Sync.code && !S.hot, host = !!(Sync.code && Sync.isHost());
+  const ng = S.hot || host ? 'Close game' : Sync.code ? 'Leave game' : 'New game';
+  return `<div class="menu">
+    <button class="mrow" data-act="rules">${t('How to play')}<i aria-hidden="true">›</i></button>
+    ${solo ? `<button class="mrow" data-act="maps">${t('Map')}<small>${esc(T.map.name)}</small><i aria-hidden="true">›</i></button>
+      <div class="setrow"><span>${t('Turn')}</span><div class="stepper"><button class="btn" data-act="turnminus" aria-label="${t('Previous turn')}">−</button><b>${S.turn}<small>/${MAX_TURN}</small></b><button class="btn" data-act="turnplus" aria-label="${t('Next turn')}">+</button></div></div>` : ''}
+    ${segRow('Map style', 'mapstyle', 'v', MAP_STYLE, [['dark', t('Dark')], ['classic', t('Classic')]])}
+    ${segRow('Language', 'lang', 'l', LANG, [['en', 'English'], ['it', 'Italiano']])}
+    </div>
+    <div class="row menuact">${digital() || S.hot ? '' : `<button class="btn" data-act="clearlog">${t('Clear announcements')}</button>`}<button class="btn danger" data-act="newgame">${t(ng)}</button></div>`;
 }
 function editorPanel() {
   const tl = [['.', 'Dangerous', '#59627a'], ['s', 'Secure', '#ece6d3'], ['x', 'Empty', '#0b1222'], ['H', 'Human', '#1c5d93'], ['A', 'Alien', '#a53312'], ['1', 'Hatch 1', '#1e8a4f'], ['2', 'Hatch 2', '#1e8a4f'], ['3', 'Hatch 3', '#1e8a4f'], ['4', 'Hatch 4', '#1e8a4f']];

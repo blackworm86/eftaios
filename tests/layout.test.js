@@ -11,7 +11,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  const bar=await p.evaluate(()=>{const b=document.querySelector('#mkbar');return {n:b.querySelectorAll('[data-act=pfocus]').length,over:b.scrollHeight>b.clientHeight+1,left:b.getBoundingClientRect().left,w:b.getBoundingClientRect().width}});
  assert(bar.n===8&&!bar.over,w+'px: all 8 players fit in the vertical strip without scrolling');
  assert(bar.left<10&&bar.w<70,w+'px: the strip is on the left side');
- const pan=await p.evaluate(()=>{const e=document.querySelector('#panel');return e.scrollHeight<=e.clientHeight+1});
+ const pan=await p.evaluate(()=>{const e=document.querySelector('#panel-body');return e.scrollHeight<=e.clientHeight+1});
  assert(pan,w+'px: the bottom panel does not scroll (move phase)');
  assert(await p.locator('#go-input').count()===0&&await p.locator('.slot').count()===3,w+'px: no sector field; three item slots');
  assert(await p.evaluate(()=>!document.querySelector('.me-dot'))&&await p.evaluate(()=>document.querySelectorAll('#me .me-ring.pulse').length===1),w+'px: current position = own marker with glow');
@@ -23,9 +23,9 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.screenshot({path:SS+'/lay-'+w+'.png'});
  // after confirming a move, the panel still fits
  const id=await p.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));await p.evaluate(i=>selectCell(i),id);
- assert(await p.evaluate(()=>{const e=document.querySelector('#panel');return e.scrollHeight<=e.clientHeight+1}),w+'px: panel fits with a destination selected');
+ assert(await p.evaluate(()=>{const e=document.querySelector('#panel-body');return e.scrollHeight<=e.clientHeight+1}),w+'px: panel fits with a destination selected');
  await p.click('[data-act=confirm]');
- assert(await p.evaluate(()=>{const e=document.querySelector('#panel');return e.scrollHeight<=e.clientHeight+1}),w+'px: panel fits after moving (draw card step)');
+ assert(await p.evaluate(()=>{const e=document.querySelector('#panel-body');return e.scrollHeight<=e.clientHeight+1}),w+'px: panel fits after moving (draw card step)');
  await p.screenshot({path:SS+'/lay2-'+w+'.png'});
  await p.close();}
  console.log('errors',errs);await b.close()})()

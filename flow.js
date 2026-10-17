@@ -1,23 +1,27 @@
 'use strict';
 /* Pre-game flow: welcome -> (host setup | join) -> lobby -> game.  Solo play skips the table. */
-const MODES = { advanced: ['Advanced game', 'Items and Escape Hatch cards. Play on until every Human has escaped or died.'], basic: ['Basic game', 'No items. The game ends when the first Human reaches a hatch.'], infection: ['Infection scenario', 'Eliminated Humans become Aliens. All hatches open, each works once.'] };
-const CARDS = { physical: ['Physical cards', 'You use the real deck. The app tracks routes and turns.'], online: ['Digital cards (full online)', 'No physical pieces. The app deals roles and cards and resolves items and attacks.'] };
+const MODES = { advanced: ['Advanced', 'Items and Escape Hatch cards. Play on until every Human has escaped or died.'], basic: ['Basic', 'No items. The game ends when the first Human reaches a hatch.'], infection: ['Infection', 'Eliminated Humans become Aliens. All hatches open, each works once.'] };
+const CARDS = { physical: ['Physical', 'You use the real deck. The app tracks routes and turns.'], online: ['Digital', 'No physical pieces. The app deals roles and cards and resolves items and attacks.'] };
+const TRACK = { auto: ['Automatic', 'Announcements of the other players are marked on everyone\'s map automatically.'], manual: ['By hand', 'Like the paper map: each player marks the steps of the others by hand.'] };
+const OPTS = { mode: ['Rules', MODES], cards: ['Cards', CARDS], track: ['Tracking', TRACK] };
 const tableMaps = () => T.maps.filter(m => m.official);
 const isHost = () => Sync.isHost();
 const isOnline = () => !!(Sync.settings && Sync.settings.online);
 const orderedIds = () => { const ps = Sync.players || {}, ord = (Sync.settings && Sync.settings.order) || []; const l = ord.filter(u => ps[u]); Object.keys(ps).forEach(u => { if (!l.includes(u)) l.push(u); }); return l; };
 const orderedPlayers = () => orderedIds().map(u => [u, Sync.players[u]]);
 const langSwitch = () => `<div class="lang-switch" role="group" aria-label="Language">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l.toUpperCase()}</button>`).join('')}</div>`;
-const hero = () => `${langSwitch()}<p class="eyebrow">${t('Companion app · physical game required')}</p>
+const hero = () => `${langSwitch()}<p class="eyebrow">${t('Unofficial companion app')}</p>
   <h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>`;
+const BACK_ICO = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+/* sub-screens: a compact header with a back button instead of the big title */
+const fhead = (title, act = 'back') => `<header class="fhead"><button class="icon-btn" data-act="${act}" aria-label="${t('Back')}">${BACK_ICO}</button><h2>${title}</h2></header>`;
 const nameField = () => `<label class="field"><span>${t('Your name')}</span><input id="flow-name" type="text" maxlength="20" autocomplete="off" placeholder="${t('Player')}" value="${esc(S.name || '')}"></label>`;
 /* map picker: a preview card; tapping it opens the gallery of every map */
 const mapSelect = (list, cur) => {
   T.mapList = list; const m = list.find(x => x.id === cur) || list[0];
-  return `<div class="field"><span class="flabel">${t('Map')}</span><input type="hidden" id="f-map" value="${esc(m.id)}">
-    <button type="button" class="mapcard" data-act="mapgallery" aria-haspopup="dialog"><span class="prevbox" id="f-map-prev"></span>
-    <span class="mapname"><b id="f-map-name">${esc(m.name)}</b><small>${t('Tap to choose another map')}</small></span></button></div>
-  <p class="dim hintline" id="f-map-desc"></p>`;
+  return `<div class="field"><input type="hidden" id="f-map" value="${esc(m.id)}">
+    <button type="button" class="mapcard" data-act="mapgallery" aria-haspopup="dialog" aria-label="${t('Map')}: ${esc(m.name)}. ${t('Tap to choose another map')}"><span class="prevbox" id="f-map-prev"></span>
+    <span class="mapname"><b id="f-map-name">${esc(m.name)}</b><small id="f-map-desc"></small><i class="chev" aria-hidden="true">›</i></span></button></div>`;
 };
 const mapInfo = m => [m.author ? t('Map by {a}', { a: m.author }) : '', t('{n} escape hatches', { n: mapHatches(m).length })].filter(Boolean).join(' · ');
 function mapGallery() {
@@ -29,62 +33,54 @@ function mapGallery() {
   document.body.appendChild(g);
   const sel = g.querySelector('[aria-pressed=true]'); if (sel) sel.scrollIntoView({ block: 'center' });
 }
-const modeSelect = cur => `<label class="field"><span>${t('Rules')}</span><select id="f-mode">${Object.entries(MODES).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(v[0])}</option>`).join('')}</select></label>
-  <p class="dim hintline" id="f-mode-desc"></p>`;
-const TRACK = { auto: ['Automatic', 'Announcements of the other players are marked on everyone\'s map automatically.'], manual: ['By hand', 'Like the paper map: each player marks the steps of the others by hand.'] };
-const trackSelect = cur => `<label class="field"><span>${t('Tracking other players')}</span><select id="f-track">${Object.entries(TRACK).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(v[0])}</option>`).join('')}</select></label>
-  <p class="dim hintline" id="f-track-desc"></p>`;
-const cardSelect = cur => `<label class="field"><span>${t('Cards')}</span><select id="f-cards">${Object.entries(CARDS).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(v[0])}</option>`).join('')}</select></label>
-  <p class="dim hintline" id="f-cards-desc"></p>`;
+/* segmented control for one option (rules, cards, tracking); the ⓘ button explains the choices */
+const seg = (f, cur) => { const [lbl, set] = OPTS[f]; return `<div class="field"><span class="flabel">${t(lbl)}<button type="button" class="info" data-act="optinfo" data-f="${f}" aria-label="${t('About: {x}', { x: t(lbl) })}">i</button></span>
+  <input type="hidden" id="f-${f}" value="${esc(cur)}"><div class="seg" role="radiogroup" aria-label="${t(lbl)}">${Object.entries(set).map(([k, v]) => `<button type="button" role="radio" data-act="seg" data-f="${f}" data-v="${k}" aria-checked="${k === cur}">${t(v[0])}</button>`).join('')}</div></div>`; };
+function optInfo(f) {
+  const [lbl, set] = OPTS[f];
+  dlg.innerHTML = `<h2>${t(lbl)}</h2><dl class="optinfo">${Object.values(set).map(v => `<dt>${t(v[0])}</dt><dd>${t(v[1])}</dd>`).join('')}</dl><div class="row"><button class="btn primary" id="d-no">OK</button></div>`;
+  dlg.showModal(); $('#d-no').onclick = closeDlg;
+}
 const myName = () => (S.name || '').trim() || t('Player');
 const readName = () => { const el = $('#flow-name'); if (el) S.name = el.value.trim(); return myName(); };
 
 function renderFlow() {
   const card = $('#flow-card'); let h = '';
   const st = S.stage;
+  card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
   if (st === 'host') {
-    h = `${hero()}<h2 class="step2">${t('Host a table')}</h2>${nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}${cardSelect(S.cards || 'physical')}${trackSelect(S.track || 'auto')}
-      <button class="btn primary big wide" data-act="hostcreate">${t('Create table')}</button>${flowStatus()}
-      <button class="btn link wide" data-act="back">${t('Back')}</button>`;
+    h = `${fhead(t('Host a table'))}${nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', S.mode || 'advanced')}${seg('cards', S.cards || 'physical')}${seg('track', S.track || 'auto')}
+      <button class="btn primary big wide" data-act="hostcreate">${t('Create table')}</button>${flowStatus()}`;
   } else if (st === 'solo') {
-    h = `${hero()}<h2 class="step2">${t('Play without a table')}</h2>${nameField()}${mapSelect(T.maps, S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}${trackSelect(S.track || 'auto')}
-      <fieldset class="roles"><legend>${t('Your secret role card says…')}</legend>
-      <button class="role-btn human" data-act="solostart" data-role="human"><b>${t('Human')}</b><small>${t('Reach an escape hatch')}</small></button>
-      <button class="role-btn alien" data-act="solostart" data-role="alien"><b>${t('Alien')}</b><small>${t('Hunt the crew')}</small></button></fieldset>
-      <button class="btn link wide" data-act="back">${t('Back')}</button>`;
+    h = `${fhead(t('Map only'))}${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', S.mode || 'advanced')}${seg('track', S.track || 'auto')}
+      <fieldset class="roles"><legend>${t('Your Character card')}</legend>
+      <button class="role-btn human" data-act="solostart" data-role="human"><b>${t('Human')}</b></button>
+      <button class="role-btn alien" data-act="solostart" data-role="alien"><b>${t('Alien')}</b></button></fieldset>`;
   } else if (st === 'hotsetup') {
     const names = T.hotNames || (T.hotNames = [1, 2, 3, 4].map(i => t('Player {n}', { n: i })));
-    h = `${hero()}<h2 class="step2">${t('Pass and play')}</h2><p class="dim hintline">${t('One device, digital cards. Players take turns and hand the device over.')}</p>
-      <h3>${t('Players')} (${names.length})</h3><ol class="hotnames">${names.map((n, i) => `<li><input type="text" maxlength="20" data-hn="${i}" value="${esc(n)}" aria-label="${t('Player {n}', { n: i + 1 })}">${names.length > 2 ? `<button class="btn" data-act="hotdel" data-i="${i}" aria-label="${t('Remove')}">✕</button>` : ''}</li>`).join('')}</ol>
-      ${names.length < 8 ? `<button class="btn wide" data-act="hotadd">+ ${t('Add player')}</button>` : ''}
-      ${mapSelect(T.maps, S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}${trackSelect(S.track || 'auto')}
-      <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>
-      <button class="btn link wide" data-act="back">${t('Back')}</button>`;
+    h = `${fhead(t('Pass and play'))}
+      <span class="flabel">${t('Players')} (${names.length}/8)</span><ol class="hotnames">${names.map((n, i) => `<li><input type="text" maxlength="20" data-hn="${i}" value="${esc(n)}" aria-label="${t('Player {n}', { n: i + 1 })}">${names.length > 2 ? `<button class="x" data-act="hotdel" data-i="${i}" aria-label="${t('Remove')}">✕</button>` : ''}</li>`).join('')}
+      ${names.length < 8 ? `<li><button class="btn addp" data-act="hotadd">+ ${t('Add player')}</button></li>` : ''}</ol>
+      ${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', S.mode || 'advanced')}${seg('track', S.track || 'auto')}
+      <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>`;
   } else if (st === 'lobby') {
     h = lobbyHtml();
   } else {
-    h = `${hero()}<p class="lead">${t('Your private navigation computer. Plan your route, track your turns and get the exact words to announce. Cards stay in the box.')}</p>
+    h = `${hero()}
       ${T.pendingRoom ? `<p class="banner">${t('You are invited to table {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${nameField()}
       ${T.pendingRoom ? `<button class="btn primary big wide" data-act="joinroom">${t('Join table {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button>`
       : `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>
+        <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="joinroom">${t('Join')}</button></div>
         <div class="or"><span>${t('or')}</span></div>
-        <div class="inline"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="joinroom">${t('Join')}</button></div>
-        <button class="btn wide hotbtn" data-act="hotsetup">${t('Pass and play (one device)')}</button>
-        <button class="btn link wide" data-act="solo">${t('Play without a table')}</button>`}
+        <div class="row two"><button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button><button class="btn" data-act="solo">${t('Map only')}<small>${t('No table')}</small></button></div>`}
       ${flowStatus()}`;
   }
-  const keep = card.scrollTop; card.innerHTML = h;
-  const fm = $('#f-map'), fd = $('#f-mode'), fc = $('#f-cards'), ft = $('#f-track');
+  card.innerHTML = h;
+  const fm = $('#f-map');
   const upd = () => {
-    if (fm) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-name').textContent = m ? m.name : ''; $('#f-map-desc').textContent = m ? [m.description ? t(m.description) : '', mapInfo(m)].filter(Boolean).join(' · ') : ''; }
-    if (fd) $('#f-mode-desc').textContent = t(MODES[fd.value][1]);
-    if (fc) $('#f-cards-desc').textContent = t(CARDS[fc.value][1]);
-    if (ft) $('#f-track-desc').textContent = t(TRACK[ft.value][1]);
+    if (fm && $('#f-map-prev')) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-name').textContent = m ? m.name : ''; $('#f-map-desc').textContent = m ? mapInfo(m) : ''; }
   };
   if (fm) fm.onchange = () => { S.mapId = fm.value; upd(); if (st === 'lobby') Sync.updateSettings({ map: fm.value }); };
-  if (fd) fd.onchange = () => { S.mode = fd.value; upd(); if (st === 'lobby') Sync.updateSettings({ mode: fd.value }); };
-  if (ft) ft.onchange = () => { S.track = ft.value; upd(); if (st === 'lobby') Sync.updateSettings({ track: ft.value }); };
-  if (fc) fc.onchange = () => { S.cards = fc.value; upd(); if (st === 'lobby') Sync.updateSettings({ online: fc.value === 'online' }); };
   upd();
   const jc = $('#join-code'); if (jc) jc.onkeydown = e => { if (e.key === 'Enter') actions.joinroom(); };
 }
@@ -93,30 +89,32 @@ function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="sta
 
 function lobbyHtml() {
   const st = Sync.settings || {}, host = isHost(), online = isOnline(), players = orderedPlayers();
-  const map = T.maps.find(m => m.id === st.map) || T.maps[0], mode = MODES[st.mode] || MODES.advanced, cards = CARDS[online ? 'online' : 'physical'];
-  const allReady = players.length >= 2 && players.every(([, p]) => p.ready) && (online ? players.length <= 8 : true);
+  const map = T.maps.find(m => m.id === st.map) || T.maps[0];
+  const nReady = players.filter(([, p]) => p.ready).length, allReady = players.length >= 2 && nReady === players.length;
   const rows = players.map(([id, p], i) => `<li class="${p.ready ? 'ok' : ''}"><span class="num">${i + 1}</span><span class="pname">${esc(p.name)}${id === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}${st.host === id ? ` <em class="hostt">${t('Host')}</em>` : ''}</span>
-    <span class="pst">${p.ready ? '✓ ' + t('Ready') : t('Choosing…')}</span>
+    <span class="pst">${p.ready ? '✓ ' + t('Ready') : ''}</span>
     ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>▲</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>▼</button></span>` : ''}</li>`).join('');
   const faction = ['human', 'alien'].map(r => `<button class="role-btn ${r}" data-act="faction" data-r="${r}" aria-pressed="${S.myRole === r}"><b>${t(r === 'human' ? 'Human' : 'Alien')}</b></button>`).join('');
   const canReady = online || S.myRole;
-  return `${langSwitch()}<p class="eyebrow">${t('Table')}</p>
+  const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[st.mode || 'advanced'][0])}</dd><dt>${t('Cards')}</dt><dd>${t(CARDS[online ? 'online' : 'physical'][0])}</dd><dt>${t('Tracking')}</dt><dd>${t(TRACK[st.track || 'auto'][0])}</dd></dl>`;
+  return `${fhead(t('Table'), 'leavelobby')}
     <div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
-      <div class="row"><button class="btn primary" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div></div>
-    <h3>${t('Game')}</h3>
-    ${host ? mapSelect(tableMaps(), st.map) + modeSelect(st.mode) + cardSelect(online ? 'online' : 'physical') + trackSelect(st.track || 'auto')
-      : `<div class="prevbox">${mapPreview(map)}</div><dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(mode[0])}</dd><dt>${t('Cards')}</dt><dd>${t(cards[0])}</dd><dt>${t('Tracking')}</dt><dd>${t(TRACK[st.track || 'auto'][0])}</dd></dl><p class="dim hintline">${t(mode[1])}</p>`}
-    <h3>${t('Turn order')} (${players.length}) ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>` : ''}</h3>
+      <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>
+    <div class="setcard">${host ? `<input type="hidden" id="f-map" value="${esc(map.id)}"><button type="button" class="mapcard mini" data-act="mapgallery" aria-label="${t('Map')}: ${esc(map.name)}. ${t('Tap to choose another map')}"><span class="prevbox">${mapPreview(map)}</span></button>` : `<span class="prevbox">${mapPreview(map)}</span>`}
+      ${kv}${host ? `<button class="btn edit" data-act="lobbyopts">${t('Change')}</button>` : ''}</div>
+    <h3>${t('Turn order')} ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>` : ''}</h3>
     <ul class="plist">${rows}</ul>
-    ${host ? `<p class="dim hintline">${t('Use the arrows to set the order of play. The first player starts.')}</p>` : ''}
-    ${online ? `<h3>${t('Your faction')}</h3><p class="dim hintline">${t('Roles and cards are dealt automatically when the game starts.')}</p>`
-      : `<h3>${t('Your faction')}</h3><p class="dim hintline">${t('Draw your Character card from the physical deck, look at it in secret, then pick it here. Nobody else sees your choice.')}</p>
-    <div class="factions" role="group" aria-label="${t('Your faction')}">${faction}</div>`}
-    <button class="btn big wide ${S.ready ? 'ok' : 'primary'}" data-act="ready" ${canReady ? '' : 'disabled'}>${S.ready ? '✓ ' + t('Ready (tap to change)') : t("I'm ready")}</button>
-    ${host ? `<button class="btn primary big wide startbtn" data-act="startgame" ${allReady ? '' : 'disabled'}>${t('Start game')}</button>
-      <p class="dim hintline">${allReady ? t('Everyone is ready.') : players.length < 2 ? t('Waiting for at least one more player.') : t('Waiting for everyone to be ready.')}</p>`
-      : `<p class="dim hintline">${S.ready ? t('Waiting for the host to start the game…') : ''}</p>`}
-    <button class="btn link wide" data-act="leavelobby">${t('Leave table')}</button>`;
+    ${online ? `<p class="dim hintline">${t('Roles and cards are dealt when the game starts.')}</p>`
+      : `<h3>${t('Your faction')} <span class="hint">${t('Draw a Character card in secret')}</span></h3><div class="factions" role="group" aria-label="${t('Your faction')}">${faction}</div>`}
+    <div class="row lobbyact"><button class="btn big ${S.ready ? 'ok' : host ? '' : 'primary'}" data-act="ready" ${canReady ? '' : 'disabled'}>${S.ready ? '✓ ' + t('Ready') : t("I'm ready")}</button>
+    ${host ? `<button class="btn primary big startbtn" data-act="startgame" ${allReady ? '' : 'disabled'}>${t('Start game')}<small>${t('{n}/{m} ready', { n: nReady, m: players.length })}</small></button>` : ''}</div>
+    ${!host && S.ready ? `<p class="dim hintline center">${t('Waiting for the host to start the game…')}</p>` : ''}`;
+}
+/* host: change rules, cards and tracking from the lobby */
+function lobbyOpts() {
+  const st = Sync.settings || {};
+  dlg.innerHTML = `<h2>${t('Game options')}</h2>${seg('mode', st.mode || 'advanced')}${seg('cards', st.online ? 'online' : 'physical')}${seg('track', st.track || 'auto')}<div class="row"><button class="btn primary" id="d-no">${t('Done')}</button></div>`;
+  dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 
 async function beginGame() {
@@ -161,6 +159,15 @@ function startTable() {
 
 Object.assign(actions, {
   mapgallery() { mapGallery(); },
+  optinfo(b) { const open = dlg.open && dlg.querySelector('.seg'); optInfo(b.dataset.f); if (open) $('#d-no').onclick = lobbyOpts; },
+  lobbyopts() { lobbyOpts(); },
+  seg(b) {
+    const f = b.dataset.f, v = b.dataset.v, inp = document.getElementById('f-' + f);
+    b.parentNode.querySelectorAll('[role=radio]').forEach(x => x.setAttribute('aria-checked', x === b));
+    if (inp) inp.value = v;
+    if (S.stage === 'lobby' && isHost()) Sync.updateSettings(f === 'cards' ? { online: v === 'online' } : { [f]: v });
+    else S[f] = v;
+  },
   gallclose() { const g = $('#gallery'); if (g) g.remove(); },
   pickmap(b) { const fm = $('#f-map'); if (fm) { fm.value = b.dataset.id; if (fm.onchange) fm.onchange(); } actions.gallclose(); },
   hostsetup() { readName(); S.stage = 'host'; save(); renderFlow(); },

@@ -30,6 +30,6 @@ const {assert,setup,startTable,begin,current,uidOf}=require('./helpers');
   assert(!seq.slice(0,2).includes('P1')||true,'eliminated skipped (sequence '+seq.join(',')+')');
   assert(!seq.includes('P1'),'eliminated player never gets a turn');
   // host can skip an absent player
-  const cur2=await current(pages);const host=A;if(cur2!==A){await A.click('[data-tab=table]');await A.click('[data-act=skipturn]');await A.click('#d-yes');await A.waitForFunction(u=>T.turnState.uid!==u,await cur2.evaluate(()=>Sync.uid));assert(true,'host can skip an absent player')}
+  const cur2=await current(pages);const host=A;if(cur2!==A){await A.click('[data-tab=table]');await A.click('[data-act=tsec][data-k=players]');await A.click('[data-act=skipturn]');await A.click('#d-yes');await A.waitForFunction(u=>T.turnState.uid!==u,await cur2.evaluate(()=>Sync.uid));assert(true,'host can skip an absent player')}
   console.log('errors',errs);await b.close();
 })();

@@ -12,11 +12,6 @@ html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--text);font:16px/1.45 var(--font);overflow:hidden;overscroll-behavior:none;
   padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
 [hidden]{display:none!important}
-#stars{position:fixed;inset:0;background:
-  radial-gradient(1px 1px at 12% 20%,#fff8 50%,transparent),radial-gradient(1px 1px at 70% 12%,#fff6 50%,transparent),
-  radial-gradient(1.5px 1.5px at 85% 70%,#fff7 50%,transparent),radial-gradient(1px 1px at 30% 80%,#fff5 50%,transparent),
-  radial-gradient(1px 1px at 55% 45%,#fff4 50%,transparent),radial-gradient(1px 1px at 5% 60%,#fff6 50%,transparent),
-  radial-gradient(ellipse at 50% 120%,#1a2a52 0%,transparent 60%);pointer-events:none}
 button{font:inherit;color:inherit;cursor:pointer}
 :focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 h1,h2,h3{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.06em;margin:0}
@@ -56,7 +51,6 @@ textarea{font:13px var(--mono);min-height:140px}
 .chip{font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:5px 10px;border-radius:999px;border:1.5px solid}
 .chip.human{color:var(--human);border-color:var(--human)}
 .chip.alien{color:var(--alien);border-color:var(--alien)}
-.chip.fed{box-shadow:0 0 12px #ff4a2b88}
 .icon-btn{width:var(--tap);height:var(--tap);display:grid;place-items:center;border-radius:12px;border:1px solid var(--line);background:var(--panel)}
 
 #layout{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -163,7 +157,7 @@ textarea{font:13px var(--mono);min-height:140px}
 .hatches button small{display:block;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase}
 .hatches button[aria-pressed=true]{border-color:#7a4a58;background:#3a263066;color:#ba8794;text-decoration:line-through}
 .log{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.log li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:8px 10px;border-radius:10px;background:var(--bg2);border-left:4px solid var(--c,var(--line));font-size:14px}
+.log li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:8px 10px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);font-size:14px}
 .log li time{font:700 12px var(--mono);color:var(--dim);align-self:center}
 .log li.mine{background:#ffb41f10}
 .log li.noise{--c:#ffd24a}.log li.attack{--c:var(--alien)}.log li.spot{--c:#7fe3ff}.log li.hatch{--c:var(--pod)}
@@ -238,8 +232,7 @@ dialog .row{margin-top:16px}
 .hintline{font-size:13px;margin:8px 0 12px}.field+.hintline{margin-top:-6px}
 .setup-card h3{font-size:14px;color:var(--amber);margin:22px 0 8px}
 .plist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.plist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--bg2);border-left:4px solid var(--line);min-height:44px}
-.plist li.ok{border-left-color:var(--pod)}
+.plist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);min-height:44px}
 .plist em{font-style:normal;color:var(--dim);font-size:12px}.plist .hostt{color:var(--amber)}
 .pst{font:600 12px var(--mono);color:var(--dim);white-space:nowrap}.plist li.ok .pst{color:var(--pod)}
 .factions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
@@ -266,8 +259,7 @@ html,body{height:100vh;height:100dvh}
 .turnbar{padding:6px 14px;text-align:center;font:700 13px var(--mono);letter-spacing:.1em;text-transform:uppercase;background:var(--bg2);color:var(--dim);border-bottom:1px solid var(--line)}
 .turnbar.mine{background:var(--amber);color:#1a1200}
 .turnlist{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
-.turnlist li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--bg2);border-left:4px solid var(--line);min-height:44px}
-.turnlist li.cur{border-left-color:var(--amber);background:#ffb41f14}
+.turnlist li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);min-height:44px}
 .turnlist li.out{opacity:.65}
 .turnlist .mk{width:14px;color:var(--amber)}.turnlist .pname{flex:1}.turnlist em{font-style:normal;color:var(--dim);font-size:12px}
 .b-ok{color:var(--pod);font-size:12px;font-family:var(--mono)}.b-out{color:var(--alien);font-size:12px;font-family:var(--mono)}
@@ -498,3 +490,30 @@ html,body{height:100vh;height:100dvh}
 .plist .mv button{height:32px;width:36px}
 .setup-card .factions{margin-bottom:0}.setup-card .factions .role-btn{min-height:56px}.setup-card .factions .role-btn b{font-size:22px}
 .setcard{margin-top:8px;padding:6px}
+
+/* ---------- v13: Impeccable pass ---------- */
+/* grounded surfaces: solid colour instead of glow and halo gradients */
+.stage{background:#0b1222}
+.prevbox,.gcard .mapprev{background:#0b1222}
+.chip.fed{box-shadow:none;background:#ff4a2b26}
+.sglyph{fill:none;stroke:#1a1200;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.ico{display:block;flex:none}.btn .ico{display:inline-block;vertical-align:-4px}
+/* list rows: full 1px frame, state through tint, never a thick side stripe */
+.log li,.plist li,.turnlist li{border:1px solid var(--line)}
+.log li time{color:var(--c,var(--dim))}
+.plist li.ok{border-color:var(--pod);background:#1e8a4f1a}
+.turnlist li.cur{border-color:var(--amber);background:#ffb41f14}
+.turnlist .mk{display:grid;place-items:center;width:14px;color:var(--amber)}
+.pst,.b-ok,.b-out{display:inline-flex;align-items:center;gap:4px}
+/* labels are text, not code: sans in place of monospace and condensed display */
+.flabel,.field>span,.roles legend,.kv dt,.roomcard small,.roomrow small,.hl,.say small,.mini-link,.pst,.b-ok,.b-out,.mturn,.turnbar,.lang-switch button,.chip,.setup-card .flabel{font-family:var(--font);letter-spacing:.06em;font-weight:700}
+.tabs button,.acc>summary,.rules h4,.subtabs button,.mrow,.setrow>span,.optinfo dt,.gcard b,.mapname b,.card b,.slot{font-family:var(--font);font-weight:700;letter-spacing:.05em}
+.stat small{font-family:var(--font)}
+.tabs button{font-size:13px}
+/* readable minimums and touch size */
+.mkbar .mkt span,.roomrow small,.hatches button small,.hl,.say small,.gcard small,.card small{font-size:11px}
+.mkbar button{min-height:36px}.msus button{min-height:32px}
+/* parts of the browser that carry no design by default */
+::selection{background:#ffb41f;color:#1a1200}
+input,textarea{caret-color:var(--amber);accent-color:var(--amber)}
+*{scrollbar-width:thin;scrollbar-color:#2c3f66 transparent}

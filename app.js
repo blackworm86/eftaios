@@ -8,6 +8,9 @@ const HEX = 20; // hex radius in map units
 const STORE = 'eftaios.v1';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/* one icon family: 24px grid, 2px round strokes */
+const ICONS = { close: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7', up: 'M6 15l6-6 6 6', down: 'M6 9l6 6 6-6', next: 'M9 5l7 7-7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', pencil: 'M4 20l1-5L16 4l4 4L9 19zM14 6l4 4', turn: 'M8 5l10 7-10 7z', cross: 'M7 7l10 10M17 7L7 17' };
+const ico = (n, s = 20) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="${n === 'turn' ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 const colL = c => String.fromCharCode(65 + c);
 const cid = (c, r) => colL(c) + String(r + 1).padStart(2, '0');
 const parseId = s => { const m = /^([A-Za-z])\s*0?(\d{1,2})$/.exec(String(s).trim()); return m ? [m[1].toUpperCase().charCodeAt(0) - 65, +m[2] - 1] : null; };
@@ -261,7 +264,10 @@ function markBanner() {
   return `<div class="banner mark"><div>${who ? t('Marking {p}: tap the sectors on the map. Tap again to remove.', { p: esc(who) }) : t('Pick the player to mark in the strip on the left.')}</div>
     <div class="row tight"><span class="mturn">${t('Turn')} <button class="btn" data-act="mturn" data-d="-1" aria-label="−">−</button><b>${T.markTurn || S.turn}</b><button class="btn" data-act="mturn" data-d="1" aria-label="+">+</button></span><button class="btn primary" data-act="markmode">${t('Done')}</button></div></div>`;
 }
-const STICKERS = ['❗', '❓', '👽', '🧑', '☠️', '⭐'];
+const STICKER_PATH = { alert: 'M12 4v10M12 19v.01', ask: 'M9 9a3 3 0 116 0c0 2-3 2.2-3 5M12 19v.01', alien: 'M12 4c4 0 7 3 7 7 0 4-3 8-7 9-4-1-7-5-7-9 0-4 3-7 7-7zM8.5 11l2.5 1M15.5 11L13 12', crew: 'M12 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM5 20c0-4 3-6 7-6s7 2 7 6', skull: 'M12 4c4 0 7 3 7 7 0 2-1 3-2 4v3H7v-3c-1-1-2-2-2-4 0-4 3-7 7-7zM9.5 11.5v.01M14.5 11.5v.01M10 20v-2M14 20v-2', star: 'M12 4l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19.2 8 13.7 4 9.8 9.5 9z' };
+const STICKERS = Object.keys(STICKER_PATH), LEGACY_STICKER = { '❗': 'alert', '❓': 'ask', '👽': 'alien', '🧑': 'crew', '☠️': 'skull', '⭐': 'star' };
+const stickerKey = k => STICKER_PATH[k] ? k : LEGACY_STICKER[k] || 'alert';
+const stickerIco = (k, s = 24) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${STICKER_PATH[stickerKey(k)]}"/></svg>`;
 function paintNotes() {
   const g = $('#notes'); if (!g) return; g.textContent = '';
   if (!S.role || T.editor) return;
@@ -269,15 +275,15 @@ function paintNotes() {
     const p = parseId(n.sector); if (!p) return; const h = hexPos(T.map, p[0], p[1]);
     const s = el('g', { class: 'sticker', transform: `translate(${(h.x - 11).toFixed(1)} ${(h.y - 11).toFixed(1)})` }, g);
     el('rect', { x: -6.5, y: -6.5, width: 13, height: 13, rx: 3 }, s);
-    const tx = el('text', {}, s); tx.textContent = n.icon;
+    el('path', { d: STICKER_PATH[stickerKey(n.icon)], class: 'sglyph', transform: 'translate(-5 -5) scale(.42)' }, s);
     if (n.text) el('circle', { cx: 6, cy: -6, r: 2.2, class: 'sdot' }, s);
   });
 }
 function noteDlg(sec) {
   const n = (S.notes || []).find(x => x.sector === sec) || { sector: sec, icon: STICKERS[0], text: '' };
-  T.noteIcon = n.icon;
+  n.icon = stickerKey(n.icon); T.noteIcon = n.icon;
   dlg.innerHTML = `<h2>${t('Note on {s}', { s: esc(label(sec)) })}</h2>
-    <div class="chips stick" role="group" aria-label="${t('Sticker')}">${STICKERS.map(s => `<button data-st="${s}" aria-pressed="${s === n.icon}">${s}</button>`).join('')}</div>
+    <div class="chips stick" role="group" aria-label="${t('Sticker')}">${STICKERS.map(s => `<button data-st="${s}" aria-pressed="${s === n.icon}" aria-label="${s}">${stickerIco(s, 26)}</button>`).join('')}</div>
     <textarea id="note-txt" maxlength="120" placeholder="${t('Write a note (optional)')}" style="min-height:80px;margin-top:10px">${esc(n.text || '')}</textarea>
     <div class="row">${(S.notes || []).some(x => x.sector === sec) ? `<button class="btn danger" id="d-del">${t('Delete')}</button>` : ''}<button class="btn" id="d-no">${t('Cancel')}</button><button class="btn primary" id="d-yes">${t('Save')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
@@ -293,7 +299,7 @@ function renderMkBar() {
   bar.hidden = false;
   const sus = k => `<div class="msus" role="group" aria-label="${t('Your suspicion')}">${[['', '?'], ['human', t('H')], ['alien', t('A')]].map(([v, l]) => `<button data-act="sus" data-k="${esc(k)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(k) === v}">${l}</button>`).join('')}</div>`;
   bar.innerHTML = `<button class="mkt" data-act="mkall" data-v="${S.mkAll ? 0 : 1}" aria-pressed="${!!S.mkAll}" aria-label="${S.mkAll ? t('All turns') : t('Last {n} turns', { n: MK_RECENT })}"><b>${S.mkAll ? t('All') : MK_RECENT}</b><span>${t('turns')}</span></button>` +
-    (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Mark players by hand')}"><b>✎</b><span>${t('mark')}</span></button>` : '') +
+    (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Mark players by hand')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
       : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('') +
@@ -445,7 +451,7 @@ function onCell(id) {
   if (S.role && S.phase === 'move' && !S.over && T.reach.has(id)) { selectCell(id); buzz(); return; }
   T.inspect = id; paintCells();
   const i = $('#inspect'), note = (S.notes || []).find(n => n.sector === id); i.hidden = false;
-  i.innerHTML = `<b>${'HA1234'.includes(at(T.map, id)) ? '' : id}</b>${esc(typeName(at(T.map, id)))}${note ? `<div class="inote">${note.icon} ${esc(note.text || '')} <button class="btn" data-act="noteedit" data-s="${id}">${t('Edit')}</button></div>` : ''}`;
+  i.innerHTML = `<b>${'HA1234'.includes(at(T.map, id)) ? '' : id}</b>${esc(typeName(at(T.map, id)))}${note ? `<div class="inote">${stickerIco(note.icon, 18)} ${esc(note.text || '')} <button class="btn" data-act="noteedit" data-s="${id}">${t('Edit')}</button></div>` : ''}`;
   clearTimeout(onCell.h); onCell.h = setTimeout(() => { T.inspect = null; i.hidden = true; paintCells(); }, note ? 6000 : 3500);
 }
 
@@ -564,20 +570,20 @@ const RULES = [
 function overlay(title, html) {
   actions.ovclose();
   const g = document.createElement('div'); g.id = 'overlay'; g.className = 'gallery'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true'); g.setAttribute('aria-label', title);
-  g.innerHTML = `<header><h2>${esc(title)}</h2><button class="icon-btn" data-act="ovclose" aria-label="${t('Close')}">✕</button></header><div class="gbody">${html}</div>`;
+  g.innerHTML = `<header><h2>${esc(title)}</h2><button class="icon-btn" data-act="ovclose" aria-label="${t('Close')}">${ico('close')}</button></header><div class="gbody">${html}</div>`;
   document.body.appendChild(g); g.querySelector('[data-act=ovclose]').focus();
 }
 const rulesHtml = () => `<div class="rules">${RULES.map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}
   <p class="dim fine2">${t('A summary of the official rulebook. The rulebook is authoritative.')} ${t('Unofficial fan companion for Escape from the Aliens in Outer Space.')}</p></div>`;
-const mapsHtml = () => `<div class="ggrid">${T.maps.map(m => `<div class="gwrap"><button class="gcard" data-act="map" data-id="${esc(m.id)}" aria-pressed="${m.id === T.map.id}">${mapPreview(m)}<b>${esc(m.name)}</b></button>${(S.customMaps || []).some(c => c.id === m.id) ? `<button class="btn danger gdel" data-act="edel" data-id="${esc(m.id)}" aria-label="${t('Delete')}">✕</button>` : ''}</div>`).join('')}</div>
+const mapsHtml = () => `<div class="ggrid">${T.maps.map(m => `<div class="gwrap"><button class="gcard" data-act="map" data-id="${esc(m.id)}" aria-pressed="${m.id === T.map.id}">${mapPreview(m)}<b>${esc(m.name)}</b></button>${(S.customMaps || []).some(c => c.id === m.id) ? `<button class="btn danger gdel" data-act="edel" data-id="${esc(m.id)}" aria-label="${t('Delete')}">${ico('close', 16)}</button>` : ''}</div>`).join('')}</div>
   <div class="row" style="margin-top:16px"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div>`;
 const segRow = (label_, act, key, cur, opts) => `<div class="setrow"><span>${t(label_)}</span><div class="seg" role="radiogroup" aria-label="${t(label_)}">${opts.map(([v, l]) => `<button role="radio" data-act="${act}" data-${key}="${v}" aria-checked="${cur === v}">${l}</button>`).join('')}</div></div>`;
 function morePanel() {
   const solo = !Sync.code && !S.hot, host = !!(Sync.code && Sync.isHost());
   const ng = S.hot || host ? 'Close game' : Sync.code ? 'Leave game' : 'New game';
   return `<div class="menu">
-    <button class="mrow" data-act="rules">${t('How to play')}<i aria-hidden="true">›</i></button>
-    ${solo ? `<button class="mrow" data-act="maps">${t('Map')}<small>${esc(T.map.name)}</small><i aria-hidden="true">›</i></button>
+    <button class="mrow" data-act="rules">${t('How to play')}<i aria-hidden="true">${ico('next', 18)}</i></button>
+    ${solo ? `<button class="mrow" data-act="maps">${t('Map')}<small>${esc(T.map.name)}</small><i aria-hidden="true">${ico('next', 18)}</i></button>
       <div class="setrow"><span>${t('Turn')}</span><div class="stepper"><button class="btn" data-act="turnminus" aria-label="${t('Previous turn')}">−</button><b>${S.turn}<small>/${MAX_TURN}</small></b><button class="btn" data-act="turnplus" aria-label="${t('Next turn')}">+</button></div></div>` : ''}
     ${segRow('Map style', 'mapstyle', 'v', MAP_STYLE, [['dark', t('Dark')], ['classic', t('Classic')]])}
     ${segRow('Language', 'lang', 'l', LANG, [['en', 'English'], ['it', 'Italiano']])}

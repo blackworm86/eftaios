@@ -88,7 +88,7 @@ function undoMove() {
   S.path.pop(); S.pos = S.undo.pos; S.adr = S.undo.adr; S.undo = null; S.phase = 'move'; S.res = null; T.sel = null; T.itemIcon = false;
   afterChange(); focusOn(S.pos); toast(t('Move undone'));
 }
-const undoBtn = () => (S.undo && S.phase === 'resolve' && S.res && ['choose', 'pod'].includes(S.res.stage)) ? `<button class="btn link wide" data-act="undo">↶ ${t('Undo move')}</button>` : '';
+const undoBtn = () => (S.undo && S.phase === 'resolve' && S.res && ['choose', 'pod'].includes(S.res.stage)) ? `<button class="btn link wide" data-act="undo">${ico('undo', 18)} ${t('Undo move')}</button>` : '';
 function announce(res) { commit(); S.res = Object.assign({ stage: 'done' }, res); afterChange(); }
 /* common ending of a Sector card: public announcement, then (maybe) an item */
 async function finishCard(kind, sector, hasItem) {
@@ -251,14 +251,14 @@ function itemDlg(k) {
   dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 const extras = () => (digital() ? '' : physExtras());
-const outBadge = p => p.out === 'escaped' ? `<span class="b-ok">✓ ${t('escaped')}</span>` : p.out ? `<span class="b-out">✗ ${p.out === 'trapped' ? t('trapped') : t('eliminated')}${p.role ? ' (' + t(p.role === 'alien' ? 'Alien' : 'Human') + ')' : ''}</span>` : '';
+const outBadge = p => p.out === 'escaped' ? `<span class="b-ok">${ico('check', 14)} ${t('escaped')}</span>` : p.out ? `<span class="b-out">${ico('cross', 14)} ${p.out === 'trapped' ? t('trapped') : t('eliminated')}${p.role ? ' (' + t(p.role === 'alien' ? 'Alien' : 'Human') + ')' : ''}</span>` : '';
 /* private suspicion tag for a player: ? / Human (blue) / Alien (red) */
 const susBtns = key => key === 'me' ? '' : `<span class="sus" role="group" aria-label="${t('Your suspicion')}">${[['', '?', 'No idea'], ['human', t('H'), 'Suspected Human'], ['alien', t('A'), 'Suspected Alien']].map(([v, l, a]) => `<button data-act="sus" data-k="${esc(key)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(key) === v}" aria-label="${t(a)}">${l}</button>`).join('')}</span>`;
 const keyOfUid = u => u === Sync.uid ? 'me' : 'u:' + u;
 function orderList() {
   const ord = tableOrder(), ps = tablePlayers(), cur = S.hot ? Hot.curId() : T.turnState && T.turnState.uid;
   if (!ord.length) return '';
-  return `<ol class="turnlist">${ord.filter(u => ps[u]).map(u => { const k = u === myId() ? 'me' : 'u:' + u; return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? '▶' : ''}</span>${dotIcon(k)}<span class="pname">${esc(ps[u].name)}${k === 'me' ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
+  return `<ol class="turnlist">${ord.filter(u => ps[u]).map(u => { const k = u === myId() ? 'me' : 'u:' + u; return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? ico('turn', 12) : ''}</span>${dotIcon(k)}<span class="pname">${esc(ps[u].name)}${k === 'me' ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
 }
 function waitPanel() {
   const cur = T.turnState;
@@ -288,7 +288,7 @@ function playPanel() {
   if (S.phase === 'move') {
     const sel = T.sel;
     return `<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>
-      ${sel ? `<div class="row confirmrow"><button class="btn" data-act="clearsel" aria-label="${t('Change')}">✕</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>` : ''}
+      ${sel ? `<div class="row confirmrow"><button class="btn" data-act="clearsel" aria-label="${t('Change')}">${ico('close')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>` : ''}
       ${handHtml()}${extras()}`;
   }
   const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };

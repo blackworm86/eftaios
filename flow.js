@@ -10,8 +10,7 @@ const isOnline = () => !!(Sync.settings && Sync.settings.online);
 const orderedIds = () => { const ps = Sync.players || {}, ord = (Sync.settings && Sync.settings.order) || []; const l = ord.filter(u => ps[u]); Object.keys(ps).forEach(u => { if (!l.includes(u)) l.push(u); }); return l; };
 const orderedPlayers = () => orderedIds().map(u => [u, Sync.players[u]]);
 const langSwitch = () => `<div class="lang-switch" role="group" aria-label="Language">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l.toUpperCase()}</button>`).join('')}</div>`;
-const hero = () => `${langSwitch()}<p class="eyebrow">${t('Unofficial companion app')}</p>
-  <h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>`;
+const hero = () => `${langSwitch()}<h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>`;
 const BACK_ICO = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
 /* sub-screens: a compact header with a back button instead of the big title */
 const fhead = (title, act = 'back') => `<header class="fhead"><button class="icon-btn" data-act="${act}" aria-label="${t('Back')}">${BACK_ICO}</button><h2>${title}</h2></header>`;
@@ -21,14 +20,14 @@ const mapSelect = (list, cur) => {
   T.mapList = list; const m = list.find(x => x.id === cur) || list[0];
   return `<div class="field"><input type="hidden" id="f-map" value="${esc(m.id)}">
     <button type="button" class="mapcard" data-act="mapgallery" aria-haspopup="dialog" aria-label="${t('Map')}: ${esc(m.name)}. ${t('Tap to choose another map')}"><span class="prevbox" id="f-map-prev"></span>
-    <span class="mapname"><b id="f-map-name">${esc(m.name)}</b><small id="f-map-desc"></small><i class="chev" aria-hidden="true">›</i></span></button></div>`;
+    <span class="mapname"><b id="f-map-name">${esc(m.name)}</b><small id="f-map-desc"></small><i class="chev" aria-hidden="true">${ico('next', 18)}</i></span></button></div>`;
 };
 const mapInfo = m => [m.author ? t('Map by {a}', { a: m.author }) : '', t('{n} escape hatches', { n: mapHatches(m).length })].filter(Boolean).join(' · ');
 function mapGallery() {
   const list = T.mapList || T.maps, cur = ($('#f-map') || {}).value, packs = [];
   list.forEach(m => { const p = m.pack || t('My maps'); if (!packs.includes(p)) packs.push(p); });
   const g = document.createElement('div'); g.id = 'gallery'; g.className = 'gallery'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true');
-  g.innerHTML = `<header><h2>${t('Choose a map')}</h2><button class="icon-btn" data-act="gallclose" aria-label="${t('Close')}">✕</button></header><div class="gbody">
+  g.innerHTML = `<header><h2>${t('Choose a map')}</h2><button class="icon-btn" data-act="gallclose" aria-label="${t('Close')}">${ico('close')}</button></header><div class="gbody">
     ${packs.map(p => `<h3>${esc(p)}</h3><div class="ggrid">${list.filter(m => (m.pack || t('My maps')) === p).map(m => `<button class="gcard" data-act="pickmap" data-id="${esc(m.id)}" aria-pressed="${m.id === cur}">${mapPreview(m)}<b>${esc(m.name)}</b><small>${esc(mapInfo(m))}</small></button>`).join('')}</div>`).join('')}</div>`;
   document.body.appendChild(g);
   const sel = g.querySelector('[aria-pressed=true]'); if (sel) sel.scrollIntoView({ block: 'center' });
@@ -59,7 +58,7 @@ function renderFlow() {
   } else if (st === 'hotsetup') {
     const names = T.hotNames || (T.hotNames = [1, 2, 3, 4].map(i => t('Player {n}', { n: i })));
     h = `${fhead(t('Pass and play'))}
-      <span class="flabel">${t('Players')} (${names.length}/8)</span><ol class="hotnames">${names.map((n, i) => `<li><input type="text" maxlength="20" data-hn="${i}" value="${esc(n)}" aria-label="${t('Player {n}', { n: i + 1 })}">${names.length > 2 ? `<button class="x" data-act="hotdel" data-i="${i}" aria-label="${t('Remove')}">✕</button>` : ''}</li>`).join('')}
+      <span class="flabel">${t('Players')} (${names.length}/8)</span><ol class="hotnames">${names.map((n, i) => `<li><input type="text" maxlength="20" data-hn="${i}" value="${esc(n)}" aria-label="${t('Player {n}', { n: i + 1 })}">${names.length > 2 ? `<button class="x" data-act="hotdel" data-i="${i}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}</li>`).join('')}
       ${names.length < 8 ? `<li><button class="btn addp" data-act="hotadd">+ ${t('Add player')}</button></li>` : ''}</ol>
       ${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', S.mode || 'advanced')}${seg('track', S.track || 'auto')}
       <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>`;
@@ -92,8 +91,8 @@ function lobbyHtml() {
   const map = T.maps.find(m => m.id === st.map) || T.maps[0];
   const nReady = players.filter(([, p]) => p.ready).length, allReady = players.length >= 2 && nReady === players.length;
   const rows = players.map(([id, p], i) => `<li class="${p.ready ? 'ok' : ''}"><span class="num">${i + 1}</span><span class="pname">${esc(p.name)}${id === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}${st.host === id ? ` <em class="hostt">${t('Host')}</em>` : ''}</span>
-    <span class="pst">${p.ready ? '✓ ' + t('Ready') : ''}</span>
-    ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>▲</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>▼</button></span>` : ''}</li>`).join('');
+    <span class="pst">${p.ready ? ico('check', 14) + ' ' + t('Ready') : ''}</span>
+    ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>${ico('up')}</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>${ico('down')}</button></span>` : ''}</li>`).join('');
   const faction = ['human', 'alien'].map(r => `<button class="role-btn ${r}" data-act="faction" data-r="${r}" aria-pressed="${S.myRole === r}"><b>${t(r === 'human' ? 'Human' : 'Alien')}</b></button>`).join('');
   const canReady = online || S.myRole;
   const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[st.mode || 'advanced'][0])}</dd><dt>${t('Cards')}</dt><dd>${t(CARDS[online ? 'online' : 'physical'][0])}</dd><dt>${t('Tracking')}</dt><dd>${t(TRACK[st.track || 'auto'][0])}</dd></dl>`;
@@ -106,7 +105,7 @@ function lobbyHtml() {
     <ul class="plist">${rows}</ul>
     ${online ? `<p class="dim hintline">${t('Roles and cards are dealt when the game starts.')}</p>`
       : `<h3>${t('Your faction')} <span class="hint">${t('Draw a Character card in secret')}</span></h3><div class="factions" role="group" aria-label="${t('Your faction')}">${faction}</div>`}
-    <div class="row lobbyact"><button class="btn big ${S.ready ? 'ok' : host ? '' : 'primary'}" data-act="ready" ${canReady ? '' : 'disabled'}>${S.ready ? '✓ ' + t('Ready') : t("I'm ready")}</button>
+    <div class="row lobbyact"><button class="btn big ${S.ready ? 'ok' : host ? '' : 'primary'}" data-act="ready" ${canReady ? '' : 'disabled'}>${S.ready ? ico('check') + ' ' + t('Ready') : t("I'm ready")}</button>
     ${host ? `<button class="btn primary big startbtn" data-act="startgame" ${allReady ? '' : 'disabled'}>${t('Start game')}<small>${t('{n}/{m} ready', { n: nReady, m: players.length })}</small></button>` : ''}</div>
     ${!host && S.ready ? `<p class="dim hintline center">${t('Waiting for the host to start the game…')}</p>` : ''}`;
 }

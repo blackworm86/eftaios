@@ -383,7 +383,9 @@ const IT = {
 "turns": "turni",
 "Empty slot": "Slot vuoto",
 "Use": "Usa",
-"Tap a highlighted sector on the map.": "Tocca un settore evidenziato sulla mappa."
+"Tap a highlighted sector on the map.": "Tocca un settore evidenziato sulla mappa.",
+"Your Sector card says:": "La tua Carta Settore dice:",
+"Item icon": "Icona oggetto"
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

@@ -306,15 +306,11 @@ function playPanel() {
     (r.report ? `<ul class="report">${r.report.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '') + (r.sub ? `<p class="dim">${esc(r.sub)}</p>` : '') +
     `<button class="btn primary big wide" data-act="next">${!inRoom() && S.turn >= MAX_TURN ? t('Finish game') : t('End turn')}</button>${handHtml()}${extras()}`;
   const safe = ty === 's' || ty === 'H' || ty === 'A';
-  if (safe) return head + `<p>${t('Secure sector: no card to draw.')}</p>${alien ? `<button class="btn danger wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
-    <button class="btn primary big wide" data-act="quiet">${t('Done')}</button>${undoBtn()}${handHtml()}${extras()}`;
-  if (digital()) return head + `<p>${alien ? t('Attack, or draw a Dangerous Sector card:') : t('Draw a Dangerous Sector card:')}</p>
-    ${alien ? `<button class="btn danger big wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
-    <button class="btn primary big wide" data-act="drawcard">${t('Draw a card')}</button>${undoBtn()}${handHtml()}`;
-  return head + `<p>${alien ? t('Attack, or draw a Dangerous Sector card:') : t('Draw a Dangerous Sector card:')}</p>
-    ${alien ? `<button class="btn danger big wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
-    <div class="stack"><button class="btn big" data-act="noiseHere">${t('Noise in your sector')}</button><button class="btn big" data-act="noiseAny">${t('Noise in any sector')}</button><button class="btn big" data-act="silence">${t('Silence')}</button></div>
-    ${basic() ? '' : `<button class="btn check" data-act="icon" aria-pressed="${!!T.itemIcon}"><i></i>${t('The card shows an Item icon')}</button>`}${undoBtn()}${extras()}`;
+  if (safe) return head + `<p class="dim">${t('Secure sector: no card to draw.')}</p><div class="row">${alien ? `<button class="btn danger big" data-act="attack">${t('Attack')}</button>` : ''}<button class="btn primary big" data-act="quiet">${t('Done')}</button></div>${undoBtn()}${handHtml()}${extras()}`;
+  if (digital()) return head + `<div class="row">${alien ? `<button class="btn danger big" data-act="attack">${t('Attack')}</button>` : ''}<button class="btn primary big" data-act="drawcard">${t('Draw a card')}</button></div>${undoBtn()}${handHtml()}`;
+  return head + `${alien ? `<button class="btn danger wide slim" data-act="attack">${t('Attack this sector')}</button>` : ''}
+    <div class="cards3"><button class="btn" data-act="noiseHere">${t('Noise in your sector')}</button><button class="btn" data-act="noiseAny">${t('Noise in any sector')}</button><button class="btn" data-act="silence">${t('Silence')}</button></div>
+    <div class="row tight">${basic() ? '' : `<button class="btn check" data-act="icon" aria-pressed="${!!T.itemIcon}"><i></i>${t('Item icon')}</button>`}${undoBtn()}</div>${extras()}`;
 }
 
 const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found' };

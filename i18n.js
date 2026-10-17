@@ -407,7 +407,9 @@ const IT = {
 "Like the paper map: each player marks the steps of the others by hand.": "Come sulla mappa di carta: ogni giocatore segna a mano i passi degli altri.",
 "My maps": "Le mie mappe",
 "Map by {a}": "Mappa di {a}",
-"{n} escape hatches": "{n} scialuppe"
+"{n} escape hatches": "{n} scialuppe",
+"Tap to choose another map": "Tocca per scegliere un'altra mappa",
+"Choose a map": "Scegli una mappa"
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

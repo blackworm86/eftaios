@@ -11,13 +11,24 @@ const langSwitch = () => `<div class="lang-switch" role="group" aria-label="Lang
 const hero = () => `${langSwitch()}<p class="eyebrow">${t('Companion app · physical game required')}</p>
   <h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>`;
 const nameField = () => `<label class="field"><span>${t('Your name')}</span><input id="flow-name" type="text" maxlength="20" autocomplete="off" placeholder="${t('Player')}" value="${esc(S.name || '')}"></label>`;
-/* map picker grouped by pack, with a preview of the selected map */
+/* map picker: a preview card; tapping it opens the gallery of every map */
 const mapSelect = (list, cur) => {
-  const packs = []; list.forEach(m => { const p = m.pack || t('My maps'); if (!packs.includes(p)) packs.push(p); });
-  const opt = m => `<option value="${esc(m.id)}"${m.id === cur ? ' selected' : ''}>${esc(m.name)}</option>`;
-  return `<label class="field"><span>${t('Map')}</span><select id="f-map">${packs.map(p => `<optgroup label="${esc(p)}">${list.filter(m => (m.pack || t('My maps')) === p).map(opt).join('')}</optgroup>`).join('')}</select></label>
-  <div class="prevbox" id="f-map-prev"></div><p class="dim hintline" id="f-map-desc"></p>`;
+  T.mapList = list; const m = list.find(x => x.id === cur) || list[0];
+  return `<div class="field"><span class="flabel">${t('Map')}</span><input type="hidden" id="f-map" value="${esc(m.id)}">
+    <button type="button" class="mapcard" data-act="mapgallery" aria-haspopup="dialog"><span class="prevbox" id="f-map-prev"></span>
+    <span class="mapname"><b id="f-map-name">${esc(m.name)}</b><small>${t('Tap to choose another map')}</small></span></button></div>
+  <p class="dim hintline" id="f-map-desc"></p>`;
 };
+const mapInfo = m => [m.author ? t('Map by {a}', { a: m.author }) : '', t('{n} escape hatches', { n: mapHatches(m).length })].filter(Boolean).join(' · ');
+function mapGallery() {
+  const list = T.mapList || T.maps, cur = ($('#f-map') || {}).value, packs = [];
+  list.forEach(m => { const p = m.pack || t('My maps'); if (!packs.includes(p)) packs.push(p); });
+  const g = document.createElement('div'); g.id = 'gallery'; g.className = 'gallery'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true');
+  g.innerHTML = `<header><h2>${t('Choose a map')}</h2><button class="icon-btn" data-act="gallclose" aria-label="${t('Close')}">✕</button></header><div class="gbody">
+    ${packs.map(p => `<h3>${esc(p)}</h3><div class="ggrid">${list.filter(m => (m.pack || t('My maps')) === p).map(m => `<button class="gcard" data-act="pickmap" data-id="${esc(m.id)}" aria-pressed="${m.id === cur}">${mapPreview(m)}<b>${esc(m.name)}</b><small>${esc(mapInfo(m))}</small></button>`).join('')}</div>`).join('')}</div>`;
+  document.body.appendChild(g);
+  const sel = g.querySelector('[aria-pressed=true]'); if (sel) sel.scrollIntoView({ block: 'center' });
+}
 const modeSelect = cur => `<label class="field"><span>${t('Rules')}</span><select id="f-mode">${Object.entries(MODES).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(v[0])}</option>`).join('')}</select></label>
   <p class="dim hintline" id="f-mode-desc"></p>`;
 const TRACK = { auto: ['Automatic', 'Announcements of the other players are marked on everyone\'s map automatically.'], manual: ['By hand', 'Like the paper map: each player marks the steps of the others by hand.'] };
@@ -65,7 +76,7 @@ function renderFlow() {
   const keep = card.scrollTop; card.innerHTML = h;
   const fm = $('#f-map'), fd = $('#f-mode'), fc = $('#f-cards'), ft = $('#f-track');
   const upd = () => {
-    if (fm) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-desc').textContent = m ? [m.description ? t(m.description) : '', m.author ? t('Map by {a}', { a: m.author }) : '', t('{n} escape hatches', { n: mapHatches(m).length })].filter(Boolean).join(' · ') : ''; }
+    if (fm) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-name').textContent = m ? m.name : ''; $('#f-map-desc').textContent = m ? [m.description ? t(m.description) : '', mapInfo(m)].filter(Boolean).join(' · ') : ''; }
     if (fd) $('#f-mode-desc').textContent = t(MODES[fd.value][1]);
     if (fc) $('#f-cards-desc').textContent = t(CARDS[fc.value][1]);
     if (ft) $('#f-track-desc').textContent = t(TRACK[ft.value][1]);
@@ -149,6 +160,9 @@ function startTable() {
 }
 
 Object.assign(actions, {
+  mapgallery() { mapGallery(); },
+  gallclose() { const g = $('#gallery'); if (g) g.remove(); },
+  pickmap(b) { const fm = $('#f-map'); if (fm) { fm.value = b.dataset.id; if (fm.onchange) fm.onchange(); } actions.gallclose(); },
   hostsetup() { readName(); S.stage = 'host'; save(); renderFlow(); },
   hotsetup() { S.stage = 'hotsetup'; save(); renderFlow(); },
   hotadd() { readHot(); if (T.hotNames.length < 8) T.hotNames.push(t('Player {n}', { n: T.hotNames.length + 1 })); renderFlow(); },

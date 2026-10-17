@@ -9,7 +9,7 @@ const A=await ctx.newPage(),B=await ctx.newPage();
 for(const [n,p] of [['A',A],['B',B]]){p.on('pageerror',e=>errs.push(n+': '+e.message));p.on('console',m=>m.type()==='error'&&errs.push(n+': '+m.text()))}
 await A.goto('http://localhost:8123/');
 await A.fill('#flow-name','Anna');await A.click('[data-act=hostsetup]');
-await A.selectOption('#f-map','fermi');await A.selectOption('#f-mode','basic');
+await A.click('.mapcard');await A.click(`.gcard[data-id=\"${'fermi'}\"]`);await A.selectOption('#f-mode','basic');
 await A.click('[data-act=hostcreate]');await A.waitForSelector('.roomcard b');
 const code=await A.textContent('.roomcard b');assert(/^[A-Z2-9]{4}$/.test(code),'host got code '+code);
 assert(await A.locator('.startbtn').isDisabled(),'start disabled with 1 player');
@@ -26,7 +26,7 @@ await B.click('[data-act=ready]');await A.waitForFunction(()=>!document.querySel
 assert(true,'start enabled when all ready');
 await B.screenshot({path:S+'/lobby-guest.png'});
 // host changes map while guest watching
-await A.selectOption('#f-map','galilei');await B.waitForFunction(()=>document.querySelector('.kv dd').textContent.includes('Galilei'));assert(true,'settings sync to guest');
+await A.click('.mapcard');await A.click(`.gcard[data-id=\"${'galilei'}\"]`);await B.waitForFunction(()=>document.querySelector('.kv dd').textContent.includes('Galilei'));assert(true,'settings sync to guest');
 await A.click('.startbtn');
 await A.waitForSelector('#app:not([hidden])');await B.waitForSelector('#app:not([hidden])');
 assert(await A.evaluate(()=>S.role)==='human'&&await B.evaluate(()=>S.role)==='alien','roles applied locally');

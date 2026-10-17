@@ -360,3 +360,20 @@ html,body{height:100vh;height:100dvh}
 .prevbox{margin:-4px 0 6px;background:radial-gradient(ellipse at 50% 50%,#0f1a33,#070b14 80%);border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;justify-content:center}
 .mapprev{width:100%;max-height:150px;display:block}
 .pvn{font:700 16px var(--font-head);fill:#fff;text-anchor:middle;dominant-baseline:central}
+
+/* ---- map gallery ---- */
+.flabel{display:block;font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.mapcard{width:100%;display:block;padding:0;border:1.5px solid var(--line);border-radius:14px;background:var(--bg2);text-align:left;overflow:hidden}
+.mapcard:hover,.mapcard:focus-visible{border-color:var(--amber)}
+.mapcard .prevbox{margin:0;border:0;border-radius:0}
+.mapname{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:8px 12px}
+.mapname b{font:700 17px var(--font-head);letter-spacing:.06em;text-transform:uppercase}.mapname small{color:var(--amber);font-size:12px}
+.gallery{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.gallery header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)}
+.gallery h2{font-size:20px}.gbody{flex:1;overflow:auto;padding:4px 14px 24px}
+.gallery h3{font-size:14px;color:var(--amber);margin:18px 0 8px}
+.ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.gcard{display:flex;flex-direction:column;gap:2px;padding:6px 6px 8px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg2);text-align:left}
+.gcard .mapprev{max-height:none;aspect-ratio:3/2;background:radial-gradient(ellipse at 50% 50%,#0f1a33,#070b14 80%);border-radius:8px}
+.gcard b{font:700 14px var(--font-head);letter-spacing:.05em;text-transform:uppercase;margin-top:4px}.gcard small{color:var(--dim);font-size:11px}
+.gcard[aria-pressed=true]{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}

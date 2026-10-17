@@ -365,7 +365,21 @@ const IT = {
 "Tap H or A to mark who you suspect is Human (blue) or Alien (red). Only you see it.": "Tocca U o A per segnare chi sospetti sia Umano (blu) o Alieno (rosso). Lo vedi solo tu.",
 "This table is full (8 players).": "Questo tavolo è pieno (8 giocatori).",
 "Showing only your route": "Mostro solo il tuo percorso",
-"Showing only {p}": "Mostro solo {p}"
+"Showing only {p}": "Mostro solo {p}",
+"Pass and play": "Passa e gioca",
+"Pass and play (one device)": "Passa e gioca (un solo dispositivo)",
+"One device, digital cards. Players take turns and hand the device over.": "Un solo dispositivo, carte digitali. I giocatori fanno il turno e si passano il dispositivo.",
+"Player {n}": "Giocatore {n}",
+"Add player": "Aggiungi giocatore",
+"Remove": "Rimuovi",
+"Pass the device to": "Passa il dispositivo a",
+"Nobody else should look at the screen.": "Nessun altro deve guardare lo schermo.",
+"I'm {p}: start my turn": "Sono {p}: inizia il mio turno",
+"Your secret role": "Il tuo ruolo segreto",
+"Pass and play: one device, digital cards.": "Passa e gioca: un dispositivo, carte digitali.",
+"The pass-and-play game ends for everyone.": "La partita passa e gioca finisce per tutti.",
+"H / A: your private guess": "U / A: la tua ipotesi privata",
+"Cards left": "Carte rimaste"
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

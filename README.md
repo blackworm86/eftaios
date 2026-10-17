@@ -22,9 +22,13 @@ Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 0
 
 **Digital cards (full online):** pick *Digital cards* when creating the table. The host device deals the 8 Character cards and shuffles the 25 Sector, 12 Item and 6 Escape Hatch cards, tracks the draw and discard piles and reshuffles the discards when a pile runs out. Items, Spotlights and attacks are resolved automatically (Defense is played for you, Spotlight positions are revealed, attacks after movement). Positions and routes stay on each device; the host must keep the app open while playing.
 
+**Pass and play:** *Pass and play (one device)* on the start screen lets 2–8 players share one phone or tablet with digital cards. After each turn a hand-over screen hides everything until the next player taps their name; roles, routes and items stay private per player.
+
+**Map markers:** each player has a colour; the border shows the faction you suspect (black = you, yellow = undecided, blue = Human, red = Alien). Tap a player on the map strip to see only their timeline.
+
 Offline or without Firebase, *Play without a table* works on a single device.
 
-Tests: serve the folder on port 8123 and run `node tests/lobby.test.js`, `tests/turns.test.js`, `tests/online.test.js` and `tests/online2.test.js` (uses an in-memory Firebase stand-in, `tests/fake-firebase.js`).
+Tests: serve the folder on port 8123 and run `node tests/lobby.test.js`, `tests/turns.test.js`, `tests/online.test.js`, `tests/online2.test.js`, `tests/hot.test.js`, `tests/markers.test.js`, `tests/overlap.test.js`, `tests/undo.test.js` and `tests/close.test.js` (uses an in-memory Firebase stand-in, `tests/fake-firebase.js`).
 
 ## Deploy: GitHub Pages + Firebase
 

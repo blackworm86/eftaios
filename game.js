@@ -5,7 +5,8 @@ const inRoom = () => !!(Sync.code && T.turnState);
 const myTurn = () => !inRoom() || T.turnState.uid === Sync.uid;
 const digital = () => !!S.online;
 const pname = u => (Sync.players && Sync.players[u] && Sync.players[u].name) || '?';
-const gameOver = () => !!(Sync.settings && Sync.settings.status === 'over');
+const gameOver = () => (S.hot ? Hot.isOver() : !!(Sync.settings && Sync.settings.status === 'over'));
+const Eng = () => (S.hot ? Hot : Online);
 const roleLabel = (role, ch) => t(role === 'alien' ? 'Alien' : 'Human') + (ch ? ', ' + t(ch) : '');
 
 /* ---------------- turn order ---------------- */
@@ -41,6 +42,7 @@ function nextTurn() {
   return null;
 }
 function endTurn() {
+  if (S.hot) { Hot.endTurn(); return; }
   if (inRoom()) {
     const nx = nextTurn(); S.phase = 'move'; S.res = null; T.sel = null;
     if (nx) Sync.setTurn(nx);
@@ -61,7 +63,8 @@ function reportOut() {
 function afterChange() {
   if (S.role === 'human' && !S.over && [1, 2, 3, 4].every(n => S.hatches[n])) S.over = 'trapped';
   save(); refreshReach(); render(); paintCells(); hdr();
-  reportOut();
+  if (S.hot) { if (['escaped', 'dead', 'trapped'].includes(S.over) && !S.outSent) Hot.onOut(S.over); }
+  else reportOut();
 }
 function showGameOver() {
   if (S.revealed || !Sync.code) return; S.revealed = true;
@@ -99,7 +102,7 @@ const iconFlag = () => { const on = T.itemIcon && !basic(); T.itemIcon = false; 
 /* ---------------- digital draws ---------------- */
 async function drawSector() {
   commit(); S.res = { stage: 'wait' }; afterChange();
-  let rep; try { rep = await Online.request('sector'); } catch (e) { S.res = { stage: 'choose' }; afterChange(); toast(t('The host did not answer. Try again.')); return; }
+  let rep; try { rep = await Eng().request('sector'); } catch (e) { S.res = { stage: 'choose' }; afterChange(); toast(t('The host did not answer. Try again.')); return; }
   const c = rep.card || 'silence', item = c.endsWith('-item') && !basic();
   if (c.startsWith('noise-self')) finishCard('noise', S.pos, item);
   else if (c.startsWith('noise-any')) pickSector(t('Noise in any sector: tap the sector you announce'), sec => finishCard('noise', sec, item), true);
@@ -107,10 +110,10 @@ async function drawSector() {
 }
 async function digitalHatch() {
   commit(); S.res = { stage: 'wait' }; afterChange();
-  let rep; try { rep = await Online.request('hatch'); } catch (e) { S.res = { stage: 'pod' }; afterChange(); toast(t('The host did not answer. Try again.')); return; }
+  let rep; try { rep = await Eng().request('hatch'); } catch (e) { S.res = { stage: 'pod' }; afterChange(); toast(t('The host did not answer. Try again.')); return; }
   if (rep.card === 'red') actions.podRed(); else actions.podGreen();
 }
-async function giveItem() { const rep = await Online.request('item'); if (rep.card) addItem(rep.card); return rep.card; }
+async function giveItem() { const rep = await Eng().request('item'); if (rep.card) addItem(rep.card); return rep.card; }
 async function drawItemMsg() {
   try { const c = await giveItem(); return c ? t('You drew: {i}', { i: t(ITEMS[c][0]) }) : t('No item cards left'); } catch (e) { return t('The host did not answer. Try again.'); }
 }
@@ -132,16 +135,16 @@ function useItem(id) {
   commit();
   const dangerous = S.phase === 'resolve' && S.res && S.res.stage === 'choose' && at(T.map, S.pos) === '.';
   if (id === 'defense') return toast(t('Defense is played automatically when you are attacked'));
-  if (id === 'adrenaline') { if (S.phase !== 'move') return toast(t('Play Adrenaline before you move')); Online.consumeItem(id); S.adr = true; T.sel = null; afterChange(); return toast(t('You may move up to 2 sectors')); }
-  if (id === 'teleport') { Online.consumeItem(id); S.pos = find(T.map, 'H'); S.path.push({ turn: S.turn, pos: S.pos, note: 'teleport' }); T.sel = null; afterChange(); focusOn(S.pos); return toast(S.phase === 'move' ? t('Teleported. Now make your normal move.') : t('Teleported to the Human sector')); }
-  if (id === 'sedatives') { if (!dangerous) return toast(t('Use Sedatives instead of drawing a card')); Online.consumeItem(id); return announce({ say: t('Nothing to announce'), sub: t('Sedatives: no card this turn.'), tone: 'silent' }); }
+  if (id === 'adrenaline') { if (S.phase !== 'move') return toast(t('Play Adrenaline before you move')); Eng().consumeItem(id); S.adr = true; T.sel = null; afterChange(); return toast(t('You may move up to 2 sectors')); }
+  if (id === 'teleport') { Eng().consumeItem(id); S.pos = find(T.map, 'H'); S.path.push({ turn: S.turn, pos: S.pos, note: 'teleport' }); T.sel = null; afterChange(); focusOn(S.pos); return toast(S.phase === 'move' ? t('Teleported. Now make your normal move.') : t('Teleported to the Human sector')); }
+  if (id === 'sedatives') { if (!dangerous) return toast(t('Use Sedatives instead of drawing a card')); Eng().consumeItem(id); return announce({ say: t('Nothing to announce'), sub: t('Sedatives: no card this turn.'), tone: 'silent' }); }
   if (id === 'spotlight') return pickSector(t('Spotlight: tap the sector to name'), async sec => {
-    Online.consumeItem(id); save(); render();
-    const r = await Online.spotlight(sec);
+    Eng().consumeItem(id); save(); render();
+    const r = await Eng().spotlight(sec);
     const lines = r.seen.length ? r.seen.map(p => `${esc(p.name)}: ${esc(p.pos)}`).join('<br>') : t('Nobody is in that area.');
     alertHtml(t('Spotlight on Sector {s}', { s: sec }), lines);
   }, true);
-  if (id === 'attack') { Online.consumeItem(id); return runAttack(true); }
+  if (id === 'attack') { Eng().consumeItem(id); return runAttack(true); }
 }
 function alertHtml(title, html) { dlg.innerHTML = `<h2>${esc(title)}</h2><p>${html}</p><div class="row"><button class="btn primary" id="d-no">OK</button></div>`; if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg; }
 
@@ -149,7 +152,7 @@ function alertHtml(title, html) { dlg.innerHTML = `<h2>${esc(title)}</h2><p>${ht
 async function runAttack(fromItem) {
   commit(); const sec = S.pos; say('', 'attack', sec);
   if (!fromItem) { S.res = { stage: 'wait' }; afterChange(); }
-  const r = await Online.attack(sec);
+  const r = await Eng().attack(sec);
   const lines = [];
   let fed = false;
   for (const h of r.hits) {
@@ -191,13 +194,14 @@ Object.assign(actions, {
   useitem(b) { useItem(b.dataset.i); },
   discardpick(b) {
     const all = T.handTmp || []; const [d] = all.splice(+b.dataset.i, 1); S.items = all; T.lockDlg = false; closeDlg();
-    if (d) Online.discard(d); save(); render();
+    if (d) Eng().discard(d); save(); render();
   },
   item(b) { manualItem(b.dataset.i); },
   caught(b) { caughtAction(b.dataset.k); },
   hatch(b) { const n = b.dataset.n; S.hatches[n] = S.hatches[n] ? 0 : 1; Sync.setHatch(n, S.hatches[n]); afterChange(); },
   turnminus() { S.turn = Math.max(1, S.turn - 1); afterChange(); },
   turnplus() { S.turn = Math.min(MAX_TURN, S.turn + 1); afterChange(); },
+  hotgo() { Hot.go(); },
   skipturn() { confirmDlg(t('Skip {p}?', { p: pname(T.turnState.uid) }), t('Use this when a player is away. Their turn ends now.'), () => { const nx = nextTurn(); if (nx) Sync.setTurn(nx); }); }
 });
 function manualItem(k) {
@@ -245,9 +249,9 @@ const outBadge = p => p.out === 'escaped' ? `<span class="b-ok">✓ ${t('escaped
 const susBtns = key => key === 'me' ? '' : `<span class="sus" role="group" aria-label="${t('Your suspicion')}">${[['', '?', 'No idea'], ['human', t('H'), 'Suspected Human'], ['alien', t('A'), 'Suspected Alien']].map(([v, l, a]) => `<button data-act="sus" data-k="${esc(key)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(key) === v}" aria-label="${t(a)}">${l}</button>`).join('')}</span>`;
 const keyOfUid = u => u === Sync.uid ? 'me' : 'u:' + u;
 function orderList() {
-  const ord = (Sync.settings && Sync.settings.order) || [], ps = Sync.players || {}, cur = T.turnState && T.turnState.uid;
+  const ord = tableOrder(), ps = tablePlayers(), cur = S.hot ? Hot.curId() : T.turnState && T.turnState.uid;
   if (!ord.length) return '';
-  return `<ol class="turnlist">${ord.filter(u => ps[u]).map(u => { const k = keyOfUid(u); return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? '▶' : ''}</span>${shapeIcon(shapeOf(k), suspicion(k))}<span class="pname">${esc(ps[u].name)}${u === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
+  return `<ol class="turnlist">${ord.filter(u => ps[u]).map(u => { const k = u === myId() ? 'me' : 'u:' + u; return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? '▶' : ''}</span>${dotIcon(k)}<span class="pname">${esc(ps[u].name)}${k === 'me' ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
 }
 function waitPanel() {
   const cur = T.turnState;
@@ -259,9 +263,9 @@ function overPanel() {
   return `<h2>${t(m[0])}</h2><p>${t(m[1])}</p>${inRoom() ? `<p class="dim">${t('You can keep following the game in the Table tab.')}</p>${orderList()}` : `<button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`}`;
 }
 function globalOverPanel() {
-  const r = Sync.settings.result || {}, esc_ = r.escaped || [];
+  const r = (S.hot ? Hot.result() : Sync.settings.result) || {}, esc_ = r.escaped || [], ps = tablePlayers();
   const why = { time: 'Time is up: 39 turns have been played.', escape: 'The last Human has escaped.', eliminated: 'The last Human was eliminated.' }[r.reason] || '';
-  const rows = orderedPlayers().map(([u, p]) => `<li class="${p.out === 'escaped' ? 'ok' : ''}"><span class="pname">${esc(p.name)}${u === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}</span><span class="pst">${p.role ? t(p.role === 'alien' ? 'Alien' : 'Human') + (p.char ? ' · ' + t(p.char) : '') : '…'}</span>${outBadge(p) || ''}</li>`).join('');
+  const rows = tableOrder().filter(u => ps[u]).map(u => { const p = ps[u]; return `<li class="${p.out === 'escaped' ? 'ok' : ''}">${dotIcon(u === myId() ? 'me' : 'u:' + u)}<span class="pname">${esc(p.name)}</span><span class="pst">${p.role ? t(p.role === 'alien' ? 'Alien' : 'Human') + (p.char ? ' · ' + t(p.char) : '') : '…'}</span>${outBadge(p) || ''}</li>`; }).join('');
   return `<h2>${t('Game over')}</h2>
     ${sayBox(r.aliensWin ? t('The Aliens win!') : t('The Humans win!'), r.aliensWin ? 'alert' : '', 'Result')}
     <p class="dim">${t(why)}</p>${esc_.length ? `<p>${t('Humans who escaped: {n}', { n: esc_.map(esc).join(', ') })}</p>` : ''}
@@ -277,7 +281,7 @@ function playPanel() {
   if (S.phase === 'move') {
     const sel = T.sel;
     const rule = alien ? t('Aliens move 1 to {n} sectors.', { n }) : (n === 1 ? t('Humans move 1 sector.') : t('Humans move up to {n} sectors.', { n }));
-    return `${inRoom() ? `<p class="yourturn">${t('Your turn!')}</p>` : ''}<h2>${sel ? esc(t('Move to {s}', { s: label(sel) })) : t('Choose your destination')}</h2>
+    return `<h2>${sel ? esc(t('Move to {s}', { s: label(sel) })) : t('Choose your destination')}</h2>
       <p class="dim">${rule} ${t('You must move.')}</p>
       ${sel ? `<p>${esc(typeName(at(T.map, sel)))}</p><div class="row"><button class="btn" data-act="clearsel">${t('Change')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>`
         : `<div class="inline"><input id="go-input" type="text" maxlength="3" autocapitalize="characters" placeholder="${t('or type a sector, e.g. L07')}" aria-label="${t('Destination sector')}"><button class="btn" data-act="go">${t('Go')}</button></div>`}
@@ -311,27 +315,27 @@ function playPanel() {
 
 const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found' };
 function roomBlock() {
+  if (S.hot) return `<p class="dim">${t('Pass and play: one device, digital cards.')}</p>`;
   if (!Sync.code) return `<p class="dim">${t('You are playing without a table.')}</p>`;
-  return `<div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code)}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
-    <div class="row"><button class="btn primary" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div></div>`;
+  return `<div class="roomrow"><div><small>${t('Table code')}</small><b>${esc(Sync.code)}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
+    <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>`;
 }
 function decksHtml() {
   const c = T.counts || {}; if (!digital() || !c.sector) return '';
-  const row = (k, n) => c[k] ? `<div class="deckrow"><span>${t(n)}</span><b>${c[k].d}</b><small>${t('left')}</small><b>${c[k].x}</b><small>${t('discarded')}</small></div>` : '';
-  return `<h3>${t('Decks')}</h3><div class="decks">${row('sector', 'Sector cards')}${row('item', 'Item cards')}${row('hatch', 'Escape Hatch cards')}</div>`;
+  const cell = (k, n) => `<span><b>${c[k].d}</b>/${c[k].d + c[k].x} ${t(n)}</span>`;
+  return `<p class="decks1">${t('Cards left')}: ${cell('sector', 'Sector cards')} · ${cell('item', 'Item cards')} · ${cell('hatch', 'Escape Hatch cards')}</p>`;
 }
 function tablePanel() {
-  const ln = S.log.map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : shapeIcon(shapeOf(k), suspicion(k)); return `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${esc(entryText(e))}</span></li>`; }).join('');
+  const ln = S.log.map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k); return `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${esc(entryText(e))}</span></li>`; }).join('');
   // players known from hand-written notes (no table): one row each, with suspicion buttons
   const noted = []; if (!inRoom()) { const seenK = new Set(); S.log.forEach(e => { if (e.mine || !e.sector) return; const k = playerKey(e); if (k === 'me' || seenK.has(k)) return; seenK.add(k); noted.push([k, e.who]); }); }
-  const notedHtml = noted.length ? `<h3>${t('Players')}</h3><ol class="turnlist">${noted.map(([k, n]) => `<li>${shapeIcon(shapeOf(k), suspicion(k))}<span class="pname">${esc(n)}</span>${susBtns(k)}</li>`).join('')}</ol>` : '';
-  const filt = `<div class="chips mkf" role="group" aria-label="${t('Map markers')}"><span class="hint">${t('Map markers')}</span><button data-act="mkall" data-v="0" aria-pressed="${!S.mkAll}">${t('Last {n} turns', { n: MK_RECENT })}</button><button data-act="mkall" data-v="1" aria-pressed="${!!S.mkAll}">${t('All turns')}</button></div>`;
+  const notedHtml = noted.length ? `<h3>${t('Players')}</h3><ol class="turnlist">${noted.map(([k, n]) => `<li>${dotIcon(k)}<span class="pname">${esc(n)}</span>${susBtns(k)}</li>`).join('')}</ol>` : '';
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
-  return `<h2>${t('Table')}</h2>${roomBlock()}
-    ${inRoom() ? `<h3>${t('Turn order')}</h3><p class="dim hintline">${t('Tap H or A to mark who you suspect is Human (blue) or Alien (red). Only you see it.')}</p>${orderList()}${skip}` : notedHtml}${filt}
-    ${decksHtml()}
+  return `${roomBlock()}
+    ${inRoom() || S.hot ? `<h3>${t('Players')} <span class="hint">${t('H / A: your private guess')}</span></h3>${orderList()}${skip}` : notedHtml}
     <h3>${t('Escape hatches')} <span class="hint">${digital() ? '' : t('tap to close or reopen')}</span></h3>
-    <div class="hatches">${[1, 2, 3, 4].map(n => `<button data-act="${digital() ? 'noop' : 'hatch'}" data-n="${n}" aria-pressed="${!!S.hatches[n]}">${n}<small>${S.hatches[n] ? t('Closed') : t('Open')}</small></button>`).join('')}</div>
+    <div class="hatches compact">${[1, 2, 3, 4].map(n => `<button data-act="${digital() ? 'noop' : 'hatch'}" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${t('Escape Hatch {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}">${n}</button>`).join('')}</div>
+    ${decksHtml()}
     <h3>${t('Announcements')}</h3>${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
     ${ln ? `<ul class="log" style="margin-top:12px">${ln}</ul>` : `<p class="dim">${t('Nothing yet. Yours are logged automatically.')}</p>`}`;
 }

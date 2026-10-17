@@ -112,40 +112,34 @@ function paintCells() {
   }
   paintOverlay();
 }
-/* ---- player markers: one shape per player, neutral or suspected Human (blue) / Alien (red) ---- */
-const SHAPES = 8, MK_RECENT = 5;
-function shapePath(i, r) {
-  const poly = (n, rot, k = 1) => { let d = ''; for (let j = 0; j < n; j++) { const a = rot + j * 2 * Math.PI / n, rr = (k !== 1 && j % 2) ? r * k : r; d += (j ? 'L' : 'M') + (rr * Math.cos(a)).toFixed(2) + ' ' + (rr * Math.sin(a)).toFixed(2); } return d + 'Z'; };
-  const q = -Math.PI / 2;
-  switch (i % SHAPES) {
-    case 0: return `M${-r} 0a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;     // circle
-    case 1: { const s = r * 0.86; return `M${-s} ${-s}H${s}V${s}H${-s}Z`; }                    // square
-    case 2: return poly(3, q);                                                                  // triangle
-    case 3: return poly(4, q);                                                                  // diamond
-    case 4: return poly(5, q);                                                                  // pentagon
-    case 5: return poly(10, q, 0.45);                                                           // star
-    case 6: { const w = r * 0.38; return `M${-w} ${-r}H${w}V${-w}H${r}V${w}H${w}V${r}H${-w}V${w}H${-r}V${-w}H${-w}Z`; } // cross
-    default: return poly(3, Math.PI / 2);                                                       // triangle down
-  }
-}
-const shapeIcon = (i, sus) => `<svg class="shp ${sus || 'neutral'}" viewBox="-10 -10 20 20" aria-hidden="true"><path d="${shapePath(i, 8)}"/></svg>`;
+/* ---- player markers: a colour per player; the border tells the faction ----
+   border: black = me, yellow = not yet decided, blue = suspected Human, red = suspected Alien */
+const MK_RECENT = 5; // turns of other players' markers shown unless "All turns"
+const PALETTE = [['#2ec4b6', '#06201d'], ['#9b5de5', '#ffffff'], ['#a3e048', '#142208'], ['#ff6fb5', '#2b0619'],
+  ['#8d6e63', '#ffffff'], ['#f4f4f4', '#101010'], ['#7d8a96', '#ffffff'], ['#1f7a4d', '#ffffff']];
+const BORDER = { me: '#000000', '': '#ffd23f', human: '#2f7dff', alien: '#ff3b30' };
+/* who is at the table: Firebase players (table), local seats (pass and play) */
+const myId = () => (S.hot && window.Hot ? Hot.curId() : (window.Sync && Sync.code ? Sync.uid : null));
+const tableOrder = () => (S.hot && window.Hot ? Hot.order() : ((window.Sync && Sync.settings && Sync.settings.order) || []));
+const tablePlayers = () => (S.hot && window.Hot ? Hot.publicPlayers() : ((window.Sync && Sync.players) || {}));
 /* a stable key per player: table players by id, hand-written notes by name */
 function playerKey(e) {
-  if (e.mine || (e.by && window.Sync && e.by === Sync.uid)) return 'me';
+  if (e.by && e.by === myId()) return 'me';
+  if (e.mine && !S.hot) return 'me';
   if (e.by) return 'u:' + e.by;
-  const name = String(e.who || '?').trim().toLowerCase();
-  const ps = (window.Sync && Sync.players) || {};
+  const name = String(e.who || '?').trim().toLowerCase(), ps = tablePlayers();
   for (const u in ps) if ((ps[u].name || '').toLowerCase() === name) return 'u:' + u;
   return 'n:' + name;
 }
-function shapeOf(key) {
-  const k = key === 'me' && window.Sync && Sync.uid && Sync.code ? 'u:' + Sync.uid : key;
-  const ord = (window.Sync && Sync.settings && Sync.settings.order) || [];
-  if (k.startsWith('u:')) { const i = ord.indexOf(k.slice(2)); if (i >= 0) return i % SHAPES; }
+function colorOf(key) {
+  const k = key === 'me' && myId() ? 'u:' + myId() : key, ord = tableOrder();
+  if (k.startsWith('u:')) { const i = ord.indexOf(k.slice(2)); if (i >= 0) return i % PALETTE.length; }
   S.shapes = S.shapes || {};
-  if (!(k in S.shapes)) S.shapes[k] = (ord.length + Object.keys(S.shapes).length) % SHAPES;
+  if (!(k in S.shapes)) S.shapes[k] = (ord.length + Object.keys(S.shapes).length) % PALETTE.length;
   return S.shapes[k];
 }
+const borderOf = key => key === 'me' ? BORDER.me : BORDER[suspicion(key)] || BORDER[''];
+const dotIcon = (key, asMe) => { const [f] = PALETTE[colorOf(key)], me = asMe || key === 'me'; return `<svg class="dot" viewBox="-10 -10 20 20" aria-hidden="true">${me ? '<circle r="9.2" fill="#ffffff66"/>' : ''}<circle r="7" fill="${f}" stroke="${me ? BORDER.me : borderOf(key)}" stroke-width="3"/></svg>`; };
 const suspicion = key => (key !== 'me' && S.sus && S.sus[key]) || '';
 /* layout of the markers inside one hex: a ring of evenly spaced slots, never overlapping */
 function slots(n, centre) {
@@ -182,7 +176,7 @@ function paintOverlay() {
     const rank = { route: 0, noise: 1, attack: 2, reveal: 3, spot: 0 };
     if (rank[v.kind] > rank[it.kind]) it.kind = v.kind;
   }
-  const order = k => k === 'me' ? -1 : k === 'spot' ? 99 : shapeOf(k);
+  const order = k => k === 'me' ? -1 : k === 'spot' ? 99 : colorOf(k);
   bySector.forEach((m, sec) => {
     const p = parseId(sec); if (!p) return; const h = hexPos(map, p[0], p[1]);
     const items = [...m.values()].sort((x, y) => order(x.key) - order(y.key));
@@ -194,16 +188,17 @@ function paintOverlay() {
       const [dx, dy] = sp[i], turns = it.turns.sort((x, y) => y - x), last = turns[0];
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
       const dim = focus && it.key !== focus, old = !focus && S.turn - last >= 2;
-      const g = el('g', { class: `mk pm ${it.kind} ${it.key === 'me' ? 'mine' : suspicion(it.key) || 'neutral'}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
-      if (it.key === 'me') el('circle', { r: size * 0.95 }, g);
-      else el('path', { d: shapePath(shapeOf(it.key), size) }, g);
-      const tx = el('text', { 'font-size': (label.length > 2 ? size * 0.7 : size * 0.95).toFixed(1) }, g); tx.textContent = label;
+      const [fill, ink] = PALETTE[colorOf(it.key)], bluff = it.key === 'me' && it.kind !== 'route';
+      const g = el('g', { class: `mk pm ${it.kind}${it.key === 'me' ? ' mine' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
+      if (it.key === 'me') el('circle', { r: size * 1.3, fill: '#ffffff55' }, g);
+      el('circle', { r: size, fill, stroke: borderOf(it.key), 'stroke-width': (size * 0.32).toFixed(2), 'stroke-dasharray': bluff ? '2.2 1.4' : 'none' }, g);
+      const tx = el('text', { fill: ink, 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
     });
   });
   // timeline of the focused player, in turn order
   if (focus && focus !== 'me') {
     const tl = visits.filter(v => v.key === focus).sort((x, y) => x.turn - y.turn).map(v => { const q = parseId(v.sector), hh = hexPos(map, q[0], q[1]); return hh.x + ',' + hh.y; });
-    if (tl.length > 1) el('polyline', { points: tl.join(' '), class: 'tl ' + (suspicion(focus) || 'neutral') }, marks);
+    if (tl.length > 1) el('polyline', { points: tl.join(' '), class: 'tl', stroke: PALETTE[colorOf(focus)][0] }, marks);
   }
   if (S.pos) {
     const [c, r] = parseId(S.pos), h = hexPos(map, c, r), cls = focus && focus !== 'me' ? ' dim' : '';
@@ -215,8 +210,8 @@ function paintOverlay() {
 /* floating strip on the map: tap a player to see only their timeline */
 function knownPlayers() {
   const out = [], seen = new Set(['me']);
-  const ord = (window.Sync && Sync.settings && Sync.settings.order) || [], ps = (window.Sync && Sync.players) || {};
-  ord.forEach(u => { if (ps[u] && u !== Sync.uid) { seen.add('u:' + u); out.push(['u:' + u, ps[u].name]); } });
+  const ord = tableOrder(), ps = tablePlayers();
+  ord.forEach(u => { if (ps[u] && u !== myId()) { seen.add('u:' + u); out.push(['u:' + u, ps[u].name]); } });
   S.log.forEach(e => { if (!e.sector || e.kind === 'spot') return; const k = playerKey(e); if (!seen.has(k)) { seen.add(k); out.push([k, e.who]); } });
   return out;
 }
@@ -225,7 +220,7 @@ function renderMkBar() {
   const ps = S.role && !T.editor ? knownPlayers() : [];
   if (!ps.length) { bar.hidden = true; return; }
   bar.hidden = false;
-  bar.innerHTML = [['me', t('Me')]].concat(ps).map(([k, n]) => `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" title="${esc(n)}">${k === 'me' ? '<span class="medot"></span>' : shapeIcon(shapeOf(k), suspicion(k))}<span>${esc(String(n).slice(0, 8))}</span></button>`).join('');
+  bar.innerHTML = `<button data-act="mkall" data-v="${S.mkAll ? 0 : 1}" aria-pressed="${!!S.mkAll}" title="${t('All turns')}">${S.mkAll ? t('All turns') : t('Last {n} turns', { n: MK_RECENT })}</button>` + [['me', t('Me')]].concat(ps).map(([k, n]) => `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" title="${esc(n)}">${dotIcon(k)}<span>${esc(String(n).slice(0, 8))}</span></button>`).join('');
 }
 /* zoom so that all the given sectors are visible */
 function frameSectors(ids) {
@@ -289,7 +284,7 @@ let fitDone = false;
 const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
 const PUBLIC = ['noise', 'attack', 'spot', 'silence', 'hatch', 'item', 'reveal', 'out'];
 function say(text, kind, sector, extra = {}) {
-  const e = Object.assign({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind, sector: sector || null, text: text || kind, mine: true, at: Date.now() }, extra);
+  const e = Object.assign({ id: uid(), by: myId() || '', turn: S.turn, who: S.name || t('Me'), kind, sector: sector || null, text: text || kind, mine: !S.hot, at: Date.now() }, extra);
   S.log.unshift(e);
   if (window.Sync && Sync.code && PUBLIC.includes(kind)) Sync.push({ id: e.id, by: Sync.uid, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at, n: e.n || 0, ok: e.ok ? 1 : 0 });
   if (S.log.length > 400) S.log.length = 400;
@@ -323,8 +318,9 @@ const actions = {
   clearlog() { confirmDlg(t('Clear all announcements?'), t('The history on this device will be erased.'), () => { S.log = []; afterChange(); }); },
   newgame() {
     const host = !!(Sync.code && Sync.isHost());
-    const [title, body] = !Sync.code ? ['Start a new game?', 'Your route, notes and role will be erased.'] : host ? ['Close this game?', 'The game ends for everyone at the table. You can then host a new one.'] : ['Leave this game?', 'You leave the table. Your route and notes on this device are erased.'];
+    const [title, body] = S.hot ? ['Close this game?', 'The pass-and-play game ends for everyone.'] : !Sync.code ? ['Start a new game?', 'Your route, notes and role will be erased.'] : host ? ['Close this game?', 'The game ends for everyone at the table. You can then host a new one.'] : ['Leave this game?', 'You leave the table. Your route and notes on this device are erased.'];
     confirmDlg(t(title), t(body), async () => {
+      if (S.hot) Hot.clear();
       if (host) await Sync.updateSettings({ status: 'over', result: { reason: 'closed' } });
       Sync.leave(true); resetToWelcome(host ? 'host' : 'welcome');
     });
@@ -475,12 +471,12 @@ const RULES = [
 ];
 function morePanel() {
   const maps = T.maps.map(m => `<div class="inline" style="margin-bottom:8px"><button class="btn mapbtn${m.id === T.map.id ? ' on' : ''}" data-act="map" data-id="${esc(m.id)}">${esc(m.name)}${m.description ? '<small>' + esc(t(m.description)) + '</small>' : ''}</button>${(S.customMaps || []).some(c => c.id === m.id) ? `<button class="btn danger" data-act="edel" data-id="${esc(m.id)}" aria-label="${t('Delete')}">✕</button>` : ''}</div>`).join('');
-  return `<h2>${t('More')}</h2>
-    <details class="acc"><summary>${t('How to play')}</summary><div class="rules"><p class="dim">${t('A summary of the official rulebook. The rulebook is authoritative.')}</p>
+  const solo = !Sync.code && !S.hot;
+  return `<details class="acc"><summary>${t('How to play')}</summary><div class="rules"><p class="dim">${t('A summary of the official rulebook. The rulebook is authoritative.')}</p>
       ${RULES.map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}</div></details>
-    <details class="acc"><summary>${t('Map')}</summary>${maps}<div class="row"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div></details>
+    ${solo ? `<details class="acc"><summary>${t('Map')}</summary>${maps}<div class="row"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div></details>` : ''}
     <details class="acc"><summary>${t('Game')}</summary>${Sync.code ? `<p>${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</p>` : `<div class="inline"><button class="btn" data-act="turnminus" aria-label="−">−</button><div class="btn static">${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</div><button class="btn" data-act="turnplus" aria-label="+">+</button></div>`}
-      <div class="stack" style="margin-top:10px"><button class="btn" data-act="hide">${t('Hide screen')}</button><button class="btn" data-act="clearlog">${t('Clear announcements')}</button><button class="btn danger" data-act="newgame">${t('New game')}</button></div></details>
+      <div class="stack" style="margin-top:10px"><button class="btn" data-act="clearlog">${t('Clear announcements')}</button><button class="btn danger" data-act="newgame">${t('New game')}</button></div></details>
     <details class="acc"><summary>${t('Language')}</summary><div class="chips">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l === 'en' ? 'English' : 'Italiano'}</button>`).join('')}</div></details>
     <p class="dim fine2">${t('Unofficial fan companion for Escape from the Aliens in Outer Space. Requires the physical game; no cards are included.')}</p>`;
 }
@@ -497,6 +493,7 @@ function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); }
 /* back to the start screen, keeping only the name and custom maps */
 function resetToWelcome(stage) { const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards }; S = Object.assign(fresh(), keep); S.stage = stage || 'welcome'; T.turnState = null; T.counts = null; Sync.status = 'off'; closeDlg(); save(); boot(); }
 function boot() {
+  if (S.hot && window.Hot) Hot.rebind();
   T.editor = null; T.pick = null; T.sel = null;
   const game = S.stage === 'game' && S.role;
   $('#flow').hidden = !!game; $('#app').hidden = !game;

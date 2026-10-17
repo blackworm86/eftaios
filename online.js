@@ -6,15 +6,9 @@
 const Online = (() => {
   const pending = {}, seen = new Set(), done = new Set();
   let gen = -1, HD = null, hdReady = null;
-  const rnd = () => (window.__rng ? window.__rng() : Math.random());
-  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-  const mkDeck = cards => ({ draw: shuffle(cards), disc: [] });
-  /* draw the top card; if the pile is empty, shuffle the discards into a new pile first */
-  function drawFrom(d) { let reshuffled = false; if (!d.draw.length && d.disc.length) { d.draw = shuffle(d.disc); d.disc = []; reshuffled = true; } return { card: d.draw.length ? d.draw.pop() : null, reshuffled }; }
   const norm = d => ({ draw: d && d.draw || [], disc: d && d.disc || [] });
   const pack = hd => JSON.parse(JSON.stringify(hd));
   const logGame = text => Sync.push({ id: uid(), turn: S.turn, who: t('Game'), kind: 'info', text, sector: '', at: Date.now() });
-  const names = { sector: 'Sector deck reshuffled', item: 'Item deck reshuffled', hatch: 'Escape Hatch deck reshuffled' };
 
   async function persist() {
     await Sync.set('hostdata', pack(HD));
@@ -32,9 +26,9 @@ const Online = (() => {
     if (!HD) await hdReady; if (!HD) return;
     const rep = { id: req.id || key, type: req.type };
     if (req.type === 'sector' || req.type === 'item' || req.type === 'hatch') {
-      const d = HD.decks[req.type], r = drawFrom(d); rep.card = r.card === null ? '' : r.card;
+      const d = HD.decks[req.type], r = deckDraw(d); rep.card = r.card === null ? '' : r.card;
       if (r.card && req.type !== 'item') d.disc.push(r.card);
-      if (r.reshuffled) logGame(names[req.type]);
+      if (r.reshuffled) logGame(RESHUFFLED[req.type]);
       await Sync.set(`secret/${req.uid}/inbox/${key}`, rep);
     } else if (req.type === 'discard' && ITEMS[req.card]) HD.decks.item.disc.push(req.card);
     await persist(); await Sync.del('requests/' + key);
@@ -125,13 +119,13 @@ const Online = (() => {
     },
     /* host: deal roles, build the decks, then open the game */
     async hostStart(order, first) {
-      const n = order.length, humans = Math.floor(n / 2), aliens = n - humans;
+      const n = order.length;
       if (n < 2 || n > 8) return;
-      const roles = shuffle([...rep_(humans, 'human'), ...rep_(aliens, 'alien')]), hc = shuffle(CHARS.human), ac = shuffle(CHARS.alien);
-      HD = { decks: { sector: mkDeck(SECTOR_DECK), item: mkDeck(ITEM_DECK), hatch: mkDeck(HATCH_DECK) }, roles: {}, chars: {}, seenOut: {}, last: '' };
+      const deal = dealRoles(n);
+      HD = { decks: { sector: deckNew(SECTOR_DECK), item: deckNew(ITEM_DECK), hatch: deckNew(HATCH_DECK) }, roles: {}, chars: {}, seenOut: {}, last: '' };
       hdReady = Promise.resolve(HD);
       for (let i = 0; i < n; i++) {
-        const role = roles[i], char = role === 'human' ? hc.pop() : ac.pop();
+        const { role, char } = deal[i];
         HD.roles[order[i]] = role; HD.chars[order[i]] = char;
         await Sync.set('secret/' + order[i], { role, char });
       }

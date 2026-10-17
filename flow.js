@@ -33,6 +33,14 @@ function renderFlow() {
       <button class="role-btn human" data-act="solostart" data-role="human"><b>${t('Human')}</b><small>${t('Reach an escape hatch')}</small></button>
       <button class="role-btn alien" data-act="solostart" data-role="alien"><b>${t('Alien')}</b><small>${t('Hunt the crew')}</small></button></fieldset>
       <button class="btn link wide" data-act="back">${t('Back')}</button>`;
+  } else if (st === 'hotsetup') {
+    const names = T.hotNames || (T.hotNames = [1, 2, 3, 4].map(i => t('Player {n}', { n: i })));
+    h = `${hero()}<h2 class="step2">${t('Pass and play')}</h2><p class="dim hintline">${t('One device, digital cards. Players take turns and hand the device over.')}</p>
+      <h3>${t('Players')} (${names.length})</h3><ol class="hotnames">${names.map((n, i) => `<li><input type="text" maxlength="20" data-hn="${i}" value="${esc(n)}" aria-label="${t('Player {n}', { n: i + 1 })}">${names.length > 2 ? `<button class="btn" data-act="hotdel" data-i="${i}" aria-label="${t('Remove')}">✕</button>` : ''}</li>`).join('')}</ol>
+      ${names.length < 8 ? `<button class="btn wide" data-act="hotadd">+ ${t('Add player')}</button>` : ''}
+      ${mapSelect(T.maps, S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}
+      <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>
+      <button class="btn link wide" data-act="back">${t('Back')}</button>`;
   } else if (st === 'lobby') {
     h = lobbyHtml();
   } else {
@@ -42,6 +50,7 @@ function renderFlow() {
       : `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>
         <div class="or"><span>${t('or')}</span></div>
         <div class="inline"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="joinroom">${t('Join')}</button></div>
+        <button class="btn wide hotbtn" data-act="hotsetup">${t('Pass and play (one device)')}</button>
         <button class="btn link wide" data-act="solo">${t('Play without a table')}</button>`}
       ${flowStatus()}`;
   }
@@ -117,6 +126,7 @@ function soloStart(role) {
   S.path = [{ turn: 0, pos: S.pos }]; save(); boot();
 }
 
+function readHot() { document.querySelectorAll('[data-hn]').forEach(el => { T.hotNames[+el.dataset.hn] = el.value; }); }
 function reorder(uid, delta) {
   const ids = orderedIds(), i = ids.indexOf(uid), j = i + delta;
   if (i < 0 || j < 0 || j >= ids.length) return;
@@ -130,6 +140,10 @@ function startTable() {
 
 Object.assign(actions, {
   hostsetup() { readName(); S.stage = 'host'; save(); renderFlow(); },
+  hotsetup() { S.stage = 'hotsetup'; save(); renderFlow(); },
+  hotadd() { readHot(); if (T.hotNames.length < 8) T.hotNames.push(t('Player {n}', { n: T.hotNames.length + 1 })); renderFlow(); },
+  hotdel(b) { readHot(); T.hotNames.splice(+b.dataset.i, 1); renderFlow(); },
+  hotstart() { readHot(); const names = T.hotNames.map((n, i) => n.trim().slice(0, 20) || t('Player {n}', { n: i + 1 })); Hot.start(names, $('#f-map').value, $('#f-mode').value); },
   solo() { S.stage = 'solo'; save(); renderFlow(); },
   back() { S.stage = 'welcome'; Sync.status = 'off'; save(); renderFlow(); },
   ignoreinvite() { T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); },
@@ -191,6 +205,7 @@ Sync.on({
 { const q = new URLSearchParams(location.search).get('room'); if (q) { const c = q.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); if (S.stage === 'game') { try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } } else T.pendingRoom = c; } }
 loadMaps().then(() => {
   boot();
+  if (S.hot) Hot.showPass();
   if (S.room && (S.stage === 'lobby' || S.stage === 'game')) Sync.join(S.room, { name: S.name || t('Player') });
   else if (S.stage === 'lobby') { S.stage = 'welcome'; renderFlow(); }
 });

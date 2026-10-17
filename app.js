@@ -389,7 +389,6 @@ const actions = {
   noop() { },
   sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
   pfocus(b) { const k = b.dataset.k; T.focus = T.focus === k ? null : k; paintOverlay(); if (T.focus) frameSectors(T.focus === 'me' ? S.path.map(p => p.pos).concat(S.log.filter(e => e.kind === 'noise' && e.sector && playerKey(e) === 'me').map(e => e.sector)) : S.log.filter(e => e.sector && e.kind !== 'spot' && playerKey(e) === T.focus).map(e => e.sector)); if (T.focus) toast(T.focus === 'me' ? t('Showing only your route') : t('Showing only {p}', { p: b.title })); },
-  track(b) { S.track = b.dataset.v; T.markMode = false; save(); render(); paintOverlay(); },
   markmode() { T.markMode = !T.markMode; T.markTurn = S.turn; T.focus = null; if (T.markMode && !T.markKey) { const ps = knownPlayers(); if (ps.length === 1) T.markKey = ps[0][0]; } render(); paintOverlay(); },
   markwho(b) { T.markKey = b.dataset.k; render(); paintOverlay(); },
   mturn(b) { T.markTurn = Math.max(1, Math.min(MAX_TURN, (T.markTurn || S.turn) + +b.dataset.d)); render(); },
@@ -536,7 +535,6 @@ function morePanel() {
     ${solo ? `<details class="acc"><summary>${t('Map')}</summary>${maps}<div class="row"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div></details>` : ''}
     <details class="acc"><summary>${t('Game')}</summary>${Sync.code ? `<p>${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</p>` : `<div class="inline"><button class="btn" data-act="turnminus" aria-label="−">−</button><div class="btn static">${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</div><button class="btn" data-act="turnplus" aria-label="+">+</button></div>`}
       <div class="stack" style="margin-top:10px"><button class="btn" data-act="clearlog">${t('Clear announcements')}</button><button class="btn danger" data-act="newgame">${t('New game')}</button></div></details>
-    <details class="acc"><summary>${t('Tracking other players')}</summary><div class="chips">${[['auto', 'Automatic'], ['manual', 'By hand']].map(([v, l]) => `<button data-act="track" data-v="${v}" aria-pressed="${(S.track || 'auto') === v}">${t(l)}</button>`).join('')}</div><p class="dim hintline" style="margin-top:8px">${t('By hand: like on the paper map, you mark each step of the other players yourself (pencil on the map strip).')}</p></details>
     <details class="acc"><summary>${t('Language')}</summary><div class="chips">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l === 'en' ? 'English' : 'Italiano'}</button>`).join('')}</div></details>
     <p class="dim fine2">${t('Unofficial fan companion for Escape from the Aliens in Outer Space. Requires the physical game; no cards are included.')}</p>`;
 }

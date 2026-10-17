@@ -4,12 +4,10 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
 (async()=>{const b=await chromium.launch();const errs=[];
  const p=await (await b.newContext({viewport:{width:390,height:800},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.message));
  p.on('dialog',d=>d.accept('Zoe'));
- await p.goto('http://localhost:8123/');await p.click('[data-act=solo]');await p.click('.role-btn.human');await p.waitForSelector('#app:not([hidden])');
- // an announcement recorded for another player shows automatically...
+ await p.goto('http://localhost:8123/');await p.click('[data-act=solo]');await p.selectOption('#f-track','manual');await p.click('.role-btn.human');await p.waitForSelector('#app:not([hidden])');
+ assert(await p.evaluate(()=>S.track)==='manual','"by hand" chosen at setup');
+ await p.click('[data-tab=more]');assert(!(await p.textContent('#panel-body')).includes('Tracking'),'no tracking option during the game');await p.click('[data-tab=play]');
  await p.evaluate(()=>{S.log.unshift({id:'a1',who:'Bob',turn:1,kind:'noise',sector:'N10',text:'noise',at:Date.now()});paintOverlay()});
- assert(await p.evaluate(()=>document.querySelectorAll('#marks .pm:not(.mine)').length)===1,'automatic tracking draws announcements');
- // ...switch to tracking by hand
- await p.click('[data-tab=more]');await p.click('summary:has-text("Tracking")');await p.click('[data-act=track][data-v=manual]');await p.click('[data-tab=play]');
  assert(await p.evaluate(()=>document.querySelectorAll('#marks .pm:not(.mine)').length)===0,'by hand: no automatic markers for other players');
  await p.click('#mkbar [data-act=markmode]');
  assert((await p.textContent('#panel-body')).includes('Marking'),'pencil opens marking mode (banner)');

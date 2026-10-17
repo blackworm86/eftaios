@@ -15,6 +15,9 @@ const mapSelect = (list, cur) => `<label class="field"><span>${t('Map')}</span><
   <p class="dim hintline" id="f-map-desc"></p>`;
 const modeSelect = cur => `<label class="field"><span>${t('Rules')}</span><select id="f-mode">${Object.entries(MODES).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(v[0])}</option>`).join('')}</select></label>
   <p class="dim hintline" id="f-mode-desc"></p>`;
+const TRACK = { auto: ['Automatic', 'Announcements of the other players are marked on everyone\'s map automatically.'], manual: ['By hand', 'Like the paper map: each player marks the steps of the others by hand.'] };
+const trackSelect = cur => `<label class="field"><span>${t('Tracking other players')}</span><select id="f-track">${Object.entries(TRACK).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(v[0])}</option>`).join('')}</select></label>
+  <p class="dim hintline" id="f-track-desc"></p>`;
 const cardSelect = cur => `<label class="field"><span>${t('Cards')}</span><select id="f-cards">${Object.entries(CARDS).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(v[0])}</option>`).join('')}</select></label>
   <p class="dim hintline" id="f-cards-desc"></p>`;
 const myName = () => (S.name || '').trim() || t('Player');
@@ -24,11 +27,11 @@ function renderFlow() {
   const card = $('#flow-card'); let h = '';
   const st = S.stage;
   if (st === 'host') {
-    h = `${hero()}<h2 class="step2">${t('Host a table')}</h2>${nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}${cardSelect(S.cards || 'physical')}
+    h = `${hero()}<h2 class="step2">${t('Host a table')}</h2>${nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}${cardSelect(S.cards || 'physical')}${trackSelect(S.track || 'auto')}
       <button class="btn primary big wide" data-act="hostcreate">${t('Create table')}</button>${flowStatus()}
       <button class="btn link wide" data-act="back">${t('Back')}</button>`;
   } else if (st === 'solo') {
-    h = `${hero()}<h2 class="step2">${t('Play without a table')}</h2>${nameField()}${mapSelect(T.maps, S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}
+    h = `${hero()}<h2 class="step2">${t('Play without a table')}</h2>${nameField()}${mapSelect(T.maps, S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}${trackSelect(S.track || 'auto')}
       <fieldset class="roles"><legend>${t('Your secret role card says…')}</legend>
       <button class="role-btn human" data-act="solostart" data-role="human"><b>${t('Human')}</b><small>${t('Reach an escape hatch')}</small></button>
       <button class="role-btn alien" data-act="solostart" data-role="alien"><b>${t('Alien')}</b><small>${t('Hunt the crew')}</small></button></fieldset>
@@ -38,7 +41,7 @@ function renderFlow() {
     h = `${hero()}<h2 class="step2">${t('Pass and play')}</h2><p class="dim hintline">${t('One device, digital cards. Players take turns and hand the device over.')}</p>
       <h3>${t('Players')} (${names.length})</h3><ol class="hotnames">${names.map((n, i) => `<li><input type="text" maxlength="20" data-hn="${i}" value="${esc(n)}" aria-label="${t('Player {n}', { n: i + 1 })}">${names.length > 2 ? `<button class="btn" data-act="hotdel" data-i="${i}" aria-label="${t('Remove')}">✕</button>` : ''}</li>`).join('')}</ol>
       ${names.length < 8 ? `<button class="btn wide" data-act="hotadd">+ ${t('Add player')}</button>` : ''}
-      ${mapSelect(T.maps, S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}
+      ${mapSelect(T.maps, S.mapId || 'galilei')}${modeSelect(S.mode || 'advanced')}${trackSelect(S.track || 'auto')}
       <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>
       <button class="btn link wide" data-act="back">${t('Back')}</button>`;
   } else if (st === 'lobby') {
@@ -55,14 +58,16 @@ function renderFlow() {
       ${flowStatus()}`;
   }
   const keep = card.scrollTop; card.innerHTML = h;
-  const fm = $('#f-map'), fd = $('#f-mode'), fc = $('#f-cards');
+  const fm = $('#f-map'), fd = $('#f-mode'), fc = $('#f-cards'), ft = $('#f-track');
   const upd = () => {
     if (fm) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-desc').textContent = m && m.description ? t(m.description) : ''; }
     if (fd) $('#f-mode-desc').textContent = t(MODES[fd.value][1]);
     if (fc) $('#f-cards-desc').textContent = t(CARDS[fc.value][1]);
+    if (ft) $('#f-track-desc').textContent = t(TRACK[ft.value][1]);
   };
   if (fm) fm.onchange = () => { S.mapId = fm.value; upd(); if (st === 'lobby') Sync.updateSettings({ map: fm.value }); };
   if (fd) fd.onchange = () => { S.mode = fd.value; upd(); if (st === 'lobby') Sync.updateSettings({ mode: fd.value }); };
+  if (ft) ft.onchange = () => { S.track = ft.value; upd(); if (st === 'lobby') Sync.updateSettings({ track: ft.value }); };
   if (fc) fc.onchange = () => { S.cards = fc.value; upd(); if (st === 'lobby') Sync.updateSettings({ online: fc.value === 'online' }); };
   upd();
   const jc = $('#join-code'); if (jc) jc.onkeydown = e => { if (e.key === 'Enter') actions.joinroom(); };
@@ -83,8 +88,8 @@ function lobbyHtml() {
     <div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
       <div class="row"><button class="btn primary" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div></div>
     <h3>${t('Game')}</h3>
-    ${host ? mapSelect(tableMaps(), st.map) + modeSelect(st.mode) + cardSelect(online ? 'online' : 'physical')
-      : `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(mode[0])}</dd><dt>${t('Cards')}</dt><dd>${t(cards[0])}</dd></dl><p class="dim hintline">${t(mode[1])}</p>`}
+    ${host ? mapSelect(tableMaps(), st.map) + modeSelect(st.mode) + cardSelect(online ? 'online' : 'physical') + trackSelect(st.track || 'auto')
+      : `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(mode[0])}</dd><dt>${t('Cards')}</dt><dd>${t(cards[0])}</dd><dt>${t('Tracking')}</dt><dd>${t(TRACK[st.track || 'auto'][0])}</dd></dl><p class="dim hintline">${t(mode[1])}</p>`}
     <h3>${t('Turn order')} (${players.length}) ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>` : ''}</h3>
     <ul class="plist">${rows}</ul>
     ${host ? `<p class="dim hintline">${t('Use the arrows to set the order of play. The first player starts.')}</p>` : ''}
@@ -107,7 +112,7 @@ async function beginGame() {
   if (!role || !S.ready) { toast(t('The game started without you. Ask the host.')); leaveToWelcome(); return; }
   T.map = T.maps.find(m => m.id === st.map) || T.maps[0];
   const keep = S.customMaps, name = S.name, room = S.room;
-  S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, role, char, online: !!st.online, name, room, customMaps: keep, tab: 'play' });
+  S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, track: st.track || 'auto', role, char, online: !!st.online, name, room, customMaps: keep, tab: 'play' });
   S.pos = find(T.map, role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }];
   T.turnState = Sync.turn || null; if (T.turnState) S.turn = T.turnState.n;
   save(); boot();
@@ -119,8 +124,8 @@ function leaveToWelcome() { Sync.leave(); S.room = null; S.stage = 'welcome'; S.
 
 function soloStart(role) {
   const id = $('#f-map').value; T.map = T.maps.find(m => m.id === id) || T.maps[0];
-  const keep = S.customMaps, name = readName(), mode = $('#f-mode').value;
-  S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, role, name: name === t('Player') ? '' : name, mode, customMaps: keep });
+  const keep = S.customMaps, name = readName(), mode = $('#f-mode').value, track = $('#f-track').value;
+  S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, role, name: name === t('Player') ? '' : name, mode, track, customMaps: keep });
   S.pos = find(T.map, role === 'human' ? 'H' : 'A');
   if (!S.pos) { alert(t('This map has no start sector for your role.')); S.stage = 'solo'; S.role = null; return; }
   S.path = [{ turn: 0, pos: S.pos }]; save(); boot();
@@ -143,13 +148,13 @@ Object.assign(actions, {
   hotsetup() { S.stage = 'hotsetup'; save(); renderFlow(); },
   hotadd() { readHot(); if (T.hotNames.length < 8) T.hotNames.push(t('Player {n}', { n: T.hotNames.length + 1 })); renderFlow(); },
   hotdel(b) { readHot(); T.hotNames.splice(+b.dataset.i, 1); renderFlow(); },
-  hotstart() { readHot(); const names = T.hotNames.map((n, i) => n.trim().slice(0, 20) || t('Player {n}', { n: i + 1 })); Hot.start(names, $('#f-map').value, $('#f-mode').value); },
+  hotstart() { readHot(); const names = T.hotNames.map((n, i) => n.trim().slice(0, 20) || t('Player {n}', { n: i + 1 })); Hot.start(names, $('#f-map').value, $('#f-mode').value, $('#f-track').value); },
   solo() { S.stage = 'solo'; save(); renderFlow(); },
   back() { S.stage = 'welcome'; Sync.status = 'off'; save(); renderFlow(); },
   ignoreinvite() { T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); },
   async hostcreate() {
-    const name = readName(); S.mapId = $('#f-map').value; S.mode = $('#f-mode').value; S.cards = $('#f-cards').value;
-    const ok = await Sync.create({ map: S.mapId, mode: S.mode, online: S.cards === 'online' }, { name });
+    const name = readName(); S.mapId = $('#f-map').value; S.mode = $('#f-mode').value; S.cards = $('#f-cards').value; S.track = $('#f-track').value;
+    const ok = await Sync.create({ map: S.mapId, mode: S.mode, online: S.cards === 'online', track: S.track }, { name });
     if (!ok) renderFlow();
   },
   async joinroom() {

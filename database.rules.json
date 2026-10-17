@@ -52,6 +52,9 @@
           },
           "$other": {
             ".validate": false
+          },
+          "track": {
+            ".validate": "newData.val() === 'auto' || newData.val() === 'manual'"
           }
         },
         "players": {

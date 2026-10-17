@@ -142,8 +142,8 @@ const borderOf = key => key === 'me' ? BORDER.me : BORDER[suspicion(key)] || BOR
 const dotIcon = (key, asMe) => { const [f] = PALETTE[colorOf(key)], me = asMe || key === 'me'; return `<svg class="dot" viewBox="-10 -10 20 20" aria-hidden="true">${me ? '<circle r="9.2" fill="#ffffff66"/>' : ''}<circle r="7" fill="${f}" stroke="${me ? BORDER.me : borderOf(key)}" stroke-width="3"/></svg>`; };
 const suspicion = key => (key !== 'me' && S.sus && S.sus[key]) || '';
 /* layout of the markers inside one hex: a ring of evenly spaced slots, never overlapping */
-function slots(n, centre) {
-  if (n === 1 && !centre) return { size: 7.5, pts: [[0, 0]] };
+function slots(n) {
+  if (n === 1) return { size: 8, pts: [[0, 0]] };
   const R = n <= 4 ? 10.5 : 12.5, size = n <= 3 ? 7 : n <= 5 ? 5.8 : n <= 7 ? 4.8 : 4.2;
   return { size, pts: Array.from({ length: n }, (_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [R * Math.cos(a), R * Math.sin(a)]; }) };
 }
@@ -168,7 +168,7 @@ function paintOverlay() {
   // group: sector -> player -> turns
   const bySector = new Map();
   for (const v of visits) {
-    if (!recent(v) || (v.key === 'me' && v.sector === S.pos && v.turn === S.turn)) continue;
+    if (!recent(v)) continue;
     if (!bySector.has(v.sector)) bySector.set(v.sector, new Map());
     const m = bySector.get(v.sector);
     if (!m.has(v.key)) m.set(v.key, { key: v.key, turns: [], kind: v.kind });
@@ -183,7 +183,7 @@ function paintOverlay() {
     const spot = items.find(x => x.key === 'spot'), list = items.filter(x => x.key !== 'spot');
     if (spot) el('circle', { cx: h.x, cy: h.y, r: 17, class: 'mk spot' + (focus ? ' dim' : '') }, marks);
     if (!list.length) return;
-    const { size, pts: sp } = slots(list.length, sec === S.pos);
+    const { size, pts: sp } = slots(list.length);
     list.forEach((it, i) => {
       const [dx, dy] = sp[i], turns = it.turns.sort((x, y) => y - x), last = turns[0];
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
@@ -192,6 +192,7 @@ function paintOverlay() {
       const g = el('g', { class: `mk pm ${it.kind}${it.key === 'me' ? ' mine' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       if (it.key === 'me') el('circle', { r: size * 1.3, fill: '#ffffff55' }, g);
       el('circle', { r: size, fill, stroke: borderOf(it.key), 'stroke-width': (size * 0.32).toFixed(2), 'stroke-dasharray': bluff ? '2.2 1.4' : 'none' }, g);
+      if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; el('circle', Object.assign({ r: size + 4.5, class: 'me-ring pulse' + cls }, at_), me); el('circle', Object.assign({ r: size + 3, class: 'me-ring' + cls }, at_), me); }
       const tx = el('text', { fill: ink, 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
     });
   });
@@ -199,12 +200,6 @@ function paintOverlay() {
   if (focus && focus !== 'me') {
     const tl = visits.filter(v => v.key === focus).sort((x, y) => x.turn - y.turn).map(v => { const q = parseId(v.sector), hh = hexPos(map, q[0], q[1]); return hh.x + ',' + hh.y; });
     if (tl.length > 1) el('polyline', { points: tl.join(' '), class: 'tl', stroke: PALETTE[colorOf(focus)][0] }, marks);
-  }
-  if (S.pos) {
-    const [c, r] = parseId(S.pos), h = hexPos(map, c, r), cls = focus && focus !== 'me' ? ' dim' : '';
-    el('circle', { cx: h.x, cy: h.y, r: 13, class: 'me-ring pulse' + cls }, me);
-    el('circle', { cx: h.x, cy: h.y, r: 8, class: 'me-dot ' + S.role + cls }, me);
-    el('circle', { cx: h.x, cy: h.y, r: 13, class: 'me-ring' + cls }, me);
   }
 }
 /* floating strip on the map: tap a player to see only their timeline */
@@ -215,12 +210,16 @@ function knownPlayers() {
   S.log.forEach(e => { if (!e.sector || e.kind === 'spot') return; const k = playerKey(e); if (!seen.has(k)) { seen.add(k); out.push([k, e.who]); } });
   return out;
 }
+/* short label for the narrow strip: 'Player 3' -> 'P3', long names cut */
+const shortName = n => { n = String(n).trim(); const d = n.match(/\d+$/); return n.length <= 6 ? n : d ? n[0] + d[0] : n.slice(0, 5) + '…'; };
 function renderMkBar() {
   const bar = $('#mkbar'); if (!bar) return;
   const ps = S.role && !T.editor ? knownPlayers() : [];
   if (!ps.length) { bar.hidden = true; return; }
   bar.hidden = false;
-  bar.innerHTML = `<button data-act="mkall" data-v="${S.mkAll ? 0 : 1}" aria-pressed="${!!S.mkAll}" title="${t('All turns')}">${S.mkAll ? t('All turns') : t('Last {n} turns', { n: MK_RECENT })}</button>` + [['me', t('Me')]].concat(ps).map(([k, n]) => `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" title="${esc(n)}">${dotIcon(k)}<span>${esc(String(n).slice(0, 8))}</span></button>`).join('');
+  const sus = k => `<div class="msus" role="group" aria-label="${t('Your suspicion')}">${[['', '?'], ['human', t('H')], ['alien', t('A')]].map(([v, l]) => `<button data-act="sus" data-k="${esc(k)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(k) === v}">${l}</button>`).join('')}</div>`;
+  bar.innerHTML = `<button class="mkt" data-act="mkall" data-v="${S.mkAll ? 0 : 1}" aria-pressed="${!!S.mkAll}" aria-label="${S.mkAll ? t('All turns') : t('Last {n} turns', { n: MK_RECENT })}"><b>${S.mkAll ? '∞' : MK_RECENT}</b><span>${t('turns')}</span></button>` +
+    [['me', t('Me')]].concat(ps).map(([k, n]) => `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('');
 }
 /* zoom so that all the given sectors are visible */
 function frameSectors(ids) {
@@ -458,7 +457,6 @@ function render() {
   else if (S.tab === 'table') h += tablePanel();
   else h += morePanel();
   p.innerHTML = h;
-  const gi = $('#go-input'); if (gi) gi.onkeydown = e => { if (e.key === 'Enter') actions.go(); };
   const rc = $('#room-code'); if (rc) rc.onkeydown = e => { if (e.key === 'Enter') actions.syncjoin(); };
 }
 const RULES = [

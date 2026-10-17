@@ -170,7 +170,6 @@ async function runAttack(fromItem) {
 Object.assign(actions, {
   confirm: confirmMove,
   clearsel() { T.sel = null; afterChange(); },
-  go() { const v = $('#go-input').value, p = parseId(v), id = p && cid(...p); if (id && T.reach.has(id)) { selectCell(id); focusOn(id); } else toast(v ? t('{s} is not reachable this turn', { s: v.toUpperCase() }) : t('Type a sector, e.g. L07')); },
   icon() { T.itemIcon = !T.itemIcon; render(); },
   noiseHere() { finishCard('noise', S.pos, iconFlag()); },
   noiseAny() { const f = iconFlag(); pickSector(t('Tap the sector you announce'), id => finishCard('noise', id, f)); },
@@ -192,6 +191,7 @@ Object.assign(actions, {
   enterhatch() { actions.podGreen(); },
   backres() { S.res = { stage: 'choose' }; afterChange(); },
   useitem(b) { useItem(b.dataset.i); },
+  itemdlg(b) { itemDlg(b.dataset.i); },
   discardpick(b) {
     const all = T.handTmp || []; const [d] = all.splice(+b.dataset.i, 1); S.items = all; T.lockDlg = false; closeDlg();
     if (d) Eng().discard(d); save(); render();
@@ -238,11 +238,18 @@ window.itemsDlg = itemsDlg; window.caughtDlg = caughtDlg; window.addItem = addIt
 
 /* ---------------- panels ---------------- */
 const physExtras = () => `<div class="row mini">${basic() || S.role !== 'human' ? '' : `<button class="btn" onclick="itemsDlg()">${t('Item played')}</button>`}<button class="btn" onclick="caughtDlg()">${t('I was attacked')}</button></div>`;
-const handHtml = usable => {
+/* the three item slots of the digital game; tap one to read it and use it */
+const handHtml = () => {
   if (!digital()) return '';
-  const chips = S.items.map(k => `<button class="card" data-act="useitem" data-i="${k}" ${usable && S.role === 'human' ? '' : 'disabled'}><b>${t(ITEMS[k][0])}</b><small>${t(ITEMS[k][1])}</small></button>`).join('');
-  return `<div class="hand"><small class="hl">${t('Your items')} (${S.items.length}/3)${S.role === 'alien' ? ' · ' + t('Aliens can hold items but not use them') : ''}</small><div class="cards">${chips || `<span class="dim">${t('No items')}</span>`}</div></div>`;
+  return `<div class="slots" role="group" aria-label="${t('Your items')}">${[0, 1, 2].map(i => { const k = S.items[i]; return k ? `<button class="slot" data-act="itemdlg" data-i="${k}">${t(ITEMS[k][0])}</button>` : `<span class="slot empty">${t('Empty slot')}</span>`; }).join('')}</div>`;
 };
+function itemDlg(k) {
+  const can = S.role === 'human' && myTurn() && !S.over && !gameOver() && k !== 'defense';
+  const why = S.role !== 'human' ? t('Aliens can hold items but not use them') : k === 'defense' ? t('Defense is played automatically when you are attacked') : !myTurn() ? t('You can use items during your turn') : '';
+  dlg.innerHTML = `<h2>${t(ITEMS[k][0])}</h2><p>${t(ITEMS[k][1])}</p>${why ? `<p class="dim">${why}</p>` : ''}
+    <div class="row"><button class="btn" id="d-no">${t('Close')}</button>${can ? `<button class="btn primary" data-act="useitem" data-i="${k}">${t('Use')}</button>` : ''}</div>`;
+  dlg.showModal(); $('#d-no').onclick = closeDlg;
+}
 const extras = () => (digital() ? '' : physExtras());
 const outBadge = p => p.out === 'escaped' ? `<span class="b-ok">✓ ${t('escaped')}</span>` : p.out ? `<span class="b-out">✗ ${p.out === 'trapped' ? t('trapped') : t('eliminated')}${p.role ? ' (' + t(p.role === 'alien' ? 'Alien' : 'Human') + ')' : ''}</span>` : '';
 /* private suspicion tag for a player: ? / Human (blue) / Alien (red) */
@@ -256,7 +263,7 @@ function orderList() {
 function waitPanel() {
   const cur = T.turnState;
   return `<h2>${t('{p} is playing', { p: esc(pname(cur.uid)) })}</h2><p class="dim">${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })} · ${t('Wait for your turn.')}</p>
-    ${orderList()}${handHtml(false)}${digital() ? '' : `<div class="row mini"><button class="btn" onclick="caughtDlg()">${t('I was attacked')}</button></div>`}`;
+    ${orderList()}${handHtml()}${digital() ? '' : `<div class="row mini"><button class="btn" onclick="caughtDlg()">${t('I was attacked')}</button></div>`}`;
 }
 function overPanel() {
   const m = { escaped: ['Escaped!', 'You left the ship and win. That hatch is now blocked.'], time: ['39 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Hatch is blocked or damaged. You are eliminated.'] }[S.over];
@@ -280,12 +287,9 @@ function playPanel() {
   const n = allowance(), alien = S.role === 'alien';
   if (S.phase === 'move') {
     const sel = T.sel;
-    const rule = alien ? t('Aliens move 1 to {n} sectors.', { n }) : (n === 1 ? t('Humans move 1 sector.') : t('Humans move up to {n} sectors.', { n }));
-    return `<h2>${sel ? esc(t('Move to {s}', { s: label(sel) })) : t('Choose your destination')}</h2>
-      <p class="dim">${rule} ${t('You must move.')}</p>
-      ${sel ? `<p>${esc(typeName(at(T.map, sel)))}</p><div class="row"><button class="btn" data-act="clearsel">${t('Change')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>`
-        : `<div class="inline"><input id="go-input" type="text" maxlength="3" autocapitalize="characters" placeholder="${t('or type a sector, e.g. L07')}" aria-label="${t('Destination sector')}"><button class="btn" data-act="go">${t('Go')}</button></div>`}
-      ${handHtml(true)}${extras()}`;
+    return `<h2>${sel ? esc(t('Move to {s}', { s: label(sel) })) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Choose your destination')}</h2>
+      ${sel ? `<div class="row"><button class="btn" data-act="clearsel">${t('Change')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>` : `<p class="dim">${t('Tap a highlighted sector on the map.')}</p>`}
+      ${handHtml()}${extras()}`;
   }
   const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };
   const head = `<h2>${esc(label(S.pos))}${'.sHA'.includes(ty) ? ` <span class="dim sub">${esc(typeName(ty))}</span>` : ''}</h2>`;
@@ -300,13 +304,13 @@ function playPanel() {
       <div class="row mini"><button class="btn" data-act="backres">${t('Back')}</button></div>`;
   if (r.stage === 'done') return head + sayBox(r.say, r.tone) + (r.extra ? sayBox(r.extra, 'alert', 'Also') : '') +
     (r.report ? `<ul class="report">${r.report.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '') + (r.sub ? `<p class="dim">${esc(r.sub)}</p>` : '') +
-    `<button class="btn primary big wide" data-act="next">${!inRoom() && S.turn >= MAX_TURN ? t('Finish game') : t('End turn')}</button>${handHtml(true)}${extras()}`;
+    `<button class="btn primary big wide" data-act="next">${!inRoom() && S.turn >= MAX_TURN ? t('Finish game') : t('End turn')}</button>${handHtml()}${extras()}`;
   const safe = ty === 's' || ty === 'H' || ty === 'A';
   if (safe) return head + `<p>${t('Secure sector: no card to draw.')}</p>${alien ? `<button class="btn danger wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
-    <button class="btn primary big wide" data-act="quiet">${t('Done')}</button>${undoBtn()}${handHtml(true)}${extras()}`;
+    <button class="btn primary big wide" data-act="quiet">${t('Done')}</button>${undoBtn()}${handHtml()}${extras()}`;
   if (digital()) return head + `<p>${alien ? t('Attack, or draw a Dangerous Sector card:') : t('Draw a Dangerous Sector card:')}</p>
     ${alien ? `<button class="btn danger big wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
-    <button class="btn primary big wide" data-act="drawcard">${t('Draw a card')}</button>${undoBtn()}${handHtml(true)}`;
+    <button class="btn primary big wide" data-act="drawcard">${t('Draw a card')}</button>${undoBtn()}${handHtml()}`;
   return head + `<p>${alien ? t('Attack, or draw a Dangerous Sector card:') : t('Draw a Dangerous Sector card:')}</p>
     ${alien ? `<button class="btn danger big wide" data-act="attack">${t('Attack this sector')}</button>` : ''}
     <div class="stack"><button class="btn big" data-act="noiseHere">${t('Noise in your sector')}</button><button class="btn big" data-act="noiseAny">${t('Noise in any sector')}</button><button class="btn big" data-act="silence">${t('Silence')}</button></div>

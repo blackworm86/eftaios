@@ -379,7 +379,11 @@ const IT = {
 "Pass and play: one device, digital cards.": "Passa e gioca: un dispositivo, carte digitali.",
 "The pass-and-play game ends for everyone.": "La partita passa e gioca finisce per tutti.",
 "H / A: your private guess": "U / A: la tua ipotesi privata",
-"Cards left": "Carte rimaste"
+"Cards left": "Carte rimaste",
+"turns": "turni",
+"Empty slot": "Slot vuoto",
+"Use": "Usa",
+"Tap a highlighted sector on the map.": "Tocca un settore evidenziato sulla mappa."
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

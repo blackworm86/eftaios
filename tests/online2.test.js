@@ -12,7 +12,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   await human.screenshot({path:S+'/o-move.png'});
   // ---- adrenaline: only before moving, doubles movement
   await human.evaluate(()=>{S.items=['adrenaline','teleport','sedatives'];S.pos='K09';S.phase='move';refreshReach();render()});
-  await human.click('[data-act=useitem][data-i=adrenaline]');
+  await human.click('[data-act=itemdlg][data-i=adrenaline]');await human.click('dialog [data-act=useitem]');
   assert(await human.evaluate(()=>allowance())===2&&await human.evaluate(()=>S.items.length)===2,'Adrenaline: 2 sectors, card consumed');
   await human.evaluate(()=>{const k=[...T.reach.entries()].find(([id,d])=>d===2&&at(T.map,id)==='.')[0];selectCell(k)});await human.click('[data-act=confirm]');
   assert(await human.evaluate(()=>S.phase)==='resolve','moved 2 sectors');
@@ -21,18 +21,18 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   const before=await H.evaluate(()=>T.counts.sector.d+T.counts.sector.x);
   await human.evaluate(()=>{S.pos=[...T.reach.keys()][0]||S.pos});
   await human.evaluate(()=>{S.pos='K10';S.res={stage:'choose'};render()});
-  await human.click('[data-act=useitem][data-i=sedatives]');
+  await human.click('[data-act=itemdlg][data-i=sedatives]');await human.click('dialog [data-act=useitem]');
   assert(await human.evaluate(()=>S.res.stage)==='done'&&await human.evaluate(()=>S.items.join())==='teleport','Sedatives: no card, card consumed');
   assert(await H.evaluate(()=>T.counts.sector.d+T.counts.sector.x)===before,'no sector card drawn with Sedatives');
   await H.waitForFunction(()=>T.counts.item.x>=1);assert(true,'used items go to the discard pile');
   assert(await H.evaluate(()=>S.log.some(e=>e.kind==='item'&&e.text==='sedatives')),'item use is public');
   // ---- teleport
-  await human.click('[data-act=useitem][data-i=teleport]');
+  await human.click('[data-act=itemdlg][data-i=teleport]');await human.click('dialog [data-act=useitem]');
   assert(await human.evaluate(()=>S.pos)===await human.evaluate(()=>find(T.map,'H')),'Teleport: back to the Human sector');
   // ---- spotlight reveals positions of players in range
   await human.evaluate(()=>{S.items=['spotlight'];render()});
   await others[0].evaluate(()=>{S.pos='K09'});await others[1].evaluate(()=>{S.pos='A14'});
-  await human.click('[data-act=useitem][data-i=spotlight]');
+  await human.click('[data-act=itemdlg][data-i=spotlight]');await human.click('dialog [data-act=useitem]');
   await human.evaluate(()=>{const cb=T.pick.cb;T.pick=null;cb('K10')});
   await human.waitForSelector('dialog[open]',{timeout:15000});
   const txt=await human.evaluate(()=>document.querySelector('dialog').textContent);

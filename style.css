@@ -321,3 +321,20 @@ html,body{height:100vh;height:100dvh}
 .roomrow>div{flex:1;min-width:0}.roomrow small{display:block;font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .roomrow b{font:700 22px var(--font-head);letter-spacing:.25em;margin-right:8px}.roomrow .btn{flex:none;min-height:44px;padding:8px 12px}
 .passname{color:var(--text)}
+
+/* ---- v11: vertical player strip ---- */
+.mkbar{left:6px;right:auto;top:6px;bottom:6px;width:62px;flex-direction:column;gap:4px;overflow:hidden;padding:0}
+.mkbar button{flex:0 1 46px;min-height:28px;flex-direction:column;justify-content:center;gap:1px;padding:2px;border-radius:12px;font:600 10px var(--font);line-height:1.1;width:100%}
+.mkbar button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mkbar .mkt b{font:700 15px var(--mono);color:var(--amber)}.mkbar .mkt span{font-size:9px;color:var(--dim)}
+.msus{display:flex;gap:2px;flex:none}
+.msus button{flex:1 1 0;min-height:26px;padding:0;border-radius:6px;font:700 11px var(--mono);border:1px solid var(--line);background:#0a1120dd;color:var(--dim)}
+.msus button.none[aria-pressed=true]{background:#ffd23f;color:#1a1200}.msus button.human[aria-pressed=true]{background:#2f7dff;color:#fff}.msus button.alien[aria-pressed=true]{background:#ff3b30;color:#fff}
+.inspect{left:76px}
+
+/* ---- v11: item slots, no-scroll panel ---- */
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.slot{min-height:46px;display:flex;align-items:center;justify-content:center;text-align:center;padding:4px 6px;border-radius:10px;border:1.5px solid var(--amber);background:#ffb41f14;color:var(--text);font:700 13px var(--font-head);letter-spacing:.05em;text-transform:uppercase;line-height:1.1}
+.slot.empty{border:1.5px dashed var(--line);background:none;color:var(--dim);font:500 11px var(--font);text-transform:none;letter-spacing:0}
+.panel h2{margin-bottom:8px}
+.panel .say{margin:8px 0;padding:10px 12px}.panel .say b{font-size:24px}

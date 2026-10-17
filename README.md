@@ -10,6 +10,8 @@ Web companion for the physical board game *Escape from the Aliens in Outer Space
 
 Run: `python3 -m http.server` in this folder and open http://localhost:8000.
 
+Maps: Black Edition (Galilei, Fermi, Galvani), *Before the World Ends* (Machiavelli, Frenzy, Morgenland, En Garde, Sinistra, Sound of Silence) and *Spring* (Dilemma, Cavour, Balena, Ascesa, Garibaldi, Socrates). The map picker groups them by pack and shows a preview. `node tests/maps.check.js` verifies every map.
+
 Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 01..14, columns A..W): `.` dangerous, `s` secure, `x` empty space, `H` human, `A` alien, `1`-`4` hatches.
 
 ## Playing

@@ -61,7 +61,7 @@ function reportOut() {
   if (inRoom() && T.turnState.uid === Sync.uid) endTurn();
 }
 function afterChange() {
-  if (S.role === 'human' && !S.over && [1, 2, 3, 4].every(n => S.hatches[n])) S.over = 'trapped';
+  if (S.role === 'human' && !S.over && mapHatches().every(n => S.hatches[n])) S.over = 'trapped';
   save(); refreshReach(); render(); paintCells(); hdr();
   if (S.hot) { if (['escaped', 'dead', 'trapped'].includes(S.over) && !S.outSent) Hot.onOut(S.over); }
   else reportOut();
@@ -334,7 +334,7 @@ function tablePanel() {
   return `${roomBlock()}
     ${inRoom() || S.hot ? `<h3>${t('Players')} <span class="hint">${t('H / A: your private guess')}</span></h3>${orderList()}${skip}` : notedHtml}
     <h3>${t('Escape hatches')} <span class="hint">${digital() ? '' : t('tap to close or reopen')}</span></h3>
-    <div class="hatches compact">${[1, 2, 3, 4].map(n => `<button data-act="${digital() ? 'noop' : 'hatch'}" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${t('Escape Hatch {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}">${n}</button>`).join('')}</div>
+    <div class="hatches compact">${mapHatches().map(n => `<button data-act="${digital() ? 'noop' : 'hatch'}" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${t('Escape Hatch {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}">${n}</button>`).join('')}</div>
     ${decksHtml()}
     <h3>${t('Announcements')}</h3>${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
     ${ln ? `<ul class="log" style="margin-top:12px">${ln}</ul>` : `<p class="dim">${t('Nothing yet. Yours are logged automatically.')}</p>`}`;

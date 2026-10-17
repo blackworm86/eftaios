@@ -31,7 +31,7 @@ function parseMap(m) {
   const rows = m.rows_data;
   if (!Array.isArray(rows) || !rows.length || rows.some(r => typeof r !== 'string' || r.length !== rows[0].length)) throw new Error('Invalid map rows');
   if (!rows.every(r => /^[.sxHA1-4]+$/.test(r))) throw new Error('Unknown symbol in map (allowed: . s x H A 1 2 3 4)');
-  return { id: m.id || 'map-' + Date.now(), name: m.name || 'Custom map', description: m.description || '', official: !!m.official, cols: rows[0].length, rows: rows.length, odd: m.oddColumnsLower !== false, grid: rows.map(r => r.split('')) };
+  return { id: m.id || 'map-' + Date.now(), name: m.name || 'Custom map', description: m.description || '', pack: m.pack || '', author: m.author || '', official: !!m.official, cols: rows[0].length, rows: rows.length, odd: m.oddColumnsLower !== false, grid: rows.map(r => r.split('')) };
 }
 async function loadMaps() {
   let list = [];
@@ -49,6 +49,21 @@ function neighbors(map, c, r) {
 const at = (map, id) => { const p = parseId(id); return p && p[0] < map.cols && p[1] < map.rows ? map.grid[p[1]][p[0]] : null; };
 function find(map, ch) { for (let r = 0; r < map.rows; r++) for (let c = 0; c < map.cols; c++) if (map.grid[r][c] === ch) return cid(c, r); return null; }
 const hatchOpen = n => !S.hatches[n];
+/* the escape hatches that exist on a map (some maps have fewer than four) */
+const mapHatches = (map = T.map) => [1, 2, 3, 4].filter(n => map && map.grid.some(r => r.includes(String(n))));
+/* small picture of a map for the selection screens */
+function mapPreview(map) {
+  if (!map) return '';
+  const W = HEX * 2 + 1.5 * HEX * (map.cols - 1), H = Math.sqrt(3) * HEX * (map.rows + 0.5), col = { '.': '#59627a', s: '#ece6d3', H: '#1c5d93', A: '#a53312' };
+  let g = '';
+  for (let r = 0; r < map.rows; r++) for (let c = 0; c < map.cols; c++) {
+    const ty = map.grid[r][c]; if (ty === 'x') continue;
+    const { x, y } = hexPos(map, c, r);
+    g += `<polygon points="${hexPts(x, y, HEX - 1)}" fill="${col[ty] || '#1e8a4f'}"/>`;
+    if ('1234'.includes(ty)) g += `<text x="${x}" y="${y}" class="pvn">${ty}</text>`;
+  }
+  return `<svg class="mapprev" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="${esc(map.name)}">${g}</svg>`;
+}
 const label = id => { const ty = at(T.map, id); return ty === 'H' ? t('Human start') : ty === 'A' ? t('Alien start') : '1234'.includes(ty) ? t('Escape Hatch {n}', { n: ty }) : id; };
 const basic = () => S.mode === 'basic', infection = () => S.mode === 'infection';
 

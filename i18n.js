@@ -404,7 +404,10 @@ const IT = {
 "Add a note": "Aggiungi una nota",
 "Tracking": "Tracciamento",
 "Announcements of the other players are marked on everyone's map automatically.": "Gli annunci degli altri giocatori vengono segnati in automatico sulla mappa di tutti.",
-"Like the paper map: each player marks the steps of the others by hand.": "Come sulla mappa di carta: ogni giocatore segna a mano i passi degli altri."
+"Like the paper map: each player marks the steps of the others by hand.": "Come sulla mappa di carta: ogni giocatore segna a mano i passi degli altri.",
+"My maps": "Le mie mappe",
+"Map by {a}": "Mappa di {a}",
+"{n} escape hatches": "{n} scialuppe"
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

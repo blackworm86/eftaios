@@ -11,8 +11,13 @@ const langSwitch = () => `<div class="lang-switch" role="group" aria-label="Lang
 const hero = () => `${langSwitch()}<p class="eyebrow">${t('Companion app · physical game required')}</p>
   <h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>`;
 const nameField = () => `<label class="field"><span>${t('Your name')}</span><input id="flow-name" type="text" maxlength="20" autocomplete="off" placeholder="${t('Player')}" value="${esc(S.name || '')}"></label>`;
-const mapSelect = (list, cur) => `<label class="field"><span>${t('Map')}</span><select id="f-map">${list.map(m => `<option value="${esc(m.id)}"${m.id === cur ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
-  <p class="dim hintline" id="f-map-desc"></p>`;
+/* map picker grouped by pack, with a preview of the selected map */
+const mapSelect = (list, cur) => {
+  const packs = []; list.forEach(m => { const p = m.pack || t('My maps'); if (!packs.includes(p)) packs.push(p); });
+  const opt = m => `<option value="${esc(m.id)}"${m.id === cur ? ' selected' : ''}>${esc(m.name)}</option>`;
+  return `<label class="field"><span>${t('Map')}</span><select id="f-map">${packs.map(p => `<optgroup label="${esc(p)}">${list.filter(m => (m.pack || t('My maps')) === p).map(opt).join('')}</optgroup>`).join('')}</select></label>
+  <div class="prevbox" id="f-map-prev"></div><p class="dim hintline" id="f-map-desc"></p>`;
+};
 const modeSelect = cur => `<label class="field"><span>${t('Rules')}</span><select id="f-mode">${Object.entries(MODES).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(v[0])}</option>`).join('')}</select></label>
   <p class="dim hintline" id="f-mode-desc"></p>`;
 const TRACK = { auto: ['Automatic', 'Announcements of the other players are marked on everyone\'s map automatically.'], manual: ['By hand', 'Like the paper map: each player marks the steps of the others by hand.'] };
@@ -60,7 +65,7 @@ function renderFlow() {
   const keep = card.scrollTop; card.innerHTML = h;
   const fm = $('#f-map'), fd = $('#f-mode'), fc = $('#f-cards'), ft = $('#f-track');
   const upd = () => {
-    if (fm) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-desc').textContent = m && m.description ? t(m.description) : ''; }
+    if (fm) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-desc').textContent = m ? [m.description ? t(m.description) : '', m.author ? t('Map by {a}', { a: m.author }) : '', t('{n} escape hatches', { n: mapHatches(m).length })].filter(Boolean).join(' · ') : ''; }
     if (fd) $('#f-mode-desc').textContent = t(MODES[fd.value][1]);
     if (fc) $('#f-cards-desc').textContent = t(CARDS[fc.value][1]);
     if (ft) $('#f-track-desc').textContent = t(TRACK[ft.value][1]);
@@ -89,7 +94,7 @@ function lobbyHtml() {
       <div class="row"><button class="btn primary" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div></div>
     <h3>${t('Game')}</h3>
     ${host ? mapSelect(tableMaps(), st.map) + modeSelect(st.mode) + cardSelect(online ? 'online' : 'physical') + trackSelect(st.track || 'auto')
-      : `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(mode[0])}</dd><dt>${t('Cards')}</dt><dd>${t(cards[0])}</dd><dt>${t('Tracking')}</dt><dd>${t(TRACK[st.track || 'auto'][0])}</dd></dl><p class="dim hintline">${t(mode[1])}</p>`}
+      : `<div class="prevbox">${mapPreview(map)}</div><dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(mode[0])}</dd><dt>${t('Cards')}</dt><dd>${t(cards[0])}</dd><dt>${t('Tracking')}</dt><dd>${t(TRACK[st.track || 'auto'][0])}</dd></dl><p class="dim hintline">${t(mode[1])}</p>`}
     <h3>${t('Turn order')} (${players.length}) ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>` : ''}</h3>
     <ul class="plist">${rows}</ul>
     ${host ? `<p class="dim hintline">${t('Use the arrows to set the order of play. The first player starts.')}</p>` : ''}

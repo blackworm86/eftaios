@@ -4,7 +4,7 @@
    "id": "galilei",
    "name": "Galilei",
    "official": true,
-   "description": "Balanced zone. Ideal for new players (4\u20138).",
+   "description": "Balanced zone. Ideal for new players (4–8).",
    "oddColumnsLower": true,
    "rows_data": [
     "x.sxxs..ss....xsssxxssx",
@@ -21,13 +21,14 @@
     "s...sxs.xx.....s.s..s.s",
     "s4...x....x..........3.",
     "..ssxxssss.s.ss.sxxs.s."
-   ]
+   ],
+   "pack": "Black Edition"
   },
   {
    "id": "fermi",
    "name": "Fermi",
    "official": true,
-   "description": "Technological zone, demanding (2\u20136).",
+   "description": "Technological zone, demanding (2–6).",
    "oddColumnsLower": true,
    "rows_data": [
     "xxxxxxxxx3xxx4xxxxxxxxx",
@@ -44,13 +45,14 @@
     "xxxxxxxx.sxsx.sxxxxxxxx",
     "xxxxxxxxxx.xsxxxxxxxxxx",
     "xxxxxxxxxxxxxxxxxxxxxxx"
-   ]
+   ],
+   "pack": "Black Edition"
   },
   {
    "id": "galvani",
    "name": "Galvani",
    "official": true,
-   "description": "Corridor zone, for experienced players (2\u20138).",
+   "description": "Corridor zone, for experienced players (2–8).",
    "oddColumnsLower": true,
    "rows_data": [
     "xxx..1xxx.....x2.....sx",
@@ -67,6 +69,287 @@
     "..x..xxs.xxsx..xxxx..x.",
     "xx.xxx..xx..xxxxx..xx..",
     "xxxxxxxx..sxs.s.s....xx"
+   ],
+   "pack": "Black Edition"
+  },
+  {
+   "id": "machiavelli",
+   "name": "Machiavelli",
+   "pack": "Before the World Ends",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "x.xxxxxxx.s.xxxxxxxxxxx",
+    ".1..xxxs.xxsxxxxxxxsxxx",
+    "...s...x..xxs.xxx..x4xx",
+    "xx..s..x.xs.xsx..xxxsxx",
+    "xx.x.xx.s..s..sxssxssxx",
+    "xx.xxs..x.sAs.x.xx.x.xx",
+    "xx.s.xx...xxxx.x.x.s.xx",
+    "xxsss.x.xsxHxxxx2x.xsxx",
+    "xx.x.s..x..s..xxx..s.xx",
+    "xx.xx.xxsxs.s...sxx.sxx",
+    "xx...s.x..sxs.sxs.sxxxx",
+    "x...s..sxx...xxxxxxxxxx",
+    ".3...xxx..x.xxxxxxxxxxx",
+    "...xxxxxxxsxxxxxxxxxxxx"
+   ],
+   "author": "Paolo Carnevali"
+  },
+  {
+   "id": "frenzy",
+   "name": "Frenzy",
+   "pack": "Before the World Ends",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxx4xxxxxxxxxxxx",
+    "xxxxxxxx1sss3xxxxxxxxxx",
+    "xxxxxxxxsxxAss2xxxxxxxx",
+    "xxxxxxxxxxs.sxxxxxxxxxx",
+    "xxxxxxxxxxs.xxxxxxxxxxx",
+    "xxxxxxxxxxsHsxxxxxxxxxx",
+    "xxxxxxxxxxsssxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ],
+   "author": "Kim Hee Jin"
+  },
+  {
+   "id": "morgenland",
+   "name": "Morgenland",
+   "pack": "Before the World Ends",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxx.xxxxxxxxxxx",
+    "xxxxxxxxxx.2.xxxxxxxxxx",
+    "xxxxxxx..s.xs.xxxxxxxxx",
+    "xxxxxxxs.xsA.sxxxxxxxxx",
+    "xxxxxx.x..xxx.x.xxxxxxx",
+    "xxxxx.1xs.sHx..3.xxxxxx",
+    "xxxxxxsx.sxx.x...xxxxxx",
+    "xxxxxx..s..ss...xxxxxxx",
+    "xxxxxxxx.xx.xxsxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ],
+   "author": "Jasmin Delbrück"
+  },
+  {
+   "id": "engarde",
+   "name": "En Garde",
+   "pack": "Before the World Ends",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxx...sxxxxxxxxx",
+    "xxxxxxxxxx.xxsxxxxxxxxx",
+    "xxxxxxxss..xsxs.xAxxxxx",
+    "xxxxxxssss.s.sssssxxxxx",
+    "xxxxx..sx.sxs3xsxxsxxxx",
+    "xxxxxxHsxxsx..xxsx4xxxx",
+    "xxxxxx..xxsx2x1xssxxxxx",
+    "xxxxxxxx...xx.x.sxxxxxx",
+    "xxxxxxxxxx.....xxxxxxxx",
+    "xxxxxxxxxx.xxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "sinistra",
+   "name": "Sinistra",
+   "pack": "Before the World Ends",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxx.xxxxxxxxxxx",
+    "xxxxxxxxx..x....x.xxxxx",
+    "xxxxxxxssxs.sxx.1.xxxxx",
+    "xxxxxssxx......x..xxxxx",
+    "xxxxAsxxH.xxsx..2.xxxxx",
+    "xxxxxxssxx.s..sx.3xxxxx",
+    "xxxxxxxxs....x.4.xxxxxx",
+    "xxxxxxxxxx..s....xxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "soundofsilence",
+   "name": "Sound of Silence",
+   "pack": "Before the World Ends",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxx.xsss.s.sssxxx.s.x",
+    "xxx..ss.sx.s..x.s.s.1sx",
+    "xxxsxx.....xsx..sxxx.sx",
+    "xxs2xx.s.s......ssssx.x",
+    "xxxss..sx.sxsxxs..ss.xx",
+    "xxxx.xxsxxsx..xxsx.x.xx",
+    "xxxxsx..xxsxxxx.s..xxxx",
+    "xxxxsxxx...Hx.Ass..xxxx",
+    "xxx.s.xssx...x.....sxxx",
+    "xx...x.xss.xxsss.xxsxxx",
+    "xxss.xxxxsxsxsx..sxsxxx",
+    "xxxx..xx.x.xsx.xsx..4sx",
+    "xxxs3s.sx.x.xsxssxxxssx",
+    "xxsxsx.xsx.xsxsx.xxxxxx"
+   ],
+   "author": "Serge Sautrelle"
+  },
+  {
+   "id": "dilemma",
+   "name": "Dilemma",
+   "pack": "Spring",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxsxxxxxxxxxxx",
+    "xxxxxxxxx1sxsAxxxxxxxxx",
+    "xxxxxxxxxss.ssxxxxxxxxx",
+    "xxxxxxxxxsxsxsxxxxxxxxx",
+    "xxxxxxxxxxsHsxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "cavour",
+   "name": "Cavour",
+   "pack": "Spring",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxsxxxxxxxxx",
+    "xxxxxxxxxsx.s.ssxxxxxxx",
+    "xxxxxsxs...xxs1.sxxxxxx",
+    "xxx...s..sxAxx.s.xxxxxx",
+    "xxx.sx.s..xsxsxs.xxxxxx",
+    "xxxs.sx.sxxsxx..xsxxxxx",
+    "xxs.2s.sxss...xssx..xxx",
+    "xxss...s...Hs..xxxs3sxx",
+    "xxxx.s.xs.ss.xxxxs..sxx",
+    "xxxxxxxxxx...sxs.xsxxxx",
+    "xxxxxxxxxxxxxx.x.xxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "balena",
+   "name": "Balena",
+   "pack": "Spring",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxsxxxxxxx",
+    "xxxxxxxxxxxxxxsssxxxxxx",
+    "xxxx2sx.xxxxxs.x.sxxxxx",
+    "xxxxs1sxssx.xssxxA..xxx",
+    "xxxxsss.s.sxs.xxx.Hsxxx",
+    "xxxx3xxxxxxxxss.sxsxxxx",
+    "xxxxxxxxxxxxxxsssxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "ascesa",
+   "name": "Ascesa",
+   "pack": "Spring",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxsxsxxxxxxxxxxx",
+    "xxxxxxxxsH.x.xxxxxxxxxx",
+    "xxxxxxxx.s.s..s.xxxxxxx",
+    "xxxxxxx.sxx.xsxsxxxxxxx",
+    "xxxxxxx...As.x..xxxxxxx",
+    "xxxxxxxxssxxxssxxxxxxxx",
+    "xxxxxxxx..x1.x.xxxxxxxx",
+    "xxxxxxxxs.xs23ssxxxxxxx",
+    "xxxxxxxxxx.xx.4.xxxxxxx",
+    "xxxxxxxxxxs.sxsxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "garibaldi",
+   "name": "Garibaldi",
+   "pack": "Spring",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxsxxxxxxxxxxx",
+    "xxxxxxxxxssAssxxxxxxxxx",
+    "xxxxxs.ss..H..ssssxxxxx",
+    "xxxxs....x.x.x.....xxxx",
+    "xxxxs.xxxxxxxxxxx.sxxxx",
+    "xxxxs.x.xxxxxxx.x.sxxxx",
+    "xxxxss.s.......s.s.xxxx",
+    "xxxxxx.xss1s2ssxsxxxxxx",
+    "xxxxxxxxxx3s4xxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "id": "socrates",
+   "name": "Socrates",
+   "pack": "Spring",
+   "official": true,
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxx3.4xxxxxxxxxx",
+    "xxxxxxx.xx.A.xx.xxxxxxx",
+    "xxxxxx.1.ss.ss.2.xxxxxx",
+    "xxxxxx...x.H.x...xxxxxx",
+    "xxxxxxxsxx...xxsxxxxxxx",
+    "xxxxxxxx..xsx..xxxxxxxx",
+    "xxxxxxxxxxsxsxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
    ]
   }
  ]

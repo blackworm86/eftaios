@@ -409,6 +409,7 @@ const IT = {
 "Map by {a}": "Mappa di {a}",
 "{n} escape hatches": "{n} scialuppe",
 "Tap to choose another map": "Tocca per scegliere un'altra mappa",
+"Map style": "Stile mappa", "Dark": "Scuro", "Classic": "Classico",
 "Choose a map": "Scegli una mappa"
 };
 let LANG = 'en';

@@ -377,3 +377,21 @@ html,body{height:100vh;height:100dvh}
 .gcard .mapprev{max-height:none;aspect-ratio:3/2;background:radial-gradient(ellipse at 50% 50%,#0f1a33,#070b14 80%);border-radius:8px}
 .gcard b{font:700 14px var(--font-head);letter-spacing:.05em;text-transform:uppercase;margin-top:4px}.gcard small{color:var(--dim);font-size:11px}
 .gcard[aria-pressed=true]{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}
+
+/* ---------- classic map style: drawn like the printed sheets ---------- */
+.paper{fill:none;pointer-events:none}
+.hatchln{stroke:#9a9a9a;stroke-width:.7}
+.stage.classic{background:#f4f2ec}
+#map.classic .paper{fill:url(#hatch)}
+#map.classic .hex{stroke:#555;stroke-width:1.4}
+#map.classic .hex.d{fill:#c9c9c9}
+#map.classic .hex.s{fill:#fff}
+#map.classic .hex.x{fill:url(#hatch);stroke:none}
+#map.classic.editing .hex.x{fill:#eee;stroke:#aaa}
+#map.classic .hex.H,#map.classic .hex.A,#map.classic .hex.P{fill:#151515;stroke:#151515}
+#map.classic .hex.P.closed{fill:#7a7a7a}
+#map.classic .hex.reach{fill:#ffb41f;fill-opacity:.9}
+#map.classic .hex.s.reach{fill:#ffd780}
+#map.classic .hex.sel{fill:#fff;stroke:#e08a00;stroke-width:3}
+#map.classic .lbl{opacity:.8;fill:#222;font-weight:700}
+#map.classic .s .lbl{fill:#222}

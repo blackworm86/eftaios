@@ -93,10 +93,18 @@ const hexPos = (map, c, r) => ({ x: HEX + 1.5 * HEX * c, y: Math.sqrt(3) / 2 * H
 function el(tag, attrs = {}, parent) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
 const hexPts = (x, y, s) => [0, 1, 2, 3, 4, 5].map(i => { const a = Math.PI / 3 * i; return (x + s * Math.cos(a)).toFixed(1) + ',' + (y + s * Math.sin(a)).toFixed(1); }).join(' ');
 
+/* map style: 'dark' (app) or 'classic' (drawn like the printed sheets); per device */
+let MAP_STYLE = (() => { try { return localStorage.getItem('eftaios.mapstyle') || 'dark'; } catch (e) { return 'dark'; } })();
+function applyMapStyle() { svg.classList.toggle('classic', MAP_STYLE === 'classic'); const st = $('#stage'); if (st) st.classList.toggle('classic', MAP_STYLE === 'classic'); }
+function setMapStyle(v) { MAP_STYLE = v === 'classic' ? 'classic' : 'dark'; try { localStorage.setItem('eftaios.mapstyle', MAP_STYLE); } catch (e) {} applyMapStyle(); }
 function buildMap() {
+  applyMapStyle();
   const map = T.map; svg.textContent = '';
   mapW = HEX * 2 + 1.5 * HEX * (map.cols - 1); mapH = Math.sqrt(3) * HEX * (map.rows + 0.5);
+  const defs = el('defs', {}, svg), pat = el('pattern', { id: 'hatch', width: 5, height: 5, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
+  el('line', { x1: 0, y1: 0, x2: 0, y2: 5, class: 'hatchln' }, pat);
   const vp = el('g', { id: 'vp' }, svg);
+  el('rect', { x: -HEX, y: -HEX, width: mapW + 2 * HEX, height: mapH + 2 * HEX, class: 'paper' }, vp);
   const cells = el('g', { id: 'cells' }, vp);
   for (let r = 0; r < map.rows; r++) for (let c = 0; c < map.cols; c++) {
     const { x, y } = hexPos(map, c, r), id = cid(c, r);
@@ -400,6 +408,7 @@ const actions = {
   share() { const url = roomUrl(), data = { title: 'EFTAIOS', text: t('Join my table: {c}', { c: Sync.code }), url }; if (navigator.share) navigator.share(data).catch(() => {}); else copyText(url, t('Link copied')); },
   qr() { qrDlg(); },
   lang(b) { setLang(b.dataset.l); },
+  mapstyle(b) { setMapStyle(b.dataset.v); b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); },
   cancelpick() { T.pick = null; paintCells(); render(); },
   noop() { },
   sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
@@ -550,6 +559,7 @@ function morePanel() {
     ${solo ? `<details class="acc"><summary>${t('Map')}</summary>${maps}<div class="row"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div></details>` : ''}
     <details class="acc"><summary>${t('Game')}</summary>${Sync.code ? `<p>${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</p>` : `<div class="inline"><button class="btn" data-act="turnminus" aria-label="−">−</button><div class="btn static">${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</div><button class="btn" data-act="turnplus" aria-label="+">+</button></div>`}
       <div class="stack" style="margin-top:10px"><button class="btn" data-act="clearlog">${t('Clear announcements')}</button><button class="btn danger" data-act="newgame">${t('New game')}</button></div></details>
+    <details class="acc"><summary>${t('Map style')}</summary><div class="chips">${['dark', 'classic'].map(v => `<button data-act="mapstyle" data-v="${v}" aria-pressed="${MAP_STYLE === v}">${t(v === 'dark' ? 'Dark' : 'Classic')}</button>`).join('')}</div></details>
     <details class="acc"><summary>${t('Language')}</summary><div class="chips">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l === 'en' ? 'English' : 'Italiano'}</button>`).join('')}</div></details>
     <p class="dim fine2">${t('Unofficial fan companion for Escape from the Aliens in Outer Space. Requires the physical game; no cards are included.')}</p>`;
 }

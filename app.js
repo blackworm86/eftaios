@@ -160,11 +160,17 @@ function paintOverlay() {
   // collect every visit: my own route + other players' public positions
   const visits = [];
   S.path.forEach(p => visits.push({ key: 'me', sector: p.pos, turn: p.turn, kind: 'route' }));
+  // where I really was at the end of each turn (to tell my bluffs from honest announcements)
+  const realAt = {}; S.path.forEach(p => { realAt[p.turn] = p.pos; });
+  const whereAt = n => { for (let k = n; k >= 0; k--) if (realAt[k]) return realAt[k]; return null; };
   for (const e of S.log) {
     if (!e.sector || !['noise', 'attack', 'reveal', 'spot'].includes(e.kind)) continue;
-    visits.push({ key: e.kind === 'spot' ? 'spot' : playerKey(e), sector: e.sector, turn: e.turn, kind: e.kind });
+    let key = e.kind === 'spot' ? 'spot' : playerKey(e);
+    if (key === 'me') { if (e.kind !== 'noise' || e.sector === whereAt(e.turn)) continue; key = 'bluff'; }  // honest: the route marker shows it
+    visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind });
   }
-  const recent = v => S.mkAll || v.key === focus || v.key === 'me' || S.turn - v.turn < MK_RECENT;
+  const mine = k => k === 'me' || k === 'bluff';
+  const recent = v => S.mkAll || v.key === focus || mine(v.key) || S.turn - v.turn < MK_RECENT;
   // group: sector -> player -> turns
   const bySector = new Map();
   for (const v of visits) {
@@ -176,7 +182,7 @@ function paintOverlay() {
     const rank = { route: 0, noise: 1, attack: 2, reveal: 3, spot: 0 };
     if (rank[v.kind] > rank[it.kind]) it.kind = v.kind;
   }
-  const order = k => k === 'me' ? -1 : k === 'spot' ? 99 : colorOf(k);
+  const order = k => k === 'me' ? -2 : k === 'bluff' ? -1 : k === 'spot' ? 99 : colorOf(k);
   bySector.forEach((m, sec) => {
     const p = parseId(sec); if (!p) return; const h = hexPos(map, p[0], p[1]);
     const items = [...m.values()].sort((x, y) => order(x.key) - order(y.key));
@@ -187,11 +193,11 @@ function paintOverlay() {
     list.forEach((it, i) => {
       const [dx, dy] = sp[i], turns = it.turns.sort((x, y) => y - x), last = turns[0];
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
-      const dim = focus && it.key !== focus, old = !focus && S.turn - last >= 2;
-      const [fill, ink] = PALETTE[colorOf(it.key)], bluff = it.key === 'me' && it.kind !== 'route';
-      const g = el('g', { class: `mk pm ${it.kind}${it.key === 'me' ? ' mine' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
+      const own = mine(it.key), ck = own ? 'me' : it.key, [fill, ink] = PALETTE[colorOf(ck)], bluff = it.key === 'bluff';
+      const dim = focus && !(it.key === focus || (focus === 'me' && own)), old = !focus && !bluff && S.turn - last >= 2;
+      const g = el('g', { class: `mk pm ${it.kind}${own ? ' mine' : ''}${bluff ? ' bluff' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       if (it.key === 'me') el('circle', { r: size * 1.3, fill: '#ffffff55' }, g);
-      el('circle', { r: size, fill, stroke: borderOf(it.key), 'stroke-width': (size * 0.32).toFixed(2), 'stroke-dasharray': bluff ? '2.2 1.4' : 'none' }, g);
+      el('circle', { r: size, fill, stroke: borderOf(ck), 'stroke-width': (size * 0.32).toFixed(2) }, g);
       if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; el('circle', Object.assign({ r: size + 4.5, class: 'me-ring pulse' + cls }, at_), me); el('circle', Object.assign({ r: size + 3, class: 'me-ring' + cls }, at_), me); }
       const tx = el('text', { fill: ink, 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
     });
@@ -338,7 +344,7 @@ const actions = {
   cancelpick() { T.pick = null; paintCells(); render(); },
   noop() { },
   sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
-  pfocus(b) { const k = b.dataset.k; T.focus = T.focus === k ? null : k; paintOverlay(); if (T.focus) frameSectors(T.focus === 'me' ? S.path.map(p => p.pos) : S.log.filter(e => e.sector && e.kind !== 'spot' && playerKey(e) === T.focus).map(e => e.sector)); if (T.focus) toast(T.focus === 'me' ? t('Showing only your route') : t('Showing only {p}', { p: b.title })); },
+  pfocus(b) { const k = b.dataset.k; T.focus = T.focus === k ? null : k; paintOverlay(); if (T.focus) frameSectors(T.focus === 'me' ? S.path.map(p => p.pos).concat(S.log.filter(e => e.kind === 'noise' && e.sector && playerKey(e) === 'me').map(e => e.sector)) : S.log.filter(e => e.sector && e.kind !== 'spot' && playerKey(e) === T.focus).map(e => e.sector)); if (T.focus) toast(T.focus === 'me' ? t('Showing only your route') : t('Showing only {p}', { p: b.title })); },
   mkall(b) { S.mkAll = b.dataset.v === '1'; save(); render(); paintOverlay(); }
 };
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }

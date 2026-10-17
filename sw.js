@@ -1,5 +1,5 @@
 // Network first (always fresh when online), cache as offline fallback.
-const V = 'eftaios-v11';
+const V = 'eftaios-v12';
 const FILES = ['./', 'index.html', 'style.css', 'firebase-config.js', 'vendor/qrcode.js', 'i18n.js', 'cards.js', 'sync.js', 'app.js', 'game.js', 'online.js', 'hot.js', 'flow.js',
   'maps/maps.json', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));

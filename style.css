@@ -344,3 +344,4 @@ html,body{height:100vh;height:100dvh}
 .row.tight{gap:6px;margin-top:6px;align-items:center}.row.tight>*{flex:1 1 0;margin:0}.row.tight .btn.link{width:auto}
 .btn.slim{min-height:42px;margin-bottom:8px}
 .panel .mini{margin-top:8px}.panel .mini .btn{min-height:38px}
+.pm.bluff{opacity:.45}.pm.bluff.dim{opacity:.1}

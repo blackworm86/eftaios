@@ -15,10 +15,10 @@ ol{padding-left:20px}li{margin:6px 0}.dim{color:#8c9bb8;font-size:14px}
 <h2>2</h2><button id="copy">Copy the rules</button>
 <p id="msg" class="dim" role="status"></p>
 <h2>3</h2>
-<ol><li>Tap in the editor, select all, delete.</li><li>Paste.</li><li>Tap <b>Pubblica</b> (Publish).</li></ol>
+<ol><li>Tap in the editor and delete <b>everything</b>, until the editor is completely empty (check by scrolling down: no braces must be left).</li><li>Paste. The rules are one single long line: the editor must show <b>only line 1</b>.</li><li>Tap <b>Pubblica</b> (Publish).</li></ol><p class="dim">Error "Mismatched '}'" on line 2 or later means old text was left over: delete everything and paste again.</p>
 <h2>Rules</h2><textarea id="r" readonly spellcheck="false"></textarea>
 <script>
 const r=document.getElementById('r'),m=document.getElementById('msg');
-fetch('database.rules.json',{cache:'no-store'}).then(x=>x.text()).then(t=>{r.value=t});
+fetch('database.rules.json',{cache:'no-store'}).then(x=>x.json()).then(j=>{r.value=JSON.stringify(j)});
 document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(r.value);m.textContent='Copied ✓'}catch(e){r.select();document.execCommand('copy');m.textContent='Copied ✓ (if not, select the text below and copy)'}};
 </script></body></html>

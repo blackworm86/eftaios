@@ -26,6 +26,10 @@ Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 0
 
 **Map markers:** each player has a colour; the border shows the faction you suspect (black = you, yellow = undecided, blue = Human, red = Alien). Your bluffs (noise announced away from where you really are) appear as semi-transparent markers in your colour with the turn number. Tap a player on the map strip to see only their timeline.
 
+**Tracking by hand:** More → Tracking other players → *By hand*. Other players are no longer marked automatically; tap ✎ on the map strip, pick a player and tap the sectors to mark their steps (the turn number can be adjusted).
+
+**Notes:** tap 📝 on the map, pick a sector, choose a sticker and write an optional note. Tap the sector later to read, edit or delete it. Notes are private.
+
 Offline or without Firebase, *Play without a table* works on a single device.
 
 Tests: serve the folder on port 8123 and run `node tests/lobby.test.js`, `tests/turns.test.js`, `tests/online.test.js`, `tests/online2.test.js`, `tests/hot.test.js`, `tests/markers.test.js`, `tests/overlap.test.js`, `tests/undo.test.js` and `tests/close.test.js` (uses an in-memory Firebase stand-in, `tests/fake-firebase.js`).

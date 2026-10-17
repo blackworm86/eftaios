@@ -385,7 +385,23 @@ const IT = {
 "Use": "Usa",
 "Tap a highlighted sector on the map.": "Tocca un settore evidenziato sulla mappa.",
 "Your Sector card says:": "La tua Carta Settore dice:",
-"Item icon": "Icona oggetto"
+"Item icon": "Icona oggetto",
+"Tracking other players": "Tracciamento degli altri",
+"Automatic": "Automatico",
+"By hand": "A mano",
+"By hand: like on the paper map, you mark each step of the other players yourself (pencil on the map strip).": "A mano: come sulla mappa di carta, segni tu ogni passo degli altri giocatori (matita sulla barra della mappa).",
+"First pick the player to mark, on the left.": "Prima scegli a sinistra il giocatore da segnare.",
+"Marking {p}: tap the sectors on the map. Tap again to remove.": "Segni {p}: tocca i settori sulla mappa. Tocca di nuovo per togliere.",
+"Pick the player to mark in the strip on the left.": "Scegli nella barra a sinistra il giocatore da segnare.",
+"Mark players by hand": "Segna i giocatori a mano",
+"mark": "segna",
+"Note on {s}": "Nota su {s}",
+"Sticker": "Adesivo",
+"Write a note (optional)": "Scrivi una nota (facoltativa)",
+"Save": "Salva",
+"Edit": "Modifica",
+"Tap the sector for your note": "Tocca il settore della nota",
+"Add a note": "Aggiungi una nota"
 };
 let LANG = 'en';
 try { LANG = localStorage.getItem('eftaios.lang') || ((navigator.language || '').toLowerCase().startsWith('it') ? 'it' : 'en'); } catch (_) { /* noop */ }

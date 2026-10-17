@@ -4,7 +4,7 @@
    Between turns a hand-over screen hides everything until the next player taps their name. */
 const Hot = (() => {
   const KEY = 'eftaios.hot';
-  const PRIV = ['role', 'char', 'pos', 'path', 'fed', 'adr', 'phase', 'res', 'over', 'items', 'undo', 'sus', 'shapes', 'mkAll', 'outSent', 'tab', 'name'];
+  const PRIV = ['role', 'char', 'pos', 'path', 'fed', 'adr', 'phase', 'res', 'over', 'items', 'undo', 'sus', 'shapes', 'mkAll', 'outSent', 'tab', 'name', 'track', 'marks', 'notes', 'extraPlayers'];
   let H = null;
   const load = () => { try { H = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (_) { H = null; } return H; };
   const store = () => { try { localStorage.setItem(KEY, JSON.stringify(H)); } catch (_) { /* full */ } };

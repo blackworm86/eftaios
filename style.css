@@ -345,3 +345,13 @@ html,body{height:100vh;height:100dvh}
 .btn.slim{min-height:42px;margin-bottom:8px}
 .panel .mini{margin-top:8px}.panel .mini .btn{min-height:38px}
 .pm.bluff{opacity:.45}.pm.bluff.dim{opacity:.1}
+
+/* ---- manual tracking, notes ---- */
+.sticker rect{fill:#fff8d6;stroke:#0b1222;stroke-width:1}.sticker text{font-size:9px;text-anchor:middle;dominant-baseline:central}
+.sticker .sdot{fill:#ff3b30;stroke:#fff;stroke-width:.8}
+.inote{margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.inote .btn{min-height:34px;padding:4px 10px}
+.banner.mark{flex-direction:column;align-items:stretch}
+.mturn{display:flex;align-items:center;gap:6px;font:600 12px var(--mono);text-transform:uppercase;color:var(--dim)}.mturn .btn{min-height:36px;width:40px;padding:0;flex:none}.mturn b{color:var(--text);font-size:16px;min-width:2ch;text-align:center}
+.stick button{font-size:22px;min-width:48px}
+.zoom{gap:6px}.zoom button{width:42px;height:42px}
+.mkbar .mkt[aria-pressed=true]{background:var(--amber)}.mkbar .mkt[aria-pressed=true] b,.mkbar .mkt[aria-pressed=true] span{color:#1a1200}

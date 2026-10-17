@@ -14,7 +14,7 @@ const parseId = s => { const m = /^([A-Za-z])\s*0?(\d{1,2})$/.exec(String(s).tri
 
 /* ---------------- state ---------------- */
 const fresh = () => ({
-  stage: 'welcome', myRole: null, ready: false, items: [], undo: null, sus: {}, shapes: {}, mkAll: false, char: '', online: false, outSent: false, revealed: false, room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
+  stage: 'welcome', myRole: null, ready: false, items: [], undo: null, sus: {}, shapes: {}, mkAll: false, track: 'auto', marks: [], notes: [], char: '', online: false, outSent: false, revealed: false, room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
   phase: 'move', res: null, over: null, path: [], log: [],
   hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: []
 });
@@ -91,7 +91,7 @@ function buildMap() {
     el('text', { x, y, class: 'sym' }, g);
   }
   el('polyline', { id: 'trail', class: 'trail' }, vp);
-  el('g', { id: 'marks' }, vp); el('g', { id: 'me' }, vp);
+  el('g', { id: 'marks' }, vp); el('g', { id: 'me' }, vp); el('g', { id: 'notes' }, vp);
   paintCells(); fit();
 }
 const tr = s => window.t ? window.t(s) : s; // map symbols are painted before/after language changes
@@ -150,7 +150,7 @@ function slots(n) {
 function paintOverlay() {
   const map = T.map, inPlay = S.role && !T.editor;
   const trail = $('#trail'), marks = $('#marks'), me = $('#me');
-  marks.textContent = ''; me.textContent = '';
+  marks.textContent = ''; me.textContent = ''; paintNotes();
   const focus = T.focus || null;
   const pts = inPlay ? S.path.map(p => { const [c, r] = parseId(p.pos), h = hexPos(map, c, r); return h.x + ',' + h.y; }) : [];
   trail.setAttribute('points', pts.join(' '));
@@ -166,9 +166,11 @@ function paintOverlay() {
   for (const e of S.log) {
     if (!e.sector || !['noise', 'attack', 'reveal', 'spot'].includes(e.kind)) continue;
     let key = e.kind === 'spot' ? 'spot' : playerKey(e);
+    if (S.track === 'manual' && key !== 'me') continue;   // by hand: other players are only what I marked
     if (key === 'me') { if (e.kind !== 'noise' || e.sector === whereAt(e.turn)) continue; key = 'bluff'; }  // honest: the route marker shows it
     visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind });
   }
+  if (S.track === 'manual') (S.marks || []).forEach(m => visits.push({ key: m.key, sector: m.sector, turn: m.turn, kind: 'noise' }));
   const mine = k => k === 'me' || k === 'bluff';
   const recent = v => S.mkAll || v.key === focus || mine(v.key) || S.turn - v.turn < MK_RECENT;
   // group: sector -> player -> turns
@@ -213,19 +215,61 @@ function knownPlayers() {
   const out = [], seen = new Set(['me']);
   const ord = tableOrder(), ps = tablePlayers();
   ord.forEach(u => { if (ps[u] && u !== myId()) { seen.add('u:' + u); out.push(['u:' + u, ps[u].name]); } });
+  (S.extraPlayers || []).forEach(n => { const k = 'n:' + n.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push([k, n]); } });
   S.log.forEach(e => { if (!e.sector || e.kind === 'spot') return; const k = playerKey(e); if (!seen.has(k)) { seen.add(k); out.push([k, e.who]); } });
   return out;
 }
 /* short label for the narrow strip: 'Player 3' -> 'P3', long names cut */
 const shortName = n => { n = String(n).trim(); const d = n.match(/\d+$/); return n.length <= 6 ? n : d ? n[0] + d[0] : n.slice(0, 5) + '…'; };
+/* ---- manual tracking & map notes ---- */
+function toggleMark(sec) {
+  S.marks = S.marks || []; const turn = T.markTurn || S.turn;
+  const i = S.marks.findIndex(m => m.key === T.markKey && m.sector === sec && m.turn === turn);
+  if (i >= 0) S.marks.splice(i, 1); else S.marks.push({ key: T.markKey, sector: sec, turn });
+  buzz(); save(); paintOverlay();
+}
+function markBanner() {
+  const who = T.markKey ? (knownPlayers().find(([k]) => k === T.markKey) || [0, '?'])[1] : null;
+  return `<div class="banner mark"><div>${who ? t('Marking {p}: tap the sectors on the map. Tap again to remove.', { p: esc(who) }) : t('Pick the player to mark in the strip on the left.')}</div>
+    <div class="row tight"><span class="mturn">${t('Turn')} <button class="btn" data-act="mturn" data-d="-1" aria-label="−">−</button><b>${T.markTurn || S.turn}</b><button class="btn" data-act="mturn" data-d="1" aria-label="+">+</button></span><button class="btn primary" data-act="markmode">${t('Done')}</button></div></div>`;
+}
+const STICKERS = ['❗', '❓', '👽', '🧑', '☠️', '⭐'];
+function paintNotes() {
+  const g = $('#notes'); if (!g) return; g.textContent = '';
+  if (!S.role || T.editor) return;
+  (S.notes || []).forEach(n => {
+    const p = parseId(n.sector); if (!p) return; const h = hexPos(T.map, p[0], p[1]);
+    const s = el('g', { class: 'sticker', transform: `translate(${(h.x - 11).toFixed(1)} ${(h.y - 11).toFixed(1)})` }, g);
+    el('rect', { x: -6.5, y: -6.5, width: 13, height: 13, rx: 3 }, s);
+    const tx = el('text', {}, s); tx.textContent = n.icon;
+    if (n.text) el('circle', { cx: 6, cy: -6, r: 2.2, class: 'sdot' }, s);
+  });
+}
+function noteDlg(sec) {
+  const n = (S.notes || []).find(x => x.sector === sec) || { sector: sec, icon: STICKERS[0], text: '' };
+  T.noteIcon = n.icon;
+  dlg.innerHTML = `<h2>${t('Note on {s}', { s: esc(label(sec)) })}</h2>
+    <div class="chips stick" role="group" aria-label="${t('Sticker')}">${STICKERS.map(s => `<button data-st="${s}" aria-pressed="${s === n.icon}">${s}</button>`).join('')}</div>
+    <textarea id="note-txt" maxlength="120" placeholder="${t('Write a note (optional)')}" style="min-height:80px;margin-top:10px">${esc(n.text || '')}</textarea>
+    <div class="row">${(S.notes || []).some(x => x.sector === sec) ? `<button class="btn danger" id="d-del">${t('Delete')}</button>` : ''}<button class="btn" id="d-no">${t('Cancel')}</button><button class="btn primary" id="d-yes">${t('Save')}</button></div>`;
+  dlg.showModal(); $('#d-no').onclick = closeDlg;
+  dlg.querySelectorAll('.stick button').forEach(b => b.onclick = () => { T.noteIcon = b.dataset.st; dlg.querySelectorAll('.stick button').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+  const del = $('#d-del'); if (del) del.onclick = () => { S.notes = S.notes.filter(x => x.sector !== sec); save(); paintNotes(); closeDlg(); };
+  $('#d-yes').onclick = () => { S.notes = (S.notes || []).filter(x => x.sector !== sec); S.notes.push({ sector: sec, icon: T.noteIcon, text: $('#note-txt').value.trim().slice(0, 120) }); save(); paintNotes(); closeDlg(); };
+}
 function renderMkBar() {
   const bar = $('#mkbar'); if (!bar) return;
   const ps = S.role && !T.editor ? knownPlayers() : [];
-  if (!ps.length) { bar.hidden = true; return; }
+  const manual = S.track === 'manual';
+  if (!ps.length && !manual) { bar.hidden = true; return; }
   bar.hidden = false;
   const sus = k => `<div class="msus" role="group" aria-label="${t('Your suspicion')}">${[['', '?'], ['human', t('H')], ['alien', t('A')]].map(([v, l]) => `<button data-act="sus" data-k="${esc(k)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(k) === v}">${l}</button>`).join('')}</div>`;
   bar.innerHTML = `<button class="mkt" data-act="mkall" data-v="${S.mkAll ? 0 : 1}" aria-pressed="${!!S.mkAll}" aria-label="${S.mkAll ? t('All turns') : t('Last {n} turns', { n: MK_RECENT })}"><b>${S.mkAll ? '∞' : MK_RECENT}</b><span>${t('turns')}</span></button>` +
-    [['me', t('Me')]].concat(ps).map(([k, n]) => `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('');
+    (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Mark players by hand')}"><b>✎</b><span>${t('mark')}</span></button>` : '') +
+    (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
+      ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
+      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('') +
+    (T.markMode && !Sync.code && !S.hot && ps.length < 7 ? `<button class="mkt" data-act="addplayer" aria-label="${t('Add player')}"><b>+</b></button>` : '');
 }
 /* zoom so that all the given sectors are visible */
 function frameSectors(ids) {
@@ -345,6 +389,13 @@ const actions = {
   noop() { },
   sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
   pfocus(b) { const k = b.dataset.k; T.focus = T.focus === k ? null : k; paintOverlay(); if (T.focus) frameSectors(T.focus === 'me' ? S.path.map(p => p.pos).concat(S.log.filter(e => e.kind === 'noise' && e.sector && playerKey(e) === 'me').map(e => e.sector)) : S.log.filter(e => e.sector && e.kind !== 'spot' && playerKey(e) === T.focus).map(e => e.sector)); if (T.focus) toast(T.focus === 'me' ? t('Showing only your route') : t('Showing only {p}', { p: b.title })); },
+  track(b) { S.track = b.dataset.v; T.markMode = false; save(); render(); paintOverlay(); },
+  markmode() { T.markMode = !T.markMode; T.markTurn = S.turn; T.focus = null; if (T.markMode && !T.markKey) { const ps = knownPlayers(); if (ps.length === 1) T.markKey = ps[0][0]; } render(); paintOverlay(); },
+  markwho(b) { T.markKey = b.dataset.k; render(); paintOverlay(); },
+  mturn(b) { T.markTurn = Math.max(1, Math.min(MAX_TURN, (T.markTurn || S.turn) + +b.dataset.d)); render(); },
+  addplayer() { const n = (prompt(t('Player name')) || '').trim().slice(0, 20); if (!n) return; S.extraPlayers = (S.extraPlayers || []).concat([n]); T.markKey = 'n:' + n.toLowerCase(); save(); render(); paintOverlay(); },
+  notemode() { pickSector(t('Tap the sector for your note'), sec => noteDlg(sec)); },
+  noteedit(b) { $('#inspect').hidden = true; noteDlg(b.dataset.s); },
   mkall(b) { S.mkAll = b.dataset.v === '1'; save(); render(); paintOverlay(); }
 };
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
@@ -358,10 +409,12 @@ function pickSector(label_, cb, locked) { T.pick = { label: label_, cb, locked: 
 function onCell(id) {
   if (T.editor) { paintEditor(id); return; }
   if (T.pick) { const cb = T.pick.cb; T.pick = null; paintCells(); cb(id); return; }
+  if (T.markMode) { if (T.markKey) toggleMark(id); else toast(t('First pick the player to mark, on the left.')); return; }
   if (S.role && S.phase === 'move' && !S.over && T.reach.has(id)) { selectCell(id); buzz(); return; }
   T.inspect = id; paintCells();
-  const i = $('#inspect'); i.hidden = false; i.innerHTML = `<b>${'HA1234'.includes(at(T.map, id)) ? '' : id}</b>${esc(typeName(at(T.map, id)))}`;
-  clearTimeout(onCell.h); onCell.h = setTimeout(() => { T.inspect = null; i.hidden = true; paintCells(); }, 3500);
+  const i = $('#inspect'), note = (S.notes || []).find(n => n.sector === id); i.hidden = false;
+  i.innerHTML = `<b>${'HA1234'.includes(at(T.map, id)) ? '' : id}</b>${esc(typeName(at(T.map, id)))}${note ? `<div class="inote">${note.icon} ${esc(note.text || '')} <button class="btn" data-act="noteedit" data-s="${id}">${t('Edit')}</button></div>` : ''}`;
+  clearTimeout(onCell.h); onCell.h = setTimeout(() => { T.inspect = null; i.hidden = true; paintCells(); }, note ? 6000 : 3500);
 }
 
 /* ---------------- announcements ---------------- */
@@ -458,7 +511,9 @@ function hdr() {
 function render() {
   const p = $('#panel-body'); let h = '';
   if (T.pick) h = `<div class="banner"><span>${esc(T.pick.label)}</span>${T.pick.locked ? '' : `<button class="btn" data-act="cancelpick">${t('Cancel')}</button>`}</div>`;
+  if (T.markMode && !T.pick) h = markBanner();
   if (T.editor) h = editorPanel();
+  else if (T.markMode && !T.pick) { /* marking: banner only */ }
   else if (S.tab === 'play') h += playPanel();
   else if (S.tab === 'table') h += tablePanel();
   else h += morePanel();
@@ -481,6 +536,7 @@ function morePanel() {
     ${solo ? `<details class="acc"><summary>${t('Map')}</summary>${maps}<div class="row"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div></details>` : ''}
     <details class="acc"><summary>${t('Game')}</summary>${Sync.code ? `<p>${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</p>` : `<div class="inline"><button class="btn" data-act="turnminus" aria-label="−">−</button><div class="btn static">${t('Turn {n} of {m}', { n: S.turn, m: MAX_TURN })}</div><button class="btn" data-act="turnplus" aria-label="+">+</button></div>`}
       <div class="stack" style="margin-top:10px"><button class="btn" data-act="clearlog">${t('Clear announcements')}</button><button class="btn danger" data-act="newgame">${t('New game')}</button></div></details>
+    <details class="acc"><summary>${t('Tracking other players')}</summary><div class="chips">${[['auto', 'Automatic'], ['manual', 'By hand']].map(([v, l]) => `<button data-act="track" data-v="${v}" aria-pressed="${(S.track || 'auto') === v}">${t(l)}</button>`).join('')}</div><p class="dim hintline" style="margin-top:8px">${t('By hand: like on the paper map, you mark each step of the other players yourself (pencil on the map strip).')}</p></details>
     <details class="acc"><summary>${t('Language')}</summary><div class="chips">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l === 'en' ? 'English' : 'Italiano'}</button>`).join('')}</div></details>
     <p class="dim fine2">${t('Unofficial fan companion for Escape from the Aliens in Outer Space. Requires the physical game; no cards are included.')}</p>`;
 }

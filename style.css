@@ -437,12 +437,6 @@ html,body{height:100vh;height:100dvh}
 .sec .log{margin-top:10px}
 .hatches .hb{min-height:44px;display:grid;place-items:center;border-radius:12px;border:2px solid var(--pod);background:#1e8a4f22;font:700 18px var(--font-head)}
 .hatches .hb.closed{border-color:#7a4a58;background:#3a263066;color:#ba8794;text-decoration:line-through}
-@media (min-width:900px),(max-height:520px) and (orientation:landscape){
-  .subtabs{display:none}
-  .sec:not(.on){display:block}
-  .subtabs+.tsecs .sec>h3:first-child{display:block}
-  .sec.log{order:9}
-  .sec+.sec{margin-top:18px}
 }
 /* More: a short settings list, long content opens full screen */
 .menu{display:grid;gap:8px}

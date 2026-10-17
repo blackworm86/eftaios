@@ -582,13 +582,13 @@ function morePanel() {
   const solo = !Sync.code && !S.hot, host = !!(Sync.code && Sync.isHost());
   const ng = S.hot || host ? 'Close game' : Sync.code ? 'Leave game' : 'New game';
   return `<div class="menu">
-    <button class="mrow" data-act="rules">${t('How to play')}<i aria-hidden="true">${ico('next', 18)}</i></button>
-    ${solo ? `<button class="mrow" data-act="maps">${t('Map')}<small>${esc(T.map.name)}</small><i aria-hidden="true">${ico('next', 18)}</i></button>
-      <div class="setrow"><span>${t('Turn')}</span><div class="stepper"><button class="btn" data-act="turnminus" aria-label="${t('Previous turn')}">−</button><b>${S.turn}<small>/${MAX_TURN}</small></b><button class="btn" data-act="turnplus" aria-label="${t('Next turn')}">+</button></div></div>` : ''}
+    <div class="tiles${solo ? '' : ' one'}"><button class="mrow" data-act="rules">${t('How to play')}<i aria-hidden="true">${ico('next', 18)}</i></button>
+    ${solo ? `<button class="mrow" data-act="maps">${t('Map')}<i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}</div>
+    ${solo ? `<div class="setrow"><span>${t('Turn')}</span><div class="stepper"><button class="btn" data-act="turnminus" aria-label="${t('Previous turn')}">−</button><b>${S.turn}<small>/${MAX_TURN}</small></b><button class="btn" data-act="turnplus" aria-label="${t('Next turn')}">+</button></div></div>` : ''}
     ${segRow('Map style', 'mapstyle', 'v', MAP_STYLE, [['dark', t('Dark')], ['classic', t('Classic')]])}
     ${segRow('Language', 'lang', 'l', LANG, [['en', 'English'], ['it', 'Italiano']])}
     </div>
-    <div class="row menuact">${digital() || S.hot ? '' : `<button class="btn" data-act="clearlog">${t('Clear announcements')}</button>`}<button class="btn danger" data-act="newgame">${t(ng)}</button></div>`;
+    <div class="row menuact"><button class="btn danger" data-act="newgame">${t(ng)}</button></div>`;
 }
 function editorPanel() {
   const tl = [['.', 'Dangerous', '#59627a'], ['s', 'Secure', '#ece6d3'], ['x', 'Empty', '#0b1222'], ['H', 'Human', '#1c5d93'], ['A', 'Alien', '#a53312'], ['1', 'Hatch 1', '#1e8a4f'], ['2', 'Hatch 2', '#1e8a4f'], ['3', 'Hatch 3', '#1e8a4f'], ['4', 'Hatch 4', '#1e8a4f']];

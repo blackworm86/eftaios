@@ -20,10 +20,8 @@ h1,h2,h3{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.0
 .screen{position:relative;height:100%;overflow:auto;display:grid;place-items:center;padding:20px}
 .setup-card{width:min(520px,100%);background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
   border-radius:20px;padding:28px 24px;box-shadow:0 20px 60px #000a}
-.eyebrow{font:600 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:0 0 10px}
-.setup-card h1{font-size:clamp(28px,7vw,42px);line-height:1.02}
+.setup-card h1{font-size:32px;line-height:1.02}
 .setup-card h1 span{color:var(--alien)}
-.lead{color:var(--dim);margin:14px 0 20px}
 .field{display:block;margin:0 0 14px}
 .field>span{display:block;font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
 .field>span em{text-transform:none;letter-spacing:0;font-style:normal;opacity:.7}
@@ -33,17 +31,16 @@ textarea{font:13px var(--mono);min-height:140px}
 .roles{border:0;margin:20px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .roles legend{font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;padding:0}
 .role-btn{min-height:96px;border-radius:14px;border:2px solid;background:var(--bg2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .12s}
-.role-btn b{font:700 26px var(--font-head);text-transform:uppercase;letter-spacing:.08em}
+.role-btn b{font:700 24px var(--font-head);text-transform:uppercase;letter-spacing:.08em}
 .role-btn small{color:var(--dim)}
 .role-btn.human{border-color:var(--human)}.role-btn.human b{color:var(--human)}
 .role-btn.alien{border-color:var(--alien)}.role-btn.alien b{color:var(--alien)}
 .role-btn:active{transform:scale(.97)}
-.fine{font-size:13px;color:var(--dim);margin:14px 0 0}
 
 /* ---------- app shell ---------- */
 #app{position:relative;height:100%;display:flex;flex-direction:column}
 .topbar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#0a1120ee;border-bottom:1px solid var(--line);min-height:56px;z-index:3}
-.brand{font:700 15px var(--font-head);letter-spacing:.22em;color:var(--amber);margin-right:auto}
+.brand{font:700 16px var(--font-head);letter-spacing:.22em;color:var(--amber);margin-right:auto}
 .stat{display:flex;align-items:baseline;gap:5px;font-family:var(--mono)}
 .stat small{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .stat b{font-size:22px;color:var(--text);min-width:1.4ch;text-align:right}
@@ -54,7 +51,7 @@ textarea{font:13px var(--mono);min-height:140px}
 .icon-btn{width:var(--tap);height:var(--tap);display:grid;place-items:center;border-radius:12px;border:1px solid var(--line);background:var(--panel)}
 
 #layout{flex:1;min-height:0;display:flex;flex-direction:column}
-.stage{position:relative;flex:1;min-height:200px;background:radial-gradient(ellipse at 50% 50%,#0f1a33,#070b14 75%);overflow:hidden}
+.stage{position:relative;flex:1;min-height:200px;background:#0b1222;overflow:hidden}
 #map{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
 #map:active{cursor:grabbing}
 .panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border-top:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;z-index:2;
@@ -102,8 +99,6 @@ textarea{font:13px var(--mono);min-height:140px}
 .sym.sm{font-size:7px}
 .trail{fill:none;stroke:var(--amber);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1 5;opacity:.85;pointer-events:none}
 .me-ring{fill:none;stroke:var(--amber);stroke-width:3;pointer-events:none}
-.me-dot{pointer-events:none}
-.me-dot.human{fill:var(--human)}.me-dot.alien{fill:var(--alien)}
 .pulse{animation:pulse 1.8s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes pulse{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(2.2)}}
 .mk{pointer-events:none}
@@ -117,9 +112,8 @@ textarea{font:13px var(--mono);min-height:140px}
 .inspect b{font-family:var(--mono);color:var(--amber);margin-right:6px}
 
 /* ---------- panel content ---------- */
-.step{font:700 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:0 0 4px}
 .panel h2{font-size:24px;margin-bottom:6px}
-.panel h3{font-size:15px;color:var(--amber);margin:20px 0 8px}
+.panel h3{font-size:16px;color:var(--amber);margin:20px 0 8px}
 .panel p{margin:6px 0 12px;color:#c4cde0}
 .dim{color:var(--dim)!important}
 .row{display:flex;gap:10px;flex-wrap:wrap}
@@ -129,7 +123,7 @@ textarea{font:13px var(--mono);min-height:140px}
 .btn.primary{background:var(--amber);color:#1a1200;border-color:var(--amber);font-weight:800;letter-spacing:.03em}
 .btn.danger{border-color:var(--alien);color:#ff9d8a}
 .btn.ok{border-color:var(--pod);color:#8ff0b6}
-.btn.big{min-height:60px;font-size:17px}
+.btn.big{min-height:60px;font-size:18px}
 .btn[disabled]{opacity:.4;pointer-events:none}
 .btn small{display:block;font-weight:400;color:var(--dim);font-size:12px}
 .btn.primary small{color:#3a2d00}
@@ -154,7 +148,7 @@ textarea{font:13px var(--mono);min-height:140px}
 .chips button[aria-pressed=true]{border-color:var(--amber);color:var(--amber);background:#ffb41f14}
 .hatches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .hatches button{min-height:64px;border-radius:12px;border:2px solid var(--pod);background:#1e8a4f22;font:700 22px var(--font-head)}
-.hatches button small{display:block;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.hatches button small{display:block;font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase}
 .hatches button[aria-pressed=true]{border-color:#7a4a58;background:#3a263066;color:#ba8794;text-decoration:line-through}
 .log{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .log li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:8px 10px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);font-size:14px}
@@ -170,11 +164,11 @@ textarea{font:13px var(--mono);min-height:140px}
 .tools i{width:18px;height:18px;flex:none;clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)}
 
 .cover{position:fixed;inset:0;z-index:50;background:#04070e;display:grid;place-items:center;text-align:center;padding:24px}
-.cover-ico{font-size:64px;color:var(--amber);opacity:.7}
+.cover-ico{width:56px;height:56px;color:var(--amber);opacity:.8;margin:0 auto}
 .cover h2{font-size:32px;margin:6px 0}
 .cover p{color:var(--dim);margin:0 0 20px}
 .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#fff;color:#111;padding:10px 16px;border-radius:12px;font-weight:600;z-index:40;max-width:90vw;box-shadow:0 8px 30px #000a}
-dialog{border:1px solid var(--line);border-radius:18px;background:var(--panel);color:var(--text);padding:20px;width:min(440px,92vw);box-shadow:0 20px 80px #000}
+dialog{border:1px solid var(--line);border-radius:20px;background:var(--panel);color:var(--text);padding:20px;width:min(440px,92vw);box-shadow:0 20px 80px #000}
 dialog::backdrop{background:#000b}
 dialog h2{font-size:22px;margin-bottom:8px}
 dialog p{color:#c4cde0}
@@ -198,11 +192,11 @@ dialog .row{margin-top:16px}
 #join-banner{margin:0 0 14px;display:block}
 .wide{width:100%;display:block}
 .mini{margin-top:16px}.mini .btn{min-height:40px;font-size:14px;font-weight:500;color:var(--dim)}
-.sub{font-size:15px;font-weight:400}
+.sub{font-size:16px;font-weight:400}
 .panel h2 .sub{text-transform:none;letter-spacing:0}
 .hint{font:400 12px var(--font);color:var(--dim);text-transform:none;letter-spacing:0;margin-left:6px}
 .check{display:flex;align-items:center;gap:10px;text-align:left;margin-top:12px;min-height:44px;font-weight:500}
-.check i{width:22px;height:22px;border-radius:6px;border:2px solid var(--dim);flex:none;display:grid;place-items:center}
+.check i{width:22px;height:22px;border-radius:10px;border:2px solid var(--dim);flex:none;display:grid;place-items:center}
 .check[aria-pressed=true] i{background:var(--amber);border-color:var(--amber)}
 .check[aria-pressed=true] i::after{content:"✓";color:#1a1200;font-weight:800;font-size:14px}
 .roomcard{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px}
@@ -211,21 +205,11 @@ dialog .row{margin-top:16px}
 .stat-line{font-size:13px;color:var(--dim)}.stat-line.online{color:var(--pod)}.stat-line.error,.stat-line.offline{color:var(--alien)}
 .roomcard .row{margin-top:12px}.roomcard .row>*{flex:1 1 90px}
 .qr{background:#fff;border-radius:12px;padding:8px;width:min(280px,100%);margin:12px auto 0}.qr svg{display:block;width:100%;height:auto}
-.acc{border:1px solid var(--line);border-radius:12px;margin:0 0 10px;background:var(--bg2);padding:0 14px}
-.acc>summary{min-height:var(--tap);display:flex;align-items:center;cursor:pointer;font:700 14px var(--font-head);letter-spacing:.1em;text-transform:uppercase;list-style:none}
-.acc>summary::-webkit-details-marker{display:none}
-.acc>summary::after{content:"+";margin-left:auto;color:var(--amber);font-size:20px}
-.acc[open]>summary::after{content:"−"}
-.acc[open]{padding-bottom:14px}
-.opts{margin-top:4px}.opts .field:last-child{margin-bottom:0}
 .rules h4{font:700 14px var(--font-head);letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin:16px 0 4px}
-.mapbtn{flex:1;text-align:left}.mapbtn.on{border-color:var(--amber)}
-.btn.static{flex:1;cursor:default}
 .fine2{font-size:13px;margin-top:16px}
 .panel h3{margin-top:22px}
 
 /* ---- v3: lobby flow ---- */
-.step2{font-size:22px;margin:4px 0 14px}
 .btn.link{background:none;border:0;color:var(--dim);min-height:44px;margin-top:6px}
 .or{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:13px;margin:14px 0}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -247,13 +231,13 @@ html,body{height:100vh;height:100dvh}
 #app,.screen{height:100vh;height:100dvh}
 .screen{display:flex;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
 .setup-card{margin:auto;width:min(520px,100%)}
-.setup-card h1{font-size:clamp(24px,8vw,40px)}
+.setup-card h1{font-size:28px}
 .stage{min-height:200px}
-.panel h2{font-size:clamp(18px,5.5vw,24px)}
+.panel h2{font-size:20px}
 #panel-body{padding:12px 14px 16px}
 .stat.pos{min-width:0}
 .stat.pos b{font-size:16px;max-width:11ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media (max-width:420px){.stat small{font-size:10px}.topbar{padding:6px 10px}.stat b{font-size:18px}.chip{padding:4px 8px;font-size:11px}.btn.big{min-height:50px}}
+@media (max-width:420px){.stat small{font-size:11px}.topbar{padding:6px 10px}.stat b{font-size:18px}.chip{padding:4px 8px;font-size:11px}.btn.big{min-height:50px}}
 
 /* ---- v5: turns, hands, decks ---- */
 .turnbar{padding:6px 14px;text-align:center;font:700 13px var(--mono);letter-spacing:.1em;text-transform:uppercase;background:var(--bg2);color:var(--dim);border-bottom:1px solid var(--line)}
@@ -263,14 +247,9 @@ html,body{height:100vh;height:100dvh}
 .turnlist li.out{opacity:.65}
 .turnlist .mk{width:14px;color:var(--amber)}.turnlist .pname{flex:1}.turnlist em{font-style:normal;color:var(--dim);font-size:12px}
 .b-ok{color:var(--pod);font-size:12px;font-family:var(--mono)}.b-out{color:var(--alien);font-size:12px;font-family:var(--mono)}
-.hand{margin-top:14px}.hl{display:block;font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.card{text-align:left;padding:10px;border-radius:12px;border:1.5px solid var(--amber);background:#ffb41f12;min-height:64px}
-.card b{display:block;font:700 15px var(--font-head);letter-spacing:.06em;text-transform:uppercase}.card small{display:block;color:var(--dim);font-size:11px;line-height:1.3;margin-top:2px}
-.card[disabled]{border-color:var(--line);background:var(--bg2);opacity:.8}
 .report{margin:8px 0;padding-left:18px;color:#c4cde0}
 .plist .num{width:20px;font:700 12px var(--mono);color:var(--dim)}.plist .pname{flex:1}
-.plist .mv{display:flex;gap:4px}.plist .mv button{width:40px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}.plist .mv button[disabled]{opacity:.3}
+.plist .mv{display:flex;gap:4px}.plist .mv button{width:40px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}.plist .mv button[disabled]{opacity:.3}
 .mini-link{background:none;border:0;color:var(--amber);font:600 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-left:8px;cursor:pointer;min-height:32px}
 .plist.rev li{flex-wrap:wrap}
 
@@ -283,7 +262,7 @@ html,body{height:100vh;height:100dvh}
 .sus button.alien[aria-pressed=true]{background:#ff3b30;color:#fff}
 /* ---- v8: non-overlapping markers, per-player focus ---- */
 .pm text{font-family:var(--mono);font-weight:700}
-.mk.dim,.me-ring.dim,.me-dot.dim{opacity:.12}
+.mk.dim,.me-ring.dim{opacity:.12}
 .trail.dim{opacity:.12}
 .tl{fill:none;stroke-width:2.2;stroke-dasharray:4 3;stroke-linecap:round;pointer-events:none}
 .mkbar{position:absolute;left:8px;right:64px;top:8px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
@@ -302,25 +281,24 @@ html,body{height:100vh;height:100dvh}
 .passname .dot{width:30px;height:30px}
 .hotnames{list-style:none;padding:0;margin:0 0 10px;display:grid;gap:8px}
 .hotnames li{display:flex;gap:8px}.hotnames input{flex:1}.hotnames .btn{flex:none;width:48px;padding:0}
-.hotbtn{margin-top:10px}
 
 /* ---- v10: compact table ---- */
 .hatches.compact{grid-template-columns:repeat(4,1fr)}.hatches.compact button{min-height:44px;font-size:18px}
 .decks1{font-size:13px;color:var(--dim);margin:12px 0 0}.decks1 b{color:var(--text);font-family:var(--mono)}
 .panel h3:first-child,#panel-body>.roomcard:first-child{margin-top:0}
-.roomcard{padding:10px 12px}.roomcard b{font-size:26px}
+.roomcard{padding:10px 12px}.roomcard b{font-size:24px}
 .roomrow{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
-.roomrow>div{flex:1;min-width:0}.roomrow small{display:block;font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.roomrow>div{flex:1;min-width:0}.roomrow small{display:block;font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .roomrow b{font:700 22px var(--font-head);letter-spacing:.25em;margin-right:8px}.roomrow .btn{flex:none;min-height:44px;padding:8px 12px}
 .passname{color:var(--text)}
 
 /* ---- v11: vertical player strip ---- */
 .mkbar{left:6px;right:auto;top:6px;bottom:6px;width:62px;flex-direction:column;gap:4px;overflow:hidden;padding:0}
-.mkbar button{flex:0 1 46px;min-height:28px;flex-direction:column;justify-content:center;gap:1px;padding:2px;border-radius:12px;font:600 10px var(--font);line-height:1.1;width:100%}
+.mkbar button{flex:0 1 46px;min-height:28px;flex-direction:column;justify-content:center;gap:1px;padding:2px;border-radius:12px;font:600 11px var(--font);line-height:1.1;width:100%}
 .mkbar button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mkbar .mkt b{font:700 15px var(--mono);color:var(--amber)}.mkbar .mkt span{font-size:9px;color:var(--dim)}
+.mkbar .mkt b{font:700 16px var(--mono);color:var(--amber)}.mkbar .mkt span{font-size:11px;color:var(--dim)}
 .msus{display:flex;gap:2px;flex:none}
-.msus button{flex:1 1 0;min-height:26px;padding:0;border-radius:6px;font:700 11px var(--mono);border:1px solid var(--line);background:#0a1120dd;color:var(--dim)}
+.msus button{flex:1 1 0;min-height:26px;padding:0;border-radius:10px;font:700 11px var(--mono);border:1px solid var(--line);background:#0a1120dd;color:var(--dim)}
 .msus button.none[aria-pressed=true]{background:#ffd23f;color:#1a1200}.msus button.human[aria-pressed=true]{background:#2f7dff;color:#fff}.msus button.alien[aria-pressed=true]{background:#ff3b30;color:#fff}
 .inspect{left:76px}
 
@@ -339,7 +317,7 @@ html,body{height:100vh;height:100dvh}
 .pm.bluff{opacity:.45}.pm.bluff.dim{opacity:.1}
 
 /* ---- manual tracking, notes ---- */
-.sticker rect{fill:#fff8d6;stroke:#0b1222;stroke-width:1}.sticker text{font-size:9px;text-anchor:middle;dominant-baseline:central}
+.sticker rect{fill:#fff8d6;stroke:#0b1222;stroke-width:1}.sticker text{font-size:11px;text-anchor:middle;dominant-baseline:central}
 .sticker .sdot{fill:#ff3b30;stroke:#fff;stroke-width:.8}
 .inote{margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.inote .btn{min-height:34px;padding:4px 10px}
 .banner.mark{flex-direction:column;align-items:stretch}
@@ -349,7 +327,7 @@ html,body{height:100vh;height:100dvh}
 .mkbar .mkt[aria-pressed=true]{background:var(--amber)}.mkbar .mkt[aria-pressed=true] b,.mkbar .mkt[aria-pressed=true] span{color:#1a1200}
 
 /* ---- map preview ---- */
-.prevbox{margin:-4px 0 6px;background:radial-gradient(ellipse at 50% 50%,#0f1a33,#070b14 80%);border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;justify-content:center}
+.prevbox{margin:-4px 0 6px;background:#0b1222;border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;justify-content:center}
 .mapprev{width:100%;max-height:150px;display:block}
 .pvn{font:700 16px var(--font-head);fill:#fff;text-anchor:middle;dominant-baseline:central}
 
@@ -359,14 +337,14 @@ html,body{height:100vh;height:100dvh}
 .mapcard:hover,.mapcard:focus-visible{border-color:var(--amber)}
 .mapcard .prevbox{margin:0;border:0;border-radius:0}
 .mapname{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:8px 12px}
-.mapname b{font:700 17px var(--font-head);letter-spacing:.06em;text-transform:uppercase}.mapname small{color:var(--amber);font-size:12px}
+.mapname b{font:700 18px var(--font-head);letter-spacing:.06em;text-transform:uppercase}.mapname small{color:var(--amber);font-size:12px}
 .gallery{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
 .gallery header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)}
 .gallery h2{font-size:20px}.gbody{flex:1;overflow:auto;padding:4px 14px 24px}
 .gallery h3{font-size:14px;color:var(--amber);margin:18px 0 8px}
 .ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .gcard{display:flex;flex-direction:column;gap:2px;padding:6px 6px 8px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg2);text-align:left}
-.gcard .mapprev{max-height:none;aspect-ratio:3/2;background:radial-gradient(ellipse at 50% 50%,#0f1a33,#070b14 80%);border-radius:8px}
+.gcard .mapprev{max-height:none;aspect-ratio:3/2;background:#0b1222;border-radius:10px}
 .gcard b{font:700 14px var(--font-head);letter-spacing:.05em;text-transform:uppercase;margin-top:4px}.gcard small{color:var(--dim);font-size:11px}
 .gcard[aria-pressed=true]{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}
 
@@ -425,7 +403,7 @@ html,body{height:100vh;height:100dvh}
 .roles{margin-top:6px}.roles .role-btn{min-height:80px}
 .hotnames{grid-template-columns:1fr 1fr;gap:6px}
 .hotnames li{position:relative}.hotnames input{padding-right:40px;min-height:44px}
-.hotnames .x{position:absolute;right:2px;top:2px;width:40px;height:40px;border:0;background:none;color:var(--dim);font-size:15px}
+.hotnames .x{position:absolute;right:2px;top:2px;width:40px;height:40px;border:0;background:none;color:var(--dim);font-size:16px}
 .hotnames .addp{width:100%;min-height:44px;padding:6px}
 .setup-card .flabel{margin-bottom:6px}
 .setup-card .field{margin-bottom:12px}
@@ -434,7 +412,7 @@ html,body{height:100vh;height:100dvh}
 .setcard{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;margin-top:10px;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:8px}
 .setcard .prevbox{margin:0;padding:2px;border:0}.setcard .mapprev{max-height:64px}
 .setcard .mapcard.mini{border-radius:10px}
-.setcard .kv{grid-template-columns:auto 1fr;gap:1px 10px;font-size:13px;margin:0}.setcard .kv dt{font-size:10px;align-self:center}
+.setcard .kv{grid-template-columns:auto 1fr;gap:1px 10px;font-size:13px;margin:0}.setcard .kv dt{font-size:11px;align-self:center}
 .setcard .edit{min-height:40px;padding:6px 10px;font-size:13px}
 .setup-card h3 .hint{font-size:11px}
 .lobbyact{margin-top:10px}.lobbyact>*{flex:1 1 0}.lobbyact .btn small{font-size:11px}
@@ -444,12 +422,12 @@ html,body{height:100vh;height:100dvh}
   .setup-card{background:none;border:0;box-shadow:none;padding:4px 0}
   .setup-card.home{margin:auto 0}
 }
-@media (max-height:700px){.mapcard .mapprev{max-height:86px}.setup-card h1{font-size:clamp(22px,7vw,34px)}}
+@media (max-height:700px){.mapcard .mapprev{max-height:86px}.setup-card h1{font-size:24px}}
 
 /* game panel */
 .confirmrow .btn:first-child{flex:0 0 56px;font-size:18px;padding:0}
 .subtabs{display:flex;gap:4px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:3px;margin-bottom:10px;position:sticky;top:0;z-index:1}
-.subtabs button{flex:1 1 0;min-height:38px;border:0;border-radius:9px;background:none;color:var(--dim);font:700 12px var(--font-head);letter-spacing:.08em;text-transform:uppercase}
+.subtabs button{flex:1 1 0;min-height:38px;border:0;border-radius:10px;background:none;color:var(--dim);font:700 12px var(--font-head);letter-spacing:.08em;text-transform:uppercase}
 .subtabs button[aria-selected=true]{background:var(--panel2);color:var(--amber)}
 .tsecs{display:flex;flex-direction:column}
 .sec h3:first-child{margin-top:0}
@@ -480,7 +458,7 @@ html,body{height:100vh;height:100dvh}
 #overlay .rules{max-width:680px;margin:0 auto}
 .setup-card .flabel{display:flex;font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .setup-card.home h1{margin-bottom:22px}
-.say.also{padding:8px 12px}.panel .say.also b{font-size:17px}
+.say.also{padding:8px 12px}.panel .say.also b{font-size:18px}
 .setrow>span{white-space:nowrap}.setrow .seg{flex:1 1 auto;max-width:220px}
 .field>.flabel{display:flex}
 /* lobby: compact so a full table fits on a phone */
@@ -506,14 +484,30 @@ html,body{height:100vh;height:100dvh}
 .turnlist .mk{display:grid;place-items:center;width:14px;color:var(--amber)}
 .pst,.b-ok,.b-out{display:inline-flex;align-items:center;gap:4px}
 /* labels are text, not code: sans in place of monospace and condensed display */
-.flabel,.field>span,.roles legend,.kv dt,.roomcard small,.roomrow small,.hl,.say small,.mini-link,.pst,.b-ok,.b-out,.mturn,.turnbar,.lang-switch button,.chip,.setup-card .flabel{font-family:var(--font);letter-spacing:.06em;font-weight:700}
-.tabs button,.acc>summary,.rules h4,.subtabs button,.mrow,.setrow>span,.optinfo dt,.gcard b,.mapname b,.card b,.slot{font-family:var(--font);font-weight:700;letter-spacing:.05em}
+.flabel,.field>span,.roles legend,.kv dt,.roomcard small,.roomrow small,.say small,.mini-link,.pst,.b-ok,.b-out,.mturn,.turnbar,.lang-switch button,.chip,.setup-card .flabel{font-family:var(--font);letter-spacing:.06em;font-weight:700}
+.tabs button,.rules h4,.subtabs button,.mrow,.setrow>span,.optinfo dt,.gcard b,.mapname b,.slot{font-family:var(--font);font-weight:700;letter-spacing:.05em}
 .stat small{font-family:var(--font)}
 .tabs button{font-size:13px}
 /* readable minimums and touch size */
-.mkbar .mkt span,.roomrow small,.hatches button small,.hl,.say small,.gcard small,.card small{font-size:11px}
+.mkbar .mkt span,.roomrow small,.hatches button small,.say small,.gcard small{font-size:11px}
 .mkbar button{min-height:36px}.msus button{min-height:32px}
 /* parts of the browser that carry no design by default */
 ::selection{background:#ffb41f;color:#1a1200}
 input,textarea{caret-color:var(--amber);accent-color:var(--amber)}
 *{scrollbar-width:thin;scrollbar-color:#2c3f66 transparent}
+
+/* ---------- v14: polish ---------- */
+/* More: compact rows so the whole list and its actions fit the phone panel */
+.menu{gap:6px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px}.tiles.one{grid-template-columns:1fr}
+.mrow{min-height:44px;padding:6px 12px}
+.setrow{min-height:44px;padding:2px 2px 2px 12px}
+.setrow .seg button{min-height:38px}
+.stepper .btn{min-height:38px}
+.menuact{margin-top:8px}.menuact .btn{min-height:44px}
+/* top bar: a translated sector name (e.g. "Partenza") must not be cut */
+.stat.pos{flex:0 1 auto}.stat.pos b{max-width:none}
+@media (max-width:420px){.stat.pos small{display:none}.topbar{gap:6px}}
+.setup-card h3{margin:10px 0 6px}
+.fhead{margin-bottom:8px}
+.setcard{margin-top:6px}

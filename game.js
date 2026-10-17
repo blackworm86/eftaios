@@ -337,7 +337,7 @@ function tablePanel() {
   return `<div class="subtabs" role="tablist">${secs.map(([k, l]) => `<button role="tab" data-act="tsec" data-k="${k}" aria-selected="${sec === k}">${t(l)}</button>`).join('')}</div>
     <div class="tsecs">
     <section class="sec log${sec === 'log' ? ' on' : ''}"><h3>${t('Announcements')}</h3>${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
-      ${ln ? `<ul class="log">${ln}</ul>` : `<p class="dim">${t('No announcements yet.')}</p>`}</section>
+      ${ln ? `<ul class="log">${ln}</ul>${digital() || S.hot ? '' : `<button class="btn link wide" data-act="clearlog">${t('Clear announcements')}</button>`}` : `<p class="dim">${t('No announcements yet.')}</p>`}</section>
     <section class="sec players${sec === 'players' ? ' on' : ''}">${roomBlock()}<h3>${t('Players')}</h3>${legendHtml()}${inRoom() || S.hot ? orderList() + skip : notedHtml}</section>
     <section class="sec hatches${sec === 'hatches' ? ' on' : ''}"><h3>${t('Escape hatches')}${hatchAct ? ` <span class="hint">${t('tap to close or reopen')}</span>` : ''}</h3>
       <div class="hatches compact">${mapHatches().map(n => { const lbl = `${t('Escape Hatch {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}`; return hatchAct ? `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${lbl}">${n}</button>` : `<span class="hb${S.hatches[n] ? ' closed' : ''}" role="img" aria-label="${lbl}">${n}</span>`; }).join('')}</div>

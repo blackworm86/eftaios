@@ -26,6 +26,33 @@ colors:
   border-undecided: "#ffd23f"
   border-human: "#2f7dff"
   border-alien: "#ff3b30"
+  line-strong: "#2a3d63"
+  start-human: "#1c5d93"
+  start-alien: "#a53312"
+  hatch-open: "#1e8a4f"
+  hatch-closed: "#3a2630"
+  hatch-closed-text: "#ba8794"
+  hatch-closed-edge: "#7a4a58"
+  reach-secure: "#ffd780"
+  secure-label: "#33384a"
+  spotlight-cyan: "#7fe3ff"
+  ink-soft: "#c4cde0"
+  ink-on-amber: "#1a1200"
+  ink-on-amber-soft: "#3a2d00"
+  danger-text: "#ff9d8a"
+  ok-text: "#8ff0b6"
+  hatch-open-tint: "#1e8a4f22"
+  hatch-open-tint-soft: "#1e8a4f1a"
+  hatch-closed-tint: "#3a263066"
+  note-paper: "#fff8d6"
+  paper-ink: "#222222"
+  paper-start-closed: "#7a7a7a"
+  paper-edge-soft: "#aaaaaa"
+  paper-control-edge: "#99aaaa"
+  paper-accent-ink: "#a86a00"
+  paper-accent-tint: "#ffe2a6"
+  paper-accent-edge: "#d08a00"
+  paper-select-edge: "#e08a00"
   player-teal: "#2ec4b6"
   player-violet: "#9b5de5"
   player-lime: "#a3e048"
@@ -60,6 +87,34 @@ typography:
   data:
     fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace"
     fontSize: "22px"
+    fontWeight: 700
+  micro:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "11px"
+    fontWeight: 600
+  small:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
+  compact:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "14px"
+    fontWeight: 600
+  lead:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "18px"
+    fontWeight: 700
+  title:
+    fontFamily: "Arial Narrow, Roboto Condensed, Helvetica Neue, Impact, sans-serif"
+    fontSize: "20px"
+    fontWeight: 700
+  banner:
+    fontFamily: "Arial Narrow, Roboto Condensed, Helvetica Neue, Impact, sans-serif"
+    fontSize: "32px"
+    fontWeight: 700
+  map-symbol:
+    fontFamily: "Arial Narrow, Roboto Condensed, Helvetica Neue, Impact, sans-serif"
+    fontSize: "7px"
     fontWeight: 700
 rounded:
   sm: "10px"
@@ -155,7 +210,8 @@ Eight player colours chosen to stay distinct from each other and from the four b
 
 ### Hierarchy
 - **Display** (700, 28px, 1.1): the announcement the player must read aloud.
-- **Headline** (700, 24px on desktop, scaling down to 18px on phones, 1.1): panel titles such as the sector name.
+- **Title** (700, 20px, condensed): panel titles such as the sector name. **Banner** (700, 32px): the setup title on the first screen (28px on phones, 24px on very short screens).
+- **Lead / Compact / Small / Micro** (18, 14, 13, 11px): large buttons, dense rows, hints, and the smallest allowed label. Type is a fixed scale, not fluid.
 - **Body** (400, 16px, 1.45): sentences, hints; keep prose to 65–75ch.
 - **Label** (700, 12px, +0.06em, uppercase): field labels, table headers, tab names.
 - **Data** (700, 18–22px mono): turn, table code, counts.

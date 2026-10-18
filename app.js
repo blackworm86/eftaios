@@ -104,8 +104,11 @@ function buildMap() {
   applyMapStyle();
   const map = T.map; svg.textContent = '';
   mapW = HEX * 2 + 1.5 * HEX * (map.cols - 1); mapH = Math.sqrt(3) * HEX * (map.rows + 0.5);
-  const defs = el('defs', {}, svg), pat = el('pattern', { id: 'hatch', width: 5, height: 5, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
-  el('line', { x1: 0, y1: 0, x2: 0, y2: 5, class: 'hatchln' }, pat);
+  // the svg is the size of the map and moves as one GPU layer (applyView); nothing inside it is re-laid out while panning
+  svg.setAttribute('viewBox', `0 0 ${mapW.toFixed(0)} ${mapH.toFixed(0)}`); svg.setAttribute('width', mapW.toFixed(0)); svg.setAttribute('height', mapH.toFixed(0));
+  // classic hatching: one pre-rotated tile, painted once on the background (empty sectors are left transparent)
+  const defs = el('defs', {}, svg), pat = el('pattern', { id: 'hatch', width: 6, height: 6, patternUnits: 'userSpaceOnUse' }, defs);
+  el('path', { d: 'M-1 1L1 -1M0 6L6 0M5 7L7 5', class: 'hatchln' }, pat);
   const vp = el('g', { id: 'vp' }, svg);
   el('rect', { x: -HEX, y: -HEX, width: mapW + 2 * HEX, height: mapH + 2 * HEX, class: 'paper' }, vp);
   const cells = el('g', { id: 'cells' }, vp);
@@ -402,17 +405,21 @@ function follow(k) {
 /* zoom so that all the given sectors are visible */
 function frameSectors(ids) {
   const pts = ids.map(parseId).filter(Boolean).map(([c, r]) => hexPos(T.map, c, r)); if (!pts.length) return;
-  const xs = pts.map(p => p.x), ys = pts.map(p => p.y), r = svg.getBoundingClientRect(), pad = 60;
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y), r = stageRect(), pad = 60;
   const w = Math.max(...xs) - Math.min(...xs) + pad * 2, h = Math.max(...ys) - Math.min(...ys) + pad * 2;
   view.k = Math.max(fitK, Math.min(fitK * 4, Math.min(r.width / w, r.height / h)));
   view.x = r.width / 2 - (Math.min(...xs) + Math.max(...xs)) / 2 * view.k; view.y = r.height / 2 - (Math.min(...ys) + Math.max(...ys)) / 2 * view.k; applyView();
 }
+/* pan and zoom move the whole svg with a CSS transform: the browser slides the painted map instead of repainting it.
+   While moving it is promoted to its own layer; when it settles the layer is dropped so it re-rasterises sharp at the new zoom. */
+const stage = $('#stage'), mapwrap = $('#mapwrap'), stageRect = () => stage.getBoundingClientRect();
 function applyView() {
-  $('#vp').setAttribute('transform', `translate(${view.x.toFixed(1)} ${view.y.toFixed(1)}) scale(${view.k.toFixed(3)})`);
+  mapwrap.style.transform = `translate(${view.x.toFixed(1)}px, ${view.y.toFixed(1)}px) scale(${view.k.toFixed(4)})`;
   svg.classList.toggle('zl', view.k > fitK * 1.7);
+  mapwrap.style.willChange = 'transform'; clearTimeout(applyView.t); applyView.t = setTimeout(() => { mapwrap.style.willChange = 'auto'; }, 220);
 }
 function fit() {
-  const r = svg.getBoundingClientRect(); if (!r.width) return;
+  const r = stageRect(); if (!r.width) return;
   fitK = Math.min(r.width / mapW, r.height / mapH) * 0.98; view.k = fitK;
   view.x = (r.width - mapW * fitK) / 2; view.y = (r.height - mapH * fitK) / 2; applyView();
 }
@@ -421,21 +428,23 @@ function zoomAt(f, cx, cy) {
   view.x = cx - (cx - view.x) * s; view.y = cy - (cy - view.y) * s; view.k = k; applyView();
 }
 function focusOn(id) {
-  const p = parseId(id); if (!p) return; const r = svg.getBoundingClientRect(), h = hexPos(T.map, p[0], p[1]);
+  const p = parseId(id); if (!p) return; const r = stageRect(), h = hexPos(T.map, p[0], p[1]);
   view.k = Math.max(view.k, Math.min(fitK * 2.2, 2.2)); view.x = r.width / 2 - h.x * view.k; view.y = r.height / 2 - h.y * view.k; applyView();
 }
 
 /* pointer: pan, pinch, tap */
 const ptrs = new Map(); let drag = null, moved = false, pinch0 = null;
-svg.addEventListener('pointerdown', e => {
+const onMapUi = e => !!(e.target.closest && e.target.closest('button, .mkbar, .zoom, .inspect, .followbar'));
+stage.addEventListener('pointerdown', e => {
+  if (onMapUi(e)) return;
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (ptrs.size === 1) { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, target: e.target }; moved = false; }
   else if (ptrs.size === 2) {
-    const [a, b] = [...ptrs.values()], r = svg.getBoundingClientRect();
+    const [a, b] = [...ptrs.values()], r = stageRect();
     pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k, vx: view.x, vy: view.y, cx: (a.x + b.x) / 2 - r.left, cy: (a.y + b.y) / 2 - r.top }; moved = true;
   }
 });
-svg.addEventListener('pointermove', e => {
+stage.addEventListener('pointermove', e => {
   if (!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (ptrs.size === 2 && pinch0) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -443,7 +452,7 @@ svg.addEventListener('pointermove', e => {
     view.k = k; view.x = pinch0.cx - (pinch0.cx - pinch0.vx) * s; view.y = pinch0.cy - (pinch0.cy - pinch0.vy) * s; applyView();
   } else if (ptrs.size === 1 && drag) {
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    if (!moved && Math.hypot(dx, dy) > 7) { moved = true; try { svg.setPointerCapture(e.pointerId); } catch (_) { /* noop */ } }
+    if (!moved && Math.hypot(dx, dy) > 7) { moved = true; try { stage.setPointerCapture(e.pointerId); } catch (_) { /* noop */ } }
     if (moved) { view.x = drag.vx + dx; view.y = drag.vy + dy; applyView(); }
   }
 });
@@ -452,9 +461,9 @@ const endPtr = e => {
   if (e.type === 'pointerup' && ptrs.size === 0 && !moved && drag) { const g = drag.target.closest && drag.target.closest('[data-id]'); if (g) onCell(g.dataset.id); }
   if (ptrs.size === 0) { drag = null; pinch0 = null; }
 };
-svg.addEventListener('pointerup', endPtr); svg.addEventListener('pointercancel', endPtr);
-svg.addEventListener('wheel', e => { e.preventDefault(); const r = svg.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
-new ResizeObserver(() => { if (T.map && !fitDone) { fit(); fitDone = true; } }).observe(svg);
+stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);
+stage.addEventListener('wheel', e => { if (onMapUi(e)) return; e.preventDefault(); const r = stageRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+new ResizeObserver(() => { if (T.map && !fitDone) { fit(); fitDone = true; } }).observe(stage);
 let fitDone = false;
 
 /* ---------------- game logic ---------------- */
@@ -487,8 +496,8 @@ const roomUrl = () => location.origin + location.pathname + '?room=' + Sync.code
 const actions = {
   hide() { $('#cover').hidden = false; },
   unhide() { $('#cover').hidden = true; },
-  zin() { const r = svg.getBoundingClientRect(); zoomAt(1.4, r.width / 2, r.height / 2); },
-  zout() { const r = svg.getBoundingClientRect(); zoomAt(1 / 1.4, r.width / 2, r.height / 2); },
+  zin() { const r = stageRect(); zoomAt(1.4, r.width / 2, r.height / 2); },
+  zout() { const r = stageRect(); zoomAt(1 / 1.4, r.width / 2, r.height / 2); },
   fit, focus() { S.pos && focusOn(S.pos); },
   tab(b) { setTab(b.dataset.tab); },
   addann() { addDlg(); },

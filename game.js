@@ -335,7 +335,7 @@ function sheetHtml() {
     if (k === 'me') {
       const step = S.path.filter(p => p.turn === n).pop(), bl = own.bluffs.find(b => b.turn === n);
       if (!step) return '<td class="c none">–</td>';
-      if (bl) return `<td class="c bluff"><b>${esc(bl.sector)}</b><small>${esc(step.pos)}</small></td>`;
+      if (bl) return `<td class="c bluff" title="${esc(t('Bluff (real below)'))}: ${esc(step.pos)}"><b>${esc(bl.sector)}</b><small>${esc(step.pos)}</small></td>`;
       return `<td class="c ${own.heard.has(n) ? 'heard' : 'silent'}">${esc(step.pos)}</td>`;
     }
     const v = trackOf(k).filter(x => x.turn === n);
@@ -348,7 +348,7 @@ function sheetHtml() {
     const guess = k === 'me' ? '' : `<button class="gb ${g || 'none'}" data-act="sus" data-k="${esc(k)}" data-v="${NEXT_SUS[g]}" aria-label="${t('Your suspicion')}: ${t(g === 'human' ? 'Suspected Human' : g === 'alien' ? 'Suspected Alien' : 'No idea')}">${g === 'human' ? t('H') : g === 'alien' ? t('A') : '?'}</button>`;
     return `<tr class="${u && u === cur ? 'cur' : ''}${p && p.out ? ' out' : ''}"><th><span class="who"><button class="name" data-act="follow" data-k="${esc(k)}" aria-label="${t('Follow {p}', { p: esc(n) })}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>${guess}</span></th>${turns.map(x => cell(k, x)).join('')}</tr>`;
   }).join('');
-  return `<div class="sheet" id="sheet"><table><thead><tr><th></th>${turns.map(n => `<th>${t('T{n}', { n })}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="sheet${rows.length > 5 ? ' dense' : ''}" id="sheet"><table><thead><tr><th></th>${turns.map(n => `<th>${t('T{n}', { n })}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 function decksHtml() {
   const c = T.counts || {}; if (!digital() || !c.sector) return '';

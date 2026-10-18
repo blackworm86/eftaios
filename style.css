@@ -546,3 +546,18 @@ input,textarea{caret-color:var(--amber);accent-color:var(--amber)}
 .followbar{position:absolute;top:6px;left:76px;right:6px;z-index:2;border:1.5px solid var(--fc,#ffb41f);border-radius:12px;background:#0a1120ee}
 .mko{fill:none;stroke:#0b1222;stroke-width:1.2}.mko.me{stroke:#fff}
 .mkshade{fill:#0b1222;fill-opacity:.55}
+/* sheet with many players: denser rows; on the smallest screens the sheet scrolls inside its own box, header pinned */
+.sheet thead th{position:sticky;top:0;z-index:2;background:var(--bg2)}
+.sheet thead th:first-child{z-index:3}
+.sheet.dense table{border-spacing:2px}
+.sheet.dense .name{min-height:30px;font-size:12px;gap:4px}.sheet.dense .name .dot{width:14px;height:14px}
+.sheet.dense .gb{min-width:20px;height:20px;font-size:11px}
+.sheet.dense .c{height:28px;min-width:40px;font-size:10.5px}
+.sheet.dense .c.bluff small{display:none}
+.sheet.dense + .legend,.sheet.dense ~ .legend{font-size:11px;gap:2px 10px;margin-top:6px}
+/* the sheet takes the room left in the panel and scrolls inside itself only when it must */
+#panel-body:has(.sheetsec.on){display:flex;flex-direction:column}
+#panel-body:has(.sheetsec.on) .tsecs{flex:1 1 auto;min-height:0}
+.sec.sheetsec.on{display:flex;flex-direction:column;min-height:0}
+.sheetsec .sheet{flex:0 1 auto;min-height:120px;overflow:auto}
+.sheetsec .legend{margin:6px 0 0}

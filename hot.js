@@ -40,6 +40,7 @@ const Hot = (() => {
 
   function showPass() {
     const el = $('#pass'); if (!H || !H.passing || H.result) { el.hidden = true; return; }
+    if (soloPerson()) { H.passing = false; store(); el.hidden = true; afterPass(); return; }
     const s = seat();
     el.innerHTML = `<div><div class="cover-ico">⬢</div><p class="dim">${t('Turn {n} of {m}', { n: H.turn, m: MAX_TURN })}</p>
       <h2>${t('Pass the device to')}</h2><p class="passname">${dotIcon('u:' + s.id, true)}${esc(s.name)}</p>
@@ -51,8 +52,77 @@ const Hot = (() => {
     const s = seat(), msgs = [];
     if (!s.seen) { s.seen = true; msgs.push(`<p>${t('Your secret role')}:</p>${sayBox(t(S.role === 'alien' ? 'Alien' : 'Human'), S.role === 'alien' ? 'alert' : '', S.char)}`); }
     (s.notices || []).forEach(m => msgs.push(`<p>${esc(m)}</p>`)); s.notices = [];
+    const since = H.log.filter(e => e.at > (s.seenAt || 0) && e.by && e.by !== s.id && RECAP.includes(e.kind)).slice(0, 14).reverse();
+    if (s.seenAt && since.length) msgs.push(`<p class="dim">${t('Since your last turn')}:</p><ul class="recap">${since.map(e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b> · ${esc(entryText(e))}</li>`).join('')}</ul>`);
+    s.seenAt = Date.now();
     store();
     if (msgs.length) alertHtml(s.name, msgs.join(''));
+  }
+
+  /* next seat still in the game after the current one (a new round starts when the order wraps) */
+  function advance() {
+    const n = H.seats.length;
+    for (let i = 1; i <= n; i++) { const j = (H.cur + i) % n; if (!H.seats[j].state.over) { if (j <= H.cur) H.turn++; return j; } }
+    return -1;
+  }
+  const isBot = i => !!H.seats[i].bot;
+  /* play every bot seat from `next` on, until it is a person's turn or the game ends */
+  function runBots(next) {
+    let guard = 0;
+    while (!H.result && next >= 0 && H.turn <= MAX_TURN && isBot(next) && guard++ < 2000) {
+      H.cur = next; const st = seat().state; st.phase = 'move'; st.res = null; st.undo = null;
+      if (!st.over) Bot.turn(botCtx());
+      evaluate(); if (H.result) break; next = advance();
+    }
+    if (!H.result && (next < 0 || H.turn > MAX_TURN)) evaluate();
+    if (!H.result && next >= 0) { H.cur = next; H.passing = true; const st = seat().state; st.phase = 'move'; st.res = null; st.adr = false; st.undo = null; }
+    if (H.result && isBot(H.cur)) { const p = H.seats.findIndex(s => !s.bot); if (p >= 0) H.cur = p; }   // the result is shown from a person's seat
+    T.counts = counts();
+  }
+  /* what a bot may do: the same actions a player has, nothing more */
+  const botCtx = () => ({
+    H: { seats: H.seats.map(s => ({ id: s.id, name: s.name })), log: H.log, turn: H.turn, mode: H.mode },   // public view only
+    me: seat(), idx: H.cur, log, out,
+    closeHatch(n) { H.hatches[n] = 1; },
+    draw(type) { const d = H.decks[type], r = deckDraw(d); if (r.card && type !== 'item') d.disc.push(r.card); if (r.reshuffled) log({ who: t('Game'), kind: 'info', text: RESHUFFLED[type] }); return r.card || ''; },
+    discard(id) { if (ITEMS[id]) H.decks.item.disc.push(id); },
+    attack: sector => attackCore(sector, H.cur),
+    spotlight: sector => spotCore(sector, H.cur)
+  });
+  /* only one person left at the device: no need to hide the screen between turns */
+  const soloPerson = () => H.seats.filter(s => !s.bot && !s.state.over).length <= 1;
+  const RECAP = ['noise', 'silence', 'attack', 'spot', 'hatch', 'item', 'reveal', 'out'];
+
+  /* resolve an attack in a sector by seat `by`: everyone else standing there is hit */
+  function attackCore(sector, by) {
+    const hits = [];
+    H.seats.forEach((s, i) => {
+      const st = s.state; if (i === by || st.over || st.pos !== sector) return;
+      if (st.role === 'human' && st.items.includes('defense')) {
+        st.items.splice(st.items.indexOf('defense'), 1); H.decks.item.disc.push('defense');
+        log({ by: s.id, who: s.name, kind: 'item', text: 'defense' }); notify(i, t('You were attacked, but your Defense card saved you!'));
+        hits.push({ name: s.name, def: 1 });
+      } else {
+        hits.push({ name: s.name, killed: 1, role: st.role, char: st.char });
+        if (H.mode === 'infection' && st.role === 'human') { st.role = 'alien'; st.fed = false; log({ by: s.id, who: s.name, kind: 'out', text: 'killed|human|' + (st.char || '') }); H.last = 'lost'; notify(i, t('You are now an Alien, moving from where you fell')); }
+        else { st.over = 'dead'; st.outSent = true; out(i, 'dead'); notify(i, t('You were attacked and eliminated!')); }
+      }
+    });
+    evaluate(); T.counts = counts();
+    return hits;
+  }
+  /* Spotlight named by seat `by`: everyone in the sector or next to it reveals their position */
+  function spotCore(sector, by) {
+    const q = parseId(sector), seen = [];
+    H.seats.forEach((s, i) => {
+      const st = s.state; if (st.over || !q) return;
+      const inRange = st.pos === sector || neighbors(T.map, q[0], q[1]).some(([a, b]) => cid(a, b) === st.pos);
+      if (!inRange) return;
+      seen.push({ name: i === by ? t('You') : s.name, pos: st.pos });
+      log({ by: s.id, who: s.name, kind: 'reveal', text: 'Spotlight', sector: st.pos });
+      if (i !== by) notify(i, t('Spotlight! Your position was revealed: {p}', { p: st.pos }));
+    });
+    return seen;
   }
 
   const api = {
@@ -70,24 +140,24 @@ const Hot = (() => {
       return o;
     },
     rebind() { if (!load()) { S.hot = false; S.stage = 'welcome'; return; } S.log = H.log; S.hatches = H.hatches; T.counts = counts(); },
-    start(names, mapId, mode, track) {
+    start(names, mapId, mode, track, bots) {
       const deal = dealRoles(names.length), keep = S.customMaps, map = T.maps.find(m => m.id === mapId) || T.maps[0];
       H = { mode, mapId: map.id, turn: 1, cur: 0, passing: true, log: [], hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, result: null, last: '',
         decks: { sector: deckNew(SECTOR_DECK), item: deckNew(ITEM_DECK), hatch: deckNew(HATCH_DECK) }, seats: [] };
       names.forEach((name, i) => {
         const { role, char } = deal[i], pos = find(map, role === 'human' ? 'H' : 'A');
-        H.seats.push({ id: 'h' + i, name, role0: role, seen: false, notices: [], state: { name, role, char, pos, path: [{ turn: 0, pos }], fed: false, adr: false, phase: 'move', res: null, over: null, items: [], undo: null, sus: {}, shapes: {}, mkAll: false, outSent: false, tab: 'play', track: track === 'manual' ? 'manual' : 'auto' } });
+        H.seats.push({ id: 'h' + i, name, bot: (bots && bots[i]) || undefined, role0: role, seen: false, notices: [], state: { name, role, char, pos, path: [{ turn: 0, pos }], fed: false, adr: false, phase: 'move', res: null, over: null, items: [], undo: null, sus: {}, shapes: {}, mkAll: false, outSent: false, tab: 'play', track: track === 'manual' ? 'manual' : 'auto' } });
       });
-      T.map = map; S = Object.assign(fresh(), { customMaps: keep }); seatIn(); store(); save(); boot(); showPass();
+      T.map = map; S = Object.assign(fresh(), { customMaps: keep });
+      S.log = H.log; S.hatches = H.hatches;   // bots read hatches and the log before the first person's turn
+      if (seat().bot) { runBots(0); }
+      seatIn(); store(); save(); boot(); showPass();
     },
     showPass,
     go() { H.passing = false; store(); $('#pass').hidden = true; afterPass(); if (S.pos) focusOn(S.pos); },
     endTurn() {
       seatOut(); evaluate();
-      const n = H.seats.length; let next = -1;
-      for (let i = 1; i <= n; i++) { const j = (H.cur + i) % n; if (!H.seats[j].state.over) { if (j <= H.cur) H.turn++; next = j; break; } }
-      if (next < 0 || H.turn > MAX_TURN) evaluate();
-      if (!H.result && next >= 0) { H.cur = next; H.passing = true; const st = seat().state; st.phase = 'move'; st.res = null; st.adr = false; st.undo = null; }
+      runBots(H.result ? -1 : advance());
       store(); seatIn(); save(); boot(); showPass();
     },
     /* the current seat went out of the game (escaped / trapped) during its own turn */
@@ -109,36 +179,8 @@ const Hot = (() => {
       S.items.splice(i, 1); H.decks.item.disc.push(id); T.counts = counts();
       log({ by: api.curId(), who: S.name, kind: 'item', text: id }); saveAll();
     },
-    async attack(sector) {
-      seatOut(); const hits = [];
-      H.seats.forEach((s, i) => {
-        const st = s.state; if (i === H.cur || st.over || st.pos !== sector) return;
-        if (st.role === 'human' && st.items.includes('defense')) {
-          st.items.splice(st.items.indexOf('defense'), 1); H.decks.item.disc.push('defense');
-          log({ by: s.id, who: s.name, kind: 'item', text: 'defense' }); notify(i, t('You were attacked, but your Defense card saved you!'));
-          hits.push({ name: s.name, def: 1 });
-        } else {
-          hits.push({ name: s.name, killed: 1, role: st.role, char: st.char });
-          if (H.mode === 'infection' && st.role === 'human') { st.role = 'alien'; st.fed = false; log({ by: s.id, who: s.name, kind: 'out', text: 'killed|human|' + (st.char || '') }); H.last = 'lost'; notify(i, t('You are now an Alien, moving from where you fell')); }
-          else { st.over = 'dead'; st.outSent = true; out(i, 'dead'); notify(i, t('You were attacked and eliminated!')); }
-        }
-      });
-      evaluate(); T.counts = counts(); store(); save();
-      return { hits, missing: [] };
-    },
-    async spotlight(sector) {
-      seatOut(); const q = parseId(sector), seen = [];
-      H.seats.forEach((s, i) => {
-        const st = s.state; if (st.over || !q) return;
-        const inRange = st.pos === sector || neighbors(T.map, q[0], q[1]).some(([a, b]) => cid(a, b) === st.pos);
-        if (!inRange) return;
-        seen.push({ name: i === H.cur ? t('You') : s.name, pos: st.pos });
-        log({ by: s.id, who: s.name, kind: 'reveal', text: 'Spotlight', sector: st.pos });
-        if (i !== H.cur) notify(i, t('Spotlight! Your position was revealed: {p}', { p: st.pos }));
-      });
-      store(); save();
-      return { seen, missing: [] };
-    }
+    async attack(sector) { seatOut(); const hits = attackCore(sector, H.cur); store(); save(); return { hits, missing: [] }; },
+    async spotlight(sector) { seatOut(); const seen = spotCore(sector, H.cur); store(); save(); return { seen, missing: [] }; }
   };
   return api;
 })();

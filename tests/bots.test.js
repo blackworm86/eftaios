@@ -1,0 +1,54 @@
+// Bots in pass and play: they play whole games, use only public information, and read the table like a player. Static server on :8123.
+const {chromium}=require('/opt/node22/lib/node_modules/playwright');
+const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else console.log('ok  ',m)};
+(async()=>{const b=await chromium.launch();const errs=[];
+ const p=await (await b.newContext({viewport:{width:390,height:844},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('http://localhost:8123/');await p.click('[data-act=hotsetup]');
+ // seat 1 a person, seats 2-4 bots of each level
+ await p.selectOption('[data-hb="1"]','easy');await p.selectOption('[data-hb="2"]','normal');await p.selectOption('[data-hb="3"]','hard');
+ await p.click('[data-act=hotaddbot]');assert(await p.locator('[data-hb]').count()===5&&await p.inputValue('[data-hb="4"]')==='normal','"Add bot" adds a bot seat');
+ await p.click('[data-act=hotdel][data-i="4"]');
+ await p.click('[data-act=hotstart]');
+ assert(await p.locator('#pass:not([hidden])').count()===0,'one person at the device: no hand-over screen');
+ const seats=await p.evaluate(()=>JSON.parse(localStorage.getItem('eftaios.hot')).seats.map(s=>s.bot||'person'));
+ assert(JSON.stringify(seats)==='["person","easy","normal","hard"]','seats: a person and three bots ('+seats+')');
+ await p.evaluate(()=>closeDlg());
+ // play the person's turns automatically until the game ends
+ const res=await p.evaluate(async()=>{
+   for(let k=0;k<60&&!Hot.isOver();k++){
+     if(S.over){Hot.endTurn();continue}
+     const id=[...T.reach.keys()].find(x=>!'1234'.includes(at(T.map,x)))||[...T.reach.keys()][0];
+     if(id){selectCell(id);confirmMove()}
+     if(S.res&&S.res.stage==='choose'&&at(T.map,S.pos)==='.'){await drawSector();if(T.pick){const cb=T.pick.cb;T.pick=null;await cb(S.pos)}}
+     else if(S.res&&S.res.stage==='choose')announce({say:'x'});
+     closeDlg();if(!Hot.isOver()&&!S.over)endTurn();
+   }
+   const H=JSON.parse(localStorage.getItem('eftaios.hot'));
+   return {over:Hot.isOver(),turn:H.turn,botLog:H.log.filter(e=>/^h[123]$/.test(e.by)&&['noise','silence','attack','hatch'].includes(e.kind)).length,kinds:[...new Set(H.log.map(e=>e.kind))]};
+ });
+ assert(res.botLog>=6,'bots announce like players ('+res.botLog+' announcements, kinds: '+res.kinds+')');
+ assert(res.over||res.turn>=10,'the game runs on with bots (turn '+res.turn+', over: '+res.over+')');
+ // beliefs come from public announcements only
+ const bel=await p.evaluate(()=>{
+   const view={seats:[{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'},{id:'d',name:'D'}],turn:5,mode:'advanced',log:[]};
+   const me={id:'a',state:{role:'human'}},L=e=>view.log.unshift(Object.assign({at:Date.now(),text:e.kind},e));
+   L({by:'b',turn:2,kind:'attack',sector:'L08'});                                  // an attack without an Attack card: Alien
+   L({by:'c',turn:2,kind:'item',text:'adrenaline'});                               // played an item: Human
+   const B=Bot.beliefs(view,me);
+   return {b:B.b.pA,c:B.c.pA,d:B.d.pA,keys:Object.keys(view.seats[0]).join(',')};
+ });
+ assert(bel.b>0.9,'an attack with no Attack card marks that player as an Alien ('+bel.b.toFixed(2)+')');
+ assert(bel.c<0.1,'playing an item marks that player as a Human ('+bel.c.toFixed(2)+')');
+ assert(bel.d>0.3&&bel.d<0.9,'with no evidence a player stays uncertain ('+bel.d.toFixed(2)+')');
+ // the bot is handed a public view of the table, never the other seats' private state
+ const src=await p.evaluate(()=>Bot.turn.toString());
+ assert(!/H\.seats\[[^\]]*\]\.state|\.state\.pos[^=]*others/.test(src),'bot code never reads another seat\'s state');
+ // several more full games with only bots after the person is out, to catch errors
+ for(let g=0;g<3;g++){
+   await p.evaluate(()=>{Hot.clear();resetToWelcome()});await p.click('[data-act=hotsetup]');
+   for(let i=1;i<4;i++)await p.selectOption(`[data-hb="${i}"]`,['easy','normal','hard'][(i+g)%3]);
+   await p.click('[data-act=hotstart]');await p.evaluate(()=>closeDlg());
+   const r=await p.evaluate(()=>{S.over='dead';S.outSent=false;afterChange();return {over:Hot.isOver(),res:Hot.result()}});
+   assert(r.over,'game '+(g+2)+' finishes with the bots alone ('+JSON.stringify(r.res)+')');
+ }
+ console.log('errors',errs);if(errs.length)process.exitCode=1;await b.close()})();

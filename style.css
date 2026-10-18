@@ -561,3 +561,12 @@ input,textarea{caret-color:var(--amber);accent-color:var(--amber)}
 .sec.sheetsec.on{display:flex;flex-direction:column;min-height:0}
 .sheetsec .sheet{flex:0 1 auto;min-height:120px;overflow:auto}
 .sheetsec .legend{margin:6px 0 0}
+/* pass and play: each seat is a person or a bot */
+.hotnames.seats{grid-template-columns:1fr}
+.hotnames.seats li{display:flex;gap:6px}
+.hotnames.seats select{flex:0 0 132px;min-height:44px;font-size:14px;padding:6px 8px}
+.hotnames.seats input{flex:1;min-width:0}
+.hotnames.seats .x{position:static;flex:0 0 40px;height:44px}
+.addrow{margin:0 0 12px}.addrow .btn{min-height:44px}
+.recap{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px;font-size:14px;max-height:40vh;overflow:auto}
+.recap li{display:flex;align-items:center;gap:6px}.recap .dot{margin:0}

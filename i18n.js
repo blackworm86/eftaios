@@ -1,6 +1,15 @@
 'use strict';
 /* Minimal i18n: English strings are the keys; Italian lives in IT. t('Text {x}', {x: 1}) */
 const IT = {
+"Who plays seat {n}": "Chi gioca al posto {n}",
+"Person": "Persona",
+"Bot · Easy": "Bot · Facile",
+"Bot · Normal": "Bot · Normale",
+"Bot · Hard": "Bot · Difficile",
+"Add bot": "Aggiungi bot",
+"Bot {n}": "Bot {n}",
+"At least one seat must be a person.": "Almeno un posto deve essere una persona.",
+"Since your last turn": "Dal tuo ultimo turno",
 "Heard": "Sentito",
 "Silent or elsewhere": "Silenzio o altrove",
 "Bluff (real below)": "Bluff (reale sotto)",

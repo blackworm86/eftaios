@@ -57,9 +57,11 @@ function renderFlow() {
       <button class="role-btn alien" data-act="solostart" data-role="alien"><b>${t('Alien')}</b></button></fieldset>`;
   } else if (st === 'hotsetup') {
     const names = T.hotNames || (T.hotNames = [1, 2, 3, 4].map(i => t('Player {n}', { n: i })));
+    T.hotBots = T.hotBots || names.map(() => '');
     h = `${fhead(t('Pass and play'))}
-      <span class="flabel">${t('Players')} (${names.length}/8)</span><ol class="hotnames">${names.map((n, i) => `<li><input type="text" maxlength="20" data-hn="${i}" value="${esc(n)}" aria-label="${t('Player {n}', { n: i + 1 })}">${names.length > 2 ? `<button class="x" data-act="hotdel" data-i="${i}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}</li>`).join('')}
-      ${names.length < 8 ? `<li><button class="btn addp" data-act="hotadd">+ ${t('Add player')}</button></li>` : ''}</ol>
+      <span class="flabel">${t('Players')} (${names.length}/8)</span><ol class="hotnames seats">${names.map((n, i) => `<li><select data-hb="${i}" aria-label="${t('Who plays seat {n}', { n: i + 1 })}">${BOTSEL.map(([v, l]) => `<option value="${v}"${(T.hotBots[i] || '') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select><input type="text" maxlength="20" data-hn="${i}" value="${esc(n)}" aria-label="${t('Player {n}', { n: i + 1 })}">${names.length > 2 ? `<button class="x" data-act="hotdel" data-i="${i}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}</li>`).join('')}</ol>
+      ${names.length < 8 ? `<div class="row two addrow"><button class="btn" data-act="hotadd">+ ${t('Add player')}</button><button class="btn" data-act="hotaddbot">+ ${t('Add bot')}</button></div>` : ''}
+      ${T.hotBots.some(Boolean) && T.hotBots.every(Boolean) ? `<p class="dim hintline">${t('At least one seat must be a person.')}</p>` : ''}
       ${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', S.mode || 'advanced')}${seg('track', S.track || 'auto')}
       <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>`;
   } else if (st === 'lobby') {
@@ -82,6 +84,12 @@ function renderFlow() {
   if (fm) fm.onchange = () => { S.mapId = fm.value; upd(); if (st === 'lobby') Sync.updateSettings({ map: fm.value }); };
   upd();
   const jc = $('#join-code'); if (jc) jc.onkeydown = e => { if (e.key === 'Enter') actions.joinroom(); };
+  // a seat switched between person and bot keeps a custom name, but a default name follows the type
+  document.querySelectorAll('[data-hb]').forEach(sel => { sel.onchange = () => {
+    readHot(); const i = +sel.dataset.hb, n = T.hotNames[i], isDefault = [t('Player {n}', { n: '' }), t('Bot {n}', { n: '' })].some(p => n.startsWith(p) && /\d+$/.test(n));
+    if (isDefault) T.hotNames[i] = sel.value ? t('Bot {n}', { n: T.hotBots.slice(0, i + 1).filter(Boolean).length }) : t('Player {n}', { n: i + 1 });
+    renderFlow();
+  }; });
 }
 const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found', started: 'That game has already started', closed: 'The host closed this game.', full: 'This table is full (8 players).' };
 function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="status">${t(FLOW_MSG[Sync.status])}${Sync.status === 'error' && Sync.lastError ? ` <code>${esc(Sync.lastError)}</code>` : ''}</p>` : ''; }
@@ -144,7 +152,8 @@ function soloStart(role) {
   S.path = [{ turn: 0, pos: S.pos }]; save(); boot();
 }
 
-function readHot() { document.querySelectorAll('[data-hn]').forEach(el => { T.hotNames[+el.dataset.hn] = el.value; }); }
+const BOTSEL = [['', 'Person'], ['easy', 'Bot · Easy'], ['normal', 'Bot · Normal'], ['hard', 'Bot · Hard']];
+function readHot() { document.querySelectorAll('[data-hn]').forEach(el => { T.hotNames[+el.dataset.hn] = el.value; }); document.querySelectorAll('[data-hb]').forEach(el => { T.hotBots[+el.dataset.hb] = el.value; }); }
 function reorder(uid, delta) {
   const ids = orderedIds(), i = ids.indexOf(uid), j = i + delta;
   if (i < 0 || j < 0 || j >= ids.length) return;
@@ -171,9 +180,14 @@ Object.assign(actions, {
   pickmap(b) { const fm = $('#f-map'); if (fm) { fm.value = b.dataset.id; if (fm.onchange) fm.onchange(); } actions.gallclose(); },
   hostsetup() { readName(); S.stage = 'host'; save(); renderFlow(); },
   hotsetup() { S.stage = 'hotsetup'; save(); renderFlow(); },
-  hotadd() { readHot(); if (T.hotNames.length < 8) T.hotNames.push(t('Player {n}', { n: T.hotNames.length + 1 })); renderFlow(); },
-  hotdel(b) { readHot(); T.hotNames.splice(+b.dataset.i, 1); renderFlow(); },
-  hotstart() { readHot(); const names = T.hotNames.map((n, i) => n.trim().slice(0, 20) || t('Player {n}', { n: i + 1 })); Hot.start(names, $('#f-map').value, $('#f-mode').value, $('#f-track').value); },
+  hotadd() { readHot(); if (T.hotNames.length < 8) { T.hotNames.push(t('Player {n}', { n: T.hotNames.length + 1 })); T.hotBots.push(''); } renderFlow(); },
+  hotaddbot() { readHot(); if (T.hotNames.length < 8) { T.hotNames.push(t('Bot {n}', { n: T.hotBots.filter(Boolean).length + 1 })); T.hotBots.push('normal'); } renderFlow(); },
+  hotdel(b) { readHot(); T.hotNames.splice(+b.dataset.i, 1); T.hotBots.splice(+b.dataset.i, 1); renderFlow(); },
+  hotstart() {
+    readHot(); if (T.hotBots.every(Boolean)) { toast(t('At least one seat must be a person.')); return; }
+    const names = T.hotNames.map((n, i) => n.trim().slice(0, 20) || t('Player {n}', { n: i + 1 }));
+    Hot.start(names, $('#f-map').value, $('#f-mode').value, $('#f-track').value, T.hotBots.slice());
+  },
   solo() { S.stage = 'solo'; save(); renderFlow(); },
   back() { S.stage = 'welcome'; Sync.status = 'off'; save(); renderFlow(); },
   ignoreinvite() { T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); },

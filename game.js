@@ -67,9 +67,17 @@ function afterChange() {
   else reportOut();
 }
 function showGameOver() {
-  if (S.revealed || !Sync.code) return; S.revealed = true;
+  if (!Sync.code) return;
   if (Sync.isHost() && typeof Online !== 'undefined') Online.revealBots();
-  Sync.setMe({ role: S.role, char: S.char || '', route: encodeRoute(S.path) }); save();
+  if (!S.revealed) { S.revealed = true; Sync.setMe({ role: S.role, char: S.char || '' }); save(); }
+  publishRoute();
+}
+/* my real route goes to the table once the game is over; a refusal (old database rules) is remembered and shown */
+async function publishRoute() {
+  if (S.routeSent || T.routeBusy || !Sync.code) return; T.routeBusy = true;
+  try { await Sync.setMeP({ route: encodeRoute(S.path) }); S.routeSent = true; T.routeErr = false; }
+  catch (e) { T.routeErr = String(e && (e.code || e.message) || e); }
+  T.routeBusy = false; save(); if (T.routeErr && S.stage === 'game') render();
 }
 /* a route travels as "turn:sector,turn:sector,…" — published only once the game is over */
 const encodeRoute = path => (path || []).map(p => p.turn + ':' + p.pos).join(',').slice(0, 1500);
@@ -273,6 +281,13 @@ function overPanel() {
   const m = { escaped: ['Escaped!', 'You left the ship and win. That hatch is now blocked.'], time: ['39 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Hatch is blocked or damaged. You are eliminated.'] }[S.over];
   return `<h2>${t(m[0])}</h2><p>${t(m[1])}</p>${inRoom() ? `<p class="dim">${t('You can keep following the game in the Table tab.')}</p>${orderList()}` : `<button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`}`;
 }
+/* online: tell the player why other routes are missing instead of showing a half-empty map */
+function routesNote() {
+  if (S.hot || !Sync.code) return '';
+  if (T.routeErr) return `<p class="dim hintline">${t('Routes could not be shared.')} <a href="firebase-rules.html" target="_blank" rel="noopener">${t('Update the database rules')}</a></p>`;
+  const ps = tablePlayers(), mia = Object.entries(ps).filter(([u, p]) => u !== Sync.uid && !p.route).length;
+  return mia ? `<p class="dim hintline" role="status">${t('Waiting for the routes of {n} players…', { n: mia })}</p>` : '';
+}
 function globalOverPanel() {
   const r = (S.hot ? Hot.result() : Sync.settings.result) || {}, esc_ = r.escaped || [], ps = tablePlayers();
   const why = { time: 'Time is up: 39 turns have been played.', escape: 'The last Human has escaped.', eliminated: 'The last Human was eliminated.' }[r.reason] || '';
@@ -280,6 +295,7 @@ function globalOverPanel() {
   return `<h2>${t('Game over')}</h2>
     ${sayBox(r.aliensWin ? t('The Aliens win!') : t('The Humans win!'), r.aliensWin ? 'alert' : '', 'Result')}
     <p class="dim">${t(why)}</p>${esc_.length ? `<p>${t('Humans who escaped: {n}', { n: esc_.map(esc).join(', ') })}</p>` : ''}
+    ${routesNote()}
     <div class="seg revseg" role="radiogroup" aria-label="${t('Map')}"><button role="radio" data-act="revealview" data-v="real" aria-checked="${!T.showAnn}">${t('Real routes')}</button><button role="radio" data-act="revealview" data-v="ann" aria-checked="${!!T.showAnn}">${t('Announcements')}</button></div>
     <ul class="plist rev">${rows}</ul><button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`;
 }

@@ -28,5 +28,12 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  // killed mark in the strip of the other device
  const uH=await H.evaluate(()=>Sync.uid);await H.evaluate(()=>Sync.setMe({out:'killed'}));await G.waitForFunction(u=>Sync.players[u].out==='killed',uH);await G.evaluate(()=>{T.showAnn=true;paintOverlay();T.showAnn=false});
  assert(await G.locator(`#mkbar [data-k="u:${uH}"] .omark.dead`).count()===1,'an eliminated player is marked with a red cross in the strip');
+ // the badge is not clipped by the strip button
+ const clip=await G.evaluate(u=>{const b=document.querySelector(`#mkbar [data-k="u:${u}"] .omark`),r=b.getBoundingClientRect(),e=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return e===b||b.contains(e)},uH);
+ assert(clip,'the eliminated badge is fully visible (not clipped)');
+ // a refused route (old database rules) is reported instead of failing silently
+ await G.evaluate(()=>{S.routeSent=false;Sync.setMeP=()=>Promise.reject({code:'PERMISSION_DENIED'});T.routeBusy=false;return publishRoute()});
+ await G.evaluate(()=>{render()});
+ assert((await G.textContent('#panel-body')).includes('Routes could not be shared')&&await G.locator('#panel-body a[href="firebase-rules.html"]').count()===1,'a refused route shows a message with a link to the rules page');
  console.log('errors',errs.concat(s.errs));if(errs.length||s.errs.length)process.exitCode=1;await s.b.close();
 })();

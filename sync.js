@@ -74,6 +74,7 @@
   };
   Sync.isHost = () => !!(Sync.settings && Sync.uid && Sync.settings.host === Sync.uid);
   Sync.updateSettings = p => Sync.code && fb.update(path(Sync.code, 'settings'), p).catch(console.warn);
+  Sync.setMeP = p => fb.update(path(Sync.code, 'players/' + Sync.uid), p);   // like setMe, but the caller sees a refusal
   Sync.setMe = p => Sync.code && fb.update(path(Sync.code, 'players/' + Sync.uid), p).catch(console.warn);
   Sync.startGame = async (first, order) => {
     if (!Sync.code) return;

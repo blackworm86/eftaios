@@ -115,7 +115,7 @@ const Online = (() => {
       if (inRange) botPush(b, { kind: 'reveal', text: 'Spotlight', sector: st.pos });
     });
   }
-  let botBusy = '';
+  let botBusy = ''; const revealed = new Set();
   /* host: when the turn passes to a bot, play it after a short pause, then pass the turn on */
   function maybeBotTurn() {
     const ts = T.turnState;
@@ -155,7 +155,13 @@ const Online = (() => {
     const nx = nextTurn(); if (nx) Sync.setTurn(nx);
   }
   /* host: when the game is over, reveal the bots' roles like everyone else's */
-  function revealBots() { if (!HD || !HD.bots) return; Object.entries(HD.bots).forEach(([id, b]) => { const p = Sync.players[id]; if (p && !p.route) Sync.set('players/' + id, Object.assign({}, p, { role: b.state.role, char: b.state.char || '', route: encodeRoute(b.state.path) })); }); }
+  function revealBots() {
+    if (!HD || !HD.bots) return;
+    Object.entries(HD.bots).forEach(([id, b]) => {
+      const p = Sync.players[id]; if (!p || p.route || revealed.has(id)) return; revealed.add(id);
+      Sync.upd('players/' + id, { role: b.state.role, char: b.state.char || '' }).then(() => Sync.upd('players/' + id, { route: encodeRoute(b.state.path) })).catch(e => { revealed.delete(id); console.warn(e); });
+    });
+  }
 
   const api = {
     attach() {

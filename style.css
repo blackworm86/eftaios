@@ -296,7 +296,8 @@ html,body{height:100vh;height:100dvh}
 /* ---- v11: vertical player strip ---- */
 .mkbar{left:6px;right:auto;top:6px;bottom:6px;width:62px;flex-direction:column;gap:4px;overflow:hidden;padding:0}
 .mkbar button{flex:0 1 46px;min-height:28px;flex-direction:column;justify-content:center;gap:1px;padding:2px;border-radius:12px;font:600 11px var(--font);line-height:1.1;width:100%}
-.mkbar button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mkbar button>span:not(.dotw){max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mkbar button{overflow:visible}
 .mkbar .mkt b{font:700 16px var(--mono);color:var(--amber)}.mkbar .mkt span{font-size:11px;color:var(--dim)}
 .msus{display:flex;gap:2px;flex:none}
 .msus button{flex:1 1 0;min-height:26px;padding:0;border-radius:10px;font:700 11px var(--mono);border:1px solid var(--line);background:#0a1120dd;color:var(--dim)}

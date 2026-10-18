@@ -1,6 +1,12 @@
 'use strict';
 /* Minimal i18n: English strings are the keys; Italian lives in IT. t('Text {x}', {x: 1}) */
 const IT = {
+"Bot level": "Livello del bot",
+"Easy": "Facile",
+"Normal": "Normale",
+"Hard": "Difficile",
+"Bots play with digital cards.": "I bot giocano con le carte digitali.",
+"Bots play with digital cards. Remove the bots to use the physical deck.": "I bot giocano con le carte digitali. Togli i bot per usare il mazzo fisico.",
 "Who plays seat {n}": "Chi gioca al posto {n}",
 "Person": "Persona",
 "Bot · Easy": "Bot · Facile",

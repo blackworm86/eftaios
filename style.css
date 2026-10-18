@@ -570,3 +570,7 @@ input,textarea{caret-color:var(--amber);accent-color:var(--amber)}
 .addrow{margin:0 0 12px}.addrow .btn{min-height:44px}
 .recap{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px;font-size:14px;max-height:40vh;overflow:auto}
 .recap li{display:flex;align-items:center;gap:6px}.recap .dot{margin:0}
+/* lobby: bot rows */
+.plist .pname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.plist select[data-botlvl]{min-height:36px;width:auto;padding:4px 8px;font-size:13px}
+.plist .x{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--dim);display:grid;place-items:center;padding:0}

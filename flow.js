@@ -84,6 +84,7 @@ function renderFlow() {
   if (fm) fm.onchange = () => { S.mapId = fm.value; upd(); if (st === 'lobby') Sync.updateSettings({ map: fm.value }); };
   upd();
   const jc = $('#join-code'); if (jc) jc.onkeydown = e => { if (e.key === 'Enter') actions.joinroom(); };
+  document.querySelectorAll('[data-botlvl]').forEach(sel => { sel.onchange = () => Sync.upd('players/' + sel.dataset.botlvl, { bot: sel.value }).catch(() => {}); });
   // a seat switched between person and bot keeps a custom name, but a default name follows the type
   document.querySelectorAll('[data-hb]').forEach(sel => { sel.onchange = () => {
     readHot(); const i = +sel.dataset.hb, n = T.hotNames[i], isDefault = [t('Player {n}', { n: '' }), t('Bot {n}', { n: '' })].some(p => n.startsWith(p) && /\d+$/.test(n));
@@ -97,9 +98,10 @@ function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="sta
 function lobbyHtml() {
   const st = Sync.settings || {}, host = isHost(), online = isOnline(), players = orderedPlayers();
   const map = T.maps.find(m => m.id === st.map) || T.maps[0];
-  const nReady = players.filter(([, p]) => p.ready).length, allReady = players.length >= 2 && nReady === players.length;
+  const nReady = players.filter(([, p]) => p.ready || p.bot).length, allReady = players.length >= 2 && nReady === players.length;
   const rows = players.map(([id, p], i) => `<li class="${p.ready ? 'ok' : ''}"><span class="num">${i + 1}</span><span class="pname">${esc(p.name)}${id === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}${st.host === id ? ` <em class="hostt">${t('Host')}</em>` : ''}</span>
-    <span class="pst">${p.ready ? ico('check', 14) + ' ' + t('Ready') : ''}</span>
+    <span class="pst">${p.bot ? (host ? `<select data-botlvl="${esc(id)}" aria-label="${t('Bot level')}">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${p.bot === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>` : t(BOTSEL.find(x => x[0] === p.bot)[1])) : p.ready ? ico('check', 14) + ' ' + t('Ready') : ''}</span>
+    ${host && p.bot ? `<button class="x" data-act="delbot" data-u="${esc(id)}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}
     ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>${ico('up')}</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>${ico('down')}</button></span>` : ''}</li>`).join('');
   const faction = ['human', 'alien'].map(r => `<button class="role-btn ${r}" data-act="faction" data-r="${r}" aria-pressed="${S.myRole === r}"><b>${t(r === 'human' ? 'Human' : 'Alien')}</b></button>`).join('');
   const canReady = online || S.myRole;
@@ -109,7 +111,7 @@ function lobbyHtml() {
       <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>
     <div class="setcard">${host ? `<input type="hidden" id="f-map" value="${esc(map.id)}"><button type="button" class="mapcard mini" data-act="mapgallery" aria-label="${t('Map')}: ${esc(map.name)}. ${t('Tap to choose another map')}"><span class="prevbox">${mapPreview(map)}</span></button>` : `<span class="prevbox">${mapPreview(map)}</span>`}
       ${kv}${host ? `<button class="btn edit" data-act="lobbyopts">${t('Change')}</button>` : ''}</div>
-    <h3>${t('Turn order')} ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>` : ''}</h3>
+    <h3>${t('Turn order')} ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>${players.length < 8 ? `<button class="mini-link" data-act="addlobbybot">+ ${t('Add bot')}</button>` : ''}` : ''}</h3>
     <ul class="plist">${rows}</ul>
     ${online ? `<p class="dim hintline">${t('Roles and cards are dealt when the game starts.')}</p>`
       : `<h3>${t('Your faction')} <span class="hint">${t('Draw a Character card in secret')}</span></h3><div class="factions" role="group" aria-label="${t('Your faction')}">${faction}</div>`}
@@ -169,10 +171,21 @@ Object.assign(actions, {
   mapgallery() { mapGallery(); },
   optinfo(b) { const open = dlg.open && dlg.querySelector('.seg'); optInfo(b.dataset.f); if (open) $('#d-no').onclick = lobbyOpts; },
   lobbyopts() { lobbyOpts(); },
+  addlobbybot() {
+    const ps = Sync.players || {}; if (Object.keys(ps).length >= 8) return;
+    const n = Object.values(ps).filter(p => p.bot).length + 1, id = 'bot_' + Math.random().toString(36).slice(2, 8);
+    if (!isOnline()) { Sync.updateSettings({ online: true }); toast(t('Bots play with digital cards.')); }
+    Sync.set('players/' + id, { name: t('Bot {n}', { n }), ready: true, bot: 'normal' }).catch(e => toast(t('Connection error') + ' ' + (e.code || '')));
+  },
+  delbot(b) { Sync.del('players/' + b.dataset.u).catch(() => {}); },
   seg(b) {
     const f = b.dataset.f, v = b.dataset.v, inp = document.getElementById('f-' + f);
     b.parentNode.querySelectorAll('[role=radio]').forEach(x => x.setAttribute('aria-checked', x === b));
     if (inp) inp.value = v;
+    if (S.stage === 'lobby' && isHost() && f === 'cards' && v === 'physical' && Object.values(Sync.players || {}).some(p => p.bot)) {
+      toast(t('Bots play with digital cards. Remove the bots to use the physical deck.'));
+      b.parentNode.querySelectorAll('[role=radio]').forEach(x => x.setAttribute('aria-checked', x.dataset.v === 'online')); return;
+    }
     if (S.stage === 'lobby' && isHost()) Sync.updateSettings(f === 'cards' ? { online: v === 'online' } : { [f]: v });
     else S[f] = v;
   },

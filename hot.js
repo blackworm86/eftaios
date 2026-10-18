@@ -67,11 +67,11 @@ const Hot = (() => {
   }
   const isBot = i => !!H.seats[i].bot;
   /* play every bot seat from `next` on, until it is a person's turn or the game ends */
-  function runBots(next) {
+  async function runBots(next) {
     let guard = 0;
     while (!H.result && next >= 0 && H.turn <= MAX_TURN && isBot(next) && guard++ < 2000) {
       H.cur = next; const st = seat().state; st.phase = 'move'; st.res = null; st.undo = null;
-      if (!st.over) Bot.turn(botCtx());
+      if (!st.over) await Bot.turn(botCtx());
       evaluate(); if (H.result) break; next = advance();
     }
     if (!H.result && (next < 0 || H.turn > MAX_TURN)) evaluate();
@@ -140,7 +140,7 @@ const Hot = (() => {
       return o;
     },
     rebind() { if (!load()) { S.hot = false; S.stage = 'welcome'; return; } S.log = H.log; S.hatches = H.hatches; T.counts = counts(); },
-    start(names, mapId, mode, track, bots) {
+    async start(names, mapId, mode, track, bots) {
       const deal = dealRoles(names.length), keep = S.customMaps, map = T.maps.find(m => m.id === mapId) || T.maps[0];
       H = { mode, mapId: map.id, turn: 1, cur: 0, passing: true, log: [], hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, result: null, last: '',
         decks: { sector: deckNew(SECTOR_DECK), item: deckNew(ITEM_DECK), hatch: deckNew(HATCH_DECK) }, seats: [] };
@@ -150,14 +150,14 @@ const Hot = (() => {
       });
       T.map = map; S = Object.assign(fresh(), { customMaps: keep });
       S.log = H.log; S.hatches = H.hatches;   // bots read hatches and the log before the first person's turn
-      if (seat().bot) { runBots(0); }
+      if (seat().bot) await runBots(0);
       seatIn(); store(); save(); boot(); showPass();
     },
     showPass,
     go() { H.passing = false; store(); $('#pass').hidden = true; afterPass(); if (S.pos) focusOn(S.pos); },
-    endTurn() {
+    async endTurn() {
       seatOut(); evaluate();
-      runBots(H.result ? -1 : advance());
+      await runBots(H.result ? -1 : advance());
       store(); seatIn(); save(); boot(); showPass();
     },
     /* the current seat went out of the game (escaped / trapped) during its own turn */

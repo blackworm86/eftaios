@@ -60,7 +60,7 @@
         "players": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && (auth.uid === $uid || ($uid.beginsWith('bot_') && root.child('rooms').child($room).child('settings/host').val() === auth.uid))",
             ".validate": "newData.hasChildren(['name', 'ready'])",
             "name": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
@@ -82,6 +82,9 @@
             },
             "$other": {
               ".validate": false
+            },
+            "bot": {
+              ".validate": "newData.val() === 'easy' || newData.val() === 'normal' || newData.val() === 'hard'"
             }
           }
         },
@@ -123,11 +126,11 @@
         "attacks": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
           "$id": {
-            ".write": "auth != null && !data.exists() && newData.child('by').val() === auth.uid",
+            ".write": "auth != null && !data.exists() && (newData.child('by').val() === auth.uid || (newData.child('by').val().beginsWith('bot_') && root.child('rooms').child($room).child('settings/host').val() === auth.uid))",
             ".validate": "newData.hasChildren(['by', 'sector', 'at'])",
             "replies": {
               "$uid": {
-                ".write": "auth != null && auth.uid === $uid",
+                ".write": "auth != null && (auth.uid === $uid || ($uid.beginsWith('bot_') && root.child('rooms').child($room).child('settings/host').val() === auth.uid))",
                 ".validate": "newData.hasChildren(['in'])"
               }
             }
@@ -136,11 +139,11 @@
         "spots": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
           "$id": {
-            ".write": "auth != null && !data.exists() && newData.child('by').val() === auth.uid",
+            ".write": "auth != null && !data.exists() && (newData.child('by').val() === auth.uid || (newData.child('by').val().beginsWith('bot_') && root.child('rooms').child($room).child('settings/host').val() === auth.uid))",
             ".validate": "newData.hasChildren(['by', 'sector', 'at'])",
             "replies": {
               "$uid": {
-                ".write": "auth != null && auth.uid === $uid",
+                ".write": "auth != null && (auth.uid === $uid || ($uid.beginsWith('bot_') && root.child('rooms').child($room).child('settings/host').val() === auth.uid))",
                 ".validate": "newData.hasChildren(['in'])"
               }
             }

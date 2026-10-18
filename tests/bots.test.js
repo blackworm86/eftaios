@@ -16,12 +16,12 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  // play the person's turns automatically until the game ends
  const res=await p.evaluate(async()=>{
    for(let k=0;k<60&&!Hot.isOver();k++){
-     if(S.over){Hot.endTurn();continue}
+     if(S.over){await Hot.endTurn();continue}
      const id=[...T.reach.keys()].find(x=>!'1234'.includes(at(T.map,x)))||[...T.reach.keys()][0];
      if(id){selectCell(id);confirmMove()}
      if(S.res&&S.res.stage==='choose'&&at(T.map,S.pos)==='.'){await drawSector();if(T.pick){const cb=T.pick.cb;T.pick=null;await cb(S.pos)}}
      else if(S.res&&S.res.stage==='choose')announce({say:'x'});
-     closeDlg();if(!Hot.isOver()&&!S.over)endTurn();
+     closeDlg();if(!Hot.isOver()&&!S.over)await endTurn();
    }
    const H=JSON.parse(localStorage.getItem('eftaios.hot'));
    return {over:Hot.isOver(),turn:H.turn,botLog:H.log.filter(e=>/^h[123]$/.test(e.by)&&['noise','silence','attack','hatch'].includes(e.kind)).length,kinds:[...new Set(H.log.map(e=>e.kind))]};
@@ -47,8 +47,8 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  for(let g=0;g<3;g++){
    await p.evaluate(()=>{Hot.clear();resetToWelcome()});await p.click('[data-act=hotsetup]');
    for(let i=1;i<4;i++)await p.selectOption(`[data-hb="${i}"]`,['easy','normal','hard'][(i+g)%3]);
-   await p.click('[data-act=hotstart]');await p.evaluate(()=>closeDlg());
-   const r=await p.evaluate(()=>{S.over='dead';S.outSent=false;afterChange();return {over:Hot.isOver(),res:Hot.result()}});
+   await p.click('[data-act=hotstart]');await p.waitForTimeout(300);await p.evaluate(()=>closeDlg());
+   await p.evaluate(()=>{S.over='dead';S.outSent=false;afterChange()});await p.waitForFunction(()=>Hot.isOver(),null,{timeout:60000});const r=await p.evaluate(()=>({over:Hot.isOver(),res:Hot.result()}));
    assert(r.over,'game '+(g+2)+' finishes with the bots alone ('+JSON.stringify(r.res)+')');
  }
  console.log('errors',errs);if(errs.length)process.exitCode=1;await b.close()})();

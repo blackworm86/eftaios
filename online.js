@@ -17,7 +17,8 @@ const Online = (() => {
   }
   async function loadHost() {
     const v = await Sync.get('hostdata'); if (!v) return null;
-    HD = { decks: { sector: norm(v.decks && v.decks.sector), item: norm(v.decks && v.decks.item), hatch: norm(v.decks && v.decks.hatch) }, roles: v.roles || {}, chars: v.chars || {}, seenOut: v.seenOut || {}, last: v.last || '' };
+    HD = { decks: { sector: norm(v.decks && v.decks.sector), item: norm(v.decks && v.decks.item), hatch: norm(v.decks && v.decks.hatch) }, roles: v.roles || {}, chars: v.chars || {}, seenOut: v.seenOut || {}, last: v.last || '', bots: v.bots || {} };
+    Object.values(HD.bots).forEach(b => { b.state.items = b.state.items || []; b.state.path = b.state.path || []; });
     return HD;
   }
 
@@ -49,6 +50,7 @@ const Online = (() => {
   /* ---- victim / target side ---- */
   function onAttack(ev, key) {
     if (!ev || seen.has('a' + key)) return; seen.add('a' + key);
+    if (Sync.isHost()) botsAnswerAttack(ev, key);
     if (ev.by === Sync.uid || S.over || S.stage !== 'game' || Date.now() - ev.at > 60000) return;
     if (ev.replies && ev.replies[Sync.uid]) return;
     const here = S.pos === ev.sector, rep = { in: !!here };
@@ -67,6 +69,7 @@ const Online = (() => {
   }
   function onSpot(ev, key) {
     if (!ev || seen.has('s' + key)) return; seen.add('s' + key);
+    if (Sync.isHost()) botsAnswerSpot(ev, key);
     if (S.over || S.stage !== 'game' || Date.now() - ev.at > 60000) return;
     if (ev.replies && ev.replies[Sync.uid]) return;
     const q = parseId(ev.sector);
@@ -77,6 +80,82 @@ const Online = (() => {
   }
   function consumeItem(id) { const i = S.items.indexOf(id); if (i < 0) return; S.items.splice(i, 1); discard(id); Sync.push({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind: 'item', text: id, sector: '', at: Date.now() }); }
   function discard(id) { Sync.set('requests/' + uid(), { uid: Sync.uid, type: 'discard', card: id, at: Date.now() }).catch(() => {}); }
+
+  /* ---------------- bots (played by the host's device) ----------------
+     A bot's private state lives in hostdata, which only the host can read. The bot itself is handed the same
+     public view as in pass and play (seat names, announcements, turn, rules) plus its own seat. */
+  const isBotId = u => String(u).startsWith('bot_');
+  const botPush = (b, e) => Sync.push(Object.assign({ id: uid(), turn: T.turnState ? T.turnState.n : S.turn, who: b.name, sector: '', text: e.kind, at: Date.now(), n: 0, ok: 0 }, e, { by: b.id, n: e.n || 0, ok: e.ok ? 1 : 0 }));
+  const botOut = (id, why, st) => Sync.set('players/' + id, Object.assign({}, Sync.players[id] || {}, { out: why === 'dead' ? 'killed' : why, role: st.role0 || st.role, char: st.char || '' }));
+  function botsAnswerAttack(ev, key) {
+    if (!HD || !HD.bots || Date.now() - ev.at > 60000) return; let changed = false;
+    Object.entries(HD.bots).forEach(([id, b]) => {
+      const st = b.state; if (id === ev.by || st.over || (ev.replies && ev.replies[id])) return;
+      const rep = { in: st.pos === ev.sector };
+      if (rep.in) {
+        if (st.role === 'human' && st.items.includes('defense')) { rep.def = 1; st.items.splice(st.items.indexOf('defense'), 1); HD.decks.item.disc.push('defense'); botPush(b, { kind: 'item', text: 'defense' }); }
+        else {
+          rep.killed = 1; rep.role = st.role; rep.char = st.char || '';
+          if (infection() && st.role === 'human') { rep.conv = 1; st.role = 'alien'; st.fed = false; Sync.set('players/' + id, Object.assign({}, Sync.players[id] || {}, { conv: true, role: 'human', char: st.char || '' })); botPush(b, { kind: 'out', text: 'killed|human|' + (st.char || '') }); }
+          else { st.over = 'dead'; botOut(id, 'dead', st); }
+        }
+        changed = true;
+      }
+      Sync.set(`attacks/${key}/replies/${id}`, rep);
+    });
+    if (changed) persist();
+  }
+  function botsAnswerSpot(ev, key) {
+    if (!HD || !HD.bots || Date.now() - ev.at > 60000) return;
+    const q = parseId(ev.sector);
+    Object.entries(HD.bots).forEach(([id, b]) => {
+      const st = b.state; if (st.over || (ev.replies && ev.replies[id])) return;
+      const inRange = !!q && (st.pos === ev.sector || neighbors(T.map, q[0], q[1]).some(([a, c]) => cid(a, c) === st.pos));
+      Sync.set(`spots/${key}/replies/${id}`, inRange ? { in: true, pos: st.pos } : { in: false });
+      if (inRange) botPush(b, { kind: 'reveal', text: 'Spotlight', sector: st.pos });
+    });
+  }
+  let botBusy = '';
+  /* host: when the turn passes to a bot, play it after a short pause, then pass the turn on */
+  function maybeBotTurn() {
+    const ts = T.turnState;
+    if (!Sync.isHost() || !HD || !ts || !isBotId(ts.uid) || !Sync.settings || Sync.settings.status !== 'playing') return;
+    const tag = ts.n + ':' + ts.idx + ':' + ts.uid; if (botBusy === tag) return; botBusy = tag;
+    setTimeout(() => playBot(ts, tag).catch(e => { console.warn(e); botBusy = ''; }), 900);
+  }
+  async function playBot(ts, tag) {
+    const b = HD.bots[ts.uid]; if (!b) return;
+    if (!b.state.over) {
+      const ord = (Sync.settings && Sync.settings.order) || [];
+      const view = { seats: ord.map(u => ({ id: u, name: pname(u) })), log: S.log, turn: ts.n, mode: S.mode };
+      await Bot.turn({
+        H: view, me: { id: b.id, name: b.name, bot: b.level, state: b.state }, idx: ord.indexOf(b.id),
+        log: e => botPush(b, e),
+        out: (i, why) => botOut(b.id, why, b.state),
+        draw(type) { const d = HD.decks[type], r = deckDraw(d); if (r.card && type !== 'item') d.disc.push(r.card); if (r.reshuffled) logGame(RESHUFFLED[type]); return r.card || ''; },
+        discard(id) { if (ITEMS[id]) HD.decks.item.disc.push(id); },
+        closeHatch(n) { S.hatches[n] = 1; Sync.setHatch(n, 1); },
+        async attack(sector) {
+          const id = uid(), expected = Object.keys(Sync.players || {}).filter(u => u !== b.id && !Sync.players[u].out);
+          await Sync.set('attacks/' + id, { by: b.id, sector, at: Date.now() });
+          const replies = await waitReplies(`attacks/${id}/replies`, expected, 8000);
+          return expected.map(u => replies[u]).filter(r => r && r.in);
+        },
+        async spotlight(sector) {
+          const id = uid(), expected = Object.keys(Sync.players || {}).filter(u => !Sync.players[u].out);
+          await Sync.set('spots/' + id, { by: b.id, sector, at: Date.now() });
+          await waitReplies(`spots/${id}/replies`, expected, 8000);
+        }
+      });
+      b.state.adr = false;
+    }
+    await persist();
+    if (!T.turnState || T.turnState.n !== ts.n || T.turnState.uid !== ts.uid || botBusy !== tag) return;
+    api.evaluate(); if (Sync.settings.status !== 'playing') return;
+    const nx = nextTurn(); if (nx) Sync.setTurn(nx);
+  }
+  /* host: when the game is over, reveal the bots' roles like everyone else's */
+  function revealBots() { if (!HD || !HD.bots) return; Object.entries(HD.bots).forEach(([id, b]) => { const p = Sync.players[id]; if (p && !p.role) Sync.set('players/' + id, Object.assign({}, p, { role: b.state.role, char: b.state.char || '' })); }); }
 
   const api = {
     attach() {
@@ -90,7 +169,7 @@ const Online = (() => {
       });
       Sync.watchChild('attacks', onAttack);
       Sync.watchChild('spots', onSpot);
-      if (Sync.isHost()) { hdReady = loadHost(); hdReady.then(() => Sync.watchChild('requests', hostReq)); }
+      if (Sync.isHost()) { hdReady = loadHost(); hdReady.then(() => { Sync.watchChild('requests', hostReq); maybeBotTurn(); }); }
     },
     request(type, extra) {
       const id = uid();
@@ -122,12 +201,14 @@ const Online = (() => {
       const n = order.length;
       if (n < 2 || n > 8) return;
       const deal = dealRoles(n);
-      HD = { decks: { sector: deckNew(SECTOR_DECK), item: deckNew(ITEM_DECK), hatch: deckNew(HATCH_DECK) }, roles: {}, chars: {}, seenOut: {}, last: '' };
+      HD = { decks: { sector: deckNew(SECTOR_DECK), item: deckNew(ITEM_DECK), hatch: deckNew(HATCH_DECK) }, roles: {}, chars: {}, seenOut: {}, last: '', bots: {} };
+      const map = T.maps.find(m => m.id === Sync.settings.map) || T.maps[0];
       hdReady = Promise.resolve(HD);
       for (let i = 0; i < n; i++) {
         const { role, char } = deal[i];
         HD.roles[order[i]] = role; HD.chars[order[i]] = char;
-        await Sync.set('secret/' + order[i], { role, char });
+        if (isBotId(order[i])) { const p = Sync.players[order[i]] || {}, pos = find(map, role === 'human' ? 'H' : 'A'); HD.bots[order[i]] = { id: order[i], name: p.name || 'Bot', level: p.bot || 'normal', state: { role, role0: role, char, pos, path: [{ turn: 0, pos }], items: [], fed: false, adr: false, over: null } }; }
+        else await Sync.set('secret/' + order[i], { role, char });
       }
       await persist(); await Sync.startGame(first, order);
     },
@@ -150,6 +231,7 @@ const Online = (() => {
       if (changed) persist();
       if (over) Sync.updateSettings({ status: 'over', result: Object.assign(over, { escaped: escaped.map(u => ps[u].name.slice(0, 20)) }) });
     },
+    maybeBotTurn, revealBots, isBotId,
     _hd: () => HD
   };
   return api;

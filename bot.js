@@ -134,7 +134,7 @@ const Bot = (() => {
   const ITEM_VALUE = { defense: 6, adrenaline: 4, spotlight: 4, attack: 3, sedatives: 3, teleport: 1 };
 
   /* ---------- one full turn ---------- */
-  function turn(ctx) {
+  async function turn(ctx) {
     const H = ctx.H, idx = ctx.idx, me = ctx.me, st = me.state, lvl = LEVELS.includes(me.bot) ? me.bot : 'normal';
     const adv = H.mode !== 'basic', B = beliefs(H, me), human = st.role === 'human';
     const say = e => ctx.log(Object.assign({ by: me.id, who: me.name }, e));
@@ -147,7 +147,7 @@ const Bot = (() => {
     // Spotlight on the most uncertain nearby player
     if (human && adv && lvl !== 'easy' && st.items.includes('spotlight')) {
       const cand = Object.values(B).map(b => ({ b, z: zoneOf(b, H.turn, false) })).filter(x => x.z && x.z.size <= 7 && x.b.pA > 0.25 && x.b.pA < 0.85);
-      if (cand.length && (lvl === 'hard' || rnd() < 0.5)) { const c = cand[0], ids = [...c.z.keys()]; useItem('spotlight'); ctx.spotlight(ids[Math.floor(ids.length / 2)]); }
+      if (cand.length && (lvl === 'hard' || rnd() < 0.5)) { const c = cand[0], ids = [...c.z.keys()]; useItem('spotlight'); await ctx.spotlight(ids[Math.floor(ids.length / 2)]); }
     }
     const dest = chooseMove(ctx, st, lvl, B);
     if (dest) { st.pos = dest; st.path.push({ turn: H.turn, pos: dest }); }
@@ -161,8 +161,8 @@ const Bot = (() => {
       return;
     }
     // Alien attack, or a Human with an Attack card on a likely Alien
-    if (!human && wantsAttack(ctx, st, lvl, B)) { say({ kind: 'attack', sector: st.pos }); if (ctx.attack(st.pos).some(h => h.killed && h.role === 'human') && H.mode !== 'infection') st.fed = true; return; }
-    if (human && adv && lvl === 'hard' && st.items.includes('attack') && (massMap(B, H.turn, true, false).get(st.pos) || 0) > 0.4) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); ctx.attack(st.pos); return; }
+    if (!human && wantsAttack(ctx, st, lvl, B)) { say({ kind: 'attack', sector: st.pos }); if ((await ctx.attack(st.pos)).some(h => h.killed && h.role === 'human') && H.mode !== 'infection') st.fed = true; return; }
+    if (human && adv && lvl === 'hard' && st.items.includes('attack') && (massMap(B, H.turn, true, false).get(st.pos) || 0) > 0.4) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
     if (ty !== '.') return;                                                 // Secure sector: nothing to draw
     if (human && adv && st.items.includes('sedatives') && lvl !== 'easy' && (danger > 0.2 || lvl === 'hard' && rnd() < 0.3)) { useItem('sedatives'); return; }
     const card = ctx.draw('sector') || 'silence', item = card.endsWith('-item') && adv;

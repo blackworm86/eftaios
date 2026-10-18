@@ -53,14 +53,18 @@ colors:
   paper-accent-tint: "#ffe2a6"
   paper-accent-edge: "#d08a00"
   paper-select-edge: "#e08a00"
-  player-teal: "#2ec4b6"
-  player-violet: "#9b5de5"
-  player-lime: "#a3e048"
-  player-pink: "#ff6fb5"
-  player-brown: "#8d6e63"
-  player-white: "#f4f4f4"
-  player-slate: "#7d8a96"
-  player-green: "#1f7a4d"
+  player-me: "#f5f5f5"
+  player-orange: "#E69F00"
+  player-sky: "#56B4E9"
+  player-green: "#009E73"
+  player-yellow: "#F0E442"
+  player-rose: "#CC79A7"
+  player-copper: "#A6763C"
+  player-lavender: "#A99BF0"
+  player-teal: "#2EC4B6"
+  player-me-ink: "#101010"
+  zone-shade: "#0b1222"
+  sheet-empty: "#3c4f75"
 typography:
   display:
     fontFamily: "Arial Narrow, Roboto Condensed, Helvetica Neue, Impact, sans-serif"
@@ -117,6 +121,7 @@ typography:
     fontSize: "7px"
     fontWeight: 700
 rounded:
+  xs: "6px"
   sm: "10px"
   md: "12px"
   lg: "14px"
@@ -194,7 +199,9 @@ A restrained navy neutral set with a single amber accent, plus fixed faction and
 - **Paper set** (#f4f2ec ground, #c9c9c9 Dangerous, #ffffff Secure, #555555 lines, #151515 start sectors and hatches, #9a9a9a hatching): the Classic map style.
 
 ### Player markers
-Eight player colours chosen to stay distinct from each other and from the four border colours: teal, violet, lime, pink, brown, white, slate, green. The circle border carries the faction guess: **black** me, **yellow** undecided, **blue** suspected Human, **red** suspected Alien. Every marker also has a thin outline (white around mine, dark around others) so it reads on both map styles.
+You are always **white**. Other players take a colour from a colour-blind-safe set by their seat in the turn order, so every device agrees: orange, sky, green, yellow, rose, copper, lavender, teal. Red and blue are kept for the faction guess and never used as player colours. The circle border carries the guess: **black** me, **yellow** undecided, **blue** suspected Human, **red** suspected Alien. The turn number sits inside every marker, and a thin outline ring (white around mine, dark around others) keeps markers readable on both map styles.
+
+My own steps: **full** = heard (noise in the sector I reached), **faded** (dark tint, 35% fill) = silent or noise announced elsewhere, **dashed border** = a bluff, joined by a dashed line to where I really was. A solid line in my colour joins my steps. In **Shapes** mode (More → Markers) other players become square, triangle, diamond, pentagon, inverted triangle, hexagon, star and octagon; mine stay circles. **Follow** shades the sectors a player could have reached since last heard (2 per turn for a suspected Alien or unknown, 1 for a Human) and draws their known route as a solid line in their colour.
 
 ### Named Rules
 **The One Amber Rule.** Amber marks the single thing to do next, or where you are. If two things on a screen are amber, one is wrong.

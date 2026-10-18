@@ -1,6 +1,20 @@
 'use strict';
 /* Minimal i18n: English strings are the keys; Italian lives in IT. t('Text {x}', {x: 1}) */
 const IT = {
+"Heard": "Sentito",
+"Silent or elsewhere": "Silenzio o altrove",
+"Bluff (real below)": "Bluff (reale sotto)",
+"Follow {p}": "Segui {p}",
+"Tap a name to follow that player on the map. Tap the badge to change your guess.": "Tocca un nome per seguire quel giocatore sulla mappa. Tocca l'etichetta per cambiare il tuo sospetto.",
+"Sheet": "Scheda",
+"Log": "Annunci",
+"Status": "Stato",
+"Markers": "Segnalini",
+"Circles": "Cerchi",
+"Shapes": "Forme",
+"Stop": "Basta",
+"Following {p} · heard in {s} on turn {n} · could now be in {c} sectors": "Segui {p} · sentito in {s} al turno {n} · ora può essere in {c} settori",
+"Following {p} · not heard yet": "Segui {p} · non ancora sentito",
 "Unofficial companion app": "App di supporto non ufficiale",
 "About: {x}": "Info: {x}",
 "One device": "Un solo dispositivo",

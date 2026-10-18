@@ -14,13 +14,15 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const SS='/tm
   assert(mk.every(m=>m.c==='#ffd23f'),'opponents start with a yellow (undecided) border');
   assert(await A.evaluate(()=>[...document.querySelectorAll('#marks .pm.mine circle[stroke]')].every(c=>c.getAttribute('stroke')==='#000000'))&&await A.evaluate(()=>document.querySelectorAll('#marks .pm.mine').length)>=1,'my own markers have a black border');
   const uids=await Promise.all(pages.map(p=>p.evaluate(()=>Sync.uid)));
-  const view=async (p)=>p.evaluate(u=>u.map(x=>x===Sync.uid?colorOf('me'):colorOf('u:'+x)),uids);
-  const [sa,sb,sc]=[await view(A),await view(B),await view(C)];
-  assert(JSON.stringify(sa)===JSON.stringify(sb)&&JSON.stringify(sb)===JSON.stringify(sc)&&new Set(sa).size===3,'every device gives each player the same, distinct colour');
+  const view=async (p)=>p.evaluate(u=>u.map(x=>x===Sync.uid?null:colorOf('u:'+x)),uids);
+  const vs=[await view(A),await view(B),await view(C)];
+  const same=[0,1,2].every(i=>new Set(vs.map(v=>v[i]).filter(x=>x!==null)).size===1),cols=[0,1,2].map(i=>vs.map(v=>v[i]).find(x=>x!==null));
+  assert(same&&new Set(cols).size===3,'every device gives each other player the same, distinct colour');
+  assert(await A.evaluate(()=>pal('me')[0])==='#f5f5f5','I am always white on my own device');
   // A suspects B is an alien and C is human
-  await A.click('[data-tab=table]');await A.click('[data-act=tsec][data-k=players]');
+  await A.click('[data-tab=table]');
   const uB=await B.evaluate(()=>Sync.uid),uC=await C.evaluate(()=>Sync.uid);
-  await A.click(`[data-act=sus][data-k="u:${uB}"][data-v=alien]`);await A.click(`[data-act=sus][data-k="u:${uC}"][data-v=human]`);
+  const gb=u=>A.click(`.sheet [data-act=sus][data-k="u:${u}"]`);await gb(uB);await gb(uB);await gb(uC);
   const cls=await A.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine) circle[stroke]')].map(c=>c.getAttribute('stroke')).join(' '));
   assert(cls.includes('#ff3b30')&&cls.includes('#2f7dff'),'suspicion recolours that player\'s markers (red / blue)');
   assert(await B.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine) circle[stroke]')].every(c=>c.getAttribute('stroke')==='#ffd23f')),'suspicions are private to the device');

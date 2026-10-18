@@ -251,11 +251,11 @@ Sync.on({
   settings(st) {
     if (st && st.status === 'over' && st.result && st.result.reason === 'closed' && (S.stage === 'lobby' || S.stage === 'game') && !Sync.isHost()) { toast(t('The host closed this game.')); Sync.leave(true); resetToWelcome(); return; }
     if (S.stage === 'lobby') { if (st && st.status === 'playing') beginGame(); else { syncOrder(); renderFlow(); } }
-    else if (S.stage === 'game') { if (st && st.status === 'over') showGameOver(); hdr(); if (S.tab === 'play' || S.tab === 'table') render(); }
+    else if (S.stage === 'game') { if (st && st.status === 'over') { showGameOver(); paintOverlay(); } hdr(); if (S.tab === 'play' || S.tab === 'table') render(); }
   },
   players() {
     if (S.stage === 'lobby') { syncOrder(); renderFlow(); }
-    else if (S.stage === 'game') { if ((typeof Online !== 'undefined')) Online.onPlayers(); if (S.tab === 'table' || (S.tab === 'play' && !myTurn())) render(); }
+    else if (S.stage === 'game') { if ((typeof Online !== 'undefined')) Online.onPlayers(); if (S.tab === 'table' || (S.tab === 'play' && !myTurn())) render(); paintOverlay(); }
   },
   turn(v) { onTurn(v); },
   counts(c) { T.counts = c; if (S.stage === 'game' && S.tab === 'table') render(); },

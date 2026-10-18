@@ -85,6 +85,9 @@
             },
             "bot": {
               ".validate": "newData.val() === 'easy' || newData.val() === 'normal' || newData.val() === 'hard'"
+            },
+            "route": {
+              ".validate": "newData.isString() && newData.val().length <= 1500 && root.child('rooms').child($room).child('settings/status').val() === 'over'"
             }
           }
         },

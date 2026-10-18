@@ -581,7 +581,7 @@ input,textarea{caret-color:var(--amber);accent-color:var(--amber)}
 dialog a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
 @media (max-width:400px){
   .setcard{grid-template-columns:minmax(0,1fr) auto}
-  .setcard>.prevbox,.setcard>.mapcard{display:none}
+  .setcard>.prevbox,.setcard>.mapcard{flex-basis:64px}
   .plist li{gap:6px;padding-right:6px}
   .plist .mv{gap:3px}.plist .mv button{width:32px}
   .plist select[data-botlvl]{max-width:96px;padding:4px 4px}
@@ -613,3 +613,14 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .plist li{flex-wrap:wrap;row-gap:4px}.plist .pname{flex:1 1 96px}
 .plist .ctl{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none}
 @media (min-width:700px){.setup-card{width:min(620px,100%)}}
+
+/* ---------- v17: end-of-game routes, out badges ---------- */
+.rline{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;opacity:.9;pointer-events:none}
+.rline.dim{opacity:.1}
+#map.classic .rline.me{stroke:#151515}
+.revseg{margin:8px 0 10px}
+.dotw{position:relative;display:inline-flex;flex:none}
+.omark{position:absolute;right:-5px;bottom:-4px;width:14px;height:14px;border-radius:50%;display:grid;place-items:center;color:#fff;border:1.5px solid #0b1222}
+.omark .ico{width:9px;height:9px}
+.omark.dead{background:#ff3b30}.omark.esc{background:#1e8a4f}
+.mkbar button.isout{opacity:.6}.mkbar button.isout span:last-child{text-decoration:line-through}

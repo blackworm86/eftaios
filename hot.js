@@ -130,6 +130,8 @@ const Hot = (() => {
     order: () => (H ? H.seats.map(s => s.id) : []),
     counts: () => (H ? counts() : null),
     isOver: () => !!(H && H.result),
+    /* every seat's real route and final role — only once the game is over */
+    routes() { if (!H || !H.result) return {}; const o = {}; H.seats.forEach((s, i) => { const st = i === H.cur ? S : s.state; o[s.id] = { path: st.path || [], role: st.role }; }); return o; },
     result: () => (H && H.result) || {},
     publicPlayers() {
       const o = {}; if (!H) return o;

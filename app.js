@@ -197,7 +197,7 @@ function markBody(g, key, r, o = {}) {
   const draw = (rr, attrs) => sh ? el('path', Object.assign({ d: sh.d, transform: `scale(${rr.toFixed(2)})` }, common, attrs), g) : el('circle', Object.assign({ r: rr.toFixed(2) }, attrs), g);
   draw(r + sw / 2 + 0.6, { class: key === 'me' ? 'mko me' : 'mko' });   // outline ring: white around my black border, dark around the others
   if (o.faded) draw(r, { class: 'mkshade' });   // dark tint under a faded marker so it reads as faded on light sectors too
-  const body = draw(r, { fill, 'fill-opacity': o.faded ? 0.35 : 1, stroke: borderOf(key), 'stroke-width': sw.toFixed(2), 'stroke-linejoin': 'round' });
+  const body = draw(r, { fill, 'fill-opacity': o.faded ? 0.35 : 1, stroke: o.border || borderOf(key), 'stroke-width': sw.toFixed(2), 'stroke-linejoin': 'round' });
   if (o.dashed) body.setAttribute('stroke-dasharray', `${(r * 0.55).toFixed(1)} ${(r * 0.38).toFixed(1)}`);
   return sh ? sh.ty * r : 0;
 }
@@ -246,11 +246,13 @@ function paintOverlay() {
   marks.textContent = ''; me.textContent = ''; if (zoneG) zoneG.textContent = ''; paintNotes();
   const focus = T.focus || null;
   const hp = sec => { const q = parseId(sec); return q ? hexPos(map, q[0], q[1]) : null; };
-  const pts = inPlay ? S.path.map(p => { const h = hp(p.pos); return h.x + ',' + h.y; }) : [];
+  const routes = inPlay ? finalRoutes() : null;
+  const pts = inPlay && !routes ? S.path.map(p => { const h = hp(p.pos); return h.x + ',' + h.y; }) : [];
   trail.setAttribute('points', pts.join(' '));
   trail.setAttribute('class', 'trail' + (focus && focus !== 'me' ? ' dim' : ''));
   renderMkBar(); followBar();
   if (!inPlay) return;
+  if (routes) { paintRoutes(routes, focus, hp, marks); return; }
   const own = ownSteps();
   // follow mode: shade the sectors the followed player could have reached since they were last heard
   if (focus && focus !== 'me' && zoneG) {
@@ -314,6 +316,41 @@ function paintOverlay() {
     if (tl.length > 1) el('polyline', { points: tl.join(' '), class: 'tl', stroke: pal(focus)[0] }, marks);
     const first = marks.querySelector('.pm'); const tlEl = marks.querySelector('.tl'); if (first && tlEl) marks.insertBefore(tlEl, first);
   }
+}
+/* game over: every player's real route, from the devices that played them (announcements and bluffs are left out) */
+function finalRoutes() {
+  if (T.showAnn) return null;
+  if (S.hot) { if (!(window.Hot && Hot.isOver())) return null; const me = myId(); return Object.entries(Hot.routes()).map(([id, v]) => ({ key: id === me ? 'me' : 'u:' + id, path: v.path, role: v.role })); }
+  if (!(window.Sync && Sync.code && Sync.settings && Sync.settings.status === 'over')) return null;
+  const out = [{ key: 'me', path: S.path, role: S.role }];
+  Object.entries(Sync.players || {}).forEach(([u, p]) => { if (u !== Sync.uid && p.route) out.push({ key: 'u:' + u, path: decodeRoute(p.route), role: p.role }); });
+  return out;
+}
+const ROLE_BORDER = { human: '#2f7dff', alien: '#ff3b30' };
+function paintRoutes(routes, focus, hp, marks) {
+  const bySector = new Map();
+  routes.forEach(r => {   // lines first, so the markers sit on top
+    const dim = focus && focus !== r.key, pts = r.path.map(p => hp(p.pos)).filter(Boolean).map(h => h.x + ',' + h.y);
+    if (pts.length > 1) el('polyline', { points: pts.join(' '), class: 'rline' + (r.key === 'me' ? ' me' : '') + (dim ? ' dim' : ''), stroke: pal(r.key)[0] }, marks);
+    r.path.forEach(p => { if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [] }); m.get(r.key).turns.push(p.turn); });
+  });
+  bySector.forEach((m, sec) => {
+    const h = hp(sec); if (!h) return;
+    const list = [...m.values()].sort((a, b) => colorOf(a.r.key) - colorOf(b.r.key)), { size, pts: sp } = slots(list.length);
+    list.forEach((it, i) => {
+      const [dx, dy] = sp[i], k = it.r.key, turns = [...new Set(it.turns)].sort((a, b) => b - a), dim = focus && focus !== k;
+      const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
+      const g = el('g', { class: 'mk pm route' + (k === 'me' ? ' mine' : '') + (dim ? ' dim' : ''), transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
+      const ty = markBody(g, k, size, { border: k === 'me' ? null : ROLE_BORDER[it.r.role] });
+      const tx = el('text', { fill: pal(k)[1], y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
+    });
+  });
+}
+/* eliminated / escaped badge on a player's icon in the strip and the sheet */
+function outMark(k) {
+  const o = k === 'me' ? ({ dead: 'killed', escaped: 'escaped', trapped: 'trapped' })[S.over] : k.startsWith('u:') ? (tablePlayers()[k.slice(2)] || {}).out : null;
+  if (!o) return '';
+  return o === 'escaped' ? `<i class="omark esc" title="${t('escaped')}">${ico('check', 12)}</i>` : `<i class="omark dead" title="${t('eliminated')}">${ico('cross', 12)}</i>`;
 }
 /* banner under the top bar while following a player */
 function followBar() {
@@ -391,7 +428,7 @@ function renderMkBar() {
     (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Mark players by hand')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
-      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('') +
+      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : 'eliminated') : ''}" title="${esc(n)}" class="${outMark(k) ? 'isout' : ''}"><span class="dotw">${dotIcon(k)}${outMark(k)}</span><span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('') +
     (T.markMode && !Sync.code && !S.hot && ps.length < 7 ? `<button class="mkt" data-act="addplayer" aria-label="${t('Add player')}"><b>+</b></button>` : '');
 }
 /* follow one player (or only my route): grey out the rest and frame what matters */
@@ -540,6 +577,7 @@ const actions = {
   rules() { overlay(t('How to play'), rulesHtml()); },
   maps() { overlay(t('Map'), mapsHtml()); },
   ovclose() { const o = $('#overlay'); if (o) o.remove(); },
+  revealview(b) { T.showAnn = b.dataset.v === 'ann'; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); paintOverlay(); },
   mkall(b) { S.mkAll = b.dataset.v === '1'; save(); render(); paintOverlay(); }
 };
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }

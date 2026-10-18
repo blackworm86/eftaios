@@ -69,8 +69,11 @@ function afterChange() {
 function showGameOver() {
   if (S.revealed || !Sync.code) return; S.revealed = true;
   if (Sync.isHost() && typeof Online !== 'undefined') Online.revealBots();
-  Sync.setMe({ role: S.role, char: S.char || '' }); save();
+  Sync.setMe({ role: S.role, char: S.char || '', route: encodeRoute(S.path) }); save();
 }
+/* a route travels as "turn:sector,turn:sector,…" — published only once the game is over */
+const encodeRoute = path => (path || []).map(p => p.turn + ':' + p.pos).join(',').slice(0, 1500);
+const decodeRoute = s => String(s || '').split(',').map(x => { const [t_, pos] = x.split(':'); return { turn: +t_, pos }; }).filter(p => p.pos && parseId(p.pos));
 
 /* ---------------- moving & announcing ---------------- */
 function confirmMove() {
@@ -277,6 +280,7 @@ function globalOverPanel() {
   return `<h2>${t('Game over')}</h2>
     ${sayBox(r.aliensWin ? t('The Aliens win!') : t('The Humans win!'), r.aliensWin ? 'alert' : '', 'Result')}
     <p class="dim">${t(why)}</p>${esc_.length ? `<p>${t('Humans who escaped: {n}', { n: esc_.map(esc).join(', ') })}</p>` : ''}
+    <div class="seg revseg" role="radiogroup" aria-label="${t('Map')}"><button role="radio" data-act="revealview" data-v="real" aria-checked="${!T.showAnn}">${t('Real routes')}</button><button role="radio" data-act="revealview" data-v="ann" aria-checked="${!!T.showAnn}">${t('Announcements')}</button></div>
     <ul class="plist rev">${rows}</ul><button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`;
 }
 
@@ -347,7 +351,7 @@ function sheetHtml() {
   const body = rows.map(([k, n]) => {
     const u = k.startsWith('u:') ? k.slice(2) : k === 'me' ? myId() : null, p = u && ps[u], g = suspicion(k);
     const guess = k === 'me' ? '' : `<button class="gb ${g || 'none'}" data-act="sus" data-k="${esc(k)}" data-v="${NEXT_SUS[g]}" aria-label="${t('Your suspicion')}: ${t(g === 'human' ? 'Suspected Human' : g === 'alien' ? 'Suspected Alien' : 'No idea')}">${g === 'human' ? t('H') : g === 'alien' ? t('A') : '?'}</button>`;
-    return `<tr class="${u && u === cur ? 'cur' : ''}${p && p.out ? ' out' : ''}"><th><span class="who"><button class="name" data-act="follow" data-k="${esc(k)}" aria-label="${t('Follow {p}', { p: esc(n) })}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>${guess}</span></th>${turns.map(x => cell(k, x)).join('')}</tr>`;
+    return `<tr class="${u && u === cur ? 'cur' : ''}${p && p.out ? ' out' : ''}"><th><span class="who"><button class="name" data-act="follow" data-k="${esc(k)}" aria-label="${t('Follow {p}', { p: esc(n) })}"><span class="dotw">${dotIcon(k)}${outMark(k)}</span><span>${esc(shortName(n))}</span></button>${guess}</span></th>${turns.map(x => cell(k, x)).join('')}</tr>`;
   }).join('');
   return `<div class="sheet${rows.length > 5 ? ' dense' : ''}" id="sheet"><table><thead><tr><th></th>${turns.map(n => `<th>${t('T{n}', { n })}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
 }

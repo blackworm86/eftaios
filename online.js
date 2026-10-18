@@ -155,7 +155,7 @@ const Online = (() => {
     const nx = nextTurn(); if (nx) Sync.setTurn(nx);
   }
   /* host: when the game is over, reveal the bots' roles like everyone else's */
-  function revealBots() { if (!HD || !HD.bots) return; Object.entries(HD.bots).forEach(([id, b]) => { const p = Sync.players[id]; if (p && !p.role) Sync.set('players/' + id, Object.assign({}, p, { role: b.state.role, char: b.state.char || '' })); }); }
+  function revealBots() { if (!HD || !HD.bots) return; Object.entries(HD.bots).forEach(([id, b]) => { const p = Sync.players[id]; if (p && !p.route) Sync.set('players/' + id, Object.assign({}, p, { role: b.state.role, char: b.state.char || '', route: encodeRoute(b.state.path) })); }); }
 
   const api = {
     attach() {

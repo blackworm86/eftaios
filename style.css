@@ -587,3 +587,29 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
   .plist select[data-botlvl]{max-width:96px;padding:4px 4px}
   .plist .x{width:32px}
 }
+
+/* ---------- v16: lobby never overflows (large system text, Italian labels, phones and tablets) ---------- */
+.screen{overflow-x:hidden}
+.setup-card{min-width:0;max-width:100%}
+.setup-card *{min-width:0}
+/* table code card: the buttons drop below the code when there is no room */
+.setup-card .roomcard{flex-wrap:wrap}
+.setup-card .roomcard>div{flex:1 1 150px}
+.setup-card .roomcard .btn{flex:1 0 auto}
+/* settings card: thumbnail, details and edit button wrap instead of pushing past the edge */
+.setcard{display:flex;flex-wrap:wrap;align-items:center}
+.setcard>.prevbox,.setcard>.mapcard{flex:0 0 84px}
+.setcard .kv{flex:1 1 170px;grid-template-columns:auto minmax(0,1fr)}
+.setcard .kv dt,.setcard .kv dd{white-space:normal;overflow:visible;overflow-wrap:anywhere}
+.setcard .edit{flex:0 0 44px;margin-left:auto}
+/* section title with its actions: the actions wrap as a group */
+.setup-card h3{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px}
+.setup-card h3 .mini-link{margin-left:0}
+.setup-card h3 .hint{flex-basis:100%;margin-left:0}
+/* player rows: the name gives way first */
+.plist li{flex-wrap:nowrap}.plist .pname{flex:1 1 auto}
+.plist .pst,.plist .mv,.plist .x,.plist select{flex:none}
+.setcard .kv dt,.setcard .kv dd{overflow-wrap:break-word}
+.plist li{flex-wrap:wrap;row-gap:4px}.plist .pname{flex:1 1 96px}
+.plist .ctl{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none}
+@media (min-width:700px){.setup-card{width:min(620px,100%)}}

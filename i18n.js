@@ -1,6 +1,9 @@
 'use strict';
 /* Minimal i18n: English strings are the keys; Italian lives in IT. t('Text {x}', {x: 1}) */
 const IT = {
+"Update the database rules": "Aggiorna le regole del database",
+"This version of the app needs new database rules. Open the rules page, copy them and publish them in the Firebase console, then try again.": "Questa versione dell'app richiede nuove regole del database. Apri la pagina delle regole, copiale e pubblicale nella console Firebase, poi riprova.",
+"Open the rules page": "Apri la pagina delle regole",
 "Bot level": "Livello del bot",
 "Easy": "Facile",
 "Normal": "Normale",

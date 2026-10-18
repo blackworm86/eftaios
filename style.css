@@ -574,3 +574,16 @@ input,textarea{caret-color:var(--amber);accent-color:var(--amber)}
 .plist .pname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .plist select[data-botlvl]{min-height:36px;width:auto;padding:4px 8px;font-size:13px}
 .plist .x{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--dim);display:grid;place-items:center;padding:0}
+/* lobby settings card: the edit button is an icon so long labels (Italian, large text) never push it out */
+.setcard{grid-template-columns:84px minmax(0,1fr) auto}
+.setcard .kv{min-width:0}.setcard .kv dt,.setcard .kv dd{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setcard .edit{width:44px;min-height:44px;padding:0;display:grid;place-items:center}
+dialog a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
+@media (max-width:400px){
+  .setcard{grid-template-columns:minmax(0,1fr) auto}
+  .setcard>.prevbox,.setcard>.mapcard{display:none}
+  .plist li{gap:6px;padding-right:6px}
+  .plist .mv{gap:3px}.plist .mv button{width:32px}
+  .plist select[data-botlvl]{max-width:96px;padding:4px 4px}
+  .plist .x{width:32px}
+}

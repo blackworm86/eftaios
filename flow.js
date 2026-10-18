@@ -110,7 +110,7 @@ function lobbyHtml() {
     <div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
       <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>
     <div class="setcard">${host ? `<input type="hidden" id="f-map" value="${esc(map.id)}"><button type="button" class="mapcard mini" data-act="mapgallery" aria-label="${t('Map')}: ${esc(map.name)}. ${t('Tap to choose another map')}"><span class="prevbox">${mapPreview(map)}</span></button>` : `<span class="prevbox">${mapPreview(map)}</span>`}
-      ${kv}${host ? `<button class="btn edit" data-act="lobbyopts">${t('Change')}</button>` : ''}</div>
+      ${kv}${host ? `<button class="btn edit" data-act="lobbyopts" aria-label="${t('Game options')}">${ico('pencil', 20)}</button>` : ''}</div>
     <h3>${t('Turn order')} ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>${players.length < 8 ? `<button class="mini-link" data-act="addlobbybot">+ ${t('Add bot')}</button>` : ''}` : ''}</h3>
     <ul class="plist">${rows}</ul>
     ${online ? `<p class="dim hintline">${t('Roles and cards are dealt when the game starts.')}</p>`
@@ -118,6 +118,14 @@ function lobbyHtml() {
     <div class="row lobbyact"><button class="btn big ${S.ready ? 'ok' : host ? '' : 'primary'}" data-act="ready" ${canReady ? '' : 'disabled'}>${S.ready ? ico('check') + ' ' + t('Ready') : t("I'm ready")}</button>
     ${host ? `<button class="btn primary big startbtn" data-act="startgame" ${allReady ? '' : 'disabled'}>${t('Start game')}<small>${t('{n}/{m} ready', { n: nReady, m: players.length })}</small></button>` : ''}</div>
     ${!host && S.ready ? `<p class="dim hintline center">${t('Waiting for the host to start the game…')}</p>` : ''}`;
+}
+/* the database refused a write: almost always rules that were not published again after an update */
+function rulesError(e) {
+  const code = String(e && (e.code || e.message) || e);
+  if (!/permission/i.test(code)) { toast(t('Connection error') + ' ' + code.slice(0, 40)); return; }
+  dlg.innerHTML = `<h2>${t('Update the database rules')}</h2><p>${t('This version of the app needs new database rules. Open the rules page, copy them and publish them in the Firebase console, then try again.')}</p>
+    <div class="row"><button class="btn" id="d-no">${t('Close')}</button><a class="btn primary" href="firebase-rules.html" target="_blank" rel="noopener">${t('Open the rules page')}</a></div>`;
+  if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 /* host: change rules, cards and tracking from the lobby */
 function lobbyOpts() {
@@ -175,7 +183,7 @@ Object.assign(actions, {
     const ps = Sync.players || {}; if (Object.keys(ps).length >= 8) return;
     const n = Object.values(ps).filter(p => p.bot).length + 1, id = 'bot_' + Math.random().toString(36).slice(2, 8);
     if (!isOnline()) { Sync.updateSettings({ online: true }); toast(t('Bots play with digital cards.')); }
-    Sync.set('players/' + id, { name: t('Bot {n}', { n }), ready: true, bot: 'normal' }).catch(e => toast(t('Connection error') + ' ' + (e.code || '')));
+    Sync.set('players/' + id, { name: t('Bot {n}', { n }), ready: true, bot: 'normal' }).catch(rulesError);
   },
   delbot(b) { Sync.del('players/' + b.dataset.u).catch(() => {}); },
   seg(b) {

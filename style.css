@@ -655,3 +655,9 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .dlgico{display:grid;place-items:center;margin-bottom:6px}
 .btn.withico{display:flex;align-items:center;gap:12px;text-align:left}
 .btn.withico small{margin-top:1px}
+
+/* companion: recording what the other players declare */
+.dchips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.dchip{display:flex;align-items:center;gap:6px;min-height:40px;padding:4px 10px 4px 6px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel2);color:var(--text);font:700 12px var(--font);letter-spacing:.03em}
+.dchip[aria-pressed=true]{border-color:var(--amber);background:#ffb41f26}
+.dchip .gi{vertical-align:0}

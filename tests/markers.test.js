@@ -5,7 +5,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const SS='/tm
   await startTable(pages);await begin(pages);
   // each player announces a noise on their turn
   for(let k=0;k<3;k++){const p=await current(pages);const i0=await p.evaluate(()=>T.turnState.idx);
-    await p.evaluate(()=>{S.phase='resolve';S.res={stage:'choose'};S.pos='K10';render()});await p.click('[data-act=noiseAny]');await p.evaluate(sec=>{const cb=T.pick.cb;T.pick=null;cb(sec)},['M10','N10','O10'][k]);
+    await p.evaluate(sec=>{S.phase='resolve';S.res={stage:'done',say:'x'};S.pos='K10';say('','noise',sec);render()},['M10','N10','O10'][k]);
     await p.click('[data-act=next]');await A.waitForFunction(i=>T.turnState.idx!==i||T.turnState.n>1,i0)}
   await A.waitForFunction(()=>S.log.filter(e=>e.kind==='noise').length>=3);
   const mk=await A.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine)')].map(g=>{const c=g.querySelector('path:not(.mko)');return {d:c.getAttribute('fill'),c:c.getAttribute('stroke')}}));

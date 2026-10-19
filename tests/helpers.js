@@ -8,14 +8,14 @@ exports.setup=async(n,opts={})=>{
   const pages=[];for(let i=0;i<n;i++){const p=await ctx.newPage();p.on('pageerror',e=>errs.push(i+': '+e.message));p.on('console',m=>m.type()==='error'&&errs.push(i+': '+m.text()));pages.push(p)}
   return {b,ctx,pages,errs};
 };
-/* host creates a table; others join; everyone readies; host starts. opts: online, mode, names */
-exports.startTable=async(pages,{online=false,mode='advanced',map='galilei',roles,track='auto'}={})=>{
+/* host creates a table; others join; everyone readies; host starts. Roles and cards are dealt digitally. opts: mode, map */
+exports.startTable=async(pages,{mode='advanced',map='galilei'}={})=>{
   const [H,...G]=pages;await H.goto('http://localhost:8123/');await H.fill('#flow-name','P0');await H.click('[data-act=hostsetup]');
-  await H.click('.mapcard');await H.click(`.gcard[data-id=\"${map}\"]`);await H.click(`[data-f=mode][data-v=${mode}]`);await H.click(`[data-f=cards][data-v=${online?'online':'physical'}]`);await H.click(`[data-f=track][data-v=${track}]`);
+  await H.click('.mapcard');await H.click(`.gcard[data-id=\"${map}\"]`);await H.click(`[data-f=mode][data-v=${mode}]`);
   await H.click('[data-act=hostcreate]');await H.waitForSelector('.roomcard b');const code=await H.textContent('.roomcard b');
   for(let i=0;i<G.length;i++){const p=G[i];await p.goto('http://localhost:8123/?room='+code);await p.fill('#flow-name','P'+(i+1));await p.click('[data-act=joinroom]');await p.waitForSelector('.plist');}
   await H.waitForFunction(n=>document.querySelectorAll('.plist li').length===n,pages.length);
-  for(let i=0;i<pages.length;i++){const p=pages[i];if(!online){await p.click(`[data-act=faction][data-r=${(roles||[])[i]||(i%2?'alien':'human')}]`)}await p.click('[data-act=ready]')}
+  for(let i=0;i<pages.length;i++){await pages[i].click('[data-act=ready]')}
   await H.waitForFunction(()=>!document.querySelector('.startbtn').disabled);
   return code;
 };

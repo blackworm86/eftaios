@@ -1,6 +1,18 @@
 'use strict';
 /* Minimal i18n: English strings are the keys; Italian lives in IT. t('Text {x}', {x: 1}) */
 const IT = {
+"Companion": "Companion",
+"Paper sheet, real cards": "Foglio di carta, carte vere",
+"Use the app like the paper sheet: track your own route and what the other players declare. You play with the real cards.": "Usa l'app come il foglio di carta: segna il tuo percorso e ciò che dichiarano gli altri giocatori. Giochi con le carte vere.",
+"Pick the player in the strip on the left, or add one with +.": "Scegli il giocatore nella barra a sinistra, oppure aggiungilo con +.",
+"{p}: tap the sector on the map. Tap again to remove it.": "{p}: tocca il settore sulla mappa. Tocca di nuovo per toglierlo.",
+"{p}: tap what they declared.": "{p}: tocca ciò che ha dichiarato.",
+"What they declared": "Cosa ha dichiarato",
+"First pick the player, on the left.": "Prima scegli il giocatore, a sinistra.",
+"That declaration has no sector. Pick Noise or Attack to mark one.": "Questa dichiarazione non ha un settore. Scegli Rumore o Attacco per segnarne uno.",
+"Tap the sector on the map.": "Tocca il settore sulla mappa.",
+"Undo": "Annulla",
+"Item": "Oggetto",
 "Routes could not be shared.": "Impossibile condividere i percorsi.",
 "Waiting for the routes of {n} players…": "In attesa dei percorsi di {n} giocatori…",
 "Real routes": "Percorsi reali",
@@ -455,7 +467,7 @@ const IT = {
 "First pick the player to mark, on the left.": "Prima scegli a sinistra il giocatore da segnare.",
 "Marking {p}: tap the sectors on the map. Tap again to remove.": "Segni {p}: tocca i settori sulla mappa. Tocca di nuovo per togliere.",
 "Pick the player to mark in the strip on the left.": "Scegli nella barra a sinistra il giocatore da segnare.",
-"Mark players by hand": "Segna i giocatori a mano",
+"Record what the other players declare": "Segna cosa dichiarano gli altri giocatori",
 "mark": "segna",
 "Note on {s}": "Nota su {s}",
 "Sticker": "Adesivo",

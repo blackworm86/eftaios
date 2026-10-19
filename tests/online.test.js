@@ -3,7 +3,7 @@ const {assert,setup,startTable,begin,current,uidOf}=require('./helpers');
 (async()=>{
   const {b,pages,errs}=await setup(3);const [H,P1,P2]=pages;
   await startTable(pages,{online:true,mode:'advanced'});
-  assert((await H.textContent('#flow-card')).includes('Digital'),'lobby shows digital cards');
+  assert((await H.textContent('#flow-card')).includes('dealt when the game starts'),'lobby says roles and cards are dealt digitally');
   assert(await H.locator('[data-act=faction]').count()===0,'no manual faction pick in digital mode');
   await begin(pages);
   const roles=await Promise.all(pages.map(p=>p.evaluate(()=>S.role)));

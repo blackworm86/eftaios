@@ -3,7 +3,7 @@ const {assert,setup,current}=require('./helpers');
 (async()=>{
   const {b,pages,errs}=await setup(2);const [H,G]=pages;
   await H.goto('http://localhost:8123/');await H.fill('#flow-name','Host');await H.click('[data-act=hostsetup]');
-  await H.click('[data-f=cards][data-v=physical]');await H.click('[data-act=hostcreate]');await H.waitForSelector('.roomcard b');const code=await H.textContent('.roomcard b');
+  await H.click('[data-act=hostcreate]');await H.waitForSelector('.roomcard b');const code=await H.textContent('.roomcard b');
   await G.goto('http://localhost:8123/?room='+code);await G.fill('#flow-name','Guest');await G.click('[data-act=joinroom]');await G.waitForSelector('.plist');
   await H.click('[data-act=addlobbybot]');await H.waitForFunction(()=>document.querySelectorAll('.plist li').length===3);
   await H.click('[data-act=addlobbybot]');await H.waitForFunction(()=>document.querySelectorAll('.plist li').length===4);

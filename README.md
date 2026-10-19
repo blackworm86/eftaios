@@ -14,23 +14,17 @@ Maps: Black Edition (Galilei, Fermi, Galvani), *Before the World Ends* (Machiave
 
 Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 01..14, columns A..W): `.` dangerous, `s` secure, `x` empty space, `H` human, `A` alien, `1`-`4` hatches.
 
-## Playing
+## Three ways to play
 
-1. **Host** taps *Host a table*, picks map and rules, and shares the code, QR or link.
-2. **Players** join, then each draws a Character card from the physical deck and picks Human or Alien in the app (never shared with anyone).
-3. When everybody is *Ready* the host taps *Start game*; a random first player is announced.
+**Online table** (digital): the host taps *Host a table*, picks the map and the rules (Basic, Advanced or Infection) and shares the code, QR or link. Players join, tap *Ready*, and the host taps *Start game*; a random first player is announced. The host device deals the 8 Character cards and shuffles the 25 Sector, 12 Item and 6 Escape Hatch cards, tracks the draw and discard piles and reshuffles the discards when a pile runs out. Items, Spotlights and attacks are resolved automatically (Defense is played for you, Spotlight positions are revealed, attacks after movement). Positions and routes stay on each device; the host must keep the app open while playing. The host arranges the order of play in the lobby; only the player whose turn it is can act. Eliminated or escaped players are skipped, and the host can skip an absent player. Bots can fill seats (Easy, Normal, Hard).
 
-**Turns:** the host arranges the order of play in the lobby; only the player whose turn it is can act, and everyone else sees whose turn it is. Eliminated or escaped players are skipped, and the host can skip an absent player.
+**Pass and play** (digital, one device): *Pass and play* lets 2–8 players share one phone or tablet, with bots if you like. After each turn a hand-over screen hides everything until the next player taps their name; roles, routes and items stay private per player.
 
-**Digital cards (full online):** pick *Digital cards* when creating the table. The host device deals the 8 Character cards and shuffles the 25 Sector, 12 Item and 6 Escape Hatch cards, tracks the draw and discard piles and reshuffles the discards when a pile runs out. Items, Spotlights and attacks are resolved automatically (Defense is played for you, Spotlight positions are revealed, attacks after movement). Positions and routes stay on each device; the host must keep the app open while playing.
-
-**Pass and play:** *Pass and play (one device)* on the start screen lets 2–8 players share one phone or tablet with digital cards. After each turn a hand-over screen hides everything until the next player taps their name; roles, routes and items stay private per player.
+**Companion** (the paper sheet): you play the real game with the real cards and use the app instead of paper and pencil. You pick your Character card (Human or Alien), the app tracks your own route and gives you the exact words to announce, and you write down what the other players declare. Tap ✎ on the map strip, pick a player (or add one with +) and record what they said: Noise in a sector (tap the sector), an Attack, Silence, a Silent Sector, or an item played (Spotlight and Attack also ask for a sector). Everything lands on the map as markers and arrows, in the table log, and feeds the follow zone that predicts where a player can be now.
 
 **Printed icons:** the nine icons of the physical game (the three Dangerous Sector cards and the six items, traced from the original artwork in `gicons.js`) are on the card buttons, the item hand and its sheet, announcements, the table log and the map. The Silent Sector has no printed icon yet and shows a dashed hexagon.
 
-**Map markers:** every player is a rounded hexagon in their own colour; routes are drawn as arrows showing the direction of each move; an attack shows a starburst on the sector with a claw badge (Alien) or a crosshair badge (Human with an Attack card);  the border shows the faction you suspect (black = you, yellow = undecided, blue = Human, red = Alien). Your bluffs (noise announced away from where you really are) appear as semi-transparent markers in your colour with the turn number. Tap a player on the map strip to see only their timeline.
-
-**Tracking by hand:** chosen at setup (by the host for a table) and applies to all players. Other players are no longer marked automatically; tap ✎ on the map strip, pick a player and tap the sectors to mark their steps (the turn number can be adjusted).
+**Map markers:** every player is a rounded hexagon in their own colour; routes are drawn as arrows showing the direction of each move; an attack shows a starburst on the sector with a claw badge (Alien) or the Attack icon (Human with an Attack card);  the border shows the faction you suspect (black = you, yellow = undecided, blue = Human, red = Alien). Your bluffs (noise announced away from where you really are) appear as semi-transparent markers in your colour with the turn number. Tap a player on the map strip to see only their timeline.
 
 **Notes:** tap 📝 on the map, pick a sector, choose a sticker and write an optional note. Tap the sector later to read, edit or delete it. Notes are private.
 

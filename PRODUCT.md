@@ -22,16 +22,16 @@ A private navigation computer per player, not a shared screen: faction, position
 Played in the evening around a table with the physical box. Phones are held in one hand; a tablet or laptop may sit on the table. Other players can glance at the screen, so a "hide screen" cover exists. Turns are strictly one player at a time, ordered by the host. A game lasts at most 39 rounds.
 
 ## Capabilities and Constraints
-- Lobby: the host creates a table with options (rules: Advanced, Basic, Infection; cards: Physical or Digital; tracking: Automatic or By hand), shares a code, QR or link, players pick a faction, the host starts. Maximum 8 players.
-- Modes: online table, pass and play on one device, map only (no table).
+- Lobby: the host creates a table with options (rules: Basic, Advanced, Infection), shares a code, QR or link, the host starts and roles and cards are dealt digitally. Maximum 8 players.
+- Modes: online table and pass and play (both fully digital: roles and cards are dealt by the app), and Companion (no table: the player uses the real cards and the app as the paper sheet, recording their own route and what the other players declare).
 - Bots (pass and play): any seat can be a bot at Easy, Normal or Hard. Bots see only the public view of the table (seat list, announcements, turn, rules) plus their own seat; they estimate each player's faction and position from announcements, bluff with "noise in any sector", attack and use items by the same rules. With one person at the device the hand-over screen is skipped and a summary of the announcements since the last turn is shown. At online tables the host adds bots in the lobby (+ Add bot, level per bot); the host's device plays their turns and answers attacks and Spotlights for them, and their private state lives in the host-only hostdata node. Bots need digital cards. The Firebase rules let the host write for players whose id starts with bot_.
-- Digital cards: the host device deals roles and decks; attacks and Spotlight are broadcast and every device answers for itself, so positions never leave a device. Decks reshuffle from discards when empty.
+- Digital play: the host device deals roles and decks; attacks and Spotlight are broadcast and every device answers for itself, so positions never leave a device. Decks reshuffle from discards when empty.
 - Moves can be undone until something public or random has happened.
 - Marker model: one colour per player; the circle border carries the faction guess (black = me, yellow = undecided, blue = suspected Human, red = suspected Alien). Markers never overlap. Bluffs are kept as semi-transparent markers of the player's own colour.
 - Notes: stickers with optional text can be placed on the map.
 - Maps: 15 official maps in three packs (Black Edition, Before the World Ends, Spring), plus custom maps from the editor. Some maps have fewer than four escape hatches.
 - Languages: English and Italian; Italian wording follows the Italian rulebook.
-- The app is an unofficial fan companion. It includes no official art, logos or card text, and the physical game is required unless Digital cards is chosen.
+- The app is an unofficial fan companion. It includes no official art, logos or card text, and the physical game is required only in Companion mode.
 - Firebase rules must be republished by the owner through `firebase-rules.html` when they change.
 - Undecided: installing as an Android app is known to fail and is on hold.
 

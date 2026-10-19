@@ -254,7 +254,7 @@ Rounded rectangles, radius 10–14px for controls and rows, 20px for the setup c
 - **Link:** no fill, dim text, for low-priority actions such as Undo.
 
 ### Segmented control
-Equal-width options in a framed track; the selected option gets an amber tint and a 2px amber inset ring. Used for options with two or three values (rules, cards, tracking, map style, language). An ⓘ button next to the label opens a short explanation popup.
+Equal-width options in a framed track; the selected option gets an amber tint and a 2px amber inset ring. Used for options with two or three values (rules, map style, language). An ⓘ button next to the label opens a short explanation popup.
 
 ### Rows and lists
 Players, announcements and turn order are 1px-bordered rows on the surface colour. The current turn gets an amber border and tint; a ready player gets a green border and tint.

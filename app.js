@@ -24,6 +24,8 @@ const fresh = () => ({
 let S = fresh();
 try { Object.assign(S, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch (e) { /* ignore */ }
 S.tab = { play: 'play', table: 'table', notes: 'table', rules: 'more', menu: 'more', more: 'more' }[S.tab] || 'play';
+/* older companion games kept the other players' steps as hand marks: they are declarations now */
+if (S.marks && S.marks.length) { const nm = k => String(k).replace(/^n:/, ''); S.marks.forEach((m, i) => S.log.push({ id: 'mk' + i, by: '', who: nm(m.key), turn: m.turn, kind: 'noise', sector: m.sector, text: 'noise', at: 0, mine: false })); S.marks = []; }
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
 
 /* transient (not persisted) */
@@ -236,8 +238,7 @@ function ownSteps() {
 /* what I know about another player: their announced positions in turn order */
 function trackOf(key) {
   const out = [];
-  if (S.track === 'manual') (S.marks || []).forEach(m => { if (m.key === key) out.push({ turn: m.turn, sector: m.sector, kind: 'noise' }); });
-  else S.log.forEach(e => { if (e.sector && ['noise', 'attack', 'reveal', 'hatch'].includes(e.kind) && playerKey(e) === key) out.push({ turn: e.turn, sector: e.sector, kind: e.kind }); });
+  S.log.forEach(e => { if (e.sector && ['noise', 'attack', 'reveal', 'hatch'].includes(e.kind) && playerKey(e) === key) out.push({ turn: e.turn, sector: e.sector, kind: e.kind }); });
   return out.sort((a, b) => a.turn - b.turn);
 }
 /* follow mode: where a player could be now, from their last known sector and the moves since then */
@@ -292,11 +293,9 @@ function paintOverlay() {
     if (!e.sector || !['noise', 'attack', 'reveal', 'spot'].includes(e.kind)) continue;
     const key = e.kind === 'spot' ? 'spot' : playerKey(e);
     if (key === 'me') continue;                                   // my own steps come from my route
-    if (S.track === 'manual' && key !== 'spot') continue;         // by hand: other players are only what I marked
     const armed = e.kind === 'attack' && S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === key);
     visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind, armed });
   }
-  if (S.track === 'manual') (S.marks || []).forEach(m => visits.push({ key: m.key, sector: m.sector, turn: m.turn, kind: 'noise' }));
   const mine = k => k === 'me' || k === 'bluff';
   const recent = v => S.mkAll || v.key === focus || mine(v.key) || S.turn - v.turn < MK_RECENT;
   // group: sector -> player -> turns
@@ -410,17 +409,52 @@ function knownPlayers() {
 }
 /* short label for the narrow strip: 'Player 3' -> 'P3', long names cut */
 const shortName = n => { n = String(n).trim(); const d = n.match(/\d+$/); return n.length <= 6 ? n : d ? n[0] + d[0] : n.slice(0, 5) + '…'; };
-/* ---- manual tracking & map notes ---- */
-function toggleMark(sec) {
-  S.marks = S.marks || []; const turn = T.markTurn || S.turn;
-  const i = S.marks.findIndex(m => m.key === T.markKey && m.sector === sec && m.turn === turn);
-  if (i >= 0) S.marks.splice(i, 1); else S.marks.push({ key: T.markKey, sector: sec, turn });
-  buzz(); save(); paintOverlay();
+/* ---- companion: what the other players declare, and map notes ----
+   The companion is the paper sheet: the player writes down what the others announce. Each declaration goes into the
+   log like a table announcement, so the markers, the follow zone and the table log all work from it. */
+const DECL = [['noise', 'noise-here', 'Noise'], ['attack', '', 'Attack'], ['silence', 'silence', 'Silence'], ['secure', '', 'Silent Sector'], ['item', '', 'Item']];
+const nameOfKey = k => (knownPlayers().find(([x]) => x === k) || [0, '?'])[1];
+function declare(kind, sector, item) {
+  const turn = T.markTurn || S.turn, who = nameOfKey(T.markKey), ids = [];
+  const add = e => { const x = Object.assign({ id: uid(), by: '', who, turn, sector: null, at: Date.now(), mine: false }, e); S.log.unshift(x); ids.push(x.id); };
+  if (kind === 'noise') add({ kind: 'noise', sector, text: 'noise' });
+  else if (kind === 'attack') add({ kind: 'attack', sector, text: 'attack' });
+  else if (kind === 'silence') add({ kind: 'silence', text: 'silence' });
+  else if (kind === 'secure') add({ kind: 'silence', text: 'secure' });
+  else if (kind === 'item') {
+    add({ kind: 'item', text: item });
+    if (item === 'attack' && sector) add({ kind: 'attack', sector, text: 'attack' });
+    if (item === 'spotlight' && sector) add({ kind: 'spot', sector, text: 'spot' });
+  }
+  T.markStack = (T.markStack || []).concat([ids]); buzz(); save(); render(); paintOverlay();
+}
+/* tapping the sector of a declaration again removes it */
+function markSector(sec) {
+  const kind = T.markKind || 'noise', turn = T.markTurn || S.turn, who = nameOfKey(T.markKey);
+  const [k, item] = kind.split(':'), want = k === 'item' ? (item === 'attack' ? 'attack' : 'spot') : k;
+  const hit = S.log.find(e => !e.mine && e.who === who && e.turn === turn && e.sector === sec && e.kind === want);
+  if (hit) {
+    const gone = new Set([hit.id]); if (k === 'item') { const it = S.log.find(e => e.kind === 'item' && !e.mine && e.who === who && e.turn === turn && e.text === item); if (it) gone.add(it.id); }
+    S.log = S.log.filter(e => !gone.has(e.id)); buzz(); save(); render(); paintOverlay(); return;
+  }
+  declare(k, sec, item);
+  if (k === 'item') T.markKind = 'noise';
+}
+function undoDeclaration() {
+  const ids = (T.markStack || []).pop(); if (!ids) return;
+  S.log = S.log.filter(e => !ids.includes(e.id)); save(); render(); paintOverlay();
 }
 function markBanner() {
-  const who = T.markKey ? (knownPlayers().find(([k]) => k === T.markKey) || [0, '?'])[1] : null;
-  return `<div class="banner mark"><div>${who ? t('Marking {p}: tap the sectors on the map. Tap again to remove.', { p: esc(who) }) : t('Pick the player to mark in the strip on the left.')}</div>
-    <div class="row tight"><span class="mturn">${t('Turn')} <button class="btn" data-act="mturn" data-d="-1" aria-label="−">−</button><b>${T.markTurn || S.turn}</b><button class="btn" data-act="mturn" data-d="1" aria-label="+">+</button></span><button class="btn primary" data-act="markmode">${t('Done')}</button></div></div>`;
+  const who = T.markKey ? nameOfKey(T.markKey) : null, kind = T.markKind || 'noise', onSector = kind === 'noise' || kind === 'attack' || kind.startsWith('item:');
+  const chip = ([k, ic, n]) => `<button class="dchip" data-act="markkind" data-k="${k}" aria-pressed="${kind === k || (k === 'item' && kind.startsWith('item:'))}">${ic ? gico(ic, 26) : k === 'attack' ? clawIco(26) : k === 'secure' ? gicoSilent(26) : k === 'item' ? gico('teleport', 26) : ''}<span>${t(n)}</span></button>`;
+  return `<div class="banner mark"><div>${!who ? t('Pick the player in the strip on the left, or add one with +.') : onSector ? t('{p}: tap the sector on the map. Tap again to remove it.', { p: esc(who) }) : t('{p}: tap what they declared.', { p: esc(who) })}</div>
+    <div class="dchips" role="group" aria-label="${t('What they declared')}">${DECL.map(chip).join('')}</div>
+    <div class="row tight"><span class="mturn">${t('Turn')} <button class="btn" data-act="mturn" data-d="-1" aria-label="−">−</button><b>${T.markTurn || S.turn}</b><button class="btn" data-act="mturn" data-d="1" aria-label="+">+</button></span><button class="btn" data-act="markundo" ${(T.markStack || []).length ? '' : 'disabled'}>${t('Undo')}</button><button class="btn primary" data-act="markmode">${t('Done')}</button></div></div>`;
+}
+const clawIco = w => `<svg class="gi" width="${w}" height="${Math.round(w * 0.92)}" viewBox="0 0 24 22" aria-hidden="true"><circle cx="12" cy="11" r="10.5" fill="#ff3b30" stroke="#fff" stroke-width="1"/><path d="M7 5l5 12M12 4l5 13M3.5 7l5 10" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none" transform="translate(2.2 .8) scale(.85)"/></svg>`;
+function markItemSheet() {
+  dlg.innerHTML = `<h2>${t('Item played')}</h2><div class="stack">${['adrenaline', 'sedatives', 'teleport', 'spotlight', 'attack', 'defense'].map(k => `<button class="btn withico" data-act="markitem" data-i="${k}">${gico(k, 38)}<span>${t(ITEMS[k][0])}<small>${t(ITEMS[k][1])}</small></span></button>`).join('')}</div><div class="row"><button class="btn" id="d-no">${t('Close')}</button></div>`;
+  dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 const STICKER_PATH = { alert: 'M12 4v10M12 19v.01', ask: 'M9 9a3 3 0 116 0c0 2-3 2.2-3 5M12 19v.01', alien: 'M12 4c4 0 7 3 7 7 0 4-3 8-7 9-4-1-7-5-7-9 0-4 3-7 7-7zM8.5 11l2.5 1M15.5 11L13 12', crew: 'M12 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM5 20c0-4 3-6 7-6s7 2 7 6', skull: 'M12 4c4 0 7 3 7 7 0 2-1 3-2 4v3H7v-3c-1-1-2-2-2-4 0-4 3-7 7-7zM9.5 11.5v.01M14.5 11.5v.01M10 20v-2M14 20v-2', star: 'M12 4l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19.2 8 13.7 4 9.8 9.5 9z' };
 const STICKERS = Object.keys(STICKER_PATH), LEGACY_STICKER = { '❗': 'alert', '❓': 'ask', '👽': 'alien', '🧑': 'crew', '☠️': 'skull', '⭐': 'star' };
@@ -457,7 +491,7 @@ function renderMkBar() {
   bar.hidden = false;
   const sus = k => `<div class="msus" role="group" aria-label="${t('Your suspicion')}">${[['', '?'], ['human', t('H')], ['alien', t('A')]].map(([v, l]) => `<button data-act="sus" data-k="${esc(k)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(k) === v}">${l}</button>`).join('')}</div>`;
   bar.innerHTML = `<button class="mkt" data-act="mkall" data-v="${S.mkAll ? 0 : 1}" aria-pressed="${!!S.mkAll}" aria-label="${S.mkAll ? t('All turns') : t('Last {n} turns', { n: MK_RECENT })}"><b>${S.mkAll ? t('All') : MK_RECENT}</b><span>${t('turns')}</span></button>` +
-    (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Mark players by hand')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
+    (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
       : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : 'eliminated') : ''}" title="${esc(n)}" class="${outMark(k) ? 'isout' : ''}"><span class="dotw">${dotIcon(k)}${outMark(k)}</span><span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('') +
@@ -607,8 +641,19 @@ const actions = {
   pfocus(b) { follow(T.focus === b.dataset.k ? null : b.dataset.k); },
   unfollow() { follow(null); },
   follow(b) { setTab('play'); follow(b.dataset.k); },
-  markmode() { T.markMode = !T.markMode; T.markTurn = S.turn; T.focus = null; if (T.markMode && !T.markKey) { const ps = knownPlayers(); if (ps.length === 1) T.markKey = ps[0][0]; } render(); paintOverlay(); },
+  markmode() { T.markMode = !T.markMode; T.markTurn = S.turn; T.markKind = 'noise'; T.markStack = []; T.focus = null; if (T.markMode && !T.markKey) { const ps = knownPlayers(); if (ps.length === 1) T.markKey = ps[0][0]; } render(); paintOverlay(); },
   markwho(b) { T.markKey = b.dataset.k; render(); paintOverlay(); },
+  markkind(b) {
+    const k = b.dataset.k, who = T.markKey; if (!who) { toast(t('First pick the player, on the left.')); return; }
+    if (k === 'item') { markItemSheet(); return; }
+    if (k === 'silence' || k === 'secure') { declare(k); return; }
+    T.markKind = k; render();
+  },
+  markitem(b) {
+    const i = b.dataset.i; closeDlg();
+    if (i === 'attack' || i === 'spotlight') { T.markKind = 'item:' + i; render(); toast(t('Tap the sector on the map.')); } else declare('item', null, i);
+  },
+  markundo() { undoDeclaration(); },
   mturn(b) { T.markTurn = Math.max(1, Math.min(MAX_TURN, (T.markTurn || S.turn) + +b.dataset.d)); render(); },
   addplayer() { const n = (prompt(t('Player name')) || '').trim().slice(0, 20); if (!n) return; S.extraPlayers = (S.extraPlayers || []).concat([n]); T.markKey = 'n:' + n.toLowerCase(); save(); render(); paintOverlay(); },
   notemode() { pickSector(t('Tap the sector for your note'), sec => noteDlg(sec)); },
@@ -631,7 +676,7 @@ function pickSector(label_, cb, locked) { T.pick = { label: label_, cb, locked: 
 function onCell(id) {
   if (T.editor) { paintEditor(id); return; }
   if (T.pick) { const cb = T.pick.cb; T.pick = null; paintCells(); cb(id); return; }
-  if (T.markMode) { if (T.markKey) toggleMark(id); else toast(t('First pick the player to mark, on the left.')); return; }
+  if (T.markMode) { if (!T.markKey) toast(t('First pick the player, on the left.')); else if ((T.markKind || 'noise') === 'noise' || T.markKind === 'attack' || String(T.markKind).startsWith('item:')) markSector(id); else toast(t('That declaration has no sector. Pick Noise or Attack to mark one.')); return; }
   if (S.role && S.phase === 'move' && !S.over && T.reach.has(id)) { selectCell(id); buzz(); return; }
   T.inspect = id; paintCells();
   const i = $('#inspect'), note = (S.notes || []).find(n => n.sector === id); i.hidden = false;

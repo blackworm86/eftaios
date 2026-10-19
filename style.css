@@ -639,3 +639,19 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .sicon .sig{fill:#fff}
 .sicon .podn{fill:#fff;font:800 15px var(--font);text-anchor:middle;dominant-baseline:central}
 .P.closed~.sicon{opacity:.4}
+
+/* ---- printed game icons ---- */
+.gi{display:inline-block;flex:none;vertical-align:-4px}
+.gi-todo{color:var(--dim)}
+.log li span .gi,.recap .gi{margin-right:6px;vertical-align:-5px}
+.say.hasicon{display:flex;align-items:center;gap:12px}.say.hasicon>div{min-width:0}
+.panel .say.hasicon{gap:10px}
+.faces{gap:6px}
+.face{display:grid;justify-items:center;align-content:center;gap:4px;min-height:72px;padding:6px 4px 5px;border-radius:12px;border:2px solid transparent;background:#f4f2ec;color:#0b1020;font:700 11px/1.1 var(--font-head);letter-spacing:.04em;text-transform:uppercase;text-align:center}
+.face:active{transform:scale(.98)}
+.face:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.slot:has(.gi){flex-direction:row;gap:6px;min-height:46px;padding:4px 6px;background:#f4f2ec;color:#0b1020;border-color:transparent}
+.slot:has(.gi) span{font-size:10px;line-height:1.1}
+.dlgico{display:grid;place-items:center;margin-bottom:6px}
+.btn.withico{display:flex;align-items:center;gap:12px;text-align:left}
+.btn.withico small{margin-top:1px}

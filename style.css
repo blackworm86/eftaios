@@ -636,7 +636,6 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 
 /* start sector and escape hatch icons */
 .sicon{pointer-events:none}
-.sicon .sibg{fill:#151515;stroke:#8a8a8a;stroke-width:1.6}
-.sicon .sig path{fill:none;stroke:#fff;stroke-width:2.1;stroke-linecap:square;stroke-linejoin:miter}
-.sicon .podn{fill:#fff;font:800 10px var(--mono);text-anchor:middle;dominant-baseline:central}
+.sicon .sig{fill:#fff}
+.sicon .podn{fill:#fff;font:800 15px var(--font);text-anchor:middle;dominant-baseline:central}
 .P.closed~.sicon{opacity:.4}

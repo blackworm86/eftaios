@@ -124,12 +124,15 @@ function buildMap() {
   el('g', { id: 'marks' }, vp); el('g', { id: 'me' }, vp); el('g', { id: 'notes' }, vp);
   paintCells(); fit();
 }
-/* start sectors and escape hatches: a dark hexagon with a white glyph, as on the printed maps */
+/* start sectors and escape hatches: the white line art of the printed maps, traced from the original sectors */
+const SECTOR_ART = {
+  H: 'M-5.9 -13.6L-11.0 -10.7L-11.0 8.0L-0.9 13.9L0.6 14.2L11.3 8.0L11.3 -10.7L5.9 -13.6L4.7 -11.9L8.9 -9.2L8.9 -5.0L1.2 -0.3L-0.3 0.0L-8.6 -5.0L-8.6 -9.2L-4.4 -11.6L-5.3 -13.6zM-8.6 -1.8L-7.7 -1.8L0.3 3.0L8.6 -1.8L8.9 6.5L0.0 11.6L-8.6 6.5z',
+  A: 'M-8.7 -13.1L-9.9 -11.0L-3.1 -7.2L-2.5 -6.3L-10.7 -1.6L-10.7 12.5L0.4 6.0L11.3 12.2L11.3 -2.2L3.1 -6.6L10.7 -11.0L9.6 -13.1L0.4 -7.8zM-8.4 -0.1L0.4 -5.1L9.0 -0.4L9.0 7.8L8.7 8.1L0.1 3.4L-8.1 8.1z',
+  P: 'M14.3 2.5L12.8 1.6L11.9 1.9L6.3 11.6L-5.1 11.6L-5.1 14.0L7.8 14.0zM5.1 -14.0L-7.8 -14.0L-14.3 -2.5L-12.8 -1.6L-11.9 -1.9L-6.3 -11.6L5.1 -11.6z'
+};
 function sectorIcon(k) {
-  const glyph = k === 'H' ? '<path d="M-6 -6.4H6M-6 -3.4V2.6L0 6.6L6 2.6V-3.4"/>'
-    : k === 'A' ? '<path d="M-6 -6.4H6M-6 6.4H6M-5 -3.6L5 3.6M5 -3.6L-5 3.6"/>'
-    : `<path d="M-8.2 -0.6V-4.2L-5.4 -7.4H-1.6M8.2 0.6V4.2L5.4 7.4H1.6"/><text class="podn" y="0.4">${k}</text>`;
-  return `<path class="sibg" d="${roundedHex(14.5, 3)}"/><g class="sig">${glyph}</g>`;
+  const pod = '1234'.includes(k);
+  return `<path class="sig" fill-rule="evenodd" d="${SECTOR_ART[pod ? 'P' : k]}"/>` + (pod ? `<text class="podn">${k}</text>` : '');
 }
 const tr = s => window.t ? window.t(s) : s; // map symbols are painted before/after language changes
 function paintCells() {

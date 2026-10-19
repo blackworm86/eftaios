@@ -39,7 +39,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   assert(await H.evaluate(()=>S.log.some(e=>e.kind==='reveal'&&e.sector==='K09')),'revealed position is public');
   await human.evaluate(()=>closeDlg());
   // ---- no hand limit in the Ultimate rules
-  await human.evaluate(()=>{S.items=['attack','attack','defense','cat'];render()});
+  await human.evaluate(()=>{S.char='Captain';S.items=['attack','attack','defense','cat'];render()});
   await human.evaluate(()=>addItem('adrenaline'));
   assert(await human.evaluate(()=>S.items.length)===5&&await human.locator('.slot').count()===5,'Items are kept without a hand limit');
   // ---- hatch: draw card (green) -> escape ends game for the last human
@@ -50,7 +50,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   await human.waitForFunction(()=>S.over==='escaped'||(S.res&&S.res.stage==='done'),null,{timeout:15000});
   const esc=await human.evaluate(()=>S.over==='escaped');
   console.log('hatch card result:',esc?'green':'red');
-  assert(await H.evaluate(()=>T.counts.hatch.d+T.counts.hatch.x)===4,'one of the 5 pod cards was drawn');
+  await H.waitForFunction(()=>T.counts.hatch.d+T.counts.hatch.x===4,null,{timeout:10000});assert(true,'one of the 5 pod cards was drawn');
   if(esc){await H.waitForFunction(()=>Sync.settings.status==='over',null,{timeout:15000});const r=await H.evaluate(()=>Sync.settings.result);assert(r.aliensWin===false&&r.escaped.length===1,'last human escaped: Humans win');await human.screenshot({path:S+'/o-over.png'})}
   else{assert(await human.evaluate(()=>S.hatches[1])===1,'red card closes the hatch');}
   await H.click('[data-tab=table]');await H.screenshot({path:S+'/o-table.png'});

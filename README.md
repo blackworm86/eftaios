@@ -26,7 +26,7 @@ Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 0
 
 **Pass and play:** *Pass and play (one device)* on the start screen lets 2–8 players share one phone or tablet with digital cards. After each turn a hand-over screen hides everything until the next player taps their name; roles, routes and items stay private per player.
 
-**Map markers:** each player has a colour; the border shows the faction you suspect (black = you, yellow = undecided, blue = Human, red = Alien). Your bluffs (noise announced away from where you really are) appear as semi-transparent markers in your colour with the turn number. Tap a player on the map strip to see only their timeline.
+**Map markers:** every player is a rounded hexagon in their own colour; routes are drawn as arrows showing the direction of each move; an attack shows a starburst on the sector with a claw badge (Alien) or a crosshair badge (Human with an Attack card);  the border shows the faction you suspect (black = you, yellow = undecided, blue = Human, red = Alien). Your bluffs (noise announced away from where you really are) appear as semi-transparent markers in your colour with the turn number. Tap a player on the map strip to see only their timeline.
 
 **Tracking by hand:** chosen at setup (by the host for a table) and applies to all players. Other players are no longer marked automatically; tap ✎ on the map strip, pick a player and tap the sectors to mark their steps (the turn number can be adjusted).
 

@@ -379,7 +379,9 @@ html,body{height:100vh;height:100dvh}
 .stage.classic .mkbar button[aria-pressed=true]{background:#ffe2a6;border-color:#d08a00}
 /* markers */
 .mko{fill:#0b1222}.mko.me{fill:#fff}
-.abadge circle{fill:#ff3b30;stroke:#fff;stroke-width:.8}.abadge path{stroke:#fff;stroke-linecap:round}
+.abadge>circle:first-child{fill:#ff3b30;stroke:#fff;stroke-width:.8}.abadge path,.abadge circle+circle{stroke:#fff;stroke-linecap:round;fill:none}.abadge.human>circle:first-child{fill:#c97a00}
+.burst{fill:#ff3b3033;stroke:#ff3b30;stroke-width:1.4;stroke-linejoin:round;pointer-events:none}.burst.dim{opacity:.12}
+#map.classic .burst{fill:#ff3b3040}
 .pm.attack circle{filter:none}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 8px;font-size:12px;color:var(--dim)}
 .legend span{display:flex;align-items:center}.legend .dot{width:16px;height:16px;margin-right:4px}
@@ -625,3 +627,9 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .omark .ico{width:9px;height:9px}
 .omark.dead{background:#ff3b30}.omark.esc{background:#1e8a4f}
 .mkbar button.isout{opacity:.6}.mkbar button.isout span:last-child{text-decoration:line-through}
+
+/* routes as arrows */
+.trail line,.tl line,.rline line{stroke-linecap:round}
+.trail .ah{fill:#f5f5f5;stroke:#f5f5f5;stroke-width:1;stroke-linejoin:round}
+#map.classic .trail .ah{fill:#151515;stroke:#151515}
+.tl .ah,.rline .ah{stroke-linejoin:round;stroke-width:1}

@@ -316,7 +316,7 @@ function paintOverlay() {
     const h = hp(sec); if (!h) return;
     const items = [...m.values()].sort((x, y) => order(x.key) - order(y.key));
     const spot = items.find(x => x.key === 'spot'), list = items.filter(x => x.key !== 'spot');
-    if (spot) el('circle', { cx: h.x, cy: h.y, r: 17, class: 'mk spot' + (focus ? ' dim' : '') }, marks);
+    if (spot) { el('circle', { cx: h.x, cy: h.y, r: 17, class: 'mk spot' + (focus ? ' dim' : '') }, marks); el('use', { href: '#gi-spotlight', x: (h.x - 7.5).toFixed(1), y: (h.y - 21).toFixed(1), width: 15, height: 13.8, class: 'mk' + (focus ? ' dim' : '') }, marks); }
     if (!list.length) return;
     const hit = list.filter(x => x.kind === 'attack');
     if (hit.length) {   // starburst behind the markers: somebody attacked in this sector
@@ -334,17 +334,12 @@ function paintOverlay() {
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
       if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c, transform: `translate(${at_.cx} ${at_.cy})` }, me); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); ringAt((size + 1.8) * 1.12, 'me-ring' + cls); }
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
-      if (it.kind === 'attack') {   // attack badge: Alien = red claw marks, Human with an Attack card = amber crosshair
-        const R = size * 0.74, bg = el('g', { class: 'abadge ' + (it.armed ? 'human' : 'alien'), transform: `translate(${(size * 0.85).toFixed(1)} ${(-size * 0.85).toFixed(1)})` }, g), sw = (size * 0.13).toFixed(2);
+      if (it.kind === 'attack' && it.armed) {   // a Human played an Attack card: its printed icon
+        const w = size * 1.75; el('use', { href: '#gi-attack', x: (size * 0.85 - w / 2).toFixed(1), y: (-size * 0.85 - w * 0.46).toFixed(1), width: w.toFixed(1), height: (w * 0.92).toFixed(1) }, g);
+      } else if (it.kind === 'attack') {   // an Alien attack: red claw marks
+        const R = size * 0.74, bg = el('g', { class: 'abadge alien', transform: `translate(${(size * 0.85).toFixed(1)} ${(-size * 0.85).toFixed(1)})` }, g), c = R * 0.5;
         el('circle', { r: R.toFixed(2) }, bg);
-        if (it.armed) {
-          const c = R * 0.62, d = R * 0.38;
-          el('circle', { r: (R * 0.42).toFixed(2), 'stroke-width': sw, fill: 'none' }, bg);
-          el('path', { d: `M0 ${-c}V${-d}M0 ${d}V${c}M${-c} 0H${-d}M${d} 0H${c}`, 'stroke-width': sw }, bg);
-        } else {
-          const c = R * 0.5;   // three claw slashes
-          el('path', { d: [-0.62, 0, 0.62].map(o => `M${(-c * 0.6 + o * c).toFixed(2)} ${-c}L${(c * 0.6 + o * c).toFixed(2)} ${c}`).join(''), 'stroke-width': (size * 0.1).toFixed(2) }, bg);
-        }
+        el('path', { d: [-0.62, 0, 0.62].map(o => `M${(-c * 0.6 + o * c).toFixed(2)} ${-c}L${(c * 0.6 + o * c).toFixed(2)} ${c}`).join(''), 'stroke-width': (size * 0.1).toFixed(2) }, bg);
       }
     });
   });
@@ -548,6 +543,15 @@ function say(text, kind, sector, extra = {}) {
   S.log.unshift(e);
   if (window.Sync && Sync.code && PUBLIC.includes(kind)) Sync.push({ id: e.id, by: Sync.uid, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at, n: e.n || 0, ok: e.ok ? 1 : 0 });
   if (S.log.length > 400) S.log.length = 400;
+}
+/* the printed icon that goes with a log line, if there is one (an Alien attack has none: the Attack icon is the item) */
+function logIcon(e, w = 18) {
+  if (e.kind === 'noise') return gico('noise-here', w);
+  if (e.kind === 'silence') return e.text === 'secure' ? gicoSilent(w) : gico('silence', w);
+  if (e.kind === 'attack') return S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === playerKey(e)) ? gico('attack', w) : '';
+  if (e.kind === 'spot' || e.kind === 'reveal') return gico('spotlight', w);
+  if (e.kind === 'item') return gico(e.text, w);
+  return '';
 }
 /* announcements are rendered from structured data so each player sees them in their own language */
 function entryText(e) {

@@ -53,7 +53,7 @@ const Hot = (() => {
     if (!s.seen) { s.seen = true; msgs.push(`<p>${t('Your secret role')}:</p>${sayBox(t(S.role === 'alien' ? 'Alien' : 'Human'), S.role === 'alien' ? 'alert' : '', S.char)}`); }
     (s.notices || []).forEach(m => msgs.push(`<p>${esc(m)}</p>`)); s.notices = [];
     const since = H.log.filter(e => e.at > (s.seenAt || 0) && e.by && e.by !== s.id && RECAP.includes(e.kind)).slice(0, 14).reverse();
-    if (s.seenAt && since.length) msgs.push(`<p class="dim">${t('Since your last turn')}:</p><ul class="recap">${since.map(e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b> · ${esc(entryText(e))}</li>`).join('')}</ul>`);
+    if (s.seenAt && since.length) msgs.push(`<p class="dim">${t('Since your last turn')}:</p><ul class="recap">${since.map(e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}</li>`).join('')}</ul>`);
     s.seenAt = Date.now();
     store();
     if (msgs.length) alertHtml(s.name, msgs.join(''));

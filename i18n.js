@@ -165,6 +165,7 @@ const IT = {
 "Attack this sector": "Attacca questo settore",
 "Done": "Fatto",
 "Declare": "Dichiara",
+"Using it shows the card to everyone.": "Usarla mostra la carta a tutti.",
 "Silent Sector": "Settore Silenzioso",
 "Show your {i} card to everyone, then discard it": "Mostra a tutti la carta {i}, poi scartala",
 "Attack, or draw a Dangerous Sector card:": "Attacca, oppure pesca una Carta Settore:",

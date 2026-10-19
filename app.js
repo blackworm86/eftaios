@@ -29,7 +29,7 @@ if (S.marks && S.marks.length) { const nm = k => String(k).replace(/^n:/, ''); S
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
 
 /* transient (not persisted) */
-const T = { maps: [], map: null, sel: null, pick: null, editor: null, inspect: null, noteType: 'noise', noteWho: '' };
+const T = { maps: [], map: null, sel: null, pick: null, inspect: null, noteType: 'noise', noteWho: '' };
 
 /* ---------------- maps ---------------- */
 function parseMap(m) {
@@ -138,8 +138,7 @@ function sectorIcon(k) {
 }
 const tr = s => window.t ? window.t(s) : s; // map symbols are painted before/after language changes
 function paintCells() {
-  svg.classList.toggle('editing', !!T.editor);
-  const map = T.map, reach = T.reach || new Map();
+    const map = T.map, reach = T.reach || new Map();
   for (let r = 0; r < map.rows; r++) for (let c = 0; c < map.cols; c++) {
     const id = cid(c, r), g = svg.querySelector(`[data-id="${id}"]`), poly = g.firstChild, sym = g.lastChild, t = map.grid[r][c];
     let cls = 'hex ' + ('1234'.includes(t) ? 'P' : t === '.' ? 'd' : t);
@@ -263,7 +262,7 @@ function arrowRoute(parent, pts, color, cls) {
   return g;
 }
 function paintOverlay() {
-  const map = T.map, inPlay = S.role && !T.editor;
+  const map = T.map, inPlay = S.role;
   const trail = $('#trail'), marks = $('#marks'), me = $('#me'), zoneG = $('#zone');
   marks.textContent = ''; me.textContent = ''; if (zoneG) zoneG.textContent = ''; paintNotes();
   const focus = T.focus || null;
@@ -380,7 +379,7 @@ function outMark(k) {
 function followBar() {
   const bar = $('#followbar'); if (!bar) return;
   const k = T.focus;
-  if (!k || !S.role || T.editor) { bar.hidden = true; return; }
+  if (!k || !S.role) { bar.hidden = true; return; }
   const name = k === 'me' ? t('Me') : ((knownPlayers().find(([x]) => x === k) || [0, '?'])[1]);
   let txt;
   if (k === 'me') txt = t('Showing only your route');
@@ -454,7 +453,7 @@ const stickerKey = k => STICKER_PATH[k] ? k : LEGACY_STICKER[k] || 'alert';
 const stickerIco = (k, s = 24) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${STICKER_PATH[stickerKey(k)]}"/></svg>`;
 function paintNotes() {
   const g = $('#notes'); if (!g) return; g.textContent = '';
-  if (!S.role || T.editor) return;
+  if (!S.role) return;
   (S.notes || []).forEach(n => {
     const p = parseId(n.sector); if (!p) return; const h = hexPos(T.map, p[0], p[1]);
     const s = el('g', { class: 'sticker', transform: `translate(${(h.x - 11).toFixed(1)} ${(h.y - 11).toFixed(1)})` }, g);
@@ -477,7 +476,7 @@ function noteDlg(sec) {
 }
 function renderMkBar() {
   const bar = $('#mkbar'); if (!bar) return;
-  const ps = S.role && !T.editor ? knownPlayers() : [];
+  const ps = S.role ? knownPlayers() : [];
   const manual = S.track === 'manual';
   if (!ps.length && !manual) { bar.hidden = true; return; }
   bar.hidden = false;
@@ -621,7 +620,7 @@ function botThinking(name, ms, cover) {
 }
 const buzz = () => { try { navigator.vibrate && navigator.vibrate(15); } catch (_) { /* noop */ } };
 function selectCell(id) { T.sel = id; refreshReach(); render(); paintCells(); }
-function refreshReach() { T.reach = S.phase === 'move' && !S.over && S.role && !T.editor ? reachable(T.map, S.pos, allowance(), S.role) : new Map(); }
+function refreshReach() { T.reach = S.phase === 'move' && !S.over && S.role ? reachable(T.map, S.pos, allowance(), S.role) : new Map(); }
 const roomUrl = () => location.origin + location.pathname + '?room=' + Sync.code;
 const actions = {
   hide() { $('#cover').hidden = false; },
@@ -642,13 +641,6 @@ const actions = {
     });
   },
   map(b) { actions.ovclose(); const m = T.maps.find(x => x.id === b.dataset.id); if (!m || m === T.map) return; confirmDlg(t('Switch map?'), t('Your position resets to the start sector of the new map.'), () => { T.map = m; S.mapId = m.id; S.pos = find(m, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; T.sel = null; S.phase = 'move'; S.res = null; buildMap(); afterChange(); }); },
-  edit() { actions.ovclose(); startEditor(); },
-  tool(b) { T.editor.tool = b.dataset.t; render(); },
-  esave() { saveEditor(); },
-  ecancel() { T.map = T.editor.orig; T.editor = null; setTab('more'); buildMap(); afterChange(); },
-  eexport() { exportMap(); },
-  eimport() { importDlg(); },
-  edel(b) { S.customMaps = S.customMaps.filter(m => m.id !== b.dataset.id); loadMaps().then(() => { if (!T.maps.includes(T.map)) { T.map = T.maps.find(m => m.id === T.map.id) || T.maps[0]; S.mapId = T.map.id; } afterChange(); }); },
   share() { const url = roomUrl(), data = { title: 'EFTAIOS', text: t('Join my table: {c}', { c: Sync.code }), url }; if (navigator.share) navigator.share(data).catch(() => {}); else copyText(url, t('Link copied')); },
   qr() { qrDlg(); },
   lang(b) { setLang(b.dataset.l); },
@@ -684,7 +676,7 @@ const actions = {
   mkall(b) { S.mkAll = b.dataset.v === '1'; save(); render(); paintOverlay(); }
 };
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
-document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { if (!T.editor) setTab(b.dataset.tab); }));
+document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { setTab(b.dataset.tab); }));
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const f = actions[b.dataset.act]; if (f) { e.preventDefault(); f(b); }
@@ -692,7 +684,6 @@ document.addEventListener('click', e => {
 
 function pickSector(label_, cb, locked) { T.pick = { label: label_, cb, locked: !!locked }; S.tab = 'play'; render(); paintCells(); hdr(); }
 function onCell(id) {
-  if (T.editor) { paintEditor(id); return; }
   if (T.pick) { const cb = T.pick.cb; T.pick = null; paintCells(); cb(id); return; }
   if (T.markMode) { if (!T.markKey) toast(t('First pick the player, on the left.')); else if ((T.markKind || 'noise') === 'noise' || T.markKind === 'attack' || String(T.markKind).startsWith('item:')) markSector(id); else toast(t('That declaration has no sector. Pick Noise or Attack to mark one.')); return; }
   if (S.role && S.phase === 'move' && !S.over && T.reach.has(id)) { selectCell(id); buzz(); return; }
@@ -751,37 +742,11 @@ function importDlg() {
   $('#imp-file').onchange = async e => { const f = e.target.files[0]; if (f) $('#imp').value = await f.text(); };
   $('#d-yes').onclick = () => {
     try {
-      const j = JSON.parse($('#imp').value), list = (j.maps || [j]).map(m => { const p = parseMap(m); return { id: m.id || 'custom-' + Date.now(), name: p.name, rows_data: m.rows_data, oddColumnsLower: p.odd }; });
+      const j = JSON.parse($('#imp').value), list = (j.maps || [j]).map((m, i) => { const p = parseMap(m), clash = !m.id || T.maps.some(x => x.id === m.id && !isCustom(x)); return { id: clash ? 'custom-' + Date.now() + '-' + i : m.id, name: p.name, rows_data: m.rows_data, oddColumnsLower: p.odd }; });
       list.forEach(m => { S.customMaps = S.customMaps.filter(x => x.id !== m.id).concat(m); });
-      loadMaps().then(() => { afterChange(); closeDlg(); toast(t('Map imported')); });
+      save(); loadMaps().then(() => { closeDlg(); if ($('#mapman')) mapManager(); toast(t('Map imported')); });
     } catch (e) { $('#imp-err').textContent = t('Could not import: {m}', { m: e.message }); }
   };
-}
-
-/* ---------------- map editor ---------------- */
-function startEditor() {
-  const m = T.map; T.editor = { tool: '.', name: m.name + ' (2)', odd: m.odd, grid: m.grid.map(r => r.slice()), orig: m };
-  T.sel = null; T.pick = null; T.reach = new Map(); setTab('play');
-  T.map = Object.assign({}, m, { grid: T.editor.grid }); buildMap(); render();
-}
-function paintEditor(id) {
-  const [c, r] = parseId(id), tool = T.editor.tool, g = T.editor.grid;
-  if ('HA1234'.includes(tool)) for (const row of g) for (let i = 0; i < row.length; i++) if (row[i] === tool) row[i] = '.';
-  g[r][c] = tool; paintCells();
-}
-function saveEditor() {
-  const g = T.editor.grid, name = ($('#ed-name').value || 'Custom map').trim();
-  if (!g.some(r => r.includes('H')) || !g.some(r => r.includes('A'))) return toast(t('Place the Human and Alien start sectors'));
-  const id = 'custom-' + Date.now();
-  S.customMaps.push({ id, name, rows_data: g.map(r => r.join('')), oddColumnsLower: T.editor.odd });
-  T.editor = null; loadMaps().then(() => { T.map = T.maps.find(m => m.id === id); S.mapId = id; if (S.role) { S.pos = find(T.map, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; S.phase = 'move'; S.res = null; } buildMap(); afterChange(); setTab('more'); toast(t('Map saved')); });
-}
-function exportMap() {
-  const m = T.map, json = JSON.stringify({ id: m.id, name: m.name, oddColumnsLower: m.odd, rows_data: m.grid.map(r => r.join('')) }, null, 1);
-  dlg.innerHTML = `<h2>${t('Export map')}</h2><textarea readonly id="exp">${esc(json)}</textarea>
-    <div class="row"><button class="btn" id="d-no">${t('Close')}</button><button class="btn primary" id="d-copy">${t('Copy')}</button></div>`;
-  dlg.showModal(); $('#d-no').onclick = closeDlg;
-  $('#d-copy').onclick = () => copyText(json, t('Copied'));
 }
 
 /* ---------------- panels ---------------- */
@@ -797,8 +762,7 @@ function render() {
   const p = $('#panel-body'); let h = '';
   if (T.pick) h = `<div class="banner"><span>${esc(T.pick.label)}</span>${T.pick.locked ? '' : `<button class="btn" data-act="cancelpick">${t('Cancel')}</button>`}</div>`;
   if (T.markMode && !T.pick) h = markBanner();
-  if (T.editor) h = editorPanel();
-  else if (T.markMode && !T.pick) { /* marking: banner only */ }
+  if (T.markMode && !T.pick) { /* marking: banner only */ }
   else if (S.tab === 'play') h += playPanel();
   else if (S.tab === 'table') h += tablePanel();
   else h += morePanel();
@@ -823,8 +787,7 @@ function overlay(title, html) {
 }
 const rulesHtml = () => `<div class="rules">${RULES.map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}
   <p class="dim fine2">${t('A summary of the official rulebook. The rulebook is authoritative.')} ${t('Unofficial fan companion for Escape from the Aliens in Outer Space.')}</p></div>`;
-const mapsHtml = () => `<div class="ggrid">${T.maps.map(m => `<div class="gwrap"><button class="gcard" data-act="map" data-id="${esc(m.id)}" aria-pressed="${m.id === T.map.id}">${mapPreview(m)}<b>${esc(m.name)}</b></button>${(S.customMaps || []).some(c => c.id === m.id) ? `<button class="btn danger gdel" data-act="edel" data-id="${esc(m.id)}" aria-label="${t('Delete')}">${ico('close', 16)}</button>` : ''}</div>`).join('')}</div>
-  <div class="row" style="margin-top:16px"><button class="btn" data-act="edit">${t('Edit map')}</button><button class="btn" data-act="eexport">${t('Export')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div>`;
+const mapsHtml = () => `<div class="ggrid">${T.maps.map(m => `<button class="gcard" data-act="map" data-id="${esc(m.id)}" aria-pressed="${m.id === T.map.id}">${mapPreview(m)}<b>${esc(m.name)}</b></button>`).join('')}</div>`;
 const segRow = (label_, act, key, cur, opts) => `<div class="setrow"><span>${t(label_)}</span><div class="seg" role="radiogroup" aria-label="${t(label_)}">${opts.map(([v, l]) => `<button role="radio" data-act="${act}" data-${key}="${v}" aria-checked="${cur === v}">${l}</button>`).join('')}</div></div>`;
 function morePanel() {
   const solo = !Sync.code && !S.hot, host = !!(Sync.code && Sync.isHost());
@@ -838,21 +801,13 @@ function morePanel() {
     </div>
     <div class="row menuact"><button class="btn danger" data-act="newgame">${t(ng)}</button></div>`;
 }
-function editorPanel() {
-  const tl = [['.', 'Dangerous', '#59627a'], ['s', 'Secure', '#ece6d3'], ['x', 'Empty', '#0b1222'], ['H', 'Human', '#1c5d93'], ['A', 'Alien', '#a53312'], ['1', 'Hatch 1', '#1e8a4f'], ['2', 'Hatch 2', '#1e8a4f'], ['3', 'Hatch 3', '#1e8a4f'], ['4', 'Hatch 4', '#1e8a4f']];
-  return `<h2>${t('Edit map')}</h2><p class="dim">${t('Pick a tool, then tap sectors. Start sectors and hatches are unique.')}</p>
-    <div class="tools" role="group">${tl.map(([k, n, c]) => `<button data-act="tool" data-t="${k}" aria-pressed="${T.editor.tool === k}"><i style="background:${c};outline:1px solid #fff3"></i>${t(n)}</button>`).join('')}</div>
-    <label class="field" style="margin-top:14px"><span>${t('Map name')}</span><input id="ed-name" type="text" maxlength="40" value="${esc(T.editor.name)}"></label>
-    <div class="row"><button class="btn" data-act="ecancel">${t('Cancel')}</button><button class="btn primary" data-act="esave">${t('Save map')}</button></div>`;
-}
-
 /* ---------------- boot ---------------- */
 function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); } catch (_) { /* noop */ } applyStatic(); if (S.stage === 'game' && S.role) { render(); hdr(); paintCells(); } else renderFlow(); }
 /* back to the start screen, keeping only the name and custom maps */
 function resetToWelcome(stage) { const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards }; S = Object.assign(fresh(), keep); S.stage = stage || 'welcome'; T.turnState = null; T.counts = null; Sync.status = 'off'; closeDlg(); save(); boot(); }
 function boot() {
   if (S.hot && window.Hot) Hot.rebind();
-  T.editor = null; T.pick = null; T.sel = null;
+  T.pick = null; T.sel = null;
   const game = S.stage === 'game' && S.role;
   $('#flow').hidden = !!game; $('#app').hidden = !game;
   applyStatic();

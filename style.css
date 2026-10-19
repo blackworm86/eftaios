@@ -681,3 +681,8 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .stage.thinking::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 42%,#ffb41f26 50%,transparent 58%);background-size:260% 100%;animation:btsweep 1.8s linear infinite}
 @keyframes btsweep{0%{background-position:130% 0}100%{background-position:-30% 0}}
 @media (prefers-reduced-motion:reduce){.bt-dots i,.stage.thinking::after{animation:none}}
+
+/* ---- map manager ---- */
+.mmtop{margin:10px 0}.mmbig .mapprev{width:100%;max-height:none;aspect-ratio:3/2;background:#0b1222;border-radius:12px}.mmacts{display:grid;gap:8px;margin-top:14px}
+.mmedit{margin-top:12px;touch-action:none}.mmsvg{width:100%;height:auto;touch-action:none;background:#0b1222;border-radius:12px;user-select:none}.mmsvg .pvn{fill:#fff;font:700 12px sans-serif;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.mmexp{display:flex;gap:8px}.check{display:flex;gap:8px;align-items:center;margin-top:10px}

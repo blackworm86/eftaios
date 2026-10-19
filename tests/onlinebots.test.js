@@ -7,7 +7,6 @@ const {assert,setup,current}=require('./helpers');
   await G.goto('http://localhost:8123/?room='+code);await G.fill('#flow-name','Guest');await G.click('[data-act=joinroom]');await G.waitForSelector('.plist');
   await H.click('[data-act=addlobbybot]');await H.waitForFunction(()=>document.querySelectorAll('.plist li').length===3);
   await H.click('[data-act=addlobbybot]');await H.waitForFunction(()=>document.querySelectorAll('.plist li').length===4);
-  assert(await H.evaluate(()=>Sync.settings.online===true),'adding a bot switches the table to digital cards');
   assert(await G.locator('.plist li').count()===4&&(await G.textContent('.plist')).includes('Bot 1'),'the guest sees the bots in the lobby');
   await H.selectOption('[data-botlvl]:nth-of-type(1) >> nth=0','hard');
   await H.waitForFunction(()=>Object.values(Sync.players).some(p=>p.bot==='hard'));assert(true,'the host sets a bot level');

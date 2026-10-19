@@ -16,13 +16,8 @@ function onTurn(v) {
   S.turn = Math.min(v.n, MAX_TURN);
   const was = prev && prev.uid === Sync.uid && prev.n === v.n;
   if (v.uid === Sync.uid && !was) startMyTurn();
-  if (isHost()) { if (S.online) { Online.evaluate(); Online.maybeBotTurn(); } else physicalEnd(); }
+  if (isHost()) { Online.evaluate(); Online.maybeBotTurn(); }
   save(); hdr(); paintCells(); if (S.tab === 'play' || S.tab === 'table') render();
-}
-function physicalEnd() {
-  if (!T.turnState || T.turnState.n <= MAX_TURN || !Sync.settings || Sync.settings.status !== 'playing') return;
-  const esc_ = Object.values(Sync.players || {}).filter(p => p.out === 'escaped').map(p => p.name.slice(0, 20));
-  Sync.updateSettings({ status: 'over', result: { aliensWin: true, reason: 'time', escaped: esc_ } });
 }
 function startMyTurn(silent) {
   if (S.over) { endTurn(); return; }
@@ -196,8 +191,8 @@ Object.assign(actions, {
     if (k === 'human' && S.role === 'alien' && !S.fed && !infection()) { S.fed = true; sub += ' ' + t('You have FED: from now on you move 1, 2 or 3 sectors.'); }
     announce({ say: t('Attack in Sector {s}', { s: S.pos }), sub, tone: 'alert', icon: S.role === 'human' ? 'attack' : '' });
   },
-  podGreen() { commit(); const n = +at(T.map, S.pos); say('', 'hatch', S.pos, { n, ok: 1 }); S.hatches[n] = 1; Sync.setHatch(n, 1); S.over = 'escaped'; afterChange(); },
-  podRed() { commit(); const n = +at(T.map, S.pos); S.hatches[n] = 1; Sync.setHatch(n, 1); say('', 'hatch', S.pos, { n, ok: 0 }); announce({ say: t('Escape Hatch {n}: damaged', { n }), sub: t('Reveal the red card. Nobody can enter this hatch again.'), tone: 'alert' }); },
+  podGreen() { commit(); const n = +at(T.map, S.pos); say('', 'hatch', S.pos, { n, ok: 1 }); S.hatches[n] = 1; S.over = 'escaped'; afterChange(); },
+  podRed() { commit(); const n = +at(T.map, S.pos); S.hatches[n] = 1; say('', 'hatch', S.pos, { n, ok: 0 }); announce({ say: t('Escape Hatch {n}: damaged', { n }), sub: t('Reveal the red card. Nobody can enter this hatch again.'), tone: 'alert' }); },
   next: endTurn,
   undo: undoMove,
   enterhatch() { actions.podGreen(); },
@@ -210,7 +205,7 @@ Object.assign(actions, {
   },
   item(b) { manualItem(b.dataset.i); },
   caught(b) { caughtAction(b.dataset.k); },
-  hatch(b) { const n = b.dataset.n; S.hatches[n] = S.hatches[n] ? 0 : 1; Sync.setHatch(n, S.hatches[n]); afterChange(); },
+  hatch(b) { const n = b.dataset.n; S.hatches[n] = S.hatches[n] ? 0 : 1; afterChange(); },
   turnminus() { S.turn = Math.max(1, S.turn - 1); afterChange(); },
   turnplus() { S.turn = Math.min(MAX_TURN, S.turn + 1); afterChange(); },
   hotgo() { Hot.go(); },
@@ -278,7 +273,7 @@ function orderList() {
 function waitPanel() {
   const cur = T.turnState;
   return `<h2>${t('{p} is playing', { p: esc(pname(cur.uid)) })}</h2>
-    ${orderList()}${handHtml()}${digital() ? '' : `<div class="row mini"><button class="btn" onclick="caughtDlg()">${t('I was attacked')}</button></div>`}`;
+    ${orderList()}${handHtml()}`;
 }
 function overPanel() {
   const m = { escaped: ['Escaped!', 'You left the ship and win. That hatch is now blocked.'], time: ['39 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Hatch is blocked or damaged. You are eliminated.'] }[S.over];

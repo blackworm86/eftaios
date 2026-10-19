@@ -132,7 +132,7 @@ function lobbyOpts() {
 async function beginGame() {
   const st = Sync.settings; if (!st || S.stage !== 'lobby' || T.beginning) return;
   T.beginning = true;
-  let role = S.myRole, char = '';
+  let role = null, char = '';
   { const sec = await Sync.get('secret/' + Sync.uid); if (sec) { role = sec.role; char = sec.char || ''; } else role = null; }
   T.beginning = false;
   if (!role || !S.ready) { toast(t('The game started without you. Ask the host.')); leaveToWelcome(); return; }
@@ -146,7 +146,7 @@ async function beginGame() {
   if (st.first) alertDlg(t('The game begins!'), t('First player: {p}.', { p: st.first }));
   if (T.turnState && T.turnState.uid === Sync.uid) startMyTurn(true);
 }
-function leaveToWelcome() { Sync.leave(); S.room = null; S.stage = 'welcome'; S.myRole = null; S.ready = false; save(); renderFlow(); }
+function leaveToWelcome() { Sync.leave(); S.room = null; S.stage = 'welcome'; S.ready = false; save(); renderFlow(); }
 
 function soloStart(role) {
   const id = $('#f-map').value; T.map = T.maps.find(m => m.id === id) || T.maps[0];
@@ -167,7 +167,7 @@ function reorder(uid, delta) {
 function startTable() {
   const ps = orderedPlayers(); if (ps.length < 2 || !ps.every(([, p]) => p.ready)) return;
   const order = ps.map(([u]) => u), first = ps[0][1].name;
-  if (typeof Online !== 'undefined') Online.hostStart(order, first); else Sync.startGame(first, order);
+  Online.hostStart(order, first);
 }
 
 Object.assign(actions, {
@@ -204,7 +204,7 @@ Object.assign(actions, {
   ignoreinvite() { T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); },
   async hostcreate() {
     const name = readName(); S.mapId = $('#f-map').value; S.mode = $('#f-mode').value; S.track = 'auto';
-    const ok = await Sync.create({ map: S.mapId, mode: S.mode, online: true, track: 'auto' }, { name });
+    const ok = await Sync.create({ map: S.mapId, mode: S.mode }, { name });
     if (!ok) renderFlow();
   },
   async joinroom() {

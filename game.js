@@ -164,7 +164,7 @@ function useItem(id) {
   if (id === 'adrenaline') { if (S.phase !== 'move') return toast(t('Play Adrenaline before you move')); Eng().consumeItem(id); S.adr = true; T.sel = null; afterChange(); return toast(t('You may move one extra sector')); }
   if (id === 'teleport') { Eng().consumeItem(id); S.pos = find(T.map, 'H'); S.path.push({ turn: S.turn, pos: S.pos, note: 'teleport' }); T.sel = null; afterChange(); focusOn(S.pos); return toast(S.phase === 'move' ? t('Teleported. Now make your normal move.') : t('Teleported to the Human sector')); }
   if (id === 'sedatives') { if (!dangerous) return toast(t('Use Sedatives instead of drawing a card')); Eng().consumeItem(id); return announce({ say: t('Nothing to announce'), sub: t('Sedatives: no card this turn.'), tone: 'silent', icon: 'sedatives' }); }
-  if (id === 'cat') { if (!dangerous) return toast(t('Play the Cat before you draw a card')); Eng().consumeItem(id); S.cat = true; afterChange(); return toast(t('Cat played: now draw your card')); }
+  if (id === 'cat') { if (!dangerous && S.phase !== 'move') return toast(t('Play the Cat before you draw a card')); if (S.cat) return toast(t('Cat already played')); Eng().consumeItem(id); S.cat = true; afterChange(); return toast(dangerous ? t('Cat played: now draw your card') : t('Cat played: it applies when you draw a card this turn')); }
   if (id === 'mutation') return confirmDlg(t('Use Mutation?'), t('You become an Alien right here and now. Your abilities are lost.'), () => { Eng().consumeItem(id); becomeAlien(); });
   if (id === 'sensor') return playerPick(t('Sensor: who must reveal their position?'), async who => {
     Eng().consumeItem(id); save(); render();
@@ -370,6 +370,7 @@ function globalOverPanel() {
     <ul class="plist rev">${rows}</ul><button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`;
 }
 
+const catNote = () => S.cat ? `<p class="say alert"><b>${t('Cat is ready: two noises when you draw')}</b></p>` : '';
 function playPanel() {
   if (T.pick) return '';
   if (gameOver()) return globalOverPanel();
@@ -378,12 +379,12 @@ function playPanel() {
   const n = allowance(), alien = S.role === 'alien';
   if (S.phase === 'move') {
     const sel = T.sel;
-    return `<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>
+    return `${catNote()}<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>
       ${sel ? `<div class="row confirmrow"><button class="btn" data-act="clearsel" aria-label="${t('Change')}">${ico('close')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>` : ''}
       ${handHtml()}${extras()}`;
   }
   const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };
-  const head = `<h2>${esc(label(S.pos))}${'.sHA'.includes(ty) ? ` <span class="dim sub">${esc(typeName(ty))}</span>` : ''}</h2>`;
+  const head = `${catNote()}<h2>${esc(label(S.pos))}${'.sHA'.includes(ty) ? ` <span class="dim sub">${esc(typeName(ty))}</span>` : ''}</h2>`;
   if (r.stage === 'wait') return head + `<p class="dim" role="status">${t('Waiting for the host…')}</p>`;
   if (r.stage === 'pod') return head + (digital()
     ? `<p>${t('You reached an Escape Pod. Draw the Escape Pod card.')}</p><button class="btn primary big wide" data-act="hatchdraw">${t('Draw pod card')}</button>`
@@ -459,3 +460,20 @@ function tablePanel() {
       ${decksHtml()}</section>
     </div>`;
 }
+
+/* ---------------- who am I: Character icon, role and what it can do ---------------- */
+const ROLE_HELP = {
+  human: ['Reach an Escape Pod before the Aliens find you, within 40 rounds.', 'You move 1 sector per turn. Only Humans can use Items.', 'If an Alien attacks your sector you are killed, and restart from the Alien Sector as an Alien.'],
+  alien: ['Hunt the Humans: kill them before they reach an Escape Pod.', 'You move 1 or 2 sectors (3 once you have fed on a Human). After moving you may attack instead of drawing a card.', 'An attack kills everyone in the sector, Aliens included. Keep your identity hidden: bluff like a Human.']
+};
+const roleIcon = () => (S.char && !S.reborn && CHAR_ICON[S.char]) || (S.role === 'alien' ? 'role-alien' : 'role-human');
+function roleHtml() {
+  const ab = myAbil(), r = S.role || 'human';
+  return `<div class="dlgico">${gico(roleIcon(), 84)}</div><h2>${t(S.reborn || !S.char ? (r === 'alien' ? 'Alien' : 'Human') : S.char)}</h2>
+    <p class="dim">${t(r === 'alien' ? 'Alien' : 'Human')}${S.reborn ? ' · ' + t('Reborn: no abilities') : ''}</p>
+    ${ab ? `<p><b>${t('Ability')}:</b> ${t(ABILITIES[ab] || '')}</p>` : (basic() ? `<p class="dim">${t('Basic game: no Character abilities.')}</p>` : '')}
+    <ul class="rolehelp">${ROLE_HELP[r].map(x => `<li>${t(x)}</li>`).join('')}</ul>`;
+}
+function roleDlg() { dlg.innerHTML = roleHtml() + `<div class="row"><button class="btn primary" id="d-no">OK</button></div>`; if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg; }
+Object.assign(actions, { roledlg: roleDlg });
+window.roleHtml = roleHtml;

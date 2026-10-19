@@ -688,3 +688,5 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .mmexp{display:flex;gap:8px}.check{display:flex;gap:8px;align-items:center;margin-top:10px}
 
 .slots{display:flex;overflow-x:auto;gap:6px}.slots .slot{flex:1 0 96px}.slot.abil{background:var(--amber);color:#1a1200;border-color:var(--amber);gap:4px}
+
+#hd-role{display:inline-flex;align-items:center;gap:6px;cursor:pointer}#hd-role .gi{flex:none}.rolehelp{text-align:left;padding-left:18px;margin:8px 0;font-size:14px}.rolehelp li{margin:4px 0}

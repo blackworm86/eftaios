@@ -758,7 +758,7 @@ function importDlg() {
 function setTab(k) { S.tab = k; T.pick = null; save(); render(); paintCells(); hdr(); }
 function hdr() {
   $('#hd-turn').textContent = S.turn; $('#hd-pos').textContent = S.pos ? ('HA'.includes(at(T.map, S.pos)) ? t('Start') : label(S.pos)) : '—';
-  const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.textContent = S.role === 'alien' ? (S.fed ? t('Alien') + ' · ' + t('Fed') : t('Alien')) : t('Human');
+  const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.innerHTML = gico(roleIcon(), 20) + '<span>' + (S.role === 'alien' ? (S.fed ? t('Alien') + ' · ' + t('Fed') : t('Alien')) : t('Human')) + '</span>'; r.dataset.act = 'roledlg'; r.setAttribute('role', 'button'); r.tabIndex = 0; r.setAttribute('aria-label', t('Who am I?'));
   document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab));
   const tb = $('#turnbar');
   if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) { const mine = T.turnState.uid === Sync.uid; tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : ''); tb.textContent = mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' }); } else tb.hidden = true;

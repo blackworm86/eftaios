@@ -27,6 +27,34 @@ const GI_ART = {
   GI_ART.cat = hex + '<path d="M-27 -8L-27 -33L-9 -21Q0 -23 9 -21L27 -33L27 -8Q33 6 22 19Q10 31 0 31Q-10 31 -22 19Q-33 6 -27 -8z" fill="#fff"/><g fill="#000"><circle cx="-11" cy="0" r="4.5"/><circle cx="11" cy="0" r="4.5"/><path d="M-4 12h8l-4 6z"/></g>';
   Object.assign(GI_NAMES, { clone: 'Clone', sensor: 'Sensor', mutation: 'Mutation', cat: 'Cat' });
 }
+/* Character icons: white line art on a blue (Human) or red (Alien) hexagon */
+const CHAR_ICON = { 'Captain': 'c-captain', 'Pilot': 'c-pilot', 'Psychologist': 'c-psychologist', 'Soldier': 'c-soldier', 'Executive Officer': 'c-officer', 'Co-pilot': 'c-copilot', 'Engineer': 'c-engineer', 'Medic': 'c-medic',
+  'Blink Alien': 'c-blink', 'Silent Alien': 'c-silentalien', 'Surge Alien': 'c-surge', 'Brute Alien': 'c-brute', 'Invisible Alien': 'c-invisible', 'Lurking Alien': 'c-lurking', 'Fast Alien': 'c-fast', 'Psychic Alien': 'c-psychic' };
+{
+  const H = '#1c5d93', A = '#a53312', hx = c => `<path d="${GI_HEX}" fill="${c}"/>`, ln = b => `<g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">${b}</g>`, fl = b => `<g fill="#fff">${b}</g>`;
+  const art = {
+    'role-human': hx(H) + fl('<circle cx="0" cy="-17" r="11"/><path d="M-24 28a24 20 0 0148 0z"/>'),
+    'c-captain': hx(H) + ln('<path d="M-24 -22L0 -8L24 -22M-24 -2L0 12L24 -2M-24 18L0 32L24 18"/>'),
+    'c-pilot': hx(H) + fl('<path d="M0 -30L6 -6L38 8L38 16L6 8L4 24L12 30L12 34L0 31L-12 34L-12 30L-4 24L-6 8L-38 16L-38 8L-6 -6z"/>'),
+    'c-psychologist': hx(H) + '<text x="0" y="3" font-size="62" font-family="Georgia,serif" font-weight="700" fill="#fff" text-anchor="middle" dominant-baseline="central">Ψ</text>',
+    'c-soldier': hx(H) + ln('<circle r="22"/><path d="M0 -36v18M0 18v18M-36 0h18M18 0h18"/>') + fl('<circle r="4"/>'),
+    'c-officer': hx(H) + ln('<circle r="27"/>') + fl('<rect x="-12" y="-14" width="8" height="28" rx="2"/><rect x="4" y="-14" width="8" height="28" rx="2"/>'),
+    'c-copilot': hx(H) + fl('<path d="M-6 -30L0 -6L34 8L34 16L2 8L0 24L8 30L8 34L-6 31L-20 34L-20 30L-12 24L-14 8L-34 14L-34 8L-14 -6z"/>') + ln('<path d="M22 -30v14M15 -23h14"/>'),
+    'c-engineer': hx(H) + ln('<circle r="13"/><path d="M0 -34v10M0 24v10M-34 0h10M24 0h10M-24 -24l7 7M17 17l7 7M24 -24l-7 7M-17 17l-7 7"/>'),
+    'c-medic': hx(H) + fl('<path d="M-9 -30h18v21h21v18h-21v21h-18v-21h-21v-18h21z"/>'),
+    'role-alien': hx(A) + ln('<path d="M-22 -26L-14 26M0 -30L0 30M22 -26L14 26"/>'),
+    'c-blink': hx(A) + ln('<circle r="26" stroke-dasharray="6 9"/>') + fl('<circle r="8"/>'),
+    'c-silentalien': hx(A) + ln('<path d="M-28 -10h12l14 -16v52l-14 -16h-12z"/><path d="M-30 30L30 -30"/>'),
+    'c-surge': hx(A) + fl('<path d="M8 -36L-20 6h16L-8 36L22 -8H6z"/>'),
+    'c-brute': hx(A) + ln('<path d="M0 -34L28 -22V0c0 18-12 28-28 34C-16 28-28 18-28 0V-22z"/>'),
+    'c-invisible': hx(A) + ln('<path d="M-34 0C-20 -22 20 -22 34 0C20 22 -20 22 -34 0z"/><circle r="8"/><path d="M-30 -28L30 28"/>'),
+    'c-lurking': hx(A) + fl('<path d="M-36 -2Q-20 -16 -6 -2Q-20 6 -36 -2zM36 -2Q20 -16 6 -2Q20 6 36 -2z"/>'),
+    'c-fast': hx(A) + ln('<path d="M-30 -22L-6 0L-30 22M-4 -22L20 0L-4 22"/>'),
+    'c-psychic': hx(A) + ln('<path d="M0 -34L32 24H-32z"/>') + fl('<circle cy="6" r="9"/>')
+  };
+  Object.assign(GI_ART, art);
+  Object.assign(GI_NAMES, { 'role-human': 'Human', 'role-alien': 'Alien' });
+}
 /* an icon of width w (px); alt names it for screen readers, otherwise it is decoration next to its own label */
 const gico = (name, w = 32, alt) => GI_ART[name] ? `<svg class="gi" width="${w}" height="${Math.round(w * 0.92)}"${alt ? ` role="img" aria-label="${alt}"` : ' aria-hidden="true"'}><use href="#gi-${name}"/></svg>` : '';
 (function () {

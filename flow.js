@@ -145,7 +145,8 @@ async function beginGame() {
   T.turnState = Sync.turn || null; if (T.turnState) S.turn = T.turnState.n;
   save(); boot();
   if (typeof Online !== 'undefined') Online.attach();
-  if (st.first) alertDlg(t('The game begins!'), t('First player: {p}.', { p: st.first }));
+  roleDlg();
+  if (st.first) dlg.querySelector('.row').insertAdjacentHTML('beforebegin', `<p><b>${t('The game begins!')}</b> ${esc(t('First player: {p}.', { p: st.first }))}</p>`);
   if (T.turnState && T.turnState.uid === Sync.uid) startMyTurn(true);
 }
 function leaveToWelcome() { Sync.leave(); S.room = null; S.stage = 'welcome'; S.ready = false; save(); renderFlow(); }

@@ -41,7 +41,8 @@ const Bot = (() => {
     const log = H.log.slice().reverse();                                    // oldest first
     log.forEach((e, i) => {
       const b = B[e.by]; if (!b) return;
-      if (PUBLIC_POS.includes(e.kind) && e.sector) b.track.push({ turn: e.turn, sector: e.sector, kind: e.kind });
+      if (PUBLIC_POS.includes(e.kind) && e.sector) { b.track.push({ turn: e.turn, sector: e.sector, kind: e.kind }); b.quiet = null; }
+      if (e.kind === 'silence' && e.text === 'secure') b.quiet = e.turn;      // "Silent Sector": they stand on a Secure sector
       if (e.kind === 'item') ease(b, 0.97);                                 // only Humans can play items
       if (e.kind === 'hatch') ease(b, 0.99);
       if (e.kind === 'attack') {
@@ -77,6 +78,16 @@ const Bot = (() => {
     const steps = Math.min(Math.max(0, turn - last.turn) * speed, 30);
     const z = steps ? reachable(T.map, last.sector, steps, alien ? 'alien' : 'human') : new Map();
     z.set(last.sector, 0);
+    // after a "Silent Sector" declaration, only the Secure sectors they could have reached then, spread out since
+    if (b.quiet != null && b.quiet >= last.turn) {
+      const then = reachable(T.map, last.sector, Math.min(Math.max(0, b.quiet - last.turn) * speed, 30), alien ? 'alien' : 'human');
+      const secure = [...then.keys()].filter(id => at(T.map, id) === 's');
+      if (secure.length) {
+        const out = new Map(), more = Math.min(Math.max(0, turn - b.quiet) * speed, 30);
+        secure.forEach(s => { out.set(s, 0); if (more) reachable(T.map, s, more, alien ? 'alien' : 'human').forEach((_, id) => out.set(id, 0)); });
+        return out;
+      }
+    }
     return z;
   }
   /* how much an announcement is worth: players bluff with "noise in any sector" */
@@ -203,7 +214,7 @@ const Bot = (() => {
     // Alien attack, or a Human with an Attack card on a likely Alien
     if (!human && wantsAttack(ctx, st, lvl, B)) { say({ kind: 'attack', sector: st.pos }); if ((await ctx.attack(st.pos)).some(h => h.killed && h.role === 'human') && H.mode !== 'infection') st.fed = true; return; }
     if (human && adv && lvl === 'hard' && st.items.includes('attack') && (massMap(B, H.turn, true, false, lvl).get(st.pos) || 0) > 0.45 && (massMap(B, H.turn, false, false, lvl).get(st.pos) || 0) < 0.2) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
-    if (ty !== '.') return;                                                 // Secure sector: nothing to draw
+    if (ty !== '.') { say({ kind: 'silence', text: 'secure' }); return; }  // Secure sector: declare "Silent Sector"
     if (human && adv && st.items.includes('sedatives') && lvl !== 'easy' && (danger > 0.2 || lvl === 'hard' && rnd() < 0.3)) { useItem('sedatives'); return; }
     const card = ctx.draw('sector') || 'silence', item = card.endsWith('-item') && adv;
     if (card.startsWith('noise-self')) say({ kind: 'noise', sector: st.pos });

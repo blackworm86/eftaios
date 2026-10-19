@@ -633,3 +633,10 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .trail .ah{fill:#f5f5f5;stroke:#f5f5f5;stroke-width:1;stroke-linejoin:round}
 #map.classic .trail .ah{fill:#151515;stroke:#151515}
 .tl .ah,.rline .ah{stroke-linejoin:round;stroke-width:1}
+
+/* start sector and escape hatch icons */
+.sicon{pointer-events:none}
+.sicon .sibg{fill:#151515;stroke:#8a8a8a;stroke-width:1.6}
+.sicon .sig path{fill:none;stroke:#fff;stroke-width:2.1;stroke-linecap:square;stroke-linejoin:miter}
+.sicon .podn{fill:#fff;font:800 10px var(--mono);text-anchor:middle;dominant-baseline:central}
+.P.closed~.sicon{opacity:.4}

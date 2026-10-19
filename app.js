@@ -117,11 +117,19 @@ function buildMap() {
     const g = el('g', { 'data-id': id }, cells);
     el('polygon', { points: hexPts(x, y, HEX - 0.6), class: 'hex' }, g);
     const t = el('text', { x, y: y + 12, class: 'lbl' }, g); t.textContent = id;
+    el('g', { class: 'sicon', transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})` }, g);
     el('text', { x, y, class: 'sym' }, g);
   }
   el('g', { id: 'zone' }, vp); el('g', { id: 'trail', class: 'trail' }, vp);
   el('g', { id: 'marks' }, vp); el('g', { id: 'me' }, vp); el('g', { id: 'notes' }, vp);
   paintCells(); fit();
+}
+/* start sectors and escape hatches: a dark hexagon with a white glyph, as on the printed maps */
+function sectorIcon(k) {
+  const glyph = k === 'H' ? '<path d="M-6 -6.4H6M-6 -3.4V2.6L0 6.6L6 2.6V-3.4"/>'
+    : k === 'A' ? '<path d="M-6 -6.4H6M-6 6.4H6M-5 -3.6L5 3.6M5 -3.6L-5 3.6"/>'
+    : `<path d="M-8.2 -0.6V-4.2L-5.4 -7.4H-1.6M8.2 0.6V4.2L5.4 7.4H1.6"/><text class="podn" y="0.4">${k}</text>`;
+  return `<path class="sibg" d="${roundedHex(14.5, 3)}"/><g class="sig">${glyph}</g>`;
 }
 const tr = s => window.t ? window.t(s) : s; // map symbols are painted before/after language changes
 function paintCells() {
@@ -136,8 +144,9 @@ function paintCells() {
     if (T.pick) cls += ' pick';
     if (T.inspect === id) cls += ' inspected';
     poly.setAttribute('class', cls);
-    const txt = t === 'H' ? tr('HUMANS') : t === 'A' ? tr('ALIENS') : '1234'.includes(t) ? t : '';
-    g.children[1].textContent = txt ? '' : id; sym.textContent = txt; sym.setAttribute('class', 'sym' + (txt.length > 1 ? ' sm' : ''));
+    const kind = t === 'H' || t === 'A' || '1234'.includes(t) ? t : '';
+    g.children[1].textContent = kind ? '' : id; sym.textContent = '';
+    const ic = g.children[2]; if (ic.dataset.k !== kind) { ic.dataset.k = kind; ic.innerHTML = kind ? sectorIcon(kind) : ''; }
   }
   paintOverlay();
 }
@@ -543,7 +552,7 @@ function entryText(e) {
   if (e.kind === 'noise') return t('Noise in Sector {s}', { s });
   if (e.kind === 'attack') return t('Attack in Sector {s}', { s });
   if (e.kind === 'spot') return t('Spotlight on Sector {s}', { s });
-  if (e.kind === 'silence') return t('Silence in all Sectors');
+  if (e.kind === 'silence') return t(e.text === 'secure' ? 'Silent Sector' : 'Silence in all Sectors');
   if (e.kind === 'hatch' && e.n) return t(e.ok ? 'Escape Hatch {n}: escaped' : 'Escape Hatch {n}: damaged', { n: e.n });
   if (e.kind === 'item') return t('plays {i}', { i: t(((typeof ITEMS !== 'undefined' && ITEMS[e.text]) || [e.text])[0]) });
   if (e.kind === 'reveal') return t('Position revealed: {s}', { s });

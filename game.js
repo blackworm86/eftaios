@@ -186,7 +186,7 @@ Object.assign(actions, {
   noiseHere() { finishCard('noise', S.pos, iconFlag()); },
   noiseAny() { const f = iconFlag(); pickSector(t('Tap the sector you announce'), id => finishCard('noise', id, f)); },
   silence() { finishCard('silence', null, false); },
-  quiet() { announce({ say: t('Nothing to announce'), tone: 'silent' }); },
+  quiet() { announce({ say: t('Silent Sector'), tone: 'silent', logged: say('secure', 'silence') }); },   // a Secure sector: public, but different from a Silence card
   drawcard() { drawSector(); },
   hatchdraw() { digitalHatch(); },
   attack() { commit(); if (digital()) runAttack(false); else { S.res = { stage: 'attack' }; afterChange(); } },
@@ -216,13 +216,16 @@ Object.assign(actions, {
   hotgo() { Hot.go(); },
   skipturn() { confirmDlg(t('Skip {p}?', { p: pname(T.turnState.uid) }), t('Use this when a player is away. Their turn ends now.'), () => { const nx = nextTurn(); if (nx) Sync.setTurn(nx); }); }
 });
+/* the rules: an item card is revealed to everyone when it is played */
+const revealItem = k => toast(t('Show your {i} card to everyone, then discard it', { i: t(ITEMS[k][0]) }));
 function manualItem(k) {
   closeDlg(); commit();
-  if (k === 'adrenaline') { if (S.phase !== 'move' || S.role !== 'human') return toast(t('Play Adrenaline before you move')); S.adr = true; say('Adrenaline used', 'info'); T.sel = null; afterChange(); return toast(t('You may move up to 2 sectors')); }
-  if (k === 'teleport') { if (S.role !== 'human') return; S.pos = find(T.map, 'H'); S.path.push({ turn: S.turn, pos: S.pos, note: 'teleport' }); say('Teleport used', 'info'); T.sel = null; afterChange(); focusOn(S.pos); return toast(S.phase === 'move' ? t('Teleported. Now make your normal move.') : t('Teleported to the Human sector')); }
-  if (k === 'spotlight') return pickSector(t('Spotlight: tap the sector to name'), id => { say('', 'spot', id); afterChange(); toast(t('Announce: Spotlight on Sector {s}', { s: id })); });
-  if (k === 'sedatives') { if (S.phase !== 'resolve' || S.res.stage !== 'choose') return toast(t('Use Sedatives instead of drawing a card')); say('Sedatives used', 'info'); return announce({ say: t('Nothing to announce'), sub: t('Sedatives: no card this turn.'), tone: 'silent' }); }
-  if (k === 'attack') { if (S.phase !== 'resolve' || S.res.stage === 'done') return toast(t('Use Attack after moving')); return actions.attack(); }
+  const pub = () => { say(k, 'item'); revealItem(k); };
+  if (k === 'adrenaline') { if (S.phase !== 'move' || S.role !== 'human') return toast(t('Play Adrenaline before you move')); S.adr = true; pub(); T.sel = null; afterChange(); return; }
+  if (k === 'teleport') { if (S.role !== 'human') return; pub(); S.pos = find(T.map, 'H'); S.path.push({ turn: S.turn, pos: S.pos, note: 'teleport' }); T.sel = null; afterChange(); focusOn(S.pos); return; }
+  if (k === 'spotlight') return pickSector(t('Spotlight: tap the sector to name'), id => { pub(); say('', 'spot', id); afterChange(); toast(t('Announce: Spotlight on Sector {s}', { s: id })); });
+  if (k === 'sedatives') { if (S.phase !== 'resolve' || S.res.stage !== 'choose') return toast(t('Use Sedatives instead of drawing a card')); pub(); return announce({ say: t('Nothing to announce'), sub: t('Sedatives: no card this turn.'), tone: 'silent' }); }
+  if (k === 'attack') { if (S.phase !== 'resolve' || S.res.stage === 'done') return toast(t('Use Attack after moving')); pub(); return actions.attack(); }
 }
 function caughtAction(k) {
   closeDlg();
@@ -327,7 +330,7 @@ function playPanel() {
     (r.report ? `<ul class="report">${r.report.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '') + (r.sub ? `<p class="dim">${esc(r.sub)}</p>` : '') +
     `<button class="btn primary big wide" data-act="next">${!inRoom() && S.turn >= MAX_TURN ? t('Finish game') : t('End turn')}</button>${handHtml()}${extras()}`;
   const safe = ty === 's' || ty === 'H' || ty === 'A';
-  if (safe) return head + `<p class="dim">${t('Secure sector: no card to draw.')}</p><div class="row">${alien ? `<button class="btn danger big" data-act="attack">${t('Attack')}</button>` : ''}<button class="btn primary big" data-act="quiet">${t('Done')}</button></div>${undoBtn()}${handHtml()}${extras()}`;
+  if (safe) return head + `<p class="dim">${t('Secure sector: no card to draw.')}</p>${sayBox(t('Silent Sector'), 'silent')}<div class="row">${alien ? `<button class="btn danger big" data-act="attack">${t('Attack')}</button>` : ''}<button class="btn primary big" data-act="quiet">${t('Declare')}</button></div>${undoBtn()}${handHtml()}${extras()}`;
   if (digital()) return head + `<div class="row">${alien ? `<button class="btn danger big" data-act="attack">${t('Attack')}</button>` : ''}<button class="btn primary big" data-act="drawcard">${t('Draw a card')}</button></div>${undoBtn()}${handHtml()}`;
   return head + `${alien ? `<button class="btn danger wide slim" data-act="attack">${t('Attack this sector')}</button>` : ''}
     <div class="cards3"><button class="btn" data-act="noiseHere">${t('Noise in your sector')}</button><button class="btn" data-act="noiseAny">${t('Noise in any sector')}</button><button class="btn" data-act="silence">${t('Silence')}</button></div>

@@ -96,6 +96,26 @@ const Bot = (() => {
   }
   const near = (m, id) => { const [c, r] = parseId(id); return Math.min(1.5, (m.get(id) || 0) + neighbors(T.map, c, r).reduce((s, [a, b]) => s + (m.get(cid(a, b)) || 0), 0)); };
 
+  /* the sectors a Human must stand on right before stepping into a hatch */
+  function approaches(h) {
+    const [c, r] = parseId(h);
+    return neighbors(T.map, c, r).map(([a, b]) => cid(a, b)).filter(id => !'xHA1234'.includes(at(T.map, id)));
+  }
+  /* how well a post covers the hatch approaches: an Alien reaches 2 sectors (3 once fed), so standing on or next to
+     an approach cell lets it strike whoever comes through. Each bot favours "its" hatch so Aliens spread out. */
+  function campValue(d, hatches, mine, reach) {
+    let tot = 0, wsum = 0;
+    hatches.forEach(h => {
+      const w = h === mine ? 2.2 : 1; wsum += w;
+      const ring = approaches(h); if (!ring.length) return;
+      let cover = 0;
+      ring.forEach(c => { const k = d.get(c); cover += k === undefined ? 0 : k === 0 ? 1 : k === 1 ? 0.85 : k <= reach ? 0.5 : 0; });
+      tot += w * cover / ring.length;
+    });
+    return wsum ? tot / wsum : 0;
+  }
+  const hashId = id => { let x = 7; for (const ch of String(id)) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return x; };
+
   /* ---------- choices ---------- */
   function chooseMove(ctx, st, lvl, B) {
     const opts = [...reachable(T.map, st.pos, st.role === 'alien' ? (st.fed ? 3 : 2) : (st.adr ? 2 : 1), st.role).keys()];
@@ -116,12 +136,16 @@ const Bot = (() => {
     } else {
       const prey = massMap(B, turn, false, lvl === 'hard', lvl);
       const hot = [...prey.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).filter(x => x[1] > 0.04).map(x => x[0]);
-      const late = turn >= 14 ? 1.6 : 1;
+      const late = turn >= 14 ? 1.6 : 1, reach = st.fed ? 3 : 2, hs = openHatches(), mine = hs.length ? hs[hashId(ctx.me.id) % hs.length] : null;
+      // little or no news about the Humans: camp the approaches to the hatches instead of wandering
+      const trail = hot.length ? (prey.get(hot[0]) || 0) : 0, camp = (lvl === 'easy' ? 14 : lvl === 'normal' ? 26 : 38) * (trail > 0.2 ? 0.5 : 1) * (turn >= 8 ? 1.4 : 1) * late;
       opts.forEach(id => {
         let s = (prey.get(id) || 0) * 120 + near(prey, id) * (lvl === 'easy' ? 15 : 25);
         if (hot.length) { const d = distFrom(id, 'alien'); s -= Math.min(...hot.map(h => d.has(h) ? d.get(h) : 40)) * 4; }
         // humans must end up on a hatch: sit between them and it, harder as the game wears on
-        s -= Math.min(20, hatchDist(id, 'alien')) * (hot.length ? 1 : 3) * late;
+        const dd = distFrom(id, 'alien');
+        s += campValue(dd, hs, mine, reach) * camp;
+        if (lvl === 'hard' && !hot.length) s -= Math.min(20, hatchDist(id, 'alien')) * 2;
         score.set(id, s + tie());
       });
     }
@@ -142,7 +166,8 @@ const Bot = (() => {
   function wantsAttack(ctx, st, lvl, B) {
     const turn = ctx.H.turn, here = st.pos;
     const prey = massMap(B, turn, false, false, lvl).get(here) || 0, friends = massMap(B, turn, true, false, lvl).get(here) || 0;
-    const need = lvl === 'easy' ? 0.45 : lvl === 'normal' ? 0.3 : 0.2;
+    let need = lvl === 'easy' ? 0.45 : lvl === 'normal' ? 0.3 : 0.2;
+    if (lvl !== 'easy' && turn >= 8 && openHatches().some(h => approaches(h).includes(here))) need -= lvl === 'hard' ? 0.12 : 0.06;   // Humans have to come through here
     if (ctx.H.mode === 'infection') return prey >= need;
     return prey >= need && (lvl === 'easy' || prey >= friends * 0.6);
   }

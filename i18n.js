@@ -1,6 +1,11 @@
 'use strict';
 /* Minimal i18n: English strings are the keys; Italian lives in IT. t('Text {x}', {x: 1}) */
 const IT = {
+"Scan a QR code": "Scansiona un codice QR",
+"Scan a table QR code": "Scansiona il codice QR del tavolo",
+"Point the camera at the QR code on the host's screen.": "Inquadra il codice QR sullo schermo dell'host.",
+"The camera is not available. Allow camera access, or type the table code.": "La fotocamera non è disponibile. Consenti l'accesso alla fotocamera oppure scrivi il codice del tavolo.",
+"That QR code is not a table.": "Questo codice QR non è un tavolo.",
 "Companion": "Companion",
 "Paper sheet, real cards": "Foglio di carta, carte vere",
 "Use the app like the paper sheet: track your own route and what the other players declare. You play with the real cards.": "Usa l'app come il foglio di carta: segna il tuo percorso e ciò che dichiarano gli altri giocatori. Giochi con le carte vere.",

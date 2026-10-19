@@ -466,12 +466,17 @@ const ROLE_HELP = {
   human: ['Reach an Escape Pod before the Aliens find you, within 40 rounds.', 'You move 1 sector per turn. Only Humans can use Items.', 'If an Alien attacks your sector you are killed, and restart from the Alien Sector as an Alien.'],
   alien: ['Hunt the Humans: kill them before they reach an Escape Pod.', 'You move 1 or 2 sectors (3 once you have fed on a Human). After moving you may attack instead of drawing a card.', 'An attack kills everyone in the sector, Aliens included. Keep your identity hidden: bluff like a Human.']
 };
-const roleIcon = () => (S.char && !S.reborn && CHAR_ICON[S.char]) || (S.role === 'alien' ? 'role-alien' : 'role-human');
+/* the Character's icon; a reborn Alien or a Companion player (no Character card in the app) gets one of the role's Characters */
+const roleIcon = () => {
+  if (S.char && !S.reborn && CHAR_ICON[S.char]) return CHAR_ICON[S.char];
+  const l = CHARS[S.role === 'alien' ? 'alien' : 'human'], h = [...(S.name || 'x')].reduce((x, c) => (x * 31 + c.charCodeAt(0)) >>> 0, 7);
+  return CHAR_ICON[l[h % l.length]];
+};
 function roleHtml() {
   const ab = myAbil(), r = S.role || 'human';
   return `<div class="dlgico">${gico(roleIcon(), 84)}</div><h2>${t(S.reborn || !S.char ? (r === 'alien' ? 'Alien' : 'Human') : S.char)}</h2>
     <p class="dim">${t(r === 'alien' ? 'Alien' : 'Human')}${S.reborn ? ' · ' + t('Reborn: no abilities') : ''}</p>
-    ${ab ? `<p><b>${t('Ability')}:</b> ${t(ABILITIES[ab] || '')}</p>` : (basic() ? `<p class="dim">${t('Basic game: no Character abilities.')}</p>` : '')}
+    ${ab && digital() ? `<p><b>${t('Ability')}:</b> ${t(ABILITIES[ab] || '')}</p>` : (basic() ? `<p class="dim">${t('Basic game: no Character abilities.')}</p>` : '')}
     <ul class="rolehelp">${ROLE_HELP[r].map(x => `<li>${t(x)}</li>`).join('')}</ul>`;
 }
 function roleDlg() { dlg.innerHTML = roleHtml() + `<div class="row"><button class="btn primary" id="d-no">OK</button></div>`; if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg; }

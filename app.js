@@ -326,7 +326,7 @@ function paintOverlay() {
       const dim = focus && !(it.key === focus || (focus === 'me' && ownM)), old = !focus && !ownM && S.turn - last >= 2;
       const g = el('g', { class: `mk pm ${it.kind}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
-      if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const rg = el('g', { transform: `translate(${at_.cx} ${at_.cy})` }, me), ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c }, rg); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); ringAt((size + 1.8) * 1.12, 'me-ring' + cls); }
+      if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const rg = el('g', { transform: `translate(${at_.cx} ${at_.cy})` }, me), ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c }, rg); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); }
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
       // the printed icons of what this player declared on that step, as marks on the marker
       stepIcons(it.key, last, sec).forEach((n, j) => {

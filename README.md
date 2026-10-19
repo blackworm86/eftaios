@@ -3,10 +3,10 @@
 Web companion for the physical board game *Escape from the Aliens in Outer Space* (Black Edition maps: Galilei, Fermi, Galvani). Cards are **not** included: you keep using the real deck. The app replaces the paper map and pencil:
 
 - hex map with pan / pinch-zoom, reachable sectors highlighted (Human 1, Alien 2, fed Alien 3, Adrenaline 2)
-- your private route with turn numbers, 39-turn counter
+- your private route with turn numbers, 40-turn counter
 - exact wording to announce (noise, silence, attack, hatch), item and attack helpers
 - shared-table notes: announcements heard, hatch status, Spotlight range warning
-- Basic, Advanced and Infection rule sets; map editor / import / export; offline (PWA)
+- Basic and Ultimate Edition rule sets (40 turns, 10 items, 16 Character abilities, Escape Pod cards); map browser and editor on the start page (copy, edit, import, export); offline (PWA)
 
 Run: `python3 -m http.server` in this folder and open http://localhost:8000.
 
@@ -16,7 +16,7 @@ Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 0
 
 ## Three ways to play
 
-**Online table** (digital): the host taps *Host a table*, picks the map and the rules (Basic, Advanced or Infection) and shares the code, QR or link. Players join by typing the code, opening the link or scanning the QR code with the camera (the QR button next to *Join*), tap *Ready*, and the host taps *Start game*; a random first player is announced. The host device deals the 8 Character cards and shuffles the 25 Sector, 12 Item and 6 Escape Hatch cards, tracks the draw and discard piles and reshuffles the discards when a pile runs out. Items, Spotlights and attacks are resolved automatically (Defense is played for you, Spotlight positions are revealed, attacks after movement). Positions and routes stay on each device; the host must keep the app open while playing. The host arranges the order of play in the lobby; only the player whose turn it is can act. Eliminated or escaped players are skipped, and the host can skip an absent player. Bots can fill seats (Easy, Normal, Hard).
+**Online table** (digital): the host taps *Host a table*, picks the map and the rules (Basic or Ultimate) and shares the code, QR or link. Players join by typing the code, opening the link or scanning the QR code with the camera (the QR button next to *Join*), tap *Ready*, and the host taps *Start game*; a random first player is announced. The host device deals the 8 Character cards and shuffles the 25 Sector, 12 Item and 6 Escape Hatch cards, tracks the draw and discard piles and reshuffles the discards when a pile runs out. Items, Spotlights and attacks are resolved automatically (Defense is played for you, Spotlight positions are revealed, attacks after movement). Positions and routes stay on each device; the host must keep the app open while playing. The host arranges the order of play in the lobby; only the player whose turn it is can act. Eliminated or escaped players are skipped, and the host can skip an absent player. Bots can fill seats (Easy, Normal, Hard).
 
 **Pass and play** (digital, one device): *Pass and play* lets 2–8 players share one phone or tablet, with bots if you like. After each turn a hand-over screen hides everything until the next player taps their name; roles, routes and items stay private per player.
 

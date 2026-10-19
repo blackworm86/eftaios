@@ -1,6 +1,7 @@
 'use strict';
 /* Pre-game flow: welcome -> (host setup | join) -> lobby -> game.  Solo play skips the table. */
-const MODES = { basic: ['Basic', 'No items. The game ends when the first Human reaches a hatch.'], advanced: ['Advanced', 'Items and Escape Hatch cards. Play on until every Human has escaped or died.'], infection: ['Infection', 'Eliminated Humans become Aliens. All hatches open, each works once.'] };
+const MODES = { basic: ['Basic', 'First game: no Items and no Character abilities. Item cards count as Silence.'], ultimate: ['Ultimate', 'The complete rules: Items, Character abilities and Escape Pod cards.'] };
+const modeOf = m => (m === 'basic' ? 'basic' : 'ultimate');
 const OPTS = { mode: ['Rules', MODES] };
 const tableMaps = () => T.maps.filter(m => m.official);
 const isHost = () => Sync.isHost();
@@ -46,10 +47,10 @@ function renderFlow() {
   const st = S.stage;
   card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
   if (st === 'host') {
-    h = `${fhead(t('Host a table'))}${nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', S.mode || 'advanced')}
+    h = `${fhead(t('Host a table'))}${nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
       <button class="btn primary big wide" data-act="hostcreate">${t('Create table')}</button>${flowStatus()}`;
   } else if (st === 'solo') {
-    h = `${fhead(t('Companion'))}<p class="dim hintline">${t('Use the app like the paper sheet: track your own route and what the other players declare. You play with the real cards.')}</p>${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', S.mode || 'advanced')}
+    h = `${fhead(t('Companion'))}<p class="dim hintline">${t('Use the app like the paper sheet: track your own route and what the other players declare. You play with the real cards.')}</p>${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
       <fieldset class="roles"><legend>${t('Your Character card')}</legend>
       <button class="role-btn human" data-act="solostart" data-role="human"><b>${t('Human')}</b></button>
       <button class="role-btn alien" data-act="solostart" data-role="alien"><b>${t('Alien')}</b></button></fieldset>`;
@@ -60,7 +61,7 @@ function renderFlow() {
       <span class="flabel">${t('Players')} (${names.length}/8)</span><ol class="hotnames seats">${names.map((n, i) => `<li><select data-hb="${i}" aria-label="${t('Who plays seat {n}', { n: i + 1 })}">${BOTSEL.map(([v, l]) => `<option value="${v}"${(T.hotBots[i] || '') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select><input type="text" maxlength="20" data-hn="${i}" value="${esc(n)}" aria-label="${t('Player {n}', { n: i + 1 })}">${names.length > 2 ? `<button class="x" data-act="hotdel" data-i="${i}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}</li>`).join('')}</ol>
       ${names.length < 8 ? `<div class="row two addrow"><button class="btn" data-act="hotadd">+ ${t('Add player')}</button><button class="btn" data-act="hotaddbot">+ ${t('Add bot')}</button></div>` : ''}
       ${T.hotBots.some(Boolean) && T.hotBots.every(Boolean) ? `<p class="dim hintline">${t('At least one seat must be a person.')}</p>` : ''}
-      ${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', S.mode || 'advanced')}
+      ${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
       <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>`;
   } else if (st === 'lobby') {
     h = lobbyHtml();
@@ -102,7 +103,7 @@ function lobbyHtml() {
     <span class="ctl"><span class="pst">${p.bot ? (host ? `<select data-botlvl="${esc(id)}" aria-label="${t('Bot level')}">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${p.bot === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>` : t(BOTSEL.find(x => x[0] === p.bot)[1])) : p.ready ? ico('check', 14) + ' ' + t('Ready') : ''}</span>
     ${host && p.bot ? `<button class="x" data-act="delbot" data-u="${esc(id)}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}
     ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>${ico('up')}</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>${ico('down')}</button></span>` : ''}</span></li>`).join('');
-  const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[st.mode || 'advanced'][0])}</dd></dl>`;
+  const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[modeOf(st.mode)][0])}</dd></dl>`;
   return `${fhead(t('Table'), 'leavelobby')}
     <div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
       <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>
@@ -126,7 +127,7 @@ function rulesError(e) {
 /* host: change the rules from the lobby */
 function lobbyOpts() {
   const st = Sync.settings || {};
-  dlg.innerHTML = `<h2>${t('Game options')}</h2>${seg('mode', st.mode || 'advanced')}<div class="row"><button class="btn primary" id="d-no">${t('Done')}</button></div>`;
+  dlg.innerHTML = `<h2>${t('Game options')}</h2>${seg('mode', modeOf(st.mode))}<div class="row"><button class="btn primary" id="d-no">${t('Done')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 
@@ -140,7 +141,7 @@ async function beginGame() {
   T.map = T.maps.find(m => m.id === st.map) || T.maps[0];
   const keep = S.customMaps, name = S.name, room = S.room;
   S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, track: 'auto', role, char, online: true, name, room, customMaps: keep, tab: 'play' });
-  S.pos = find(T.map, role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }];
+  S.pos = startSector(T.map, role, char, st.mode); S.path = [{ turn: 0, pos: S.pos }];
   T.turnState = Sync.turn || null; if (T.turnState) S.turn = T.turnState.n;
   save(); boot();
   if (typeof Online !== 'undefined') Online.attach();

@@ -15,7 +15,7 @@
             ".validate": "newData.isString() && newData.val().length <= 40"
           },
           "mode": {
-            ".validate": "newData.val() === 'advanced' || newData.val() === 'basic' || newData.val() === 'infection'"
+            ".validate": "newData.val() === 'ultimate' || newData.val() === 'basic' || newData.val() === 'advanced' || newData.val() === 'infection'"
           },
           "host": {
             ".validate": "newData.val() === auth.uid"

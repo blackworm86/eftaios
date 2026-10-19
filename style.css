@@ -686,3 +686,5 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .mmtop{margin:10px 0}.mmbig .mapprev{width:100%;max-height:none;aspect-ratio:3/2;background:#0b1222;border-radius:12px}.mmacts{display:grid;gap:8px;margin-top:14px}
 .mmedit{margin-top:12px;touch-action:none}.mmsvg{width:100%;height:auto;touch-action:none;background:#0b1222;border-radius:12px;user-select:none}.mmsvg .pvn{fill:#fff;font:700 12px sans-serif;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .mmexp{display:flex;gap:8px}.check{display:flex;gap:8px;align-items:center;margin-top:10px}
+
+.slots{display:flex;overflow-x:auto;gap:6px}.slots .slot{flex:1 0 96px}.slot.abil{background:var(--amber);color:#1a1200;border-color:var(--amber);gap:4px}

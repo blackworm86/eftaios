@@ -9,7 +9,7 @@ exports.setup=async(n,opts={})=>{
   return {b,ctx,pages,errs};
 };
 /* host creates a table; others join; everyone readies; host starts. Roles and cards are dealt digitally. opts: mode, map */
-exports.startTable=async(pages,{mode='advanced',map='galilei'}={})=>{
+exports.startTable=async(pages,{mode='ultimate',map='galilei'}={})=>{
   const [H,...G]=pages;await H.goto('http://localhost:8123/');await H.fill('#flow-name','P0');await H.click('[data-act=hostsetup]');
   await H.click('.mapcard');await H.click(`.gcard[data-id=\"${map}\"]`);await H.click(`[data-f=mode][data-v=${mode}]`);
   await H.click('[data-act=hostcreate]');await H.waitForSelector('.roomcard b');const code=await H.textContent('.roomcard b');

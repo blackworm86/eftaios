@@ -8,7 +8,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert((await p.textContent('#flow-card')).includes('Companion'),'the third mode is called Companion');
  await p.click('[data-act=solo]');
  assert(await p.locator('[data-f=cards],[data-f=track]').count()===0,'companion setup: no cards and no tracking options');
- assert((await p.locator('[role=radio][data-f=mode]').evaluateAll(e=>e.map(x=>x.dataset.v))).join()==='basic,advanced,infection','rules are listed Basic, Advanced, Infection');
+ assert((await p.locator('[role=radio][data-f=mode]').evaluateAll(e=>e.map(x=>x.dataset.v))).join()==='basic,ultimate','rules are listed Basic, Ultimate');
  await p.click('.role-btn.human');await p.waitForSelector('#app:not([hidden])');
  assert(await p.evaluate(()=>S.track)==='manual'&&!(await p.evaluate(()=>S.online)),'companion: tracked by hand, physical cards');
  await p.evaluate(()=>{S.log.unshift({id:'a1',who:'Bob',turn:1,kind:'noise',sector:'N10',text:'noise',at:Date.now()});paintOverlay()});
@@ -28,7 +28,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.click('.dchip[data-k=silence]');await p.click('.dchip[data-k=secure]');
  assert(await p.evaluate(()=>S.log.filter(e=>e.who==='Bob'&&e.kind==='silence').map(e=>e.text).sort().join())==='secure,silence','Silence and Silent Sector are told apart');
  // items
- await p.click('.dchip[data-k=item]');assert(await p.locator('dialog [data-act=markitem]').count()===6,'the item sheet lists the six items');
+ await p.click('.dchip[data-k=item]');assert(await p.locator('dialog [data-act=markitem]').count()===10,'the item sheet lists the ten items');
  await p.click('dialog [data-act=markitem][data-i=adrenaline]');
  assert(await p.evaluate(()=>S.log.some(e=>e.who==='Bob'&&e.kind==='item'&&e.text==='adrenaline')),'an item played by another player is recorded');
  await p.click('.dchip[data-k=item]');await p.click('dialog [data-act=markitem][data-i=attack]');await p.evaluate(()=>onCell('O09'));

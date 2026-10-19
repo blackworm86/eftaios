@@ -2,7 +2,7 @@
 /* EFTAIOS Companion — tracks a player's secret route for the physical board game.
    No cards, no hidden-information resolution: the app only records what the player tells it. */
 
-const MAX_TURN = 39;
+const MAX_TURN = 40;
 const SVGNS = 'http://www.w3.org/2000/svg';
 const HEX = 20; // hex radius in map units
 const STORE = 'eftaios.v1';
@@ -17,9 +17,9 @@ const parseId = s => { const m = /^([A-Za-z])\s*0?(\d{1,2})$/.exec(String(s).tri
 
 /* ---------------- state ---------------- */
 const fresh = () => ({
-  stage: 'welcome', ready: false, items: [], undo: null, sus: {}, shapes: {}, mkAll: false, track: 'auto', marks: [], notes: [], char: '', online: false, outSent: false, revealed: false, routeSent: false, room: null, mapId: null, mode: 'advanced', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
+  stage: 'welcome', ready: false, items: [], undo: null, sus: {}, shapes: {}, mkAll: false, track: 'auto', marks: [], notes: [], char: '', online: false, outSent: false, revealed: false, routeSent: false, room: null, mapId: null, mode: 'ultimate', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
   phase: 'move', res: null, over: null, path: [], log: [],
-  hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: []
+  hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: [], reborn: false, ab: {}, cat: false
 });
 let S = fresh();
 try { Object.assign(S, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch (e) { /* ignore */ }
@@ -70,7 +70,9 @@ function mapPreview(map) {
   return `<svg class="mapprev" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="${esc(map.name)}">${g}</svg>`;
 }
 const label = id => { const ty = at(T.map, id); return ty === 'H' ? t('Human start') : ty === 'A' ? t('Alien start') : '1234'.includes(ty) ? t('Escape Hatch {n}', { n: ty }) : id; };
-const basic = () => S.mode === 'basic', infection = () => S.mode === 'infection';
+const basic = () => S.mode === 'basic';
+/* the abilities of the Character in play (none in the Basic game, none after being reborn as an Alien) */
+const myAbil = () => abilOf(S, S.mode);
 
 /* movement: start sectors are never enterable; pods stop movement; aliens cannot enter pods; closed pods impassable */
 function reachable(map, from, steps, role) {
@@ -88,7 +90,7 @@ function reachable(map, from, steps, role) {
   }
   return out;
 }
-const allowance = () => S.role === 'alien' ? (S.fed ? 3 : 2) : (S.adr ? 2 : 1);
+const allowance = () => (S.role === 'alien' ? (S.fed || (myAbil() === 'Fast Alien' && S.path.length <= 1) ? 3 : 2) : 1) + (S.adr ? 1 : 0);
 const typeName = ty => ({ '.': t('Dangerous sector'), s: t('Secure sector'), x: t('Empty space'), H: t('Human start'), A: t('Alien start') }[ty] || t('Escape Hatch {n}', { n: ty }));
 
 /* ---------------- map rendering ---------------- */
@@ -444,7 +446,7 @@ function markBanner() {
     <div class="row tight"><span class="mturn">${t('Turn')} <button class="btn" data-act="mturn" data-d="-1" aria-label="−">−</button><b>${T.markTurn || S.turn}</b><button class="btn" data-act="mturn" data-d="1" aria-label="+">+</button></span><button class="btn" data-act="markundo" ${(T.markStack || []).length ? '' : 'disabled'}>${t('Undo')}</button><button class="btn primary" data-act="markmode">${t('Done')}</button></div></div>`;
 }
 function markItemSheet() {
-  dlg.innerHTML = `<h2>${t('Item played')}</h2><div class="stack">${['adrenaline', 'sedatives', 'teleport', 'spotlight', 'attack', 'defense'].map(k => `<button class="btn withico" data-act="markitem" data-i="${k}">${gico(k, 38)}<span>${t(ITEMS[k][0])}<small>${t(ITEMS[k][1])}</small></span></button>`).join('')}</div><div class="row"><button class="btn" id="d-no">${t('Close')}</button></div>`;
+  dlg.innerHTML = `<h2>${t('Item played')}</h2><div class="stack">${Object.keys(ITEMS).map(k => `<button class="btn withico" data-act="markitem" data-i="${k}">${gico(k, 38)}<span>${t(ITEMS[k][0])}<small>${t(ITEMS[k][1])}</small></span></button>`).join('')}</div><div class="row"><button class="btn" id="d-no">${t('Close')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 const STICKER_PATH = { alert: 'M12 4v10M12 19v.01', ask: 'M9 9a3 3 0 116 0c0 2-3 2.2-3 5M12 19v.01', alien: 'M12 4c4 0 7 3 7 7 0 4-3 8-7 9-4-1-7-5-7-9 0-4 3-7 7-7zM8.5 11l2.5 1M15.5 11L13 12', crew: 'M12 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM5 20c0-4 3-6 7-6s7 2 7 6', skull: 'M12 4c4 0 7 3 7 7 0 2-1 3-2 4v3H7v-3c-1-1-2-2-2-4 0-4 3-7 7-7zM9.5 11.5v.01M14.5 11.5v.01M10 20v-2M14 20v-2', star: 'M12 4l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19.2 8 13.7 4 9.8 9.5 9z' };
@@ -585,7 +587,9 @@ function logIcon(e, w = 18) {
   if (e.kind === 'noise') return gico('noise-here', w);
   if (e.kind === 'silence') return gico(e.text === 'secure' ? 'silent' : 'silence', w);
   if (e.kind === 'attack') return gico(S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === playerKey(e)) ? 'attack' : 'claws', w);
-  if (e.kind === 'spot' || e.kind === 'reveal') return gico('spotlight', w);
+  if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) return '';
+  if (e.kind === 'reveal') return gico(e.text === 'Sensor' ? 'sensor' : e.text === 'Invisible Alien' || e.text === 'Brute Alien' || e.text === 'Identity' ? 'killed' : 'spotlight', w);
+  if (e.kind === 'spot') return gico('spotlight', w);
   if (e.kind === 'item') return gico(e.text, w);
   if (e.kind === 'out' && String(e.text).startsWith('killed')) return gico('killed', w);
   return '';
@@ -599,7 +603,8 @@ function entryText(e) {
   if (e.kind === 'silence') return t(e.text === 'secure' ? 'Silent Sector' : 'Silence in all Sectors');
   if (e.kind === 'hatch' && e.n) return t(e.ok ? 'Escape Hatch {n}: escaped' : 'Escape Hatch {n}: damaged', { n: e.n });
   if (e.kind === 'item') return t('plays {i}', { i: t(((typeof ITEMS !== 'undefined' && ITEMS[e.text]) || [e.text])[0]) });
-  if (e.kind === 'reveal') return t('Position revealed: {s}', { s });
+  if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) { const [, role, ch] = e.text.split('|'); return t('identity revealed') + ': ' + roleLabel(role, ch); }
+  if (e.kind === 'reveal') return e.text === 'Invisible Alien' || e.text === 'Brute Alien' ? t('{c}: identity revealed', { c: t(e.text) }) : e.text === 'Identity' ? t('identity revealed') : t('Position revealed: {s}', { s });
   if (e.kind === 'out') { const [why, role, ch] = String(e.text).split('|'); return t(why === 'escaped' ? 'escaped' : why === 'trapped' ? 'is trapped and out of the game' : 'was eliminated') + ' (' + t(role === 'alien' ? 'Alien' : 'Human') + (ch ? ', ' + t(ch) : '') + ')'; }
   return t(e.text);
 }
@@ -771,12 +776,13 @@ function render() {
   const sh = $('#sheet'); if (sh) sh.scrollLeft = sh.scrollWidth;   // the sheet opens on the latest turns
 }
 const RULES = [
-  ['Goal', ['<b>Humans</b> reach an Escape Hatch. <b>Aliens</b> hunt every Human down.', '<b>Basic game:</b> it ends when the first Human reaches a hatch. Aliens win if all Humans die or 39 rounds pass.', '<b>Advanced game:</b> adds Items and Escape Hatch cards. Play continues until every Human has escaped or been eliminated. Humans still aboard after 39 rounds are eliminated.']],
-  ['Your turn', ['<b>Move</b> (mandatory, never ending where you started). Humans 1 sector. Aliens 1–2 sectors, or 1–3 after feeding.', '<b>Secure sector:</b> your turn is over.', '<b>Dangerous sector:</b> draw a card: Noise in your sector, Noise in any sector or Silence.', '<b>Alien attack:</b> after moving, announce the attack instead of drawing. Anyone there (Human or Alien) is eliminated and reveals their card. Humans cannot attack without an Attack item.']],
-  ['Sectors', ['Dangerous: draw a card. Secure: nothing happens.', 'Human and Alien start sectors: nobody may enter or cross them.', 'Escape Hatches: Humans only. They have no coordinates.']],
-  ['Escape Hatches (Advanced)', ['Declare which hatch you reached, draw an Escape Hatch card and reveal it.', '<b>Red:</b> hatch damaged, closed for everyone. <b>Green:</b> you escaped and the hatch is blocked.', 'If every hatch is closed you are eliminated.']],
-  ['Items (Advanced)', ['A Noise card with an Item icon makes you draw an Item card (Aliens too). Max 3 held. Only Humans can use them.', '<b>Attack</b> as an Alien would. <b>Teleport</b> to the Human sector, plus your normal move. <b>Sedatives</b> no card this turn. <b>Spotlight</b> name a sector: it and its 6 neighbours must announce exact coordinates. <b>Defense</b> survive an attack. <b>Adrenaline</b> move 2 sectors.']],
-  ['Infection scenario', ['Eliminated Humans become Aliens where they fell. All hatches start open and each works once. Aliens do not speed up after feeding.']]
+  ['Goal', ['<b>Humans</b> reach an Escape Pod. <b>Aliens</b> hunt every Human down.', 'The game ends after 40 rounds, or when the last Human escapes or is killed. Humans still aboard after 40 rounds are eliminated.', '<b>Basic game:</b> your first game. No Items and no Character abilities; Item cards count as Silence. <b>Ultimate game:</b> the complete rules.']],
+  ['Your turn', ['<b>Move</b> (mandatory, never ending where you started). Humans 1 sector. Aliens 1–2 sectors, or 1–3 after feeding.', '<b>Secure sector:</b> declare "Silent Sector". Your turn is over.', '<b>Dangerous sector:</b> draw a card: Noise in your sector, Noise in any sector, Silence or an Item (announce Silence).', '<b>Alien attack:</b> after moving, announce the attack instead of drawing. Anyone there (Human or Alien) is killed and reveals their card.']],
+  ['Killed', ['A killed <b>Human</b> restarts from the Alien Sector as an Alien, with no abilities or items. A killed <b>Alien</b> is out of the game.']],
+  ['Sectors', ['Dangerous: draw a card. Secure: nothing happens.', 'Human and Alien start sectors: nobody may enter or cross them.', 'Escape Pods: Humans only.']],
+  ['Escape Pods', ['Declare which pod you reached, draw an Escape Pod card and reveal it.', '<b>Red:</b> the pod is damaged and closed for everyone. You stay there, cannot be attacked, and must leave on your next turn. <b>Green:</b> you escaped and the pod is used.', 'If every pod is closed, the remaining Humans are eliminated.']],
+  ['Items (Ultimate)', ['Silence and Item cards are kept face down. Only Humans use Items; Aliens collect them to look like Humans. Each item is used once.', '<b>Attack</b> as an Alien would. <b>Teleport</b> to the Human sector, plus your normal move. <b>Sedatives</b> no card this turn. <b>Spotlight</b> name a sector: it and its 6 neighbours announce exact coordinates. <b>Sensor</b> one player announces exact coordinates. <b>Adrenaline</b> one extra sector. <b>Cat</b> announce two noises. <b>Mutation</b> become an Alien. <b>Defense</b> survive an attack. <b>Clone</b> survive an attack and restart from the Human sector.']],
+  ['Character abilities (Ultimate)', ['Each Character has an ability, some usable only once. Humans: Captain, Pilot, Psychologist, Soldier, Executive Officer, Co-pilot, Engineer, Medic. Aliens: Blink, Silent, Surge, Brute, Invisible, Lurking, Fast, Psychic.']]
 ];
 /* full-screen sheet for long content (rules, map list): read without squeezing it into the panel */
 function overlay(title, html) {
@@ -813,7 +819,7 @@ function boot() {
   applyStatic();
   if (!game) { if (S.stage === 'game') S.stage = 'welcome'; renderFlow(); return; }
   T.map = T.maps.find(m => m.id === S.mapId) || T.maps[0]; S.mapId = T.map.id;
-  if (!S.pos || !parseId(S.pos)) { S.pos = find(T.map, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; }
+  if (!S.pos || !parseId(S.pos)) { S.pos = startSector(T.map, S.role, S.char, S.mode); S.path = [{ turn: 0, pos: S.pos }]; }
   fitDone = false; buildMap(); refreshReach(); render(); paintCells(); hdr();
   requestAnimationFrame(() => { fit(); fitDone = true; if (S.pos) focusOn(S.pos); });
 }

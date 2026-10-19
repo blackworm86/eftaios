@@ -2,7 +2,7 @@
 const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp/claude-0/-home-user-eftaios/9c1fb807-3ccb-51aa-b179-90ef8efd54ec/scratchpad';
 (async()=>{
   const {b,pages,errs}=await setup(3);const [H,P1,P2]=pages;
-  await startTable(pages,{online:true,mode:'advanced'});
+  await startTable(pages,{online:true,mode:'ultimate'});
   await H.screenshot({path:S+'/o-lobby.png'});
   await begin(pages);
   const roles=await Promise.all(pages.map(p=>p.evaluate(()=>S.role)));const hi=roles.indexOf('human'),human=pages[hi],others=pages.filter((_,i)=>i!==hi);
@@ -24,14 +24,13 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   await human.click('[data-act=itemdlg][data-i=sedatives]');await human.click('dialog [data-act=useitem]');
   assert(await human.evaluate(()=>S.res.stage)==='done'&&await human.evaluate(()=>S.items.join())==='teleport','Sedatives: no card, card consumed');
   assert(await H.evaluate(()=>T.counts.sector.d+T.counts.sector.x)===before,'no sector card drawn with Sedatives');
-  await H.waitForFunction(()=>T.counts.item.x>=1);assert(true,'used items go to the discard pile');
   assert(await H.evaluate(()=>S.log.some(e=>e.kind==='item'&&e.text==='sedatives')),'item use is public');
   // ---- teleport
   await human.click('[data-act=itemdlg][data-i=teleport]');await human.click('dialog [data-act=useitem]');
   assert(await human.evaluate(()=>S.pos)===await human.evaluate(()=>find(T.map,'H')),'Teleport: back to the Human sector');
   // ---- spotlight reveals positions of players in range
   await human.evaluate(()=>{S.items=['spotlight'];render()});
-  await others[0].evaluate(()=>{S.pos='K09'});await others[1].evaluate(()=>{S.pos='A14'});
+  await others[0].evaluate(()=>{S.pos='K09';S.char='Surge Alien'});await others[1].evaluate(()=>{S.pos='A14';S.char='Surge Alien'});
   await human.click('[data-act=itemdlg][data-i=spotlight]');await human.click('dialog [data-act=useitem]');
   await human.evaluate(()=>{const cb=T.pick.cb;T.pick=null;cb('K10')});
   await human.waitForSelector('dialog[open]',{timeout:15000});
@@ -39,22 +38,19 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   assert(txt.includes('K09')&&!txt.includes('A14'),'Spotlight reveals only players in range ('+txt.slice(0,60)+')');
   assert(await H.evaluate(()=>S.log.some(e=>e.kind==='reveal'&&e.sector==='K09')),'revealed position is public');
   await human.evaluate(()=>closeDlg());
-  // ---- hand limit
-  await human.evaluate(()=>{S.items=['attack','attack','defense'];render()});
+  // ---- no hand limit in the Ultimate rules
+  await human.evaluate(()=>{S.items=['attack','attack','defense','cat'];render()});
   await human.evaluate(()=>addItem('adrenaline'));
-  await human.waitForSelector('dialog[open] [data-act=discardpick]');
-  await human.screenshot({path:S+'/o-hand.png'});
-  await human.click('dialog [data-act=discardpick][data-i="3"]');
-  assert(await human.evaluate(()=>S.items.length)===3&&await human.evaluate(()=>!S.items.includes('adrenaline')),'hand limited to 3: chosen card discarded');
+  assert(await human.evaluate(()=>S.items.length)===5&&await human.locator('.slot').count()===5,'Items are kept without a hand limit');
   // ---- hatch: draw card (green) -> escape ends game for the last human
   await giveTurn(human);
-  await human.evaluate(()=>{S.items=[];S.pos='B03';S.phase='move';T.sel=null;refreshReach();render()});
+  await human.evaluate(()=>{S.items=[];S.char='Captain';S.pos='B03';S.phase='move';T.sel=null;refreshReach();render()});
   await human.evaluate(()=>{window.__forceCard=null});
   await human.evaluate(()=>selectCell('B02'));await human.click('[data-act=confirm]');await human.click('[data-act=hatchdraw]');
   await human.waitForFunction(()=>S.over==='escaped'||(S.res&&S.res.stage==='done'),null,{timeout:15000});
   const esc=await human.evaluate(()=>S.over==='escaped');
   console.log('hatch card result:',esc?'green':'red');
-  assert(await H.evaluate(()=>T.counts.hatch.d+T.counts.hatch.x)===6,'hatch card drawn from the 6-card deck');
+  assert(await H.evaluate(()=>T.counts.hatch.d+T.counts.hatch.x)===4,'one of the 5 pod cards was drawn');
   if(esc){await H.waitForFunction(()=>Sync.settings.status==='over',null,{timeout:15000});const r=await H.evaluate(()=>Sync.settings.result);assert(r.aliensWin===false&&r.escaped.length===1,'last human escaped: Humans win');await human.screenshot({path:S+'/o-over.png'})}
   else{assert(await human.evaluate(()=>S.hatches[1])===1,'red card closes the hatch');}
   await H.click('[data-tab=table]');await H.screenshot({path:S+'/o-table.png'});

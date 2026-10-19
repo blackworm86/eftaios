@@ -12,12 +12,12 @@ const Online = (() => {
 
   async function persist() {
     await Sync.set('hostdata', pack(HD));
-    const c = {}; for (const k of ['sector', 'item', 'hatch']) c[k] = { d: HD.decks[k].draw.length, x: HD.decks[k].disc.length };
+    const c = {}; for (const k of ['sector', 'hatch']) c[k] = { d: HD.decks[k].draw.length, x: HD.decks[k].disc.length };
     await Sync.set('counts', c);
   }
   async function loadHost() {
     const v = await Sync.get('hostdata'); if (!v) return null;
-    HD = { decks: { sector: norm(v.decks && v.decks.sector), item: norm(v.decks && v.decks.item), hatch: norm(v.decks && v.decks.hatch) }, roles: v.roles || {}, chars: v.chars || {}, seenOut: v.seenOut || {}, last: v.last || '', bots: v.bots || {} };
+    HD = { decks: { sector: norm(v.decks && v.decks.sector), hatch: norm(v.decks && v.decks.hatch) }, roles: v.roles || {}, chars: v.chars || {}, seenOut: v.seenOut || {}, last: v.last || '', bots: v.bots || {} };
     Object.values(HD.bots).forEach(b => { b.state.items = b.state.items || []; b.state.path = b.state.path || []; });
     return HD;
   }
@@ -26,12 +26,18 @@ const Online = (() => {
     if (!req || done.has(key)) return; done.add(key);
     if (!HD) await hdReady; if (!HD) return;
     const rep = { id: req.id || key, type: req.type };
-    if (req.type === 'sector' || req.type === 'item' || req.type === 'hatch') {
-      const d = HD.decks[req.type], r = deckDraw(d); rep.card = r.card === null ? '' : r.card;
-      if (r.card && req.type !== 'item') d.disc.push(r.card);
-      if (r.reshuffled) logGame(RESHUFFLED[req.type]);
+    if (req.type === 'sector' || req.type === 'hatch') {
+      const d = HD.decks[req.type]; let card;
+      if (req.type === 'hatch') card = drawPod(d, req.two).card;
+      else { const r = deckDraw(d); card = r.card; if (discardable(card)) d.disc.push(card); if (r.reshuffled) logGame(RESHUFFLED[req.type]); }
+      rep.card = card === null ? '' : card;
       await Sync.set(`secret/${req.uid}/inbox/${key}`, rep);
-    } else if (req.type === 'discard' && ITEMS[req.card]) HD.decks.item.disc.push(req.card);
+    } else if (req.type === 'discard' && req.card) HD.decks.sector.disc.push(req.card);
+    else if (req.type === 'medic') {
+      const u = req.target, b = HD.bots[u], p = (Sync.players || {})[u] || {};
+      rep.role = b ? b.state.role : (p.conv ? 'alien' : HD.roles[u]); rep.char = b ? (b.state.char || '') : (p.conv ? '' : HD.chars[u] || ''); rep.name = p.name || '?';
+      await Sync.set(`secret/${req.uid}/inbox/${key}`, rep);
+    }
     await persist(); await Sync.del('requests/' + key);
   }
 
@@ -53,32 +59,44 @@ const Online = (() => {
     if (Sync.isHost()) botsAnswerAttack(ev, key);
     if (ev.by === Sync.uid || S.over || S.stage !== 'game' || Date.now() - ev.at > 60000) return;
     if (ev.replies && ev.replies[Sync.uid]) return;
-    const here = S.pos === ev.sector, rep = { in: !!here };
-    if (here) {
-      if (S.role === 'human' && S.items.includes('defense')) { rep.def = 1; consumeItem('defense'); }
-      else {
-        rep.killed = 1; rep.role = S.role; rep.char = S.char || '';
-        if (infection() && S.role === 'human') { rep.conv = 1; S.role = 'alien'; S.fed = false; S.items = S.items.slice(); Sync.setMe({ conv: true, role: 'human', char: S.char || '' }); Sync.push({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind: 'out', text: 'killed|human|' + (S.char || ''), sector: '', at: Date.now() }); }
-        else { S.over = 'dead'; }
+    let rep = { in: false };
+    if (S.pos === ev.sector) {
+      const r = resolveHit(S, S.mode, S.turn), me = S.name || t('Me');
+      if (!r.immune) {
+        rep = Object.assign({ in: true }, r);
+        if (r.def) Sync.push({ id: uid(), turn: S.turn, who: me, kind: 'item', text: 'defense', sector: '', at: Date.now() });
+        else if (r.clone) Sync.push({ id: uid(), turn: S.turn, who: me, kind: 'item', text: 'clone', sector: '', at: Date.now() });
+        else if (r.reveal) Sync.push({ id: uid(), turn: S.turn, who: me, kind: 'reveal', text: 'Brute Alien', sector: '', at: Date.now() });
+        else if (r.conv) { Sync.setMe({ conv: true, role: 'human', char: r.char || '' }); Sync.push({ id: uid(), turn: S.turn, who: me, kind: 'out', text: 'killed|human|' + (r.char || ''), sector: '', at: Date.now() }); }
       }
     }
+    const here = rep.in;
     Sync.set(`attacks/${key}/replies/${Sync.uid}`, rep);
-    save(); if (S.over) afterChange(); else { render(); hdr(); }
-    if (here && rep.killed) toast(t('You were attacked and eliminated!'));
+    save(); if (S.over || rep.conv || rep.clone) afterChange(); else { render(); hdr(); }
+    if (here && rep.conv) toast(t('You were killed and restart from the Alien Sector as an Alien.'));
+    else if (here && rep.killed) toast(t('You were attacked and eliminated!'));
     else if (here && rep.def) toast(t('You were attacked, but your Defense card saved you!'));
+    else if (here && rep.clone) toast(t('You were attacked, but your Clone saved you! You restart from the Human sector.'));
+    else if (here && rep.reveal) toast(t('You were attacked: you are immune, and your identity is revealed.'));
   }
   function onSpot(ev, key) {
     if (!ev || seen.has('s' + key)) return; seen.add('s' + key);
     if (Sync.isHost()) botsAnswerSpot(ev, key);
     if (S.over || S.stage !== 'game' || Date.now() - ev.at > 60000) return;
     if (ev.replies && ev.replies[Sync.uid]) return;
+    if (ev.target && ev.target !== Sync.uid) return;
     const q = parseId(ev.sector);
-    const inRange = !!q && S.pos && (S.pos === ev.sector || neighbors(T.map, q[0], q[1]).some(([a, b]) => cid(a, b) === S.pos));
-    const rep = { in: inRange }; if (inRange) rep.pos = S.pos;
+    const inRange = ev.target ? true : !!q && S.pos && (S.pos === ev.sector || neighbors(T.map, q[0], q[1]).some(([a, b]) => cid(a, b) === S.pos));
+    const rep = { in: inRange }, kindTxt = ev.target ? 'Sensor' : 'Spotlight';
+    if (inRange && ev.by !== Sync.uid && abilOf(S, S.mode) === 'Invisible Alien') {
+      rep.ident = label_(S.role, S.char); Sync.set(`spots/${key}/replies/${Sync.uid}`, rep);
+      Sync.push({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind: 'reveal', text: 'Invisible Alien', sector: '', at: Date.now() }); toast(t('Your identity was revealed.')); return;
+    }
+    if (inRange) rep.pos = S.pos;
     Sync.set(`spots/${key}/replies/${Sync.uid}`, rep);
-    if (inRange) { Sync.push({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind: 'reveal', text: 'Spotlight', sector: S.pos, at: Date.now() }); if (ev.by !== Sync.uid) toast(t('Spotlight! Your position was revealed: {p}', { p: label(S.pos) })); }
+    if (inRange) { Sync.push({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind: 'reveal', text: kindTxt, sector: S.pos, at: Date.now() }); if (ev.by !== Sync.uid) toast(t(kindTxt + '! Your position was revealed: {p}', { p: label(S.pos) })); }
   }
-  function consumeItem(id) { const i = S.items.indexOf(id); if (i < 0) return; S.items.splice(i, 1); discard(id); Sync.push({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind: 'item', text: id, sector: '', at: Date.now() }); }
+  function consumeItem(id) { const i = S.items.indexOf(id); if (i < 0) return; S.items.splice(i, 1); Sync.push({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind: 'item', text: id, sector: '', at: Date.now() }); }
   function discard(id) { Sync.set('requests/' + uid(), { uid: Sync.uid, type: 'discard', card: id, at: Date.now() }).catch(() => {}); }
 
   /* ---------------- bots (played by the host's device) ----------------
@@ -91,15 +109,17 @@ const Online = (() => {
     if (!HD || !HD.bots || Date.now() - ev.at > 60000) return; let changed = false;
     Object.entries(HD.bots).forEach(([id, b]) => {
       const st = b.state; if (id === ev.by || st.over || (ev.replies && ev.replies[id])) return;
-      const rep = { in: st.pos === ev.sector };
-      if (rep.in) {
-        if (st.role === 'human' && st.items.includes('defense')) { rep.def = 1; st.items.splice(st.items.indexOf('defense'), 1); HD.decks.item.disc.push('defense'); botPush(b, { kind: 'item', text: 'defense' }); }
-        else {
-          rep.killed = 1; rep.role = st.role; rep.char = st.char || '';
-          if (infection() && st.role === 'human') { rep.conv = 1; st.role = 'alien'; st.fed = false; Sync.set('players/' + id, Object.assign({}, Sync.players[id] || {}, { conv: true, role: 'human', char: st.char || '' })); botPush(b, { kind: 'out', text: 'killed|human|' + (st.char || '') }); }
-          else { st.over = 'dead'; botOut(id, 'dead', st); }
+      let rep = { in: false };
+      if (st.pos === ev.sector) {
+        const r = resolveHit(st, S.mode, ev.turn || S.turn);
+        if (!r.immune) {
+          rep = Object.assign({ in: true }, r); changed = true;
+          if (r.def) botPush(b, { kind: 'item', text: 'defense' });
+          else if (r.clone) botPush(b, { kind: 'item', text: 'clone' });
+          else if (r.reveal) botPush(b, { kind: 'reveal', text: 'Brute Alien' });
+          else if (r.conv) { Sync.set('players/' + id, Object.assign({}, Sync.players[id] || {}, { conv: true, role: 'human', char: r.char || '' })); botPush(b, { kind: 'out', text: 'killed|human|' + (r.char || '') }); }
+          else botOut(id, 'dead', st);
         }
-        changed = true;
       }
       Sync.set(`attacks/${key}/replies/${id}`, rep);
     });
@@ -109,10 +129,11 @@ const Online = (() => {
     if (!HD || !HD.bots || Date.now() - ev.at > 60000) return;
     const q = parseId(ev.sector);
     Object.entries(HD.bots).forEach(([id, b]) => {
-      const st = b.state; if (st.over || (ev.replies && ev.replies[id])) return;
-      const inRange = !!q && (st.pos === ev.sector || neighbors(T.map, q[0], q[1]).some(([a, c]) => cid(a, c) === st.pos));
+      const st = b.state; if (st.over || (ev.replies && ev.replies[id]) || (ev.target && ev.target !== id)) return;
+      const inRange = ev.target ? true : !!q && (st.pos === ev.sector || neighbors(T.map, q[0], q[1]).some(([a, c]) => cid(a, c) === st.pos));
+      if (inRange && id !== ev.by && abilOf(st, S.mode) === 'Invisible Alien') { Sync.set(`spots/${key}/replies/${id}`, { in: true, ident: label_(st.role, st.char) }); botPush(b, { kind: 'reveal', text: 'Invisible Alien' }); return; }
       Sync.set(`spots/${key}/replies/${id}`, inRange ? { in: true, pos: st.pos } : { in: false });
-      if (inRange) botPush(b, { kind: 'reveal', text: 'Spotlight', sector: st.pos });
+      if (inRange) botPush(b, { kind: 'reveal', text: ev.target ? 'Sensor' : 'Spotlight', sector: st.pos });
     });
   }
   let botBusy = ''; const revealed = new Set();
@@ -133,8 +154,8 @@ const Online = (() => {
         think: ms => botThinking(b.name, ms, false),
         log: e => botPush(b, e),
         out: (i, why) => botOut(b.id, why, b.state),
-        draw(type) { const d = HD.decks[type], r = deckDraw(d); if (r.card && type !== 'item') d.disc.push(r.card); if (r.reshuffled) logGame(RESHUFFLED[type]); return r.card || ''; },
-        discard(id) { if (ITEMS[id]) HD.decks.item.disc.push(id); },
+        draw(type, two) { const d = HD.decks[type]; if (type === 'hatch') return drawPod(d, two).card; const r = deckDraw(d); if (discardable(r.card)) d.disc.push(r.card); if (r.reshuffled) logGame(RESHUFFLED[type]); return r.card || ''; },
+        discard(id) { HD.decks.sector.disc.push(id); },
         closeHatch(n) { S.hatches[n] = 1; Sync.setHatch(n, 1); },
         async attack(sector) {
           const id = uid(), expected = Object.keys(Sync.players || {}).filter(u => u !== b.id && !Sync.players[u].out);
@@ -195,12 +216,21 @@ const Online = (() => {
       for (const u of expected) { const r = replies[u]; if (!r) missing.push(pname(u)); else if (r.in) hits.push(Object.assign({ name: pname(u) }, r)); }
       return { hits, missing };
     },
+    async sensor(target) {
+      const id = uid();
+      await Sync.set('spots/' + id, { by: Sync.uid, sector: '-', target, at: Date.now() });
+      const replies = await waitReplies(`spots/${id}/replies`, [target], 8000), r = replies[target];
+      return { seen: r && r.in ? [{ name: pname(target), pos: r.pos, ident: r.ident }] : [], missing: r ? [] : [pname(target)] };
+    },
+    async medic(target) { const rep = await api.request('medic', { target }); return { name: rep.name, role: rep.role, char: rep.char }; },
+    mutated() { Sync.setMe({ conv: true, role: 'human', char: S.char || '' }); },
+    others: () => aliveOthers().map(u => [u, pname(u)]),
     async spotlight(sector) {
       const id = uid(), expected = aliveOthers().concat(S.over ? [] : [Sync.uid]);
       await Sync.set('spots/' + id, { by: Sync.uid, sector, at: Date.now() });
       const replies = await waitReplies(`spots/${id}/replies`, expected, 8000);
       const seenP = [], missing = [];
-      for (const u of expected) { const r = replies[u]; if (!r) missing.push(pname(u)); else if (r.in) seenP.push({ name: u === Sync.uid ? t('You') : pname(u), pos: r.pos }); }
+      for (const u of expected) { const r = replies[u]; if (!r) missing.push(pname(u)); else if (r.in) seenP.push({ name: u === Sync.uid ? t('You') : pname(u), pos: r.pos, ident: r.ident }); }
       return { seen: seenP, missing };
     },
     /* host: deal roles, build the decks, then open the game */
@@ -208,13 +238,13 @@ const Online = (() => {
       const n = order.length;
       if (n < 2 || n > 8) return;
       const deal = dealRoles(n);
-      HD = { decks: { sector: deckNew(SECTOR_DECK), item: deckNew(ITEM_DECK), hatch: deckNew(HATCH_DECK) }, roles: {}, chars: {}, seenOut: {}, last: '', bots: {} };
+      HD = { decks: { sector: deckNew(SECTOR_DECK), hatch: deckNew(HATCH_DECK) }, roles: {}, chars: {}, seenOut: {}, last: '', bots: {} };
       const map = T.maps.find(m => m.id === Sync.settings.map) || T.maps[0];
       hdReady = Promise.resolve(HD);
       for (let i = 0; i < n; i++) {
         const { role, char } = deal[i];
         HD.roles[order[i]] = role; HD.chars[order[i]] = char;
-        if (isBotId(order[i])) { const p = Sync.players[order[i]] || {}, pos = find(map, role === 'human' ? 'H' : 'A'); HD.bots[order[i]] = { id: order[i], name: p.name || 'Bot', level: p.bot || 'normal', state: { role, role0: role, char, pos, path: [{ turn: 0, pos }], items: [], fed: false, adr: false, over: null } }; }
+        if (isBotId(order[i])) { const p = Sync.players[order[i]] || {}, pos = startSector(map, role, char, Sync.settings.mode); HD.bots[order[i]] = { id: order[i], name: p.name || 'Bot', level: p.bot || 'normal', state: { role, role0: role, char, pos, path: [{ turn: 0, pos }], items: [], fed: false, adr: false, over: null } }; }
         else await Sync.set('secret/' + order[i], { role, char });
       }
       await persist(); await Sync.startGame(first, order);
@@ -232,8 +262,7 @@ const Online = (() => {
       const humans = Object.keys(HD.roles).filter(u => HD.roles[u] === 'human' && ps[u]);
       const aboard = humans.filter(u => !ps[u].out && !ps[u].conv), escaped = humans.filter(u => ps[u].out === 'escaped');
       let over = null;
-      if (Sync.settings.mode === 'basic' && escaped.length) over = { aliensWin: false, reason: 'escape' };
-      else if (!aboard.length && humans.length) over = { aliensWin: HD.last !== 'escaped', reason: HD.last === 'escaped' ? 'escape' : 'eliminated' };
+      if (!aboard.length && humans.length) over = { aliensWin: HD.last !== 'escaped', reason: HD.last === 'escaped' ? 'escape' : 'eliminated' };
       else if (Sync.turn && Sync.turn.n > MAX_TURN) over = { aliensWin: true, reason: 'time' };
       if (changed) persist();
       if (over) Sync.updateSettings({ status: 'over', result: Object.assign(over, { escaped: escaped.map(u => ps[u].name.slice(0, 20)) }) });

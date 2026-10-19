@@ -30,7 +30,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(res.over||res.turn>=10,'the game runs on with bots (turn '+res.turn+', over: '+res.over+')');
  // beliefs come from public announcements only
  const bel=await p.evaluate(()=>{
-   const view={seats:[{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'},{id:'d',name:'D'}],turn:5,mode:'advanced',log:[]};
+   const view={seats:[{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'},{id:'d',name:'D'}],turn:5,mode:'ultimate',log:[]};
    const me={id:'a',state:{role:'human'}},L=e=>view.log.unshift(Object.assign({at:Date.now(),text:e.kind},e));
    L({by:'b',turn:2,kind:'attack',sector:'L08'});                                  // an attack without an Attack card: Alien
    L({by:'c',turn:2,kind:'item',text:'adrenaline'});                               // played an item: Human

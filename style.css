@@ -101,7 +101,7 @@ textarea{font:13px var(--mono);min-height:140px}
 .trail{fill:none;stroke:var(--amber);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1 5;opacity:.85;pointer-events:none}
 .me-ring{fill:none;stroke:var(--amber);stroke-width:3;pointer-events:none}
 .pulse{animation:pulse 1.8s ease-out infinite;transform-box:fill-box;transform-origin:center}
-@keyframes pulse{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(2.2)}}
+@keyframes pulse{0%{opacity:.75;transform:scale(1.05)}70%{opacity:.15}100%{opacity:0;transform:scale(2.4)}}
 .mk{pointer-events:none}
 .mk.spot{fill:none;stroke:#7fe3ff;stroke-width:2;stroke-dasharray:3 3}
 .pm text{font:700 7px var(--mono);text-anchor:middle;dominant-baseline:central}

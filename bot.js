@@ -30,7 +30,7 @@ const Bot = (() => {
   const hatchDist = (id, role = 'human') => { const d = distFrom(id, role); return Math.min(99, ...openHatches().map(h => d.has(h) ? d.get(h) : 99)); };
 
   /* ---------- what the bot believes about everyone else (public information only) ---------- */
-  function beliefs(H, me) {
+  function beliefs(H, me, lvl = 'normal') {
     const others = H.seats.filter(s => s.id !== me.id), n = H.seats.length;
     const aliens = n - Math.floor(n / 2), alienLeft = aliens - (me.state.role === 'alien' ? 1 : 0);
     const prior = others.length ? Math.max(0.05, Math.min(0.95, alienLeft / others.length)) : 0.5;
@@ -56,11 +56,16 @@ const Bot = (() => {
     });
     // movement: a jump longer than a Human can make (1 per turn, 2 once with Adrenaline) points to an Alien.
     // Announcements can be bluffs, so a single long jump is only evidence, not proof.
-    Object.values(B).forEach(b => {
+    // Humans also head for a hatch: a trail that keeps closing in on one is a Human's, one that wanders or retreats is not.
+    if (lvl !== 'easy') Object.values(B).forEach(b => {
       for (let k = 1; k < b.track.length; k++) {
         const a = b.track[k - 1], c = b.track[k], el = c.turn - a.turn; if (el <= 0) continue;
         const steps = distFrom(a.sector, 'alien').get(c.sector); if (steps === undefined) continue;
         if (steps > el + 1) bump(b, 0.6); else if (steps > el) bump(b, 0.3);
+        else if (steps > 0 && openHatches().length) {
+          const gain = hatchDist(a.sector) - hatchDist(c.sector);
+          if (gain >= steps) ease(b, lvl === 'hard' ? 0.18 : 0.1); else if (gain < 0) bump(b, lvl === 'hard' ? 0.12 : 0.06);
+        }
       }
     });
     return B;
@@ -74,40 +79,50 @@ const Bot = (() => {
     z.set(last.sector, 0);
     return z;
   }
-  /* chance mass per sector: how likely a Human (or Alien) is standing there */
-  function massMap(B, turn, wantAlien, wide) {
-    const m = new Map();
+  /* how much an announcement is worth: players bluff with "noise in any sector" */
+  const REL = { easy: 0.92, normal: 0.78, hard: 0.62 };
+  const walkable = () => { const out = []; T.map.grid.forEach((row, r) => row.forEach((ty, c) => { if (!'xHA'.includes(ty)) out.push(cid(c, r)); })); return out; };
+  /* chance per sector that a Human (or an Alien) is standing there: each player's reachable zone from their last
+     announcement, softened by the chance that the announcement was a bluff, combined across players */
+  function massMap(B, turn, wantAlien, wide, lvl = 'normal') {
+    const rel = REL[lvl] || REL.normal, all = walkable(), spread = all.length ? (1 - rel) / all.length : 0, miss = new Map();
     Object.values(B).forEach(b => {
       const z = zoneOf(b, turn, wide); if (!z) return;
-      const w = (wantAlien ? b.pA : 1 - b.pA) / z.size;
-      z.forEach((_, id) => m.set(id, (m.get(id) || 0) + w));
+      const p = wantAlien ? b.pA : 1 - b.pA, seen = rel / z.size;
+      all.forEach(id => { const w = p * ((z.has(id) ? seen : 0) + spread); if (w > 0) miss.set(id, (miss.get(id) || 1) * (1 - Math.min(0.98, w))); });
     });
+    const m = new Map(); miss.forEach((v, id) => m.set(id, 1 - v));
     return m;
   }
-  const near = (m, id) => { const [c, r] = parseId(id); return (m.get(id) || 0) + neighbors(T.map, c, r).reduce((s, [a, b]) => s + (m.get(cid(a, b)) || 0), 0); };
+  const near = (m, id) => { const [c, r] = parseId(id); return Math.min(1.5, (m.get(id) || 0) + neighbors(T.map, c, r).reduce((s, [a, b]) => s + (m.get(cid(a, b)) || 0), 0)); };
 
   /* ---------- choices ---------- */
   function chooseMove(ctx, st, lvl, B) {
     const opts = [...reachable(T.map, st.pos, st.role === 'alien' ? (st.fed ? 3 : 2) : (st.adr ? 2 : 1), st.role).keys()];
     if (!opts.length) return null;
-    if (lvl === 'easy' && rnd() < 0.35) return pick(opts);
-    const turn = ctx.H.turn, score = new Map();
+    const turn = ctx.H.turn, score = new Map(), tie = () => rnd() * 0.5;
     if (st.role === 'human') {
-      const danger = massMap(B, turn + 1, true, lvl === 'hard'), W = lvl === 'hard' ? 22 : 9;
+      const danger = massMap(B, turn + 1, true, lvl === 'hard', lvl), W = lvl === 'hard' ? 26 : lvl === 'normal' ? 16 : 8;
+      const hatches = openHatches(), hd = new Map(hatches.map(h => [h, distFrom(h, 'human')]));
       opts.forEach(id => {
         if (isHatch(id)) return score.set(id, 1000);
-        let s = -hatchDist(id) * 10 - near(danger, id) * W;
-        if (at(T.map, id) === 's') s += lvl === 'hard' ? 5 : 2;            // Secure sectors make no noise
-        score.set(id, s + rnd() * (lvl === 'easy' ? 12 : 2));
+        // the route that matters: shortest way to a hatch, discounted for hatches that Aliens are likely to be guarding
+        let route = 99;
+        hatches.forEach(h => { const d = hd.get(h).get(id); if (d !== undefined) route = Math.min(route, d + (lvl === 'easy' ? 0 : near(danger, h) * 7)); });
+        let s = -route * 10 - near(danger, id) * W;
+        if (at(T.map, id) === 's') s += lvl === 'hard' ? 6 : lvl === 'normal' ? 3 : 1;   // Secure sectors make no noise
+        score.set(id, s + tie());
       });
     } else {
-      const prey = massMap(B, turn, false, false);
-      const hot = [...prey.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(x => x[0]);
+      const prey = massMap(B, turn, false, lvl === 'hard', lvl);
+      const hot = [...prey.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).filter(x => x[1] > 0.04).map(x => x[0]);
+      const late = turn >= 14 ? 1.6 : 1;
       opts.forEach(id => {
-        let s = (prey.get(id) || 0) * 120 + near(prey, id) * 25;
+        let s = (prey.get(id) || 0) * 120 + near(prey, id) * (lvl === 'easy' ? 15 : 25);
         if (hot.length) { const d = distFrom(id, 'alien'); s -= Math.min(...hot.map(h => d.has(h) ? d.get(h) : 40)) * 4; }
-        else if (lvl !== 'easy') s -= Math.min(20, hatchDist(id, 'alien')) * 3;   // no news: guard the hatches
-        score.set(id, s + rnd() * (lvl === 'easy' ? 15 : 3));
+        // humans must end up on a hatch: sit between them and it, harder as the game wears on
+        s -= Math.min(20, hatchDist(id, 'alien')) * (hot.length ? 1 : 3) * late;
+        score.set(id, s + tie());
       });
     }
     return opts.sort((a, b) => score.get(b) - score.get(a))[0];
@@ -123,23 +138,23 @@ const Bot = (() => {
     // a Human sends attention away from the hatches; an Alien pretends to be a Human heading for one
     return pool.sort((a, b) => st.role === 'human' ? hatchDist(b) - hatchDist(a) : hatchDist(a) - hatchDist(b))[Math.floor(rnd() * Math.min(3, pool.length))];
   }
+  /* an attack gives away the sector, so it is only worth it when a Human is probably standing in it */
   function wantsAttack(ctx, st, lvl, B) {
     const turn = ctx.H.turn, here = st.pos;
-    const prey = massMap(B, turn, false, false).get(here) || 0, friends = massMap(B, turn, true, false).get(here) || 0;
-    const heard = Object.values(B).some(b => b.track.some(x => x.sector === here && turn - x.turn <= 1));
-    if (lvl === 'easy') return (prey > 0 || heard) ? rnd() < 0.4 : rnd() < 0.05;
-    if (lvl === 'normal') return heard || prey >= 0.25;
-    return (heard && prey >= friends * 0.5) || (prey >= 0.15 && (prey > friends || ctx.H.mode === 'infection'));
+    const prey = massMap(B, turn, false, false, lvl).get(here) || 0, friends = massMap(B, turn, true, false, lvl).get(here) || 0;
+    const need = lvl === 'easy' ? 0.45 : lvl === 'normal' ? 0.3 : 0.2;
+    if (ctx.H.mode === 'infection') return prey >= need;
+    return prey >= need && (lvl === 'easy' || prey >= friends * 0.6);
   }
   const ITEM_VALUE = { defense: 6, adrenaline: 4, spotlight: 4, attack: 3, sedatives: 3, teleport: 1 };
 
   /* ---------- one full turn ---------- */
   async function turn(ctx) {
     const H = ctx.H, idx = ctx.idx, me = ctx.me, st = me.state, lvl = LEVELS.includes(me.bot) ? me.bot : 'normal';
-    const adv = H.mode !== 'basic', B = beliefs(H, me), human = st.role === 'human';
+    const adv = H.mode !== 'basic', B = beliefs(H, me, lvl), human = st.role === 'human';
     const say = e => ctx.log(Object.assign({ by: me.id, who: me.name }, e));
     const useItem = id => { const i = st.items.indexOf(id); if (i < 0) return false; st.items.splice(i, 1); ctx.discard(id); say({ kind: 'item', text: id }); return true; };
-    const danger = human ? near(massMap(B, H.turn + 1, true, lvl === 'hard'), st.pos) : 0;
+    const danger = human ? near(massMap(B, H.turn + 1, true, lvl === 'hard', lvl), st.pos) : 0;
     st.adr = false;
     if (human && !openHatches().length) { st.over = 'trapped'; st.outSent = true; ctx.out(idx, 'trapped'); return; }
     // before moving: Adrenaline when far from a hatch and threatened
@@ -162,7 +177,7 @@ const Bot = (() => {
     }
     // Alien attack, or a Human with an Attack card on a likely Alien
     if (!human && wantsAttack(ctx, st, lvl, B)) { say({ kind: 'attack', sector: st.pos }); if ((await ctx.attack(st.pos)).some(h => h.killed && h.role === 'human') && H.mode !== 'infection') st.fed = true; return; }
-    if (human && adv && lvl === 'hard' && st.items.includes('attack') && (massMap(B, H.turn, true, false).get(st.pos) || 0) > 0.4) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
+    if (human && adv && lvl === 'hard' && st.items.includes('attack') && (massMap(B, H.turn, true, false, lvl).get(st.pos) || 0) > 0.45 && (massMap(B, H.turn, false, false, lvl).get(st.pos) || 0) < 0.2) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
     if (ty !== '.') return;                                                 // Secure sector: nothing to draw
     if (human && adv && st.items.includes('sedatives') && lvl !== 'easy' && (danger > 0.2 || lvl === 'hard' && rnd() < 0.3)) { useItem('sedatives'); return; }
     const card = ctx.draw('sector') || 'silence', item = card.endsWith('-item') && adv;

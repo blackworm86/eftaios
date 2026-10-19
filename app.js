@@ -119,7 +119,7 @@ function buildMap() {
     const t = el('text', { x, y: y + 12, class: 'lbl' }, g); t.textContent = id;
     el('text', { x, y, class: 'sym' }, g);
   }
-  el('g', { id: 'zone' }, vp); el('polyline', { id: 'trail', class: 'trail' }, vp);
+  el('g', { id: 'zone' }, vp); el('g', { id: 'trail', class: 'trail' }, vp);
   el('g', { id: 'marks' }, vp); el('g', { id: 'me' }, vp); el('g', { id: 'notes' }, vp);
   paintCells(); fit();
 }
@@ -151,20 +151,17 @@ const ME_COLOR = ['#f5f5f5', '#101010'];
 const PALETTE = [['#E69F00', '#1a1200'], ['#56B4E9', '#06202e'], ['#009E73', '#ffffff'], ['#F0E442', '#2a2600'],
   ['#CC79A7', '#2b0619'], ['#A6763C', '#ffffff'], ['#A99BF0', '#14102e'], ['#2EC4B6', '#06201d']];
 const BORDER = { me: '#000000', '': '#ffd23f', human: '#2f7dff', alien: '#ff3b30' };
-/* shapes mode: one shape per player colour, drawn at unit radius; ty moves the turn number to the visual centre */
-const poly = (n, r, rot, inner) => { const pts = []; for (let i = 0; i < n * (inner ? 2 : 1); i++) { const a = rot + i * Math.PI / (inner ? n : n / 2), q = inner && i % 2 ? inner : r; pts.push((q * Math.cos(a)).toFixed(3) + ' ' + (q * Math.sin(a)).toFixed(3)); } return 'M' + pts.join('L') + 'z'; };
-const SHAPES = [
-  { d: 'M-.88 -.88h1.76v1.76h-1.76z', ty: 0 },                 // square
-  { d: poly(3, 1.25, -Math.PI / 2), ty: 0.22 },                // triangle
-  { d: poly(4, 1.2, -Math.PI / 2), ty: 0 },                    // diamond
-  { d: poly(5, 1.08, -Math.PI / 2), ty: 0.06 },                // pentagon
-  { d: poly(3, 1.25, Math.PI / 2), ty: -0.22 },                // triangle pointing down
-  { d: poly(6, 1.05, 0), ty: 0 },                              // hexagon
-  { d: poly(5, 1.3, -Math.PI / 2, 0.68), ty: 0.08 },           // star
-  { d: poly(8, 1.04, Math.PI / 8), ty: 0 }                     // octagon
-];
-let MARK_SHAPE = (() => { try { return localStorage.getItem('eftaios.markers') || 'circle'; } catch (e) { return 'circle'; } })();
-function setMarkShape(v) { MARK_SHAPE = v === 'shape' ? 'shape' : 'circle'; try { localStorage.setItem('eftaios.markers', MARK_SHAPE); } catch (e) { /* storage unavailable */ } paintOverlay(); }
+/* every player is a hexagon with slightly rounded corners, drawn at unit radius */
+const roundedHex = (r, k) => {
+  const v = [0, 1, 2, 3, 4, 5].map(i => [r * Math.cos(Math.PI / 3 * i), r * Math.sin(Math.PI / 3 * i)]);
+  let d = '';
+  v.forEach((p, i) => {
+    const a = v[(i + 5) % 6], c = v[(i + 1) % 6], m = (q) => { const dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy); return [p[0] + dx / l * k, p[1] + dy / l * k]; }, s0 = m(a), e0 = m(c);
+    d += (i ? 'L' : 'M') + s0[0].toFixed(3) + ' ' + s0[1].toFixed(3) + 'Q' + p[0].toFixed(3) + ' ' + p[1].toFixed(3) + ' ' + e0[0].toFixed(3) + ' ' + e0[1].toFixed(3);
+  });
+  return d + 'z';
+};
+const HEX_MARK = { d: roundedHex(1.12, 0.3), ty: 0 };
 /* who is at the table: Firebase players (table), local seats (pass and play) */
 const myId = () => (S.hot && window.Hot ? Hot.curId() : (window.Sync && Sync.code ? Sync.uid : null));
 const tableOrder = () => (S.hot && window.Hot ? Hot.order() : ((window.Sync && Sync.settings && Sync.settings.order) || []));
@@ -188,10 +185,10 @@ function colorOf(key) {
   return S.shapes[key];
 }
 const pal = key => key === 'me' ? ME_COLOR : PALETTE[colorOf(key)];
-const shapeOf = key => (key === 'me' || MARK_SHAPE !== 'shape') ? null : SHAPES[colorOf(key) % SHAPES.length];
+const shapeOf = () => HEX_MARK;
 const suspicion = key => (key !== 'me' && S.sus && S.sus[key]) || '';
 const borderOf = key => key === 'me' ? BORDER.me : BORDER[suspicion(key)] || BORDER[''];
-/* one marker body (outline + fill + border) at the origin of `g`; circles or the player's shape */
+/* one marker body (outline + fill + border) at the origin of `g`: a rounded hexagon */
 function markBody(g, key, r, o = {}) {
   const sh = shapeOf(key), sw = r * 0.32, [fill] = pal(key), common = { 'vector-effect': 'non-scaling-stroke' };
   const draw = (rr, attrs) => sh ? el('path', Object.assign({ d: sh.d, transform: `scale(${rr.toFixed(2)})` }, common, attrs), g) : el('circle', Object.assign({ r: rr.toFixed(2) }, attrs), g);
@@ -240,6 +237,18 @@ function followZone(key) {
   zone.set(last.sector, 0);
   return { last, zone, human, guess };
 }
+/* a route as arrows: one segment per move, an arrowhead on its middle pointing the way I went */
+function arrowRoute(parent, pts, color, cls) {
+  const g = el('g', { class: cls }, parent);
+  for (let i = 1; i < pts.length; i++) {
+    const [x1, y1] = pts[i - 1], [x2, y2] = pts[i], dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy); if (!len) continue;
+    const ux = dx / len, uy = dy / len, mx = (x1 + x2) / 2, my = (y1 + y2) / 2, L = 6.5, W = 4.6;
+    const ln = el('line', { x1: x1.toFixed(1), y1: y1.toFixed(1), x2: x2.toFixed(1), y2: y2.toFixed(1) }, g);
+    const hd = el('path', { class: 'ah', d: `M${(mx + ux * L * 0.6).toFixed(1)} ${(my + uy * L * 0.6).toFixed(1)}L${(mx - ux * L * 0.4 - uy * W).toFixed(1)} ${(my - uy * L * 0.4 + ux * W).toFixed(1)}L${(mx - ux * L * 0.4 + uy * W).toFixed(1)} ${(my - uy * L * 0.4 - ux * W).toFixed(1)}z` }, g);
+    if (color) { ln.setAttribute('stroke', color); hd.setAttribute('fill', color); hd.setAttribute('stroke', color); }
+  }
+  return g;
+}
 function paintOverlay() {
   const map = T.map, inPlay = S.role && !T.editor;
   const trail = $('#trail'), marks = $('#marks'), me = $('#me'), zoneG = $('#zone');
@@ -247,8 +256,9 @@ function paintOverlay() {
   const focus = T.focus || null;
   const hp = sec => { const q = parseId(sec); return q ? hexPos(map, q[0], q[1]) : null; };
   const routes = inPlay ? finalRoutes() : null;
-  const pts = inPlay && !routes ? S.path.map(p => { const h = hp(p.pos); return h.x + ',' + h.y; }) : [];
-  trail.setAttribute('points', pts.join(' '));
+  trail.textContent = '';
+  const pts = inPlay && !routes ? S.path.map(p => { const h = hp(p.pos); return [h.x, h.y]; }) : [];
+  if (pts.length > 1) arrowRoute(trail, pts, null, 'trailg');
   trail.setAttribute('class', 'trail' + (focus && focus !== 'me' ? ' dim' : ''));
   renderMkBar(); followBar();
   if (!inPlay) return;
@@ -264,13 +274,15 @@ function paintOverlay() {
   // collect every visit: my own route + my bluffs + other players' public positions
   const visits = [];
   S.path.forEach(p => visits.push({ key: 'me', sector: p.pos, turn: p.turn, kind: 'route' }));
+  S.log.forEach(e => { if (e.kind === 'attack' && e.sector && playerKey(e) === 'me') visits.push({ key: 'me', sector: e.sector, turn: e.turn, kind: 'attack', armed: S.role === 'human' }); });
   own.bluffs.forEach(b => visits.push({ key: 'bluff', sector: b.sector, turn: b.turn, kind: 'noise' }));
   for (const e of S.log) {
     if (!e.sector || !['noise', 'attack', 'reveal', 'spot'].includes(e.kind)) continue;
     const key = e.kind === 'spot' ? 'spot' : playerKey(e);
     if (key === 'me') continue;                                   // my own steps come from my route
     if (S.track === 'manual' && key !== 'spot') continue;         // by hand: other players are only what I marked
-    visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind });
+    const armed = e.kind === 'attack' && S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === key);
+    visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind, armed });
   }
   if (S.track === 'manual') (S.marks || []).forEach(m => visits.push({ key: m.key, sector: m.sector, turn: m.turn, kind: 'noise' }));
   const mine = k => k === 'me' || k === 'bluff';
@@ -281,8 +293,9 @@ function paintOverlay() {
     if (!recent(v)) continue;
     if (!bySector.has(v.sector)) bySector.set(v.sector, new Map());
     const m = bySector.get(v.sector);
-    if (!m.has(v.key)) m.set(v.key, { key: v.key, turns: [], kind: v.kind });
+    if (!m.has(v.key)) m.set(v.key, { key: v.key, turns: [], kind: v.kind, armed: false });
     const it = m.get(v.key); if (!it.turns.includes(v.turn)) it.turns.push(v.turn);
+    if (v.kind === 'attack') it.armed = !!v.armed;
     const rank = { route: 0, noise: 1, attack: 2, reveal: 3, spot: 0 };
     if (rank[v.kind] > rank[it.kind]) it.kind = v.kind;
   }
@@ -293,6 +306,11 @@ function paintOverlay() {
     const spot = items.find(x => x.key === 'spot'), list = items.filter(x => x.key !== 'spot');
     if (spot) el('circle', { cx: h.x, cy: h.y, r: 17, class: 'mk spot' + (focus ? ' dim' : '') }, marks);
     if (!list.length) return;
+    const hit = list.filter(x => x.kind === 'attack');
+    if (hit.length) {   // starburst behind the markers: somebody attacked in this sector
+      const pts_ = []; for (let i = 0; i < 24; i++) { const a = Math.PI * i / 12, q = i % 2 ? 15.5 : 20; pts_.push((h.x + q * Math.cos(a)).toFixed(1) + ',' + (h.y + q * Math.sin(a)).toFixed(1)); }
+      el('polygon', { points: pts_.join(' '), class: 'burst' + (focus && !hit.some(x => x.key === focus || (focus === 'me' && mine(x.key))) ? ' dim' : '') }, marks);
+    }
     const { size, pts: sp } = slots(list.length);
     list.forEach((it, i) => {
       const [dx, dy] = sp[i], turns = it.turns.sort((x, y) => y - x), last = turns[0];
@@ -302,19 +320,26 @@ function paintOverlay() {
       const dim = focus && !(it.key === focus || (focus === 'me' && ownM)), old = !focus && !ownM && S.turn - last >= 2;
       const g = el('g', { class: `mk pm ${it.kind}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
-      if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; el('circle', Object.assign({ r: size + 4.5, class: 'me-ring pulse' + cls }, at_), me); el('circle', Object.assign({ r: size + 3, class: 'me-ring' + cls }, at_), me); }
+      if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c, transform: `translate(${at_.cx} ${at_.cy})` }, me); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); ringAt((size + 1.8) * 1.12, 'me-ring' + cls); }
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
-      if (it.kind === 'attack') {   // attack badge: red disc with a white cross
-        const bg = el('g', { class: 'abadge', transform: `translate(${(size * 0.78).toFixed(1)} ${(-size * 0.78).toFixed(1)})` }, g), q = size * 0.22;
-        el('circle', { r: (size * 0.46).toFixed(2) }, bg); el('path', { d: `M${-q} ${-q}L${q} ${q}M${q} ${-q}L${-q} ${q}`, 'stroke-width': (size * 0.13).toFixed(2) }, bg);
+      if (it.kind === 'attack') {   // attack badge: Alien = red claw marks, Human with an Attack card = amber crosshair
+        const R = size * 0.74, bg = el('g', { class: 'abadge ' + (it.armed ? 'human' : 'alien'), transform: `translate(${(size * 0.85).toFixed(1)} ${(-size * 0.85).toFixed(1)})` }, g), sw = (size * 0.13).toFixed(2);
+        el('circle', { r: R.toFixed(2) }, bg);
+        if (it.armed) {
+          const c = R * 0.62, d = R * 0.38;
+          el('circle', { r: (R * 0.42).toFixed(2), 'stroke-width': sw, fill: 'none' }, bg);
+          el('path', { d: `M0 ${-c}V${-d}M0 ${d}V${c}M${-c} 0H${-d}M${d} 0H${c}`, 'stroke-width': sw }, bg);
+        } else {
+          const c = R * 0.5;   // three claw slashes
+          el('path', { d: [-0.62, 0, 0.62].map(o => `M${(-c * 0.6 + o * c).toFixed(2)} ${-c}L${(c * 0.6 + o * c).toFixed(2)} ${c}`).join(''), 'stroke-width': (size * 0.1).toFixed(2) }, bg);
+        }
       }
     });
   });
   // route of the followed player: a solid line in their colour between their known steps
   if (focus && focus !== 'me') {
-    const tl = trackOf(focus).map(v => { const hh = hp(v.sector); return hh.x + ',' + hh.y; });
-    if (tl.length > 1) el('polyline', { points: tl.join(' '), class: 'tl', stroke: pal(focus)[0] }, marks);
-    const first = marks.querySelector('.pm'); const tlEl = marks.querySelector('.tl'); if (first && tlEl) marks.insertBefore(tlEl, first);
+    const tl = trackOf(focus).map(v => { const hh = hp(v.sector); return [hh.x, hh.y]; });
+    if (tl.length > 1) { const tlEl = arrowRoute(marks, tl, pal(focus)[0], 'tl'); const first = marks.querySelector('.pm'); if (first) marks.insertBefore(tlEl, first); }
   }
 }
 /* game over: every player's real route, from the devices that played them (announcements and bluffs are left out) */
@@ -330,8 +355,8 @@ const ROLE_BORDER = { human: '#2f7dff', alien: '#ff3b30' };
 function paintRoutes(routes, focus, hp, marks) {
   const bySector = new Map();
   routes.forEach(r => {   // lines first, so the markers sit on top
-    const dim = focus && focus !== r.key, pts = r.path.map(p => hp(p.pos)).filter(Boolean).map(h => h.x + ',' + h.y);
-    if (pts.length > 1) el('polyline', { points: pts.join(' '), class: 'rline' + (r.key === 'me' ? ' me' : '') + (dim ? ' dim' : ''), stroke: pal(r.key)[0] }, marks);
+    const dim = focus && focus !== r.key, pts = r.path.map(p => hp(p.pos)).filter(Boolean).map(h => [h.x, h.y]);
+    if (pts.length > 1) arrowRoute(marks, pts, pal(r.key)[0], 'rline' + (r.key === 'me' ? ' me' : '') + (dim ? ' dim' : ''));
     r.path.forEach(p => { if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [] }); m.get(r.key).turns.push(p.turn); });
   });
   bySector.forEach((m, sec) => {
@@ -566,7 +591,6 @@ const actions = {
   pfocus(b) { follow(T.focus === b.dataset.k ? null : b.dataset.k); },
   unfollow() { follow(null); },
   follow(b) { setTab('play'); follow(b.dataset.k); },
-  markshape(b) { setMarkShape(b.dataset.v); b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); },
   markmode() { T.markMode = !T.markMode; T.markTurn = S.turn; T.focus = null; if (T.markMode && !T.markKey) { const ps = knownPlayers(); if (ps.length === 1) T.markKey = ps[0][0]; } render(); paintOverlay(); },
   markwho(b) { T.markKey = b.dataset.k; render(); paintOverlay(); },
   mturn(b) { T.markTurn = Math.max(1, Math.min(MAX_TURN, (T.markTurn || S.turn) + +b.dataset.d)); render(); },
@@ -730,7 +754,6 @@ function morePanel() {
     <div class="tiles${solo ? '' : ' one'}"><button class="mrow" data-act="rules">${t('How to play')}<i aria-hidden="true">${ico('next', 18)}</i></button>
     ${solo ? `<button class="mrow" data-act="maps">${t('Map')}<i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}</div>
     ${solo ? `<div class="setrow"><span>${t('Turn')}</span><div class="stepper"><button class="btn" data-act="turnminus" aria-label="${t('Previous turn')}">−</button><b>${S.turn}<small>/${MAX_TURN}</small></b><button class="btn" data-act="turnplus" aria-label="${t('Next turn')}">+</button></div></div>` : ''}
-    ${segRow('Markers', 'markshape', 'v', MARK_SHAPE, [['circle', t('Circles')], ['shape', t('Shapes')]])}
     ${segRow('Map style', 'mapstyle', 'v', MAP_STYLE, [['dark', t('Dark')], ['classic', t('Classic')]])}
     ${segRow('Language', 'lang', 'l', LANG, [['en', 'English'], ['it', 'Italiano']])}
     </div>

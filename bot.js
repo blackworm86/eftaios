@@ -18,9 +18,11 @@ const Bot = (() => {
   const ITEM_VALUE = { defense: 6, adrenaline: 4, spotlight: 4, attack: 3, sedatives: 3, teleport: 1 };
   /* what each level knows how to do */
   const SKILL = {
-    easy:   { temp: 0.5, beta: 0,   hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.6, items: false, bluff: false },
-    normal: { temp: 0.25, beta: 0.2, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 8,  pot: 5,   attackAt: 2.8, items: true,  bluff: false },
-    hard:   { temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 1.6, items: true,  bluff: true }
+    // think: seconds of visible thinking; mistake: chance to take one of the next-best moves; decoy: 0 random, 1 believable, 2 simulated;
+    // allyCost: what it costs to kill a possible Alien by mistake (attacks eliminate everybody in the sector)
+    easy:   { smartBluff: false, temp: 0.5, beta: 0.2, hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.5, items: false, bluff: false, think: 1.4, mistake: 0.18, decoy: 0, allyCost: 8, humanCal: 0.6 },
+    normal: { smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
+    hard:   { smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
   };
 
   const skill = lvl => Object.assign({}, SKILL[lvl] || SKILL.normal, window.__skill && window.__skill[lvl]);   // __skill: tuning hook for benchmarks
@@ -61,13 +63,14 @@ const Bot = (() => {
 
   /* ---------- what the bot believes about everyone else (public information only) ---------- */
   const EPS = 0.004;
-  function beliefs(H, me, lvl = 'normal') {
+  /* sim = { entry }: what the others would believe about me if I announced `entry` now (returns my tracked seat only) */
+  function beliefs(H, me, lvl = 'normal', sim) {
     const g = graph(), sk = skill(lvl), N = g.N, seats = H.seats, myIdx = seats.findIndex(s => s.id === me.id);
     const others = seats.filter(s => s.id !== me.id), n = seats.length;
     const aliens = n - Math.floor(n / 2), alienLeft = aliens - (me.state.role === 'alien' ? 1 : 0);
     const prior = others.length ? Math.max(0.05, Math.min(0.95, alienLeft / others.length)) : 0.5;
     const hatches = hatchCells(), hd = humanDist(hatches), startH = g.idx.get(find(T.map, 'H')), startA = g.idx.get(find(T.map, 'A'));
-    const log = H.log.slice().reverse();                                       // oldest first
+    const log = (sim ? [sim.entry].concat(H.log) : H.log).slice().reverse();    // oldest first
     const byP = {};
     log.forEach((e, i) => { if (!e.by) return; (byP[e.by] = byP[e.by] || []).push({ e, i }); });
     // movement kernels
@@ -105,10 +108,14 @@ const Bot = (() => {
     };
     // likelihood of one announcement for each possible true sector
     const likCache = new Map();
-    const lik = (kind, X) => {
-      const key = kind + X; if (likCache.has(key)) return likCache.get(key);
+    const lik = (kind, X, qs) => {
+      const key = kind + X + (qs ? '*' : ''); if (!qs && likCache.has(key)) return likCache.get(key);
       const v = new Float64Array(N);
-      if (kind === 'noise') {
+      if (kind === 'noise' && qs) {   // a bluff names a believable sector: as likely as the prior says the player could be there
+        const xi = g.idx.get(X), bl = xi !== undefined ? 0.4 * qs[xi] : 0;
+        for (let s = 0; s < N; s++) v[s] = g.dang[s] ? EPS + (s === xi ? 0.4 : 0) + bl : EPS;
+        return v;
+      } else if (kind === 'noise') {
         const xi = g.idx.get(X);
         for (let s = 0; s < N; s++) {
           if (!g.dang[s]) { v[s] = EPS; continue; }
@@ -120,6 +127,12 @@ const Bot = (() => {
       else { const xi = g.idx.get(X); for (let s = 0; s < N; s++) v[s] = 0.01 + (s === xi ? 1 : 0); }   // exact: attack, hatch, Spotlight
       likCache.set(key, v); return v;
     };
+    // the picture the others have of a player before the announcement, spread over the neighbouring sectors (where a decoy would be named)
+    const smooth = (nH, nA, wH, wA) => {
+      const q = new Float64Array(N); for (let k = 0; k < N; k++) q[k] = wH * nH[k] + wA * nA[k];
+      const o = new Float64Array(N); for (let k = 0; k < N; k++) { let sum = 0, c = 0; for (const j of g.nb[k]) { sum += q[j]; c++; } o[k] = 0.5 * q[k] + (c ? 0.5 * sum / c : 0); }
+      return o;
+    };
     const B = {};
     const trackSeat = (s, acted) => {
       const idx = seats.indexOf(s);
@@ -128,7 +141,7 @@ const Bot = (() => {
       let wH = 1 - prior, wA = prior, cH = dH, cA = dA, fedFrom = 1e9;
       const ev = {};                                                           // round -> [entries]
       (byP[s.id] || []).forEach(({ e, i }) => { (ev[e.turn] = ev[e.turn] || []).push({ e, i }); });
-      let over = false;
+      let over = false, known = false;
       for (let r = 1; r <= acted && !over; r++) {
         const items = (ev[r] || []).filter(x => x.e.kind === 'item').map(x => x.e.text);
         // predict
@@ -138,18 +151,20 @@ const Bot = (() => {
         // evidence
         const L = new Float64Array(N).fill(1); let mulH = 1, mulA = 1, any = false;
         (ev[r] || []).forEach(({ e, i }) => {
-          if (e.kind === 'noise' && e.sector) { const v = lik('noise', e.sector); for (let k = 0; k < N; k++) L[k] *= v[k]; any = true; b.track.push({ turn: r, sector: e.sector, kind: 'noise' }); }
+          if (e.kind === 'noise' && e.sector) { const v = lik('noise', e.sector, sk.smartBluff ? smooth(nH, nA, wH, wA) : null); for (let k = 0; k < N; k++) L[k] *= v[k]; any = true; b.track.push({ turn: r, sector: e.sector, kind: 'noise' }); }
           else if (e.kind === 'silence') { const v = lik(e.text === 'secure' ? 'secure' : 'silence'); for (let k = 0; k < N; k++) L[k] *= v[k]; any = true; }
           else if (['attack', 'hatch', 'reveal'].includes(e.kind) && e.sector) {
             const v = lik('exact', e.sector); for (let k = 0; k < N; k++) L[k] *= v[k]; any = true; b.track.push({ turn: r, sector: e.sector, kind: e.kind });
             if (e.kind === 'attack') {
               const armed = (ev[r] || []).some(x => x.e.kind === 'item' && x.e.text === 'attack');
+              known = true;
               if (armed) mulA *= 0.02; else { mulH *= 0.02; if (log.some((y, j) => j > i && j < i + 8 && y.kind === 'out' && y.turn === r && String(y.text).startsWith('killed|human')) && H.mode !== 'infection') fedFrom = r + 1; }
             }
-            if (e.kind === 'hatch') mulA *= 0.02;
-          } else if (e.kind === 'item') mulA *= 0.02;                           // only Humans can play items
+            if (e.kind === 'hatch') { mulA *= 0.02; known = true; }
+          } else if (e.kind === 'item') { mulA *= 0.02; known = true; }         // only Humans can play items
           else if (e.kind === 'out') {
             const [why, role] = String(e.text).split('|');
+            known = true;
             if (H.mode === 'infection' && why === 'killed' && role === 'human') { wA = 1; wH = 0; }
             else { b.out = true; over = true; wA = role === 'alien' ? 1 : 0; wH = role === 'alien' ? 0 : 1; }
           }
@@ -159,15 +174,16 @@ const Bot = (() => {
           let mH = 0, mA = 0; for (let k = 0; k < N; k++) { mH += nH[k] * L[k]; mA += nA[k] * L[k]; }
           if (mH > 0) for (let k = 0; k < N; k++) nH[k] = nH[k] * L[k] / mH;
           if (mA > 0) for (let k = 0; k < N; k++) nA[k] = nA[k] * L[k] / mA;
-          if (sk.roleFromMoves) { wH *= Math.max(mH, 1e-6); wA *= Math.max(mA, 1e-6); }
+          if (sk.roleFromMoves) { wH *= Math.pow(Math.max(mH, 1e-6), 0.5); wA *= Math.pow(Math.max(mA, 1e-6), 0.5); }
         }
         wH *= mulH; wA *= mulA; const z = wH + wA; if (z > 0) { wH /= z; wA /= z; } else { wH = 1 - prior; wA = prior; }
         cH = nH; cA = nA;
       }
       b.dH = cH; b.dA = cA; b.fed = fedFrom <= acted + 1; b.speed = b.fed ? 3 : 2;
-      b.pA = Math.min(0.995, Math.max(0.005, wA));
+      b.pA = known ? Math.min(0.995, Math.max(0.005, wA)) : Math.min(0.9, Math.max(0.22, 0.3 * prior + 0.7 * wA));   // nobody is ever sure from behaviour alone
       return b;
     };
+    if (sim) return trackSeat(seats[myIdx] || { id: me.id, name: me.name }, H.turn);
     others.forEach(s => { B[s.id] = trackSeat(s, Math.max(0, H.turn - 1 + (seats.indexOf(s) < myIdx ? 1 : 0))); });
     // how the others see me: the same tracker run on my own public announcements, before my move this turn
     const mine = trackSeat(seats[myIdx] || { id: me.id, name: me.name }, Math.max(0, H.turn - 1));
@@ -184,6 +200,9 @@ const Bot = (() => {
     const mulOcc = (list, get) => { const miss = new Float64Array(N).fill(1); list.forEach(b => { const d = get(b); for (let k = 0; k < N; k++) if (d[k] > 1e-6) miss[k] *= 1 - Math.min(0.98, d[k]); }); return miss.map(x => 1 - x); };
     const humanOcc = mulOcc(live, b => b.dH.map(x => x * (1 - b.pA)));
     const alienOcc = mulOcc(live, b => b.dA.map(x => x * b.pA));
+    // expected number of Humans / Aliens standing in each sector (what an attack there would hit)
+    const humanCnt = new Float64Array(N), alienCnt = new Float64Array(N);
+    live.forEach(b => { for (let k = 0; k < N; k++) { humanCnt[k] += (1 - b.pA) * b.dH[k]; alienCnt[k] += b.pA * b.dA[k]; } });
     // chance that Alien b stands within strike range of each sector right now
     const strike = {}; live.forEach(b => { const o = new Float64Array(N), R = g.reach[b.speed]; for (let c = 0; c < N; c++) { let s = 0; for (const j of R[c]) s += b.dA[j]; o[c] = s * b.pA; } strike[b.id] = o; });
     // how well the others can place me after I end my move in c: they hear "Silent Sector" or Noise / Silence and
@@ -196,7 +215,7 @@ const Bot = (() => {
     // other Humans standing in the same sector are killed by the same attack
     const crowd = new Float64Array(N); live.forEach(b => { const p = 1 - b.pA; if (p > 0.05) for (let k = 0; k < N; k++) crowd[k] += p * b.dH[k]; });
     const T1 = new Float64Array(N); for (let c = 0; c < N; c++) T1[c] = risk(c);
-    return { g, sk, B, live, humanOcc, alienOcc, strike, hatches, hd, risk, T1, crowd, seatIdx, lvl, turn: H.turn };
+    return { g, sk, B, live, humanOcc, alienOcc, humanCnt, alienCnt, strike, hatches, hd, risk, T1, crowd, seatIdx, lvl, turn: H.turn };
   }
   /* cheapest way to a hatch from every sector, each step costing 1 plus the danger of the sector */
   function pathCosts(W) {
@@ -231,6 +250,13 @@ const Bot = (() => {
     let z = 0; const w = list.map(x => { const v = Math.exp((x.score - top) / temp); z += v; return v; });
     let r = rnd() * z; for (let k = 0; k < list.length; k++) { r -= w[k]; if (r <= 0) return list[k]; } return list[0];
   }
+  /* the best move, or now and then one of the next best (a slip); a free escape is never missed */
+  function choose(list, sk) {
+    list.sort((a, b) => b.score - a.score);
+    if (list[0].score >= 1000) return list[0];
+    if (sk.mistake && list.length > 1 && rnd() < sk.mistake) return list[1 + Math.floor(rnd() * Math.min(2, list.length - 1))];
+    return softPick(list, sk.temp);
+  }
   function humanMove(W, st, steps) {
     const g = W.g, opts = [...reachable(T.map, st.pos, steps, 'human').keys()];
     if (!opts.length) return null;
@@ -245,20 +271,19 @@ const Bot = (() => {
       if (g.sec[c]) s += 0.4 + (W.lvl === 'easy' ? 0 : 0.4);                   // Secure sectors make no noise
       list.push({ id, cell: c, score: s });
     });
-    return softPick(list, W.sk.temp);
+    return choose(list, W.sk);
   }
   function alienMove(ctx, W, st, B) {
     const g = W.g, sk = W.sk, speed = st.fed ? 3 : 2, opts = [...reachable(T.map, st.pos, speed, 'alien').keys()];
     if (!opts.length) return null;
     const next = humanNext(W), turn = ctx.H.turn, late = turn >= 14 ? 1.5 : 1, hs = W.hatches;
-    const fedBonus = !st.fed && ctx.H.mode !== 'infection' ? 3 : 0;
     // hatches that Humans are heading for matter most
     const wH = hs.map(h => { const dh = humanDist([h]); let w = 0.15; for (let s = 0; s < g.N; s++) if (W.humanOcc[s] > 1e-4) w += W.humanOcc[s] * Math.exp(-dh[s] / 2.5); return w; });
     const mineH = hs.length ? hs[hashId(ctx.me.id) % hs.length] : -1, wsum = wH.reduce((a, b) => a + b, 0) + (mineH >= 0 ? 0.6 : 0);
-    let best = null;
+    const list = [];
     opts.forEach(id => {
-      const c = g.idx.get(id), kill = W.humanOcc[c];
-      let s = Math.max(0, kill * (10 + fedBonus) - sk.attackAt * 0.5) * 1.0;
+      const c = g.idx.get(id);
+      let s = Math.max(0, alienAttackValue(ctx, W, st, c) - sk.attackAt * 0.5);
       // strike range next turn: the most likely sectors where a Human will be
       let top = 0, sum = 0; for (const j of g.reach[speed][c]) { const v = next[j]; sum += v; if (v > top) top = v; }
       s += sk.pot * (0.6 * top + 0.25 * sum);
@@ -270,41 +295,60 @@ const Bot = (() => {
       });
       s += sk.camp * late * (wsum ? camp / wsum : 0);
       s += rnd() * 0.3;
-      if (!best || s > best.score) best = { id, score: s, cell: c };
+      list.push({ id, score: s, cell: c });
     });
-    return best;
+    return choose(list, sk);
   }
   const hashId = id => { let x = 7; for (const ch of String(id)) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return x; };
 
-  /* "noise in any sector": the bot picks a misleading sector */
-  function chooseBluff(ctx, st, W, me) {
-    const g = W.g, c = g.idx.get(st.pos), ring = g.ringOf[c];
-    if (!ring.length) return st.pos;
-    if (!W.sk.bluff) return g.ids[pick(ring)];
-    const mine = ctx.H.log.find(e => e.by === me.id && e.sector && PUBLIC_POS.includes(e.kind));
-    const from = mine ? g.idx.get(mine.sector) : undefined, elapsed = mine ? Math.max(1, ctx.H.turn - mine.turn) : 1;
-    let best = null;
-    ring.forEach(x => {
-      // believable: a Human could have walked there from my last announcement
-      let s = from === undefined ? 0 : (g.dA[from][x] <= elapsed + (st.role === 'alien' ? 1 : 0) ? 2 : 0);
-      if (st.role === 'human') {   // lure Aliens away from where I am heading, towards where they already are
-        let near = 0; W.live.forEach(b => { if (b.pA > 0.3) near = Math.max(near, W.strike[b.id][x]); });
-        s += near * 3 + Math.min(4, W.hd[x] - W.hd[c]) * 0.2;
-      } else {                      // look like a Human racing for a hatch
-        s += Math.max(-3, Math.min(3, W.hd[c] - W.hd[x])) * 0.5;
-      }
-      s += rnd();
-      if (!best || s > best.score) best = { x, score: s };
-    });
-    return g.ids[best.x];
+  /* ---------- attacks: everybody in the sector is eliminated, Aliens too ---------- */
+  const KILL_VALUE = 10, FEED_BONUS = 3, ALIEN_KILL_VALUE = 14, HUMAN_LOSS = 12;
+  /* what an attack from sector c is worth to an Alien: Humans hit are a gain (and the first one feeds me), an Alien hit is a loss */
+  function alienAttackValue(ctx, W, st, c) {
+    const feed = !st.fed && ctx.H.mode !== 'infection' ? FEED_BONUS : 0;
+    // measured: the Humans an attack finds are about a third of what the tracker expects (the best-looking sector is picked), and
+    // Aliens hunt the same targets, so they are met about 2.5 times as often as expected
+    return W.humanCnt[c] * W.sk.humanCal * (KILL_VALUE + feed) - Math.min(1, W.alienCnt[c] * 2.5) * W.sk.allyCost;
   }
+  /* the same for a Human playing an Attack card: Aliens hit are a big gain, a Human hit is a loss */
+  function humanAttackValue(W, c) { return W.alienCnt[c] * ALIEN_KILL_VALUE - W.humanCnt[c] * HUMAN_LOSS; }
   /* is an attack here worth giving the sector away? */
   function attackWorth(ctx, W, st, lvl) {
-    const g = W.g, c = g.idx.get(st.pos), kill = W.humanOcc[c];
-    const val = kill * (10 + (!st.fed && ctx.H.mode !== 'infection' ? 3 : 0));
+    const g = W.g, c = g.idx.get(st.pos);
     let need = W.sk.attackAt;
-    if (lvl !== 'easy' && ctx.H.turn >= 8 && W.hatches.some(h => g.nb[h].includes(c))) need *= 0.6;   // Humans have to come through here
-    return val >= need;
+    if (lvl !== 'easy' && ctx.H.turn >= 8 && W.hatches.some(h => g.nb[h].includes(c))) need *= 0.7;   // Humans have to come through here
+    return alienAttackValue(ctx, W, st, c) >= need;
+  }
+
+  /* ---------- "noise in any sector": a decoy ---------- */
+  /* Easy picks any Dangerous sector not far away. Normal and Hard try each candidate on the same tracker the others use
+     and see what it would make them believe about me:
+     - a Human wants the Aliens to think it is somewhere else (or even an Alien: they will not attack one by mistake);
+     - an Alien wants the Humans to think no Alien is near and that it is one of them. */
+  function chooseDecoy(ctx, st, W, me, lvl) {
+    const g = W.g, c0 = g.idx.get(st.pos), sk = W.sk, H = ctx.H, cands = [];
+    for (let x = 0; x < g.N; x++) { const d = g.dA[c0][x]; if (g.dang[x] && !g.isHatch(x) && x !== c0 && d !== 255 && d >= 2 && d <= 6) cands.push(x); }
+    if (!cands.length) { const any = g.ringOf[c0]; return any.length ? g.ids[pick(any)] : st.pos; }
+    if (!sk.decoy) { const x = pick(cands.filter(x => g.dA[c0][x] <= 4).concat(cands).slice(0, 12)); return g.ids[x]; }
+    const human = st.role === 'human', near = new Set([c0].concat(g.nb[c0])), strikeZone = new Set([c0].concat(g.reach[2][c0]));
+    const list = cands.map(x => {
+      const o = beliefs(H, me, lvl, { entry: { by: me.id, who: me.name, turn: H.turn, kind: 'noise', sector: g.ids[x], text: 'noise', at: 0 } });
+      const hum = c => (1 - o.pA) * o.dH[c], ali = c => o.pA * o.dA[c];
+      let score;
+      if (human) {
+        // what an attacking Alien would see: the value of hitting my real sector, and the bait of the decoy sector
+        const worth = c => KILL_VALUE * hum(c) - sk.allyCost * ali(c);
+        let real = -1e9; near.forEach(c => { real = Math.max(real, worth(c)); });
+        score = (sk.decoy > 1 ? 0.5 * worth(x) : 0) - 2 * Math.max(0, real);
+      } else {
+        let threat = 0; strikeZone.forEach(c => { threat += ali(c); });
+        score = -(threat * 8 + o.pA * 5);
+      }
+      return { x, score: score + rnd() * 0.15 };
+    });
+    list.sort((a, b) => b.score - a.score);
+    const top = list.slice(0, sk.decoy > 1 ? 3 : 5), r = softPick(top.map(t => ({ id: t.x, score: t.score })), sk.decoy > 1 ? 0.35 : 0.8);
+    return g.ids[r.id];
   }
 
   /* ---------- one full turn ---------- */
@@ -314,6 +358,8 @@ const Bot = (() => {
     const say = e => ctx.log(Object.assign({ by: me.id, who: me.name }, e));
     const useItem = id => { const i = st.items.indexOf(id); if (i < 0) return false; st.items.splice(i, 1); ctx.discard(id); say({ kind: 'item', text: id }); return true; };
     st.adr = false;
+    // a visible moment of thought before anything happens; the same length whatever the bot is about to do
+    if (ctx.think) await ctx.think(sk.think * 1000 * (0.8 + rnd() * 0.4));
     if (human && !hatchCells().length) { st.over = 'trapped'; st.outSent = true; ctx.out(idx, 'trapped'); return; }
     const B = beliefs(H, me, lvl); let W = world(B, H, idx, lvl, st);
     const myCell = () => g.idx.get(st.pos);
@@ -341,14 +387,14 @@ const Bot = (() => {
       return;
     }
     // Alien attack
-    if (!human && attackWorth(ctx, W, st, lvl)) { say({ kind: 'attack', sector: st.pos }); if ((await ctx.attack(st.pos)).some(h => h.killed && h.role === 'human') && H.mode !== 'infection') st.fed = true; return; }
+    if (!human && attackWorth(ctx, W, st, lvl)) { say({ kind: 'attack', sector: st.pos }); const hits = await ctx.attack(st.pos); if (hits.some(h => h.killed && h.role === 'human') && H.mode !== 'infection') st.fed = true; return; }
     // Human with an Attack card on a likely Alien
-    if (human && adv && sk.items && st.items.includes('attack') && W.alienOcc[here] > (lvl === 'hard' ? 0.45 : 0.6) && W.humanOcc[here] < 0.2) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
+    if (human && adv && sk.items && st.items.includes('attack') && humanAttackValue(W, here) >= (lvl === 'hard' ? 3 : 5)) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
     if (ty !== '.') { say({ kind: 'silence', text: 'secure' }); return; }  // Secure sector: declare "Silent Sector"
     if (human && adv && sk.items && st.items.includes('sedatives') && W.risk(here) > (lvl === 'hard' ? 0.12 : 0.2)) { useItem('sedatives'); return; }
     const card = ctx.draw('sector') || 'silence', item = card.endsWith('-item') && adv;
     if (card.startsWith('noise-self')) say({ kind: 'noise', sector: st.pos });
-    else if (card.startsWith('noise-any')) say({ kind: 'noise', sector: chooseBluff(ctx, st, W, me) });
+    else if (card.startsWith('noise-any')) say({ kind: 'noise', sector: chooseDecoy(ctx, st, W, me, lvl) });
     else say({ kind: 'silence' });
     if (item) {
       const c = ctx.draw('item');

@@ -83,6 +83,7 @@ const Hot = (() => {
   const botCtx = () => ({
     H: { seats: H.seats.map(s => ({ id: s.id, name: s.name })), log: H.log, turn: H.turn, mode: H.mode },   // public view only
     me: seat(), idx: H.cur, log, out,
+    think: ms => botThinking(seat().name, ms, !soloPerson()),
     closeHatch(n) { H.hatches[n] = 1; },
     draw(type) { const d = H.decks[type], r = deckDraw(d); if (r.card && type !== 'item') d.disc.push(r.card); if (r.reshuffled) log({ who: t('Game'), kind: 'info', text: RESHUFFLED[type] }); return r.card || ''; },
     discard(id) { if (ITEMS[id]) H.decks.item.disc.push(id); },

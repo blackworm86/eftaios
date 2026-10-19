@@ -3,7 +3,7 @@ exports.assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else co
 exports.setup=async(n,opts={})=>{
   const b=await chromium.launch();const errs=[];
   const ctx=await b.newContext({viewport:{width:390,height:900},serviceWorkers:'block',locale:'en-US'});
-  await ctx.addInitScript({path:'tests/fake-firebase.js'});
+  await ctx.addInitScript({path:'tests/fake-firebase.js'});await ctx.addInitScript(()=>{window.__botPace=0});
   await ctx.addInitScript(()=>{const g=Storage.prototype.getItem,st=Storage.prototype.setItem;Storage.prototype.getItem=function(k){return String(k).startsWith('eftaios')?g.call(sessionStorage,k):g.call(this,k)};Storage.prototype.setItem=function(k,v){return String(k).startsWith('eftaios')?st.call(sessionStorage,k,v):st.call(this,k,v)}});
   const pages=[];for(let i=0;i<n;i++){const p=await ctx.newPage();p.on('pageerror',e=>errs.push(i+': '+e.message));p.on('console',m=>m.type()==='error'&&errs.push(i+': '+m.text()));pages.push(p)}
   return {b,ctx,pages,errs};

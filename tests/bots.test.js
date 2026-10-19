@@ -2,7 +2,7 @@
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else console.log('ok  ',m)};
 (async()=>{const b=await chromium.launch();const errs=[];
- const p=await (await b.newContext({viewport:{width:390,height:844},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.message));
+ const ctx0=await b.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});await ctx0.addInitScript(()=>{window.__botPace=0});const p=await ctx0.newPage();p.on('pageerror',e=>errs.push(e.message));
  await p.goto('http://localhost:8123/');await p.click('[data-act=hotsetup]');
  // seat 1 a person, seats 2-4 bots of each level
  await p.selectOption('[data-hb="1"]','easy');await p.selectOption('[data-hb="2"]','normal');await p.selectOption('[data-hb="3"]','hard');

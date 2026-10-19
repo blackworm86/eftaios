@@ -28,7 +28,7 @@ Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 0
 
 **Notes:** tap 📝 on the map, pick a sector, choose a sticker and write an optional note. Tap the sector later to read, edit or delete it. Notes are private.
 
-**Bots** (pass and play, and online tables) track every other player from the public announcements only: where they can be, how likely they are to be an Alien, how well their announcements fit a Human heading for a hatch. Easy plays soundly but reads little into movement, Normal reads movement and plans routes, Hard adds item play, bluffing, and Aliens that camp the hatch approaches.
+**Bots** (pass and play, and online tables) play from the public announcements only. Each one keeps a probability map of where every other player can be and how likely they are to be an Alien (movement limits, Silence versus Silent Sector, bluffs, items, hatches), and decides from it. An attack eliminates everybody in the sector, Aliens included, so an Alien weighs the Humans it expects to hit against the Aliens it might hit. A "Noise in any sector" card is a decoy: Normal picks a believable sector, Hard tries each candidate on the same tracker the others use and picks the one that misleads them most. Before moving, a bot visibly thinks (Easy about 1.4 s, Normal 2.6 s, Hard 4.2 s; the same whatever it is about to do). Easy plays soundly but reads little into movement, makes slips now and then and bluffs at random; Normal reads movement and plans routes; Hard adds item play, simulated decoys and Aliens that camp the hatch approaches.
 
 Offline or without Firebase, *Play without a table* works on a single device.
 

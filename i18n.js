@@ -1,6 +1,10 @@
 'use strict';
 /* Minimal i18n: English strings are the keys; Italian lives in IT. t('Text {x}', {x: 1}) */
 const IT = {
+"Reading the announcements…": "Leggo gli annunci…",
+"Placing the other players on the map…": "Colloco gli altri giocatori sulla mappa…",
+"Weighing the options…": "Valuto le possibilità…",
+"Choosing a sector…": "Scelgo un settore…",
 "Scan a QR code": "Scansiona un codice QR",
 "Scan a table QR code": "Scansiona il codice QR del tavolo",
 "Point the camera at the QR code on the host's screen.": "Inquadra il codice QR sullo schermo dell'host.",

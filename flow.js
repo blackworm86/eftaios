@@ -71,7 +71,8 @@ function renderFlow() {
       : `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>
         <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
         <div class="or"><span>${t('or')}</span></div>
-        <div class="row two"><button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button><button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button></div>`}
+        <div class="row two"><button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button><button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button></div>
+        <button class="btn link wide" data-act="maps_">${t('Maps')}: ${t('browse, create and share')}</button>`}
       ${flowStatus()}`;
   }
   card.innerHTML = h;
@@ -270,7 +271,7 @@ function syncOrder() {
 Sync.on({
   status(s) {
     if ((S.stage === 'lobby' || S.stage === 'game') && (s === 'no-room' || s === 'started' || s === 'closed' || s === 'full')) { toast(t(FLOW_MSG[s])); Sync.leave(true); resetToWelcome(); return; }
-    if (S.stage === 'game') { if (S.tab === 'table' && !T.editor) render(); } else renderFlow();
+    if (S.stage === 'game') { if (S.tab === 'table') render(); } else renderFlow();
   },
   joined(code) {
     S.room = code; if (S.stage !== 'game') { S.stage = 'lobby'; T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); }

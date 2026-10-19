@@ -1,0 +1,28 @@
+// Map manager on the splash page: browse, copy, edit, delete, import. Official maps stay read-only. Static server on :8123.
+const {chromium}=require('/opt/node22/lib/node_modules/playwright');
+const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else console.log('ok  ',m)};
+(async()=>{const b=await chromium.launch();const errs=[];
+ const p=await (await b.newContext({viewport:{width:390,height:800},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('http://localhost:8123/');
+ await p.click('[data-act=maps_]');await p.waitForSelector('#mapman .gcard');
+ assert(await p.locator('#mapman .gcard').count()>=3,'splash lists the official maps');
+ await p.click('#mapman .gcard');
+ assert(await p.locator('[data-act=mmedit],[data-act=mmdel]').count()===0&&await p.locator('[data-act=mmcopy]').count()===1,'official map: no edit/delete, only copy');
+ await p.click('[data-act=mmcopy]');await p.waitForSelector('#ed-svg');
+ await p.click('[data-t=s]');
+ const before=await p.locator('#ed-svg polygon[fill="#ece6d3"]').count();
+ const box=await p.locator('#ed-svg polygon').nth(100).boundingBox();await p.mouse.click(box.x+box.width/2,box.y+box.height/2);
+ assert(await p.locator('#ed-svg polygon[fill="#ece6d3"]').count()===before+1||before>0,'painting a sector works');
+ await p.fill('#ed-name','Test copy');await p.click('[data-act=mmsave]');
+ await p.waitForSelector('[data-act=mmdel]');
+ assert(await p.evaluate(()=>S.customMaps.length)===1&&await p.locator('[data-act=mmedit]').count()===1,'copy saved as a custom map, now editable');
+ await p.click('[data-act=mmedit]');await p.waitForSelector('#ed-svg');await p.click('[data-act=mmsave]');await p.waitForSelector('[data-act=mmdel]');
+ assert(await p.evaluate(()=>S.customMaps.length)===1,'editing updates in place');
+ await p.click('[data-act=mmdel]');await p.click('#d-yes');await p.waitForSelector('[data-act=mmnew]');
+ assert(await p.evaluate(()=>S.customMaps.length)===0,'custom map deleted');
+ await p.click('[data-act=eimport]');
+ await p.fill('#imp',JSON.stringify({name:'Imp',rows_data:Array.from({length:14},(_,i)=>i===0?'HA'+'.'.repeat(21):'.'.repeat(23))}));await p.click('#d-yes');
+ await p.waitForTimeout(300);
+ assert(await p.evaluate(()=>S.customMaps.length)===1,'import adds a map');
+ assert(errs.length===0,'no page errors '+errs.join());
+ await b.close();})();

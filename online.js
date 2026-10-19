@@ -130,6 +130,7 @@ const Online = (() => {
       const view = { seats: ord.map(u => ({ id: u, name: pname(u) })), log: S.log, turn: ts.n, mode: S.mode };
       await Bot.turn({
         H: view, me: { id: b.id, name: b.name, bot: b.level, state: b.state }, idx: ord.indexOf(b.id),
+        think: ms => botThinking(b.name, ms, false),
         log: e => botPush(b, e),
         out: (i, why) => botOut(b.id, why, b.state),
         draw(type) { const d = HD.decks[type], r = deckDraw(d); if (r.card && type !== 'item') d.disc.push(r.card); if (r.reshuffled) logGame(RESHUFFLED[type]); return r.card || ''; },

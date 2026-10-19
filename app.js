@@ -605,6 +605,20 @@ function entryText(e) {
   return t(e.text);
 }
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 2600); }
+/* a bot takes its time: a visible "thinking" phase (the lines do not depend on the bot's role or cards, so they give nothing away).
+   cover = hide the screen while a bot thinks (several people share the device). window.__botPace scales the time (0 = none, for tests). */
+const BOT_LINES = ['Reading the announcements…', 'Placing the other players on the map…', 'Weighing the options…', 'Choosing a sector…'];
+function botThinking(name, ms, cover) {
+  const pace = typeof window.__botPace === 'number' ? window.__botPace : 1; ms = Math.round(ms * pace);
+  if (ms <= 0) return Promise.resolve();
+  return new Promise(res => {
+    const bar = $('#botthink'), stage = $('#stage'); let i = 0;
+    const draw = () => { bar.innerHTML = `<span class="bt-dots" aria-hidden="true"><i></i><i></i><i></i></span><span><b>${esc(name)}</b><small>${t(BOT_LINES[Math.min(i, BOT_LINES.length - 1)])}</small></span>`; };
+    bar.className = 'botthink' + (cover ? ' cover-all' : ''); draw(); bar.hidden = false; if (stage) stage.classList.add('thinking');
+    const tick = setInterval(() => { i++; draw(); }, Math.max(350, ms / BOT_LINES.length));
+    setTimeout(() => { clearInterval(tick); bar.hidden = true; if (stage) stage.classList.remove('thinking'); res(); }, ms);
+  });
+}
 const buzz = () => { try { navigator.vibrate && navigator.vibrate(15); } catch (_) { /* noop */ } };
 function selectCell(id) { T.sel = id; refreshReach(); render(); paintCells(); }
 function refreshReach() { T.reach = S.phase === 'move' && !S.over && S.role && !T.editor ? reachable(T.map, S.pos, allowance(), S.role) : new Map(); }

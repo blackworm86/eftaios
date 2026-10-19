@@ -14,6 +14,9 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.click('[data-act=silence]');
  assert(await p.locator('.say.hasicon svg.gi').count()===1,'the announcement carries the Silence icon');
  await p.screenshot({path:SS+'/ic-say.png'});
+ // the glow around my position sits on my marker, not in a corner of the map
+ const glow=await p.evaluate(()=>{const r=document.querySelector('#me .me-ring.pulse');if(!r)return null;const a=r.getBoundingClientRect();return Math.min(...[...document.querySelectorAll('#marks .pm.mine')].map(m=>{const b=m.getBoundingClientRect();return Math.hypot((a.x+a.width/2)-(b.x+b.width/2),(a.y+a.height/2)-(b.y+b.height/2))}))});
+ assert(glow!==null&&glow<20,'the glow is centred on my current position ('+(glow&&glow.toFixed(1))+' px away)');
  // items in the hand, log lines and the map
  await p.evaluate(()=>{S.items=['attack','teleport','sedatives'];S.online=true;render()});
  assert(await p.locator('.slot svg.gi').count()===3,'item slots show the item icons');
@@ -29,5 +32,8 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(await p.locator('#marks use[href="#gi-attack"]').count()>=1&&await p.locator('#marks use[href="#gi-spotlight"]').count()>=1,'the map shows the Attack icon (item attack) and the Spotlight icon');
  await p.click('[data-tab=table]');await p.click('.subtabs button:nth-child(2)');await p.screenshot({path:SS+'/ic-log.png'});
  assert(await p.locator('#panel-body li svg.gi').count()>=4,'the log lines carry their icons');
+ await p.click('[data-tab=play]');await p.evaluate(()=>{S.over='dead';render();hdr();renderMkBar()});
+ assert(await p.locator('#panel-body .dlgico svg.gi').count()===1,'a Killed player sees the Killed icon');
+ assert(await p.evaluate(()=>logIcon({kind:'out',text:'killed|human|'}).includes('gi-killed')&&outMark('me').includes('gi-killed')),'the Killed icon marks eliminated players on the strip and in the log');
  const over=await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);assert(!over,'no horizontal overflow');
  console.log('errors',errs);if(errs.length)process.exitCode=1;await b.close()})();

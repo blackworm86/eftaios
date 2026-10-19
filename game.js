@@ -261,7 +261,7 @@ function itemDlg(k) {
   dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 const extras = () => (digital() ? '' : physExtras());
-const outBadge = p => p.out === 'escaped' ? `<span class="b-ok">${ico('check', 14)} ${t('escaped')}</span>` : p.out ? `<span class="b-out">${ico('cross', 14)} ${p.out === 'trapped' ? t('trapped') : t('eliminated')}${p.role ? ' (' + t(p.role === 'alien' ? 'Alien' : 'Human') + ')' : ''}</span>` : '';
+const outBadge = p => p.out === 'escaped' ? `<span class="b-ok">${ico('check', 14)} ${t('escaped')}</span>` : p.out ? `<span class="b-out">${p.out === 'trapped' ? ico('cross', 14) : gico('killed', 18)} ${p.out === 'trapped' ? t('trapped') : t('eliminated')}${p.role ? ' (' + t(p.role === 'alien' ? 'Alien' : 'Human') + ')' : ''}</span>` : '';
 /* private suspicion tag for a player: ? / Human (blue) / Alien (red) */
 const susBtns = key => key === 'me' ? '' : `<span class="sus" role="group" aria-label="${t('Your suspicion')}">${[['', '?', 'No idea'], ['human', t('H'), 'Suspected Human'], ['alien', t('A'), 'Suspected Alien']].map(([v, l, a]) => `<button data-act="sus" data-k="${esc(key)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(key) === v}" aria-label="${t(a)}">${l}</button>`).join('')}</span>`;
 const keyOfUid = u => u === Sync.uid ? 'me' : 'u:' + u;
@@ -277,7 +277,7 @@ function waitPanel() {
 }
 function overPanel() {
   const m = { escaped: ['Escaped!', 'You left the ship and win. That hatch is now blocked.'], time: ['39 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Hatch is blocked or damaged. You are eliminated.'] }[S.over];
-  return `<h2>${t(m[0])}</h2><p>${t(m[1])}</p>${inRoom() ? `<p class="dim">${t('You can keep following the game in the Table tab.')}</p>${orderList()}` : `<button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`}`;
+  return `${S.over === 'dead' ? `<div class="dlgico">${gico('killed', 72)}</div>` : ''}<h2>${t(m[0])}</h2><p>${t(m[1])}</p>${inRoom() ? `<p class="dim">${t('You can keep following the game in the Table tab.')}</p>${orderList()}` : `<button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`}`;
 }
 /* online: tell the player why other routes are missing instead of showing a half-empty map */
 function routesNote() {

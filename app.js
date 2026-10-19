@@ -326,7 +326,7 @@ function paintOverlay() {
       const dim = focus && !(it.key === focus || (focus === 'me' && ownM)), old = !focus && !ownM && S.turn - last >= 2;
       const g = el('g', { class: `mk pm ${it.kind}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
-      if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c, transform: `translate(${at_.cx} ${at_.cy})` }, me); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); ringAt((size + 1.8) * 1.12, 'me-ring' + cls); }
+      if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const rg = el('g', { transform: `translate(${at_.cx} ${at_.cy})` }, me), ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c }, rg); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); ringAt((size + 1.8) * 1.12, 'me-ring' + cls); }
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
       // the printed icons of what this player declared on that step, as marks on the marker
       stepIcons(it.key, last, sec).forEach((n, j) => {
@@ -374,7 +374,7 @@ function paintRoutes(routes, focus, hp, marks) {
 function outMark(k) {
   const o = k === 'me' ? ({ dead: 'killed', escaped: 'escaped', trapped: 'trapped' })[S.over] : k.startsWith('u:') ? (tablePlayers()[k.slice(2)] || {}).out : null;
   if (!o) return '';
-  return o === 'escaped' ? `<i class="omark esc" title="${t('escaped')}">${ico('check', 12)}</i>` : `<i class="omark dead" title="${t('eliminated')}">${ico('cross', 12)}</i>`;
+  return o === 'escaped' ? `<i class="omark esc" title="${t('escaped')}">${ico('check', 12)}</i>` : `<i class="omark dead" title="${t(o === 'trapped' ? 'trapped' : 'eliminated')}">${o === 'trapped' ? ico('cross', 12) : gico('killed', 16)}</i>`;
 }
 /* banner under the top bar while following a player */
 function followBar() {
@@ -588,6 +588,7 @@ function logIcon(e, w = 18) {
   if (e.kind === 'attack') return gico(S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === playerKey(e)) ? 'attack' : 'claws', w);
   if (e.kind === 'spot' || e.kind === 'reveal') return gico('spotlight', w);
   if (e.kind === 'item') return gico(e.text, w);
+  if (e.kind === 'out' && String(e.text).startsWith('killed')) return gico('killed', w);
   return '';
 }
 /* announcements are rendered from structured data so each player sees them in their own language */

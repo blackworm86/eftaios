@@ -317,11 +317,6 @@ function paintOverlay() {
     const spot = items.find(x => x.key === 'spot'), list = items.filter(x => x.key !== 'spot');
     if (spot) { el('circle', { cx: h.x, cy: h.y, r: 17, class: 'mk spot' + (focus ? ' dim' : '') }, marks); el('use', { href: '#gi-spotlight', x: (h.x - 7.5).toFixed(1), y: (h.y - 21).toFixed(1), width: 15, height: 13.8, class: 'mk' + (focus ? ' dim' : '') }, marks); }
     if (!list.length) return;
-    const hit = list.filter(x => x.kind === 'attack');
-    if (hit.length) {   // starburst behind the markers: somebody attacked in this sector
-      const pts_ = []; for (let i = 0; i < 24; i++) { const a = Math.PI * i / 12, q = i % 2 ? 15.5 : 20; pts_.push((h.x + q * Math.cos(a)).toFixed(1) + ',' + (h.y + q * Math.sin(a)).toFixed(1)); }
-      el('polygon', { points: pts_.join(' '), class: 'burst' + (focus && !hit.some(x => x.key === focus || (focus === 'me' && mine(x.key))) ? ' dim' : '') }, marks);
-    }
     const { size, pts: sp } = slots(list.length);
     list.forEach((it, i) => {
       const [dx, dy] = sp[i], turns = it.turns.sort((x, y) => y - x), last = turns[0];
@@ -333,13 +328,11 @@ function paintOverlay() {
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
       if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c, transform: `translate(${at_.cx} ${at_.cy})` }, me); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); ringAt((size + 1.8) * 1.12, 'me-ring' + cls); }
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
-      if (it.kind === 'attack' && it.armed) {   // a Human played an Attack card: its printed icon
-        const w = size * 1.75; el('use', { href: '#gi-attack', x: (size * 0.85 - w / 2).toFixed(1), y: (-size * 0.85 - w * 0.46).toFixed(1), width: w.toFixed(1), height: (w * 0.92).toFixed(1) }, g);
-      } else if (it.kind === 'attack') {   // an Alien attack: red claw marks
-        const R = size * 0.74, bg = el('g', { class: 'abadge alien', transform: `translate(${(size * 0.85).toFixed(1)} ${(-size * 0.85).toFixed(1)})` }, g), c = R * 0.5;
-        el('circle', { r: R.toFixed(2) }, bg);
-        el('path', { d: [-0.62, 0, 0.62].map(o => `M${(-c * 0.6 + o * c).toFixed(2)} ${-c}L${(c * 0.6 + o * c).toFixed(2)} ${c}`).join(''), 'stroke-width': (size * 0.1).toFixed(2) }, bg);
-      }
+      // the printed icons of what this player declared on that step, as marks on the marker
+      stepIcons(it.key, last, sec).forEach((n, j) => {
+        const w = size * (n === 'attack' || n === 'claws' ? 2.1 : 1.75), bx = size * 0.9, by = j ? size * 0.9 : -size * 0.9;   // an attack is the icon people look for
+        el('use', { href: '#gi-' + n, x: (bx - w / 2).toFixed(1), y: (by - w * 0.46).toFixed(1), width: w.toFixed(1), height: (w * 0.92).toFixed(1) }, g);
+      });
     });
   });
   // route of the followed player: a solid line in their colour between their known steps
@@ -446,12 +439,11 @@ function undoDeclaration() {
 }
 function markBanner() {
   const who = T.markKey ? nameOfKey(T.markKey) : null, kind = T.markKind || 'noise', onSector = kind === 'noise' || kind === 'attack' || kind.startsWith('item:');
-  const chip = ([k, ic, n]) => `<button class="dchip" data-act="markkind" data-k="${k}" aria-pressed="${kind === k || (k === 'item' && kind.startsWith('item:'))}">${ic ? gico(ic, 26) : k === 'attack' ? clawIco(26) : k === 'secure' ? gicoSilent(26) : k === 'item' ? gico('teleport', 26) : ''}<span>${t(n)}</span></button>`;
+  const chip = ([k, ic, n]) => `<button class="dchip" data-act="markkind" data-k="${k}" aria-pressed="${kind === k || (k === 'item' && kind.startsWith('item:'))}">${gico(k === 'attack' ? 'claws' : k === 'secure' ? 'silent' : k === 'item' ? 'teleport' : ic, 26)}<span>${t(n)}</span></button>`;
   return `<div class="banner mark"><div>${!who ? t('Pick the player in the strip on the left, or add one with +.') : onSector ? t('{p}: tap the sector on the map. Tap again to remove it.', { p: esc(who) }) : t('{p}: tap what they declared.', { p: esc(who) })}</div>
     <div class="dchips" role="group" aria-label="${t('What they declared')}">${DECL.map(chip).join('')}</div>
     <div class="row tight"><span class="mturn">${t('Turn')} <button class="btn" data-act="mturn" data-d="-1" aria-label="−">−</button><b>${T.markTurn || S.turn}</b><button class="btn" data-act="mturn" data-d="1" aria-label="+">+</button></span><button class="btn" data-act="markundo" ${(T.markStack || []).length ? '' : 'disabled'}>${t('Undo')}</button><button class="btn primary" data-act="markmode">${t('Done')}</button></div></div>`;
 }
-const clawIco = w => `<svg class="gi" width="${w}" height="${Math.round(w * 0.92)}" viewBox="0 0 24 22" aria-hidden="true"><circle cx="12" cy="11" r="10.5" fill="#ff3b30" stroke="#fff" stroke-width="1"/><path d="M7 5l5 12M12 4l5 13M3.5 7l5 10" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none" transform="translate(2.2 .8) scale(.85)"/></svg>`;
 function markItemSheet() {
   dlg.innerHTML = `<h2>${t('Item played')}</h2><div class="stack">${['adrenaline', 'sedatives', 'teleport', 'spotlight', 'attack', 'defense'].map(k => `<button class="btn withico" data-act="markitem" data-i="${k}">${gico(k, 38)}<span>${t(ITEMS[k][0])}<small>${t(ITEMS[k][1])}</small></span></button>`).join('')}</div><div class="row"><button class="btn" id="d-no">${t('Close')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
@@ -578,11 +570,22 @@ function say(text, kind, sector, extra = {}) {
   if (window.Sync && Sync.code && PUBLIC.includes(kind)) Sync.push({ id: e.id, by: Sync.uid, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at, n: e.n || 0, ok: e.ok ? 1 : 0 });
   if (S.log.length > 400) S.log.length = 400;
 }
-/* the printed icon that goes with a log line, if there is one (an Alien attack has none: the Attack icon is the item) */
+/* the printed icons for what a player declared on one turn, for the marker of that step (at most two):
+   an attack, then items, then Silence or Silent Sector, then Noise. A bluffed Noise is a "Noise in any sector". */
+function stepIcons(key, turn, here) {
+  if (key === 'bluff') return ['noise-any'];
+  const out = [], add = n => { if (n && !out.includes(n)) out.push(n); }, es = S.log.filter(e => e.turn === turn && playerKey(e) === key);
+  es.filter(e => e.kind === 'attack' && e.sector === here).forEach(() => add(key === 'me' ? (S.role === 'human' ? 'attack' : 'claws') : es.some(x => x.kind === 'item' && x.text === 'attack') ? 'attack' : 'claws'));
+  es.filter(e => e.kind === 'item' && GI_ART[e.text]).forEach(e => add(e.text));
+  es.filter(e => e.kind === 'silence').forEach(e => add(e.text === 'secure' ? 'silent' : 'silence'));
+  if (es.some(e => e.kind === 'noise' && (key !== 'me' || e.sector === here))) add('noise-here');
+  return out.slice(0, 2);
+}
+/* the printed icon that goes with a log line, if there is one */
 function logIcon(e, w = 18) {
   if (e.kind === 'noise') return gico('noise-here', w);
-  if (e.kind === 'silence') return e.text === 'secure' ? gicoSilent(w) : gico('silence', w);
-  if (e.kind === 'attack') return S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === playerKey(e)) ? gico('attack', w) : '';
+  if (e.kind === 'silence') return gico(e.text === 'secure' ? 'silent' : 'silence', w);
+  if (e.kind === 'attack') return gico(S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === playerKey(e)) ? 'attack' : 'claws', w);
   if (e.kind === 'spot' || e.kind === 'reveal') return gico('spotlight', w);
   if (e.kind === 'item') return gico(e.text, w);
   return '';

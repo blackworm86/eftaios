@@ -25,11 +25,13 @@ const {assert,setup,startTable,begin,current,uidOf}=require('./helpers');
   assert(await A.evaluate(()=>T.turnState.n)===2&&await A.evaluate(()=>T.turnState.idx)===0,'round increments after the last player');
   assert(await C.evaluate(()=>S.turn)===2,'players see the new turn number');
   // a player who is eliminated is skipped
-  await B.evaluate(()=>{S.over='dead';afterChange()});await A.waitForFunction(()=>Object.values(Sync.players).some(p=>p.out==='killed'));
+  // an Alien is eliminated (roles are dealt at random; a dead Human could end the game)
+  let dead=null;for(const p of pages){if(await p.evaluate(()=>S.role)==='alien'){dead=p;break}}
+  const deadName=await dead.evaluate(()=>S.name);
+  await dead.evaluate(()=>{S.over='dead';afterChange()});await A.waitForFunction(()=>Object.values(Sync.players).some(p=>p.out==='killed'));
   const seq=[];for(let k=0;k<3;k++){const p=await current(pages);seq.push(await p.evaluate(()=>S.name));const i0=await p.evaluate(()=>T.turnState.idx);await p.evaluate(()=>{S.phase='resolve';S.res={stage:'done',say:'x'};render()});await p.click('[data-act=next]');await A.waitForFunction(i=>T.turnState.idx!==i||T.turnState.n>2,i0)}
-  assert(!seq.slice(0,2).includes('P1')||true,'eliminated skipped (sequence '+seq.join(',')+')');
-  assert(!seq.includes('P1'),'eliminated player never gets a turn');
+  assert(!seq.includes(deadName),'eliminated player never gets a turn (sequence '+seq.join(',')+')');
   // host can skip an absent player
-  const cur2=await current(pages);const host=A;if(cur2!==A){await A.click('[data-tab=table]');await A.click('[data-act=tsec][data-k=players]');await A.click('[data-act=skipturn]');await A.click('#d-yes');await A.waitForFunction(u=>T.turnState.uid!==u,await cur2.evaluate(()=>Sync.uid));assert(true,'host can skip an absent player')}
+  const cur2=await current(pages);const host=A;if(cur2!==A){await A.click('[data-tab=table]');await A.click('[data-act=tsec][data-k=status]');await A.click('[data-act=skipturn]');await A.click('#d-yes');await A.waitForFunction(u=>T.turnState.uid!==u,await cur2.evaluate(()=>Sync.uid));assert(true,'host can skip an absent player')}
   console.log('errors',errs);await b.close();
 })();

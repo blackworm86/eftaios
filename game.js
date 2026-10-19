@@ -170,7 +170,7 @@ async function runAttack(fromItem) {
   r.missing.forEach(p => lines.push(t('No answer from {p}', { p })));
   if (fed && !S.fed) { S.fed = true; lines.push(t('You have FED: from now on you move 1, 2 or 3 sectors.')); }
   if (fromItem) { save(); render(); hdr(); alertHtml(t('Attack in Sector {s}', { s: sec }), lines.map(esc).join('<br>')); }
-  else announce({ say: t('Attack in Sector {s}', { s: sec }), tone: 'alert', icon: S.role === 'human' ? 'attack' : '', report: lines });
+  else announce({ say: t('Attack in Sector {s}', { s: sec }), tone: 'alert', icon: S.role === 'human' ? 'attack' : 'claws', report: lines });
 }
 
 /* ---------------- manual (physical card) actions ---------------- */
@@ -189,7 +189,7 @@ Object.assign(actions, {
     commit(); const k = b.dataset.k; say('', 'attack', S.pos);
     let sub = t('Anyone in this sector must declare it and is out of the game.');
     if (k === 'human' && S.role === 'alien' && !S.fed && !infection()) { S.fed = true; sub += ' ' + t('You have FED: from now on you move 1, 2 or 3 sectors.'); }
-    announce({ say: t('Attack in Sector {s}', { s: S.pos }), sub, tone: 'alert', icon: S.role === 'human' ? 'attack' : '' });
+    announce({ say: t('Attack in Sector {s}', { s: S.pos }), sub, tone: 'alert', icon: S.role === 'human' ? 'attack' : 'claws' });
   },
   podGreen() { commit(); const n = +at(T.map, S.pos); say('', 'hatch', S.pos, { n, ok: 1 }); S.hatches[n] = 1; S.over = 'escaped'; afterChange(); },
   podRed() { commit(); const n = +at(T.map, S.pos); S.hatches[n] = 1; say('', 'hatch', S.pos, { n, ok: 0 }); announce({ say: t('Escape Hatch {n}: damaged', { n }), sub: t('Reveal the red card. Nobody can enter this hatch again.'), tone: 'alert' }); },
@@ -318,14 +318,14 @@ function playPanel() {
     : digital()
     ? `<p>${t('You reached an Escape Hatch. Draw the Escape Hatch card.')}</p><button class="btn primary big wide" data-act="hatchdraw">${t('Draw hatch card')}</button>`
     : `<p>${t('Declare which hatch you reached, then draw an Escape Hatch card and reveal it.')}</p><div class="row"><button class="btn ok big" data-act="podGreen">${t('Green: escaped')}</button><button class="btn danger big" data-act="podRed">${t('Red: damaged')}</button></div>`) + undoBtn();
-  if (r.stage === 'attack') return head + sayBox(t('Attack in Sector {s}', { s: S.pos }), 'alert', '', S.role === 'human' && gico('attack', 56)) + `<p>${t('Anyone in the sector must declare it. Who was eliminated?')}</p>
+  if (r.stage === 'attack') return head + sayBox(t('Attack in Sector {s}', { s: S.pos }), 'alert', '', gico(S.role === 'human' ? 'attack' : 'claws', 56)) + `<p>${t('Anyone in the sector must declare it. Who was eliminated?')}</p>
       <div class="stack"><button class="btn" data-act="attackDone" data-k="none">${t('Nobody')}</button><button class="btn" data-act="attackDone" data-k="alien">${t('Only Alien(s)')}</button><button class="btn danger" data-act="attackDone" data-k="human">${t('At least one Human')}</button></div>
       <div class="row mini"><button class="btn" data-act="backres">${t('Back')}</button></div>`;
   if (r.stage === 'done') return head + sayBox(r.say, r.tone, '', r.icon && gico(r.icon, 56)) + (r.extra ? sayBox(r.extra, 'alert also', 'Also', r.extraIcon && gico(r.extraIcon, 44)) : '') +
     (r.report ? `<ul class="report">${r.report.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '') + (r.sub ? `<p class="dim">${esc(r.sub)}</p>` : '') +
     `<button class="btn primary big wide" data-act="next">${!inRoom() && S.turn >= MAX_TURN ? t('Finish game') : t('End turn')}</button>${handHtml()}${extras()}`;
   const safe = ty === 's' || ty === 'H' || ty === 'A';
-  if (safe) return head + `<p class="dim">${t('Secure sector: no card to draw.')}</p>${sayBox(t('Silent Sector'), 'silent', '', gicoSilent(44))}<div class="row">${alien ? `<button class="btn danger big" data-act="attack">${t('Attack')}</button>` : ''}<button class="btn primary big" data-act="quiet">${t('Declare')}</button></div>${undoBtn()}${handHtml()}${extras()}`;
+  if (safe) return head + `<p class="dim">${t('Secure sector: no card to draw.')}</p>${sayBox(t('Silent Sector'), 'silent', '', gico('silent', 44))}<div class="row">${alien ? `<button class="btn danger big" data-act="attack">${t('Attack')}</button>` : ''}<button class="btn primary big" data-act="quiet">${t('Declare')}</button></div>${undoBtn()}${handHtml()}${extras()}`;
   if (digital()) return head + `<div class="row">${alien ? `<button class="btn danger big" data-act="attack">${t('Attack')}</button>` : ''}<button class="btn primary big" data-act="drawcard">${t('Draw a card')}</button></div>${undoBtn()}${handHtml()}`;
   return head + `${alien ? `<button class="btn danger wide slim" data-act="attack">${t('Attack this sector')}</button>` : ''}
     <div class="cards3 faces">${[['noiseHere', 'noise-here', 'Noise in your sector'], ['noiseAny', 'noise-any', 'Noise in any sector'], ['silence', 'silence', 'Silence']].map(([a, i, n]) => `<button class="face" data-act="${a}">${gico(i, 40)}<span>${t(n)}</span></button>`).join('')}</div>

@@ -25,7 +25,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.evaluate(()=>{const base={turn:2,who:'Bob',at:Date.now(),by:'x'};
    S.log.unshift(Object.assign({id:'l1',kind:'noise',sector:'K10',text:'noise'},base),Object.assign({id:'l2',kind:'silence',text:'secure'},base),Object.assign({id:'l3',kind:'item',text:'attack'},base),Object.assign({id:'l4',kind:'attack',sector:'M10',text:'attack'},base),Object.assign({id:'l5',kind:'spot',sector:'N11',text:'spot'},base));
    paintOverlay()});
- assert(await p.evaluate(()=>logIcon({kind:'item',text:'teleport'}).includes('gi-teleport'))&&await p.evaluate(()=>logIcon({kind:'silence',text:'secure'}).includes('gi-todo')),'log icons are chosen per announcement');
+ assert(await p.evaluate(()=>logIcon({kind:'item',text:'teleport'}).includes('gi-teleport'))&&await p.evaluate(()=>logIcon({kind:'silence',text:'secure'}).includes('gi-silent')&&logIcon({kind:'attack',text:'attack'}).includes('gi-claws')),'log icons are chosen per announcement');
  assert(await p.locator('#marks use[href="#gi-attack"]').count()>=1&&await p.locator('#marks use[href="#gi-spotlight"]').count()>=1,'the map shows the Attack icon (item attack) and the Spotlight icon');
  await p.click('[data-tab=table]');await p.click('.subtabs button:nth-child(2)');await p.screenshot({path:SS+'/ic-log.png'});
  assert(await p.locator('#panel-body li svg.gi').count()>=4,'the log lines carry their icons');

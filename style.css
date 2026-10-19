@@ -103,7 +103,7 @@ textarea{font:13px var(--mono);min-height:140px}
 .pulse{animation:pulse 1.8s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes pulse{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(2.2)}}
 .mk{pointer-events:none}
-.mk.spot circle{fill:none;stroke:#7fe3ff;stroke-width:2;stroke-dasharray:3 3}
+.mk.spot{fill:none;stroke:#7fe3ff;stroke-width:2;stroke-dasharray:3 3}
 .pm text{font:700 7px var(--mono);text-anchor:middle;dominant-baseline:central}
 .pm.old{opacity:.6}
 
@@ -379,10 +379,7 @@ html,body{height:100vh;height:100dvh}
 .stage.classic .mkbar button[aria-pressed=true]{background:#ffe2a6;border-color:#d08a00}
 /* markers */
 .mko{fill:#0b1222}.mko.me{fill:#fff}
-.abadge>circle:first-child{fill:#ff3b30;stroke:#fff;stroke-width:.8}.abadge path,.abadge circle+circle{stroke:#fff;stroke-linecap:round;fill:none}.abadge.human>circle:first-child{fill:#c97a00}
-.burst{fill:#ff3b3033;stroke:#ff3b30;stroke-width:1.4;stroke-linejoin:round;pointer-events:none}.burst.dim{opacity:.12}
-#map.classic .burst{fill:#ff3b3040}
-.pm.attack circle{filter:none}
+#map.classic .pm.attack circle{filter:none}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 8px;font-size:12px;color:var(--dim)}
 .legend span{display:flex;align-items:center}.legend .dot{width:16px;height:16px;margin-right:4px}
 
@@ -642,7 +639,6 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 
 /* ---- printed game icons ---- */
 .gi{display:inline-block;flex:none;vertical-align:-4px}
-.gi-todo{color:var(--dim)}
 .log li span .gi,.recap .gi{margin-right:6px;vertical-align:-5px}
 .say.hasicon{display:flex;align-items:center;gap:12px}.say.hasicon>div{min-width:0}
 .panel .say.hasicon{gap:10px}

@@ -10,7 +10,7 @@ for(const [n,p] of [['A',A],['B',B]]){p.on('pageerror',e=>errs.push(n+': '+e.mes
 await A.goto('http://localhost:8123/');
 await A.fill('#flow-name','Anna');await A.click('[data-act=hostsetup]');
 assert(await A.locator('[data-f=cards],[data-f=track]').count()===0,'host setup: no cards or tracking options (tables are digital)');
-assert((await A.locator('[role=radio][data-f=mode]').evaluateAll(els=>els.map(e=>e.dataset.v))).join()==='basic,advanced,infection','rules are listed Basic, Advanced, Infection');
+assert((await A.locator('[role=radio][data-f=mode]').evaluateAll(els=>els.map(e=>e.dataset.v))).join()==='basic,ultimate','rules are listed Basic, Ultimate');
 await A.click('.mapcard');await A.click(`.gcard[data-id=\"${'fermi'}\"]`);await A.click('[data-f=mode][data-v=basic]');
 await A.click('[data-act=hostcreate]');await A.waitForSelector('.roomcard b');
 const code=await A.textContent('.roomcard b');assert(/^[A-Z2-9]{4}$/.test(code),'host got code '+code);

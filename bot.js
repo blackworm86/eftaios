@@ -15,7 +15,7 @@ const Bot = (() => {
   const rnd = () => deckRnd();
   const pick = a => a[Math.floor(rnd() * a.length)];
   const PUBLIC_POS = ['noise', 'attack', 'reveal', 'hatch'];
-  const ITEM_VALUE = { defense: 6, adrenaline: 4, spotlight: 4, attack: 3, sedatives: 3, teleport: 1 };
+  const ITEM_VALUE = { clone: 6, sensor: 3, cat: 2, mutation: 1, defense: 6, adrenaline: 4, spotlight: 4, attack: 3, sedatives: 3, teleport: 1 };
   /* what each level knows how to do */
   const SKILL = {
     // think: seconds of visible thinking; mistake: chance to take one of the next-best moves; decoy: 0 random, 1 believable, 2 simulated;
@@ -158,14 +158,14 @@ const Bot = (() => {
             if (e.kind === 'attack') {
               const armed = (ev[r] || []).some(x => x.e.kind === 'item' && x.e.text === 'attack');
               known = true;
-              if (armed) mulA *= 0.02; else { mulH *= 0.02; if (log.some((y, j) => j > i && j < i + 8 && y.kind === 'out' && y.turn === r && String(y.text).startsWith('killed|human')) && H.mode !== 'infection') fedFrom = r + 1; }
+              if (armed) mulA *= 0.02; else { mulH *= 0.02; if (log.some((y, j) => j > i && j < i + 8 && y.kind === 'out' && y.turn === r && String(y.text).startsWith('killed|human'))) fedFrom = r + 1; }
             }
             if (e.kind === 'hatch') { mulA *= 0.02; known = true; }
           } else if (e.kind === 'item') { mulA *= 0.02; known = true; }         // only Humans can play items
           else if (e.kind === 'out') {
             const [why, role] = String(e.text).split('|');
             known = true;
-            if (H.mode === 'infection' && why === 'killed' && role === 'human') { wA = 1; wH = 0; }
+            if (why === 'killed' && role === 'human') { wA = 1; wH = 0; }
             else { b.out = true; over = true; wA = role === 'alien' ? 1 : 0; wH = role === 'alien' ? 0 : 1; }
           }
         });
@@ -305,7 +305,7 @@ const Bot = (() => {
   const KILL_VALUE = 10, FEED_BONUS = 3, ALIEN_KILL_VALUE = 14, HUMAN_LOSS = 12;
   /* what an attack from sector c is worth to an Alien: Humans hit are a gain (and the first one feeds me), an Alien hit is a loss */
   function alienAttackValue(ctx, W, st, c) {
-    const feed = !st.fed && ctx.H.mode !== 'infection' ? FEED_BONUS : 0;
+    const feed = !st.fed ? FEED_BONUS : 0;
     // measured: the Humans an attack finds are about a third of what the tracker expects (the best-looking sector is picked), and
     // Aliens hunt the same targets, so they are met about 2.5 times as often as expected
     return W.humanCnt[c] * W.sk.humanCal * (KILL_VALUE + feed) - Math.min(1, W.alienCnt[c] * 2.5) * W.sk.allyCost;
@@ -382,24 +382,22 @@ const Bot = (() => {
     // escape hatch
     if (human && '1234'.includes(ty)) {
       const n = +ty;
-      if (!adv || H.mode === 'infection' || ctx.draw('hatch') === 'green') { ctx.closeHatch(n); say({ kind: 'hatch', sector: st.pos, n, ok: 1 }); st.over = 'escaped'; st.outSent = true; ctx.out(idx, 'escaped'); return; }
+      if (ctx.draw('hatch', adv && st.char === 'Engineer') === 'green') { ctx.closeHatch(n); say({ kind: 'hatch', sector: st.pos, n, ok: 1 }); st.over = 'escaped'; st.outSent = true; ctx.out(idx, 'escaped'); return; }
       ctx.closeHatch(n); say({ kind: 'hatch', sector: st.pos, n, ok: 0 });
       return;
     }
     // Alien attack
-    if (!human && attackWorth(ctx, W, st, lvl)) { say({ kind: 'attack', sector: st.pos }); const hits = await ctx.attack(st.pos); if (hits.some(h => h.killed && h.role === 'human') && H.mode !== 'infection') st.fed = true; return; }
+    if (!human && attackWorth(ctx, W, st, lvl)) { say({ kind: 'attack', sector: st.pos }); const hits = await ctx.attack(st.pos); if (hits.some(h => h.killed && h.role === 'human') && !st.fed) st.fed = true; return; }
     // Human with an Attack card on a likely Alien
     if (human && adv && sk.items && st.items.includes('attack') && humanAttackValue(W, here) >= (lvl === 'hard' ? 3 : 5)) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
     if (ty !== '.') { say({ kind: 'silence', text: 'secure' }); return; }  // Secure sector: declare "Silent Sector"
     if (human && adv && sk.items && st.items.includes('sedatives') && W.risk(here) > (lvl === 'hard' ? 0.12 : 0.2)) { useItem('sedatives'); return; }
-    const card = ctx.draw('sector') || 'silence', item = card.endsWith('-item') && adv;
+    let card = ctx.draw('sector') || 'silence'; const item = card.startsWith('item:') && adv ? card.slice(5) : '';
+    if (card.startsWith('item:')) card = 'silence';
     if (card.startsWith('noise-self')) say({ kind: 'noise', sector: st.pos });
     else if (card.startsWith('noise-any')) say({ kind: 'noise', sector: chooseDecoy(ctx, st, W, me, lvl) });
     else say({ kind: 'silence' });
-    if (item) {
-      const c = ctx.draw('item');
-      if (c) { st.items.push(c); if (st.items.length > 3) { st.items.sort((a, b) => ITEM_VALUE[b] - ITEM_VALUE[a]); ctx.discard(st.items.pop()); } }
-    }
+    if (item) st.items.push(item);   // kept to look like a Human; only some can be used by a bot
   }
   /* a plain list of the sectors a player could be in, for tests and tools */
   function zoneOf(b) { const g = graph(), o = []; for (let k = 0; k < g.N; k++) { const p = (1 - b.pA) * b.dH[k] + b.pA * b.dA[k]; if (p > 0.01) o.push([g.ids[k], p]); } return o; }

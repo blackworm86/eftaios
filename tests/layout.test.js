@@ -13,7 +13,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(bar.left<10&&bar.w<70,w+'px: the strip is on the left side');
  const pan=await p.evaluate(()=>{const e=document.querySelector('#panel-body');return e.scrollHeight<=e.clientHeight+1});
  assert(pan,w+'px: the bottom panel does not scroll (move phase)');
- assert(await p.locator('#go-input').count()===0&&await p.locator('.slot').count()===3,w+'px: no sector field; three item slots');
+ assert(await p.locator('#go-input').count()===0&&await p.locator('.slot').count()>=1,w+'px: no sector field; an item row');
  assert(await p.evaluate(()=>!document.querySelector('.me-dot'))&&await p.evaluate(()=>document.querySelectorAll('#me .me-ring.pulse').length===1&&document.querySelectorAll('#me .me-ring').length===1),w+'px: current position = own marker with glow');
  // change suspicion from the map strip
  const k=await p.evaluate(()=>document.querySelectorAll('#mkbar [data-act=pfocus]')[2].dataset.k);

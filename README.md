@@ -32,6 +32,8 @@ Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 0
 
 **Notes:** tap 📝 on the map, pick a sector, choose a sticker and write an optional note. Tap the sector later to read, edit or delete it. Notes are private.
 
+**Bots** (pass and play, and online tables) track every other player from the public announcements only: where they can be, how likely they are to be an Alien, how well their announcements fit a Human heading for a hatch. Easy plays soundly but reads little into movement, Normal reads movement and plans routes, Hard adds item play, bluffing, and Aliens that camp the hatch approaches.
+
 Offline or without Firebase, *Play without a table* works on a single device.
 
 Tests: serve the folder on port 8123 and run `node tests/lobby.test.js`, `tests/turns.test.js`, `tests/online.test.js`, `tests/online2.test.js`, `tests/hot.test.js`, `tests/markers.test.js`, `tests/overlap.test.js`, `tests/undo.test.js` and `tests/close.test.js` (uses an in-memory Firebase stand-in, `tests/fake-firebase.js`).

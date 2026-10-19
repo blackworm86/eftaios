@@ -42,7 +42,7 @@ const id=await A.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));
 await A.evaluate(i=>selectCell(i),id);await A.click('[data-act=confirm]');await A.evaluate(()=>say('','noise',S.pos));
 await B.waitForFunction(()=>S.log.length>0);assert((await B.evaluate(()=>S.log[0].kind))==='noise','announcement reached guest');
 // guest reload keeps game and rejoins
-await B.reload();await B.waitForSelector('#app:not([hidden])');assert(await B.evaluate(()=>S.role)==='alien','guest resumes after reload');
+const roleB=await B.evaluate(()=>S.role);await B.reload();await B.waitForSelector('#app:not([hidden])');assert(await B.evaluate(()=>S.role)===roleB,'guest resumes after reload with the same role');
 // late joiner blocked
 const C=await ctx.newPage();await C.goto('http://localhost:8123/?room='+code);await C.click('[data-act=joinroom]');await C.waitForTimeout(400);
 assert((await C.textContent('#flow-card')).includes('already started'),'late joiner refused');

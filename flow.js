@@ -8,6 +8,7 @@ const orderedIds = () => { const ps = Sync.players || {}, ord = (Sync.settings &
 const orderedPlayers = () => orderedIds().map(u => [u, Sync.players[u]]);
 const langSwitch = () => `<div class="lang-switch" role="group" aria-label="Language">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l.toUpperCase()}</button>`).join('')}</div>`;
 const hero = () => `${langSwitch()}<h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>`;
+const QR_ICO = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V6a2 2 0 012-2h3M20 9V6a2 2 0 00-2-2h-3M4 15v3a2 2 0 002 2h3M20 15v3a2 2 0 01-2 2h-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13.5 14.5h2.5v1.5"/></svg>';
 const BACK_ICO = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
 /* sub-screens: a compact header with a back button instead of the big title */
 const fhead = (title, act = 'back') => `<header class="fhead"><button class="icon-btn" data-act="${act}" aria-label="${t('Back')}">${BACK_ICO}</button><h2>${title}</h2></header>`;
@@ -68,7 +69,7 @@ function renderFlow() {
       ${T.pendingRoom ? `<p class="banner">${t('You are invited to table {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${nameField()}
       ${T.pendingRoom ? `<button class="btn primary big wide" data-act="joinroom">${t('Join table {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button>`
       : `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>
-        <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="joinroom">${t('Join')}</button></div>
+        <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
         <div class="or"><span>${t('or')}</span></div>
         <div class="row two"><button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button><button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button></div>`}
       ${flowStatus()}`;
@@ -217,8 +218,47 @@ Object.assign(actions, {
   shuffleorder() { const ids = orderedIds(); for (let i = ids.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [ids[i], ids[j]] = [ids[j], ids[i]]; } Sync.updateSettings({ order: ids }); },
   startgame: startTable,
   leavelobby() { confirmDlg(t('Leave this table?'), t('You will stop receiving announcements.'), leaveToWelcome); },
-  solostart(b) { soloStart(b.dataset.role); }
+  solostart(b) { soloStart(b.dataset.role); },
+  scanqr() { scanDlg(); }
 });
+
+/* join by scanning the table's QR code with the camera (the decoder is loaded the first time it is needed) */
+let scanStream = null;
+function stopScan() { if (scanStream) { scanStream.getTracks().forEach(x => x.stop()); scanStream = null; } }
+dlg.addEventListener('close', stopScan);
+const loadJsQR = () => window.jsQR ? Promise.resolve() : new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'vendor/jsQR.js'; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+/* a scanned link or a plain code -> the table code, or '' */
+const codeFromScan = txt => {
+  try { const r = new URL(txt).searchParams.get('room'); if (r) return r.trim().toUpperCase().slice(0, 8); } catch (_) { /* not a link */ }
+  const m = String(txt).trim().toUpperCase().match(/^[A-Z2-9]{4,8}$/); return m ? m[0] : '';
+};
+async function scanDlg() {
+  dlg.innerHTML = `<h2>${t('Scan a table QR code')}</h2><div class="scanbox"><video id="scan-video" playsinline muted></video><i class="scanframe"></i></div>
+    <p class="dim" id="scan-msg">${t("Point the camera at the QR code on the host's screen.")}</p><div class="row"><button class="btn" id="d-no">${t('Cancel')}</button></div>`;
+  if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
+  const msg = x => { const m = $('#scan-msg'); if (m) m.textContent = x; };
+  try {
+    await loadJsQR();
+    if (!dlg.open) return;
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+  } catch (e) { const sb = $('.scanbox'); if (sb) sb.style.display = 'none'; msg(t('The camera is not available. Allow camera access, or type the table code.')); return; }
+  const video = $('#scan-video'); if (!video || !dlg.open) { stopScan(); return; }
+  video.srcObject = scanStream; try { await video.play(); } catch (_) { /* autoplay refused */ }
+  const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true }), stream = scanStream;
+  const tick = () => {
+    if (scanStream !== stream || !dlg.open) return;
+    if (video.videoWidth) {
+      const k = Math.min(1, 640 / video.videoWidth); cv.width = Math.round(video.videoWidth * k); cv.height = Math.round(video.videoHeight * k);
+      cx.drawImage(video, 0, 0, cv.width, cv.height);
+      const hit = window.jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height, { inversionAttempts: 'attemptBoth' });
+      const code = hit && codeFromScan(hit.data);
+      if (code) { stopScan(); closeDlg(); const jc = $('#join-code'); if (jc) jc.value = code; T.pendingRoom = null; actions.joinroom(); return; }
+      if (hit) msg(t('That QR code is not a table.'));
+    }
+    setTimeout(tick, 120);
+  };
+  tick();
+}
 
 /* keep the stored order in line with who is at the table (host only) */
 function syncOrder() {

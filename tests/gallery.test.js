@@ -7,7 +7,7 @@ await p.goto('http://localhost:8123/');await p.click('[data-act=hotsetup]');
 assert(await p.locator('select#f-map').count()===0&&await p.locator('.mapcard').count()===1,'no dropdown: a preview card');
 
 await p.click('.mapcard');assert(await p.locator('#gallery .gcard').count()===15,'gallery shows all 15 maps');
-assert(await p.locator('#gallery h3').count()===3,'grouped in 3 packs');
+assert(await p.locator('#gallery h3').count()===2,'grouped in 2 packs');
 
 await p.click('.gcard[data-id="balena"]');
 assert(await p.locator('#gallery').count()===0&&await p.evaluate(()=>document.querySelector('#f-map').value)==='balena'&&(await p.textContent('#f-map-name'))==='Balena','picking a map closes the gallery and selects it');

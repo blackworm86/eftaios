@@ -303,6 +303,7 @@ function paintOverlay() {
     if (rank[v.kind] > rank[it.kind]) it.kind = v.kind;
   }
   const order = k => k === 'me' ? -2 : k === 'bluff' ? -1 : k === 'spot' ? 99 : colorOf(k);
+  const mkPos = new Map();
   bySector.forEach((m, sec) => {
     const h = hp(sec); if (!h) return;
     const items = [...m.values()].sort((x, y) => order(x.key) - order(y.key));
@@ -316,6 +317,7 @@ function paintOverlay() {
       const ownM = mine(it.key), ck = ownM ? 'me' : it.key, ink = pal(ck)[1], bluff = it.key === 'bluff';
       const faded = it.key === 'me' && !own.heard.has(last);
       const dim = focus && !(it.key === focus || (focus === 'me' && ownM)), old = !focus && !ownM && S.turn - last >= 2;
+      if (!bluff) mkPos.set((ownM ? 'me' : it.key) + '|' + sec, [h.x + dx, h.y + dy, size]);
       const g = el('g', { class: `mk pm ${it.kind}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
       if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const rg = el('g', { transform: `translate(${at_.cx} ${at_.cy})` }, me), ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c }, rg); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); }
@@ -327,6 +329,125 @@ function paintOverlay() {
       });
     });
   });
+  if (S.routesOn) drawRouteArrows(liveSteps(focus, recent), mkPos, marks);
+}
+/* ---------------- routing overlay ----------------
+   Colored arrows join each player's known steps, from their marker in one sector to their marker in the next.
+   One step is a straight arrow; 2 or 3 sectors get a tag with the length; a teleport (or a restart) is a dotted
+   curve and turns nobody heard a dashed curve. Arrows on the same two sectors are pushed apart into lanes.
+   Older moves fade. */
+const cubeOf = (map, c, r) => { const z = r - (map.odd ? (c - (c & 1)) / 2 : (c + (c & 1)) / 2); return [c, -c - z, z]; };
+function hexDist(map, a, b) {
+  const p = parseId(a), q = parseId(b); if (!p || !q) return 0;
+  const A = cubeOf(map, p[0], p[1]), B = cubeOf(map, q[0], q[1]);
+  return Math.max(Math.abs(A[0] - B[0]), Math.abs(A[1] - B[1]), Math.abs(A[2] - B[2]));
+}
+/* a real route (my path, or anyone's at game over) as steps */
+function pathSteps(path) {
+  const out = [], p = (path || []).filter(x => x && parseId(x.pos));
+  for (let i = 1; i < p.length; i++) {
+    const a = p[i - 1], b = p[i], jump = ['teleport', 'reborn', 'clone'].includes(b.note);
+    out.push({ from: a.pos, to: b.pos, t0: a.turn, t: b.turn, kind: jump ? 'jump' : a.pos === b.pos ? 'stay' : 'move' });
+  }
+  return out;
+}
+/* what the table knows about everyone, as steps: my real route, and the others' announced positions */
+function liveSteps(focus, recent) {
+  const per = new Map();
+  S.log.forEach(e => {
+    if (!e.sector || !['noise', 'attack', 'reveal'].includes(e.kind)) return;
+    const k = playerKey(e); if (k === 'me') return;
+    if (!per.has(k)) per.set(k, new Map());
+    const m = per.get(k); if (!m.has(e.turn)) m.set(e.turn, new Set()); m.get(e.turn).add(e.sector);
+  });
+  const all = [{ key: 'me', steps: pathSteps(S.path) }];
+  per.forEach((m, k) => {
+    const turns = [...m.keys()].sort((x, y) => x - y), steps = [];
+    let prev = null;
+    for (const t of turns) {
+      const secs = [...m.get(t)];
+      if (secs.length !== 1) { prev = null; continue; }   // two noises in one turn (a Cat): no telling which is real
+      if (prev) {
+        const tele = S.log.some(x => x.kind === 'item' && x.text === 'teleport' && x.turn === t && playerKey(x) === k);
+        steps.push({ from: prev.sec, to: secs[0], t0: prev.t, t, kind: t - prev.t > 1 ? 'gap' : tele ? 'jump' : prev.sec === secs[0] ? 'stay' : 'move' });
+      }
+      prev = { sec: secs[0], t };
+    }
+    all.push({ key: k, steps });
+  });
+  return all.filter(r => (!focus || focus === r.key)).map(r => ({ key: r.key, steps: r.steps.filter(s => recent({ key: r.key, turn: s.t })) }));
+}
+function drawRouteArrows(routes, mkPos, marks) {
+  const map = T.map, g = el('g', { class: 'routes' }), now = S.turn, classic = svg.classList.contains('classic');
+  const at = (k, sec) => { const p = mkPos.get(k + '|' + sec); if (p) return p; const q = parseId(sec); if (!q) return null; const h = hexPos(map, q[0], q[1]); return [h.x, h.y, 0]; };
+  const fade = t => { const age = now - t; return age < 3 ? 1 : Math.max(0.28, 1 - (age - 2) * 0.18); };
+  const color = k => k === 'me' ? (classic ? '#151515' : '#f5f5f5') : pal(k)[0];
+  const arrows = [];
+  routes.forEach(r => {
+    const seen = new Map();
+    r.steps.forEach(s => {
+      const a = at(r.key, s.from), b = at(r.key, s.to); if (!a || !b) return;
+      if (s.kind === 'move') {   // repeated trips of the same player the same way are drawn once, at their newest turn
+        const id = s.from + '>' + s.to, old = seen.get(id); if (old) { old.t = Math.max(old.t, s.t); return; }
+        const it = { key: r.key, s, a, b, t: s.t, d: hexDist(map, s.from, s.to) }; seen.set(id, it); arrows.push(it);
+      } else arrows.push({ key: r.key, s, a, b, t: s.t });
+    });
+  });
+  // lanes: straight arrows on the same two sectors are spread so none sits on another
+  const groups = new Map();
+  arrows.filter(x => x.s.kind === 'move').forEach(x => { const id = [x.s.from, x.s.to].sort().join('|'); if (!groups.has(id)) groups.set(id, []); groups.get(id).push(x); });
+  groups.forEach(list => {
+    const [c1, c2] = list[0].s.from < list[0].s.to ? [list[0].a, list[0].b] : [list[0].b, list[0].a];
+    let dx = c2[0] - c1[0], dy = c2[1] - c1[1]; const L = Math.hypot(dx, dy) || 1; const nx = -dy / L, ny = dx / L;
+    const mx = (c1[0] + c2[0]) / 2, my = (c1[1] + c2[1]) / 2;
+    list.forEach(x => { x.perp = ((x.a[0] + x.b[0]) / 2 - mx) * nx + ((x.a[1] + x.b[1]) / 2 - my) * ny + (x.s.from < x.s.to ? 0.01 : -0.01); });
+    const sorted = list.slice().sort((p, q) => p.perp - q.perp), GAP = 5.2, want = sorted.map(x => x.perp);
+    for (let i = 1; i < want.length; i++) want[i] = Math.max(want[i], want[i - 1] + GAP);
+    const shift = (want.reduce((s, v) => s + v, 0) - sorted.reduce((s, x) => s + x.perp, 0)) / want.length;
+    sorted.forEach((x, i) => { const d = want[i] - shift - x.perp; x.off = [nx * d, ny * d]; });
+  });
+  const P = (x, y) => x.toFixed(1) + ' ' + y.toFixed(1);
+  arrows.sort((p, q) => p.t - q.t).forEach(x => {
+    const col = color(x.key), op = fade(x.t), grp = el('g', { class: 'rt' + (x.key === 'me' ? ' me' : ''), opacity: op.toFixed(2) }, g);
+    const W = 2.6, HL = 7, HW = 7.4;
+    if (x.s.kind === 'stay') {   // stayed or attacked without moving: a little circular arrow by the marker
+      const [cx, cy, sz] = x.a, r = (sz || 6) + 4.5, a0 = 3.5, a1 = 8.6, pts = [];
+      for (let i = 0; i <= 30; i++) { const an = a0 + (a1 - a0) * i / 30; pts.push([cx + r * Math.cos(an), cy + r * Math.sin(an)]); }
+      el('path', { d: 'M' + pts.slice(0, 26).map(p => P(p[0], p[1])).join(' L'), fill: 'none', stroke: col, 'stroke-width': 2.2, 'stroke-linecap': 'round' }, grp);
+      const tip = pts[30], bs = pts[25], ux = tip[0] - bs[0], uy = tip[1] - bs[1], l = Math.hypot(ux, uy) || 1, nx = -uy / l * 3.4, ny = ux / l * 3.4;
+      el('path', { d: `M${P(tip[0], tip[1])} L${P(bs[0] + nx, bs[1] + ny)} L${P(bs[0] - nx, bs[1] - ny)}Z`, fill: col }, grp);
+      return;
+    }
+    const off = x.off || [0, 0], a = [x.a[0] + off[0], x.a[1] + off[1]], b = [x.b[0] + off[0], x.b[1] + off[1]];
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy); if (L < 1) return;
+    const ux = dx / L, uy = dy / L, nx = -uy, ny = ux, t0 = (x.a[2] || 3) + 2.4, t1 = (x.b[2] || 3) + 2.4;
+    if (x.s.kind === 'move') {
+      let s0 = t0, s1 = t1; if (L - s0 - s1 < HL + 3) { const k = Math.max(0, (L - HL - 3) / (s0 + s1)); s0 *= k; s1 *= k; }
+      const sx = a[0] + ux * s0, sy = a[1] + uy * s0, tx = b[0] - ux * s1, ty = b[1] - uy * s1, bx = tx - ux * HL, by = ty - uy * HL;
+      el('path', { d: `M${P(sx + nx * W / 2, sy + ny * W / 2)} L${P(bx + nx * W / 2, by + ny * W / 2)} L${P(bx + nx * HW / 2, by + ny * HW / 2)} L${P(tx, ty)} L${P(bx - nx * HW / 2, by - ny * HW / 2)} L${P(bx - nx * W / 2, by - ny * W / 2)} L${P(sx - nx * W / 2, sy - ny * W / 2)}Z`, fill: col, stroke: col, 'stroke-width': 0.6, 'stroke-linejoin': 'round' }, grp);
+      if (x.d >= 2) routeTag(grp, (sx + bx) / 2 + nx * 7, (sy + by) / 2 + ny * 7, String(x.d), col, x.key);
+      return;
+    }
+    // a jump or unheard turns: a curve, bending to one side
+    const bend = x.s.kind === 'jump' ? 0.38 : 0.26, cxp = (a[0] + b[0]) / 2 + nx * bend * L, cyp = (a[1] + b[1]) / 2 + ny * bend * L, q = t => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cxp + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cyp + t * t * b[1]];
+    const pts = []; for (let i = 0; i <= 48; i++) pts.push(q(i / 48));
+    const acc = [0]; for (let i = 1; i < pts.length; i++) acc.push(acc[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const tot = acc[acc.length - 1], i0 = acc.findIndex(v => v >= t0), i1 = acc.reduce((m, v, i) => v <= tot - t1 ? i : m, 0), ib = acc.reduce((m, v, i) => v <= acc[i1] - HL ? i : m, 0);
+    if (i0 < 0 || ib <= i0) return;
+    el('path', { d: 'M' + pts.slice(i0, ib + 1).map(p => P(p[0], p[1])).join(' L'), fill: 'none', stroke: col, 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-dasharray': x.s.kind === 'jump' ? '0.1 4.6' : '5.5 4' }, grp);
+    const tip = pts[i1], bs = pts[ib], vx = tip[0] - bs[0], vy = tip[1] - bs[1], l = Math.hypot(vx, vy) || 1, hx = -vy / l * HW / 2, hy = vx / l * HW / 2;
+    el('path', { d: `M${P(tip[0], tip[1])} L${P(bs[0] + hx, bs[1] + hy)} L${P(bs[0] - hx, bs[1] - hy)}Z`, fill: col }, grp);
+    const mid = q(0.5);
+    if (x.s.kind === 'gap') routeTag(grp, mid[0], mid[1], t('T{a}–{b}', { a: x.s.t0, b: x.s.t }), col, x.key);
+    else el('path', { d: `M${P(mid[0], mid[1] - 5)} L${P(mid[0] + 1.4, mid[1] - 1.4)} L${P(mid[0] + 5, mid[1])} L${P(mid[0] + 1.4, mid[1] + 1.4)} L${P(mid[0], mid[1] + 5)} L${P(mid[0] - 1.4, mid[1] + 1.4)} L${P(mid[0] - 5, mid[1])} L${P(mid[0] - 1.4, mid[1] - 1.4)}Z`, fill: col }, grp);
+  });
+  marks.insertBefore(g, marks.firstChild);
+}
+/* a small rounded tag on an arrow: the number of sectors, or the unheard turns */
+function routeTag(parent, x, y, txt, col, key) {
+  const w = 5 + txt.length * 4.2, ink = key === 'me' ? '#111' : pal(key)[1];
+  el('rect', { x: (x - w / 2).toFixed(1), y: (y - 5.4).toFixed(1), width: w.toFixed(1), height: 10.8, rx: 5.4, fill: col }, parent);
+  const tx = el('text', { x: x.toFixed(1), y: (y + 0.4).toFixed(1), class: 'rtag', fill: ink }, parent); tx.textContent = txt;
 }
 /* game over: every player's real route, from the devices that played them (announcements and bluffs are left out) */
 function finalRoutes() {
@@ -339,7 +460,7 @@ function finalRoutes() {
 }
 const ROLE_BORDER = { human: '#2f7dff', alien: '#ff3b30' };
 function paintRoutes(routes, focus, hp, marks) {
-  const bySector = new Map();
+  const bySector = new Map(), rpos = new Map();
   routes.forEach(r => {
     r.path.forEach(p => { if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [] }); m.get(r.key).turns.push(p.turn); });
   });
@@ -349,11 +470,13 @@ function paintRoutes(routes, focus, hp, marks) {
     list.forEach((it, i) => {
       const [dx, dy] = sp[i], k = it.r.key, turns = [...new Set(it.turns)].sort((a, b) => b - a), dim = focus && focus !== k;
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
+      rpos.set(k + '|' + sec, [h.x + dx, h.y + dy, size]);
       const g = el('g', { class: 'mk pm route' + (k === 'me' ? ' mine' : '') + (dim ? ' dim' : ''), transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, k, size, { border: k === 'me' ? null : ROLE_BORDER[it.r.role] });
       const tx = el('text', { fill: pal(k)[1], y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
     });
   });
+  if (S.routesOn) drawRouteArrows(routes.filter(r => !focus || focus === r.key).map(r => ({ key: r.key, steps: pathSteps(r.path), age: true })), rpos, marks);
 }
 /* eliminated / escaped badge on a player's icon in the strip and the sheet */
 function outMark(k) {
@@ -663,6 +786,7 @@ const actions = {
   maps() { overlay(t('Map'), mapsHtml()); },
   ovclose() { const o = $('#overlay'); if (o) o.remove(); },
   revealview(b) { T.showAnn = b.dataset.v === 'ann'; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); paintOverlay(); },
+  routes() { S.routesOn = !S.routesOn; save(); paintOverlay(); const b = document.querySelector('[data-act=routes]'); if (b) b.setAttribute('aria-pressed', !!S.routesOn); toast(t(S.routesOn ? 'Routes shown' : 'Routes hidden')); },
   mkall(b) { S.mkAll = b.dataset.v === '1'; save(); render(); paintOverlay(); }
 };
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
@@ -742,6 +866,7 @@ function importDlg() {
 /* ---------------- panels ---------------- */
 function setTab(k) { S.tab = k; T.pick = null; save(); render(); paintCells(); hdr(); }
 function hdr() {
+  { const rb = document.querySelector('[data-act=routes]'); if (rb) rb.setAttribute('aria-pressed', !!S.routesOn); }
   $('#hd-turn').textContent = S.turn; $('#hd-pos').textContent = S.pos ? ('HA'.includes(at(T.map, S.pos)) ? t('Start') : label(S.pos)) : '—';
   const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.innerHTML = gico(roleIcon(), 20) + '<span>' + (S.role === 'alien' ? (S.fed ? t('Alien') + ' · ' + t('Fed') : t('Alien')) : t('Human')) + '</span>'; r.dataset.act = 'roledlg'; r.setAttribute('role', 'button'); r.tabIndex = 0; r.setAttribute('aria-label', t('Who am I?'));
   document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab));

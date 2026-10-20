@@ -711,3 +711,7 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 #map.classic .hex.P.closed.red{fill:#ed192e;stroke:#151515}#map.classic .hex.P.closed.green{fill:#37a950;stroke:#151515}
 .sheet td.c.pod{display:table-cell}.sheet td.c.pod.red{box-shadow:inset 3px 0 #ed192e}.sheet td.c.pod.green{box-shadow:inset 3px 0 #37a950}.sheet td.c.pod .gi{vertical-align:middle;margin-right:4px}
 .sheet td.c.pod{background:var(--bg2);border-radius:6px;text-align:center}
+
+/* routing overlay */
+.routes{pointer-events:none}.rtag{font:800 7px var(--font);text-anchor:middle;dominant-baseline:central}
+.zoom [data-act=routes][aria-pressed=true]{background:var(--amber);color:#1a1200;border-color:var(--amber)}

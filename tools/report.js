@@ -23,6 +23,7 @@ byLevel.forEach((gs, lvl) => {
     turns: avg(gs.map(g => g.turns)).toFixed(1),
     kills: avg(gs.map(g => g.kills)).toFixed(2),
     attacks: avg(gs.map(g => g.attacks)).toFixed(2),
+    alienHitRate: pct(avg(gs.map(g => g.alienAttacks ? g.humanKills / g.alienAttacks : 0))),
     alienMoveRate: pct(avg(aliens.map(s => s.changeRate))),
     humanMoveRate: pct(avg(humans.map(s => s.changeRate))),
     alienCycle: pct(avg(aliens.map(s => s.cycleRate))),

@@ -12,6 +12,7 @@ const PLAYERS = arg('players', '4,6').split(',').map(Number);
 const LEVELS = arg('levels', 'normal').split(',');
 const MAPS = arg('maps', '').split(',').filter(Boolean);
 const NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+const SKILL = arg('skill', '');   // JSON overrides per level, e.g. '{"hard":{"humanCal":0.6}}' (the tuning hook in bot.js)
 
 // everything about one finished game, from the dump the app exposes
 function summarize(d, n) {
@@ -28,16 +29,20 @@ function summarize(d, n) {
   });
   const kills = d.log.filter(e => e.kind === 'out' && String(e.text).startsWith('killed')).length;
   const attacks = d.log.filter(e => e.kind === 'attack').length;
+  // Alien attacks and how many of them killed a Human: the accuracy of the attack decision
+  const byId = Object.fromEntries(d.seats.map(s => [s.id, s]));
+  const alienAttacks = d.log.filter(e => e.kind === 'attack' && byId[e.by] && byId[e.by].role0 === 'alien').length;
+  const humanKills = d.log.filter(e => e.kind === 'out' && String(e.text).startsWith('killed|human')).length;
   const escapes = seats.filter(s => s.over === 'escaped').length;
   const res = d.result || {};
   return { n, map: d.map, mode: d.mode, players: n, turns: d.turn, winner: res.aliensWin ? 'alien' : 'human', reason: res.reason,
-    kills, attacks, escapes, seats };
+    kills, attacks, alienAttacks, humanKills, escapes, seats };
 }
 
 async function main() {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 900, height: 800 }, serviceWorkers: 'block' });
-  await ctx.addInitScript(() => { window.__botPace = 0; });
+  await ctx.addInitScript(skill => { window.__botPace = 0; if (skill) window.__skill = JSON.parse(skill); }, SKILL);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));

@@ -8,3 +8,16 @@
 
 Open question: attacks do not respond to noise, so the limit is probably the attack decision itself
 (an Alien only strikes when a Human is in its reach this turn), not the movement.
+
+## Round 3: Alien attack calibration (hard), sweep of humanCal (tools/sweep.sh)
+
+sim now records alienAttacks and humanKills, so alienHitRate = share of Alien attacks that kill a Human.
+
+| humanCal | alien win | attacks/game | alienHitRate |
+|---|---|---|---|
+| 0.35 (current) | 38.2% | 4.48 | 34.6% |
+| 0.70 | 47.6% | 7.70 | 42.4% |
+| 1.00 | 52.8% | 9.83 | 37.5% |
+
+Finding: humanCal changes how often Aliens attack, not how well they choose targets (hit rate stays 35-42%).
+It is a balance knob. Left at 0.35 until the target win rates are agreed.

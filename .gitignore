@@ -1,0 +1,3 @@
+# raw simulator output is large and regenerable (node tools/sim.js ...); reports and notes are kept
+tools/rounds/*.json
+tools/*.json

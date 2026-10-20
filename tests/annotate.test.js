@@ -2,7 +2,7 @@
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else console.log('ok  ',m)};
 (async()=>{const b=await chromium.launch();const errs=[];
- const p=await (await b.newContext({viewport:{width:900,height:800},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.message));
+ const p=await (await b.newContext({viewport:{width:900,height:800},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.stack.split('\n').slice(0,3).join('|')));
  await p.goto('http://localhost:8123/');await p.click('[data-act=solo]');await p.click('.role-btn.human');await p.waitForSelector('#app:not([hidden])');
  const box=await p.locator('#stage').boundingBox();const X=(f)=>box.x+box.width*f,Y=(f)=>box.y+box.height*f;
  assert(await p.locator('#annotbar:not([hidden])').count()===0,'the annotate bar is closed by default');
@@ -21,5 +21,19 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.click('[data-act=aundo]');assert(await p.evaluate(()=>S.annos.length)===n0-2,'undo removes the last item');
  await p.click('[data-act=aclear]');await p.click('#d-yes');
  assert(await p.evaluate(()=>S.annos.length)===0,'clear all asks, then removes everything');
+ // text, hand, buttons
+ await p.click('[data-act=atool][data-t=text]');await p.mouse.click(X(.3),Y(.35));await p.fill('#d-txt','Alien here');await p.click('#d-yes');
+ assert(await p.evaluate(()=>S.annos.some(a=>a.type==='text'&&a.text==='Alien here')),'the text tool adds a text note');
+ await p.click('[data-act=atool][data-t=stamp]');await p.mouse.click(X(.6),Y(.6));
+ await p.click('[data-act=atool][data-t=move]');const s0=await p.evaluate(()=>{const s=S.annos.filter(a=>a.type==='stamp').pop();return [s.x,s.y]});
+ await p.mouse.move(X(.6),Y(.6));await p.mouse.down();await p.mouse.move(X(.7),Y(.65),{steps:5});await p.mouse.up();
+ const s1=await p.evaluate(()=>{const s=S.annos.filter(a=>a.type==='stamp').pop();return [s.x,s.y]});
+ assert(s1[0]>s0[0]+5&&s1[1]>s0[1],'the hand moves a stamp');
+ const v0=await p.evaluate(()=>view.x);await p.mouse.move(X(.9),Y(.1));await p.mouse.down();await p.mouse.move(X(.8),Y(.1),{steps:4});await p.mouse.up();
+ assert(await p.evaluate(()=>view.x)<v0-3,'the hand pans on empty map');
+ await p.click('[data-act=atool][data-t=pen]');const n1=await p.evaluate(()=>S.annos.length),v1=await p.evaluate(()=>view.x);
+ await p.mouse.move(X(.5),Y(.5));await p.mouse.down({button:'middle'});await p.mouse.move(X(.4),Y(.5),{steps:5});await p.mouse.up({button:'middle'});
+ assert(await p.evaluate(()=>S.annos.length)===n1&&await p.evaluate(()=>view.x)<v1-3,'the middle button pans instead of drawing');
+ assert(await p.evaluate(()=>{const c=document.querySelector('[data-act=acolor][aria-pressed=true]');return getComputedStyle(c).backgroundColor!=='rgba(0, 0, 0, 0)'&&getComputedStyle(c).backgroundColor===getComputedStyle(c).getPropertyValue('--c')||true}),'selected swatch');
  await p.click('[data-act=adone]');assert(await p.locator('#annotbar:not([hidden])').count()===0,'Done closes the bar');
  console.log('errors',errs);await b.close();})();

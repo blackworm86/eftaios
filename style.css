@@ -739,8 +739,8 @@ dialog .charcard{justify-content:center;margin:10px 0}
 .atools{display:flex;gap:6px;flex-wrap:wrap}.atools button,.aopts button{min-height:38px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg2);color:var(--text);display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0 10px;font-size:13px}
 .atools button[aria-pressed=true],.aopts button[aria-pressed=true]{border-color:var(--amber);background:#ffb41f26}.atools .danger{color:#ff8a7a}.atools .done{margin-left:auto;background:var(--amber);color:#1a1200;border-color:var(--amber);font-weight:700}
 .aopts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.aopts small{color:var(--dim)}.aopts i{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
-.aopts .ac{width:34px;min-height:34px;padding:0;border-radius:50%;background:var(--c);border:2px solid #0b1222}.aopts .ac[aria-pressed=true]{outline:2.5px solid #fff;outline-offset:1px}
+.aopts button.ac,.aopts button.ac[aria-pressed=true]{width:34px;min-height:34px;padding:0;border-radius:50%;background:var(--c);border:2px solid #0b1222}.aopts button.ac[aria-pressed=true]{outline:3px solid #fff;outline-offset:2px}
 .aopts .as{width:38px;padding:0}
-#annos{pointer-events:none}.aline{stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;opacity:.95}.astamp .sglyph{fill:none;stroke:#111;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#annos{pointer-events:none}.atext{font:700 8px system-ui,sans-serif;paint-order:stroke;stroke:#0b1222;stroke-width:2.4px;stroke-linejoin:round}.aline{stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;opacity:.95}.astamp .sglyph{fill:none;stroke:#111;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .stage:has(.annotbar:not([hidden])) #map{cursor:crosshair}
 .zoom [data-act=annot][aria-pressed=true]{background:var(--amber);color:#1a1200;border-color:var(--amber)}

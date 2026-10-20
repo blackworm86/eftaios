@@ -380,7 +380,7 @@ const Bot = (() => {
     st.adr = false;
     const ty = at(T.map, st.pos), here = myCell();
     // escape hatch
-    if (human && '1234'.includes(ty)) {
+    if (human && '1234'.includes(ty) && choice && hatchOpen(+ty)) {   // a pod card is drawn only on entering an open pod
       const n = +ty;
       if (ctx.draw('hatch', adv && st.char === 'Engineer') === 'green') { ctx.closeHatch(n); say({ kind: 'hatch', sector: st.pos, n, ok: 1 }); st.over = 'escaped'; st.outSent = true; ctx.out(idx, 'escaped'); return; }
       ctx.closeHatch(n); say({ kind: 'hatch', sector: st.pos, n, ok: 0 });

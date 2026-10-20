@@ -673,7 +673,7 @@ function focusOn(id) {
    The annotate bar stays open until you press Done. Stamp: tap to place as many as you like. Pen: free lines.
    Line: a straight line. Eraser: tap or drag over a stamp or line. Clear all removes everything. */
 const ANNO_COLORS = ['#ff3b30', '#ffb41f', '#3ddc84', '#4aa8ff', '#e8ecf5', '#c77dff'];
-const ANNO_TOOLS = [['stamp', 'Stamp', 'M12 3l2.6 5.6 6 .7-4.4 4.1 1.2 6L12 16.4 6.6 19.4l1.2-6L3.4 9.3l6-.7z'], ['pen', 'Pen', 'M4 20c3-1 5-4 6-7 1-3 3-5 6-6M14 5l5 5'], ['line', 'Line', 'M5 19L19 5M4 20h2v-2M18 6h2V4'], ['erase', 'Eraser', 'M4 16l8-8 6 6-5 5H8zM14 19h6']];
+const ANNO_TOOLS = [['stamp', 'Stamp', 'M12 3l2.6 5.6 6 .7-4.4 4.1 1.2 6L12 16.4 6.6 19.4l1.2-6L3.4 9.3l6-.7z'], ['pen', 'Pen', 'M4 20c3-1 5-4 6-7 1-3 3-5 6-6M14 5l5 5'], ['line', 'Line', 'M5 19L19 5M4 20h2v-2M18 6h2V4'], ['text', 'Text', 'M5 6V4h14v2M12 4v16M9 20h6'], ['move', 'Hand', 'M8 13V6.5a1.5 1.5 0 013 0V11m0-5.5a1.5 1.5 0 013 0V11m0-3.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-1a6 6 0 01-4.6-2.2L4 15.500a1.500 1.500 0 012.300-1.900L8 15'], ['erase', 'Eraser', 'M4 16l8-8 6 6-5 5H8zM14 19h6']];
 const annoSvg = (d, s = 20) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 function renderAnnot() {
   const bar = $('#annotbar'); if (!bar) return; const a = T.annot;
@@ -681,29 +681,55 @@ function renderAnnot() {
   if (!a) return;
   bar.innerHTML = `<div class="atools" role="group" aria-label="${t('Tools')}">${ANNO_TOOLS.map(([k, n, d]) => `<button data-act="atool" data-t="${k}" aria-pressed="${a.tool === k}" aria-label="${t(n)}">${annoSvg(d, 20)}<span>${t(n)}</span></button>`).join('')}
       <button data-act="aundo" aria-label="${t('Undo')}">${ico('undo', 18)}</button><button class="danger" data-act="aclear" aria-label="${t('Clear all')}">${ico('cross', 18)}</button><button class="done" data-act="adone">${t('Done')}</button></div>
-    <div class="aopts">${a.tool === 'stamp' ? STICKERS.map(s => `<button class="as" data-act="astamp" data-s="${s}" aria-pressed="${a.icon === s}" aria-label="${s}">${stickerIco(s, 22)}</button>`).join('') + '<i></i>' : ''}${a.tool === 'erase' ? `<small>${t('Tap or drag over a stamp or a line to erase it')}</small>` : ANNO_COLORS.map(c => `<button class="ac" data-act="acolor" data-c="${c}" style="--c:${c}" aria-pressed="${a.color === c}" aria-label="${c}"></button>`).join('')}</div>`;
+    <div class="aopts">${a.tool === 'stamp' ? STICKERS.map(s => `<button class="as" data-act="astamp" data-s="${s}" aria-pressed="${a.icon === s}" aria-label="${s}">${stickerIco(s, 22)}</button>`).join('') + '<i></i>' : ''}${a.tool === 'erase' ? `<small>${t('Tap or drag over a stamp or a line to erase it')}</small>` : a.tool === 'move' ? `<small>${t('Drag a stamp, text or line to move it. Drag the empty map to pan')}</small>` : ANNO_COLORS.map(c => `<button class="ac" data-act="acolor" data-c="${c}" style="--c:${c}" aria-pressed="${a.color === c}" aria-label="${c}"></button>`).join('')}</div>`;
 }
 const mapPt = e => { const r = stageRect(); return [(e.clientX - r.left - view.x) / view.k, (e.clientY - r.top - view.y) / view.k]; };
 function paintAnnos() {
   const g = $('#annos'); if (!g) return; g.textContent = '';
   (S.annos || []).forEach(n => annoShape(g, n));
-  if (T.stroke && T.stroke.tool !== 'erase') annoShape(g, { type: 'line', color: T.annot ? T.annot.color : '#fff', pts: T.stroke.pts, prev: true });
+  if (T.stroke && T.stroke.pts) annoShape(g, { type: 'line', color: T.annot ? T.annot.color : '#fff', pts: T.stroke.pts, prev: true });
 }
 function annoShape(g, n) {
   if (n.type === 'stamp') {
     const s = el('g', { class: 'astamp', transform: `translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})` }, g);
     el('rect', { x: -7, y: -7, width: 14, height: 14, rx: 3.4, fill: n.color }, s);
     el('path', { d: STICKER_PATH[stickerKey(n.icon)], class: 'sglyph', transform: 'translate(-5.4 -5.4) scale(.45)' }, s);
+  } else if (n.type === 'text') {
+    const x = el('text', { x: n.x.toFixed(1), y: n.y.toFixed(1), class: 'atext', fill: n.color, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g); x.textContent = n.text;
   } else {
     el('path', { d: 'M' + n.pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L'), class: 'aline', stroke: n.color, fill: 'none' }, g);
   }
 }
 function segDist(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1, t_ = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)); return Math.hypot(p[0] - a[0] - t_ * dx, p[1] - a[1] - t_ * dy); }
+function annoNear(n, p, R_) {
+  if (n.type === 'stamp') return Math.hypot(n.x - p[0], n.y - p[1]) < 9 + R_ / 2;
+  if (n.type === 'text') return Math.abs(n.x - p[0]) < n.text.length * 2.6 + 3 && Math.abs(n.y - p[1]) < 7;
+  return n.pts.some((q, j) => j && segDist(p, n.pts[j - 1], q) < R_) || (n.pts.length === 1 && Math.hypot(n.pts[0][0] - p[0], n.pts[0][1] - p[1]) < R_);
+}
+function annoHit(p) {
+  const R_ = 6 / Math.max(0.6, view.k / (fitK || 1)), list = S.annos || [];
+  for (let i = list.length - 1; i >= 0; i--) if (list[i].type !== 'line' && annoNear(list[i], p, R_)) return i;
+  for (let i = list.length - 1; i >= 0; i--) if (list[i].type === 'line' && annoNear(list[i], p, R_)) return i;
+  return -1;
+}
+function textDlg(title, init, ok) {
+  dlg.innerHTML = `<h2>${esc(title)}</h2><input id="d-txt" maxlength="40" value="${esc(init || '')}" style="width:100%;box-sizing:border-box;margin:8px 0"><div class="row"><button class="btn" id="d-no">${t('Cancel')}</button><button class="btn primary" id="d-yes">OK</button></div>`;
+  dlg.showModal(); const inp = $('#d-txt'); inp.focus(); inp.select();
+  const go = () => { const v = inp.value.trim(); closeDlg(); ok(v); };
+  $('#d-no').onclick = closeDlg; $('#d-yes').onclick = go; inp.onkeydown = ev => { if (ev.key === 'Enter') go(); };
+}
+function annoText(e) {
+  const p = mapPt(e), list = S.annos = S.annos || [], i = annoHit(p), old = i >= 0 && list[i].type === 'text' ? list[i] : null, color = T.annot.color;
+  textDlg(t('Text note'), old ? old.text : '', v => {
+    if (old) { if (v) old.text = v; else list.splice(list.indexOf(old), 1); }
+    else if (v) list.push({ type: 'text', text: v, color, x: +p[0].toFixed(1), y: +p[1].toFixed(1) });
+    save(); paintAnnos();
+  });
+}
 function annoErase(p, all) {
   const R_ = 8 / Math.max(0.6, view.k / (fitK || 1)), list = S.annos || []; let hit = false;
   for (let i = list.length - 1; i >= 0; i--) {
-    const n = list[i], near = n.type === 'stamp' ? Math.hypot(n.x - p[0], n.y - p[1]) < 9 + R_ / 2 : n.pts.some((q, j) => j && segDist(p, n.pts[j - 1], q) < R_) || (n.pts.length === 1 && Math.hypot(n.pts[0][0] - p[0], n.pts[0][1] - p[1]) < R_);
-    if (near) { list.splice(i, 1); hit = true; if (!all) break; }
+    if (annoNear(list[i], p, R_)) { list.splice(i, 1); hit = true; if (!all) break; }
   }
   const notes = S.notes || [];
   for (let i = notes.length - 1; i >= 0; i--) { const q = parseId(notes[i].sector), h = q && hexPos(T.map, q[0], q[1]); if (h && Math.hypot(h.x - 11 - p[0], h.y - 11 - p[1]) < 10) { notes.splice(i, 1); hit = true; if (!all) break; } }
@@ -719,12 +745,18 @@ function annoStart(e) {
 function annoMove(e) {
   const p = mapPt(e), s = T.stroke;
   if (s.tool === 'erase') { annoErase(p, true); return; }
+  if (s.tool === 'move') {
+    const n = S.annos[s.idx], dx = p[0] - s.last[0], dy = p[1] - s.last[1]; s.last = p; if (!n) return;
+    if (n.pts) n.pts = n.pts.map(q => [+(q[0] + dx).toFixed(1), +(q[1] + dy).toFixed(1)]); else { n.x = +(n.x + dx).toFixed(1); n.y = +(n.y + dy).toFixed(1); }
+    s.did = true; paintAnnos(); return;
+  }
   if (s.tool === 'line') s.pts = [s.start, p];
   else { const l = s.pts[s.pts.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) > 2.2) s.pts.push(p); }
   paintAnnos();
 }
 function annoEnd() {
   const s = T.stroke; T.stroke = null; if (!s) return;
+  if (s.tool === 'move') { if (s.did) save(); paintAnnos(); return; }
   if (s.tool !== 'erase') {
     const pts = s.pts.map(p => [+p[0].toFixed(1), +p[1].toFixed(1)]), len = pts.reduce((m, p, i) => i ? m + Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0, 0);
     if (len > 5) { (S.annos = S.annos || []).push({ type: 'line', color: T.annot.color, pts: pts.length > 160 ? pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1) : pts }); save(); }
@@ -751,9 +783,15 @@ const onMapUi = e => !!(e.target.closest && e.target.closest('button, .mkbar, .z
 stage.addEventListener('pointerdown', e => {
   if (onMapUi(e)) return;
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (T.annot && ptrs.size === 1 && ['pen', 'line', 'erase'].includes(T.annot.tool)) { annoStart(e); drag = null; return; }
+  const lmb = e.pointerType !== 'mouse' || e.button === 0;   // the middle and right mouse buttons always pan
+  if (!lmb) e.preventDefault();
+  if (T.annot && lmb && ptrs.size === 1 && ['pen', 'line', 'erase'].includes(T.annot.tool)) { annoStart(e); drag = null; return; }
+  if (T.annot && lmb && ptrs.size === 1 && T.annot.tool === 'move') {
+    const p = mapPt(e), idx = annoHit(p);
+    if (idx >= 0) { try { stage.setPointerCapture(e.pointerId); } catch (_) { /* noop */ } T.stroke = { tool: 'move', idx, last: p }; drag = null; return; }
+  }
   if (ptrs.size === 2 && T.stroke) { T.stroke = null; paintAnnos(); }
-  if (ptrs.size === 1) { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, target: e.target }; moved = false; }
+  if (ptrs.size === 1) { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, target: e.target, lmb }; moved = false; }
   else if (ptrs.size === 2) {
     const [a, b] = [...ptrs.values()], r = stageRect();
     pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k, vx: view.x, vy: view.y, cx: (a.x + b.x) / 2 - r.left, cy: (a.y + b.y) / 2 - r.top }; moved = true;
@@ -772,10 +810,11 @@ stage.addEventListener('pointermove', e => {
     if (moved) { view.x = drag.vx + dx; view.y = drag.vy + dy; applyView(); }
   }
 });
+stage.addEventListener('contextmenu', e => { if (T.annot) e.preventDefault(); });
 const endPtr = e => {
   if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId);
   if (T.stroke) { if (e.type === 'pointerup' && ptrs.size === 0) annoEnd(e); else { T.stroke = null; paintAnnos(); } }
-  if (e.type === 'pointerup' && ptrs.size === 0 && !moved && drag) { if (T.annot) { if (T.annot.tool === 'stamp') annoStamp(e); } else { const g = drag.target.closest && drag.target.closest('[data-id]'); if (g) onCell(g.dataset.id); } }
+  if (e.type === 'pointerup' && ptrs.size === 0 && !moved && drag) { if (T.annot) { if (drag.lmb) { if (T.annot.tool === 'stamp') annoStamp(e); else if (T.annot.tool === 'text') annoText(e); } } else { const g = drag.target.closest && drag.target.closest('[data-id]'); if (g) onCell(g.dataset.id); } }
   if (ptrs.size === 0) { drag = null; pinch0 = null; }
 };
 stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);

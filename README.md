@@ -26,7 +26,7 @@ Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 0
 
 **Turns button:** cycles 1, 3, 5, 7 and all turns: it shows the last N known steps of every player, yours included, and the route arrows follow it. Following a player shows only them, centered in each sector. At game over the arrows are solid.
 
-**Stamps and drawings:** the pencil button opens a bar that stays open until Done: stamps you can place one after another, a pen and a straight line in six colors, an eraser (tap or drag), undo and clear all.
+**Stamps and drawings:** the pencil button opens a bar that stays open until Done: stamps you can place one after another, a pen and a straight line in six colors, text notes, a hand to move stamps, text and lines (drag the empty map to pan), an eraser (tap or drag); drawing uses the left button only, the middle and right buttons pan, undo and clear all.
 
 **Routes:** the route button on the map draws colored arrows between each player's known steps: straight for a move (a curve when the sectors are not in a straight row, so it never runs along an edge); dotted curves for a teleport and dashed curves for turns nobody heard. Arrows on the same two sectors run side by side, older moves fade, and following a player shows only theirs.
 

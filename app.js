@@ -337,6 +337,30 @@ function paintOverlay() {
    curve and turns nobody heard a dashed curve. Arrows on the same two sectors are pushed apart into lanes.
    Older moves fade. */
 const cubeOf = (map, c, r) => { const z = r - (map.odd ? (c - (c & 1)) / 2 : (c + (c & 1)) / 2); return [c, -c - z, z]; };
+/* the sector type under a point of the map (null off the map) */
+function typeAtPoint(map, x, y) {
+  const c0 = Math.round((x - HEX) / (1.5 * HEX)); let best = null, bd = 1e9;
+  for (let c = c0 - 1; c <= c0 + 1; c++) {
+    const r0 = Math.floor((y - (lower(map, c) ? Math.sqrt(3) * HEX / 2 : 0)) / (Math.sqrt(3) * HEX));
+    for (let r = r0 - 1; r <= r0 + 1; r++) {
+      if (c < 0 || r < 0 || c >= map.cols || r >= map.rows) continue;
+      const h = hexPos(map, c, r), d = Math.hypot(h.x - x, h.y - y); if (d < bd) { bd = d; best = map.grid[r][c]; }
+    }
+  }
+  return best;
+}
+/* which way a bent arrow between a and b should curve: the side that crosses no empty space or start sector (+1 or -1 relative to its direction) */
+function curveSide(map, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, bend = 0.3, bad = [0, 0];
+  [1, -1].forEach((s, k) => {
+    const cx = (a[0] + b[0]) / 2 + nx * bend * s * L, cy = (a[1] + b[1]) / 2 + ny * bend * s * L;
+    for (let i = 3; i <= 17; i++) {
+      const t = i / 20, px = (1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cx + t * t * b[0], py = (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cy + t * t * b[1];
+      const ty = typeAtPoint(map, px, py); if (ty === 'x' || ty === 'H' || ty === 'A') bad[k]++;
+    }
+  });
+  return bad[0] <= bad[1] ? 1 : -1;
+}
 /* is the line between two sectors a straight row of sectors (so it crosses their centres, not an edge)? */
 function straightMove(map, a, b) {
   const p = parseId(a), q = parseId(b); if (!p || !q) return true;
@@ -434,7 +458,7 @@ function drawRouteArrows(routes, mkPos, marks) {
       return;
     }
     // a jump, unheard turns, or a move that is not in a straight row of sectors: a curve (a straight line there would run along the edge between two sectors)
-    const side = x.s.from < x.s.to ? 1 : -1, bend = x.s.kind === 'jump' ? 0.38 : x.s.kind === 'gap' ? 0.26 : 0.3 * side, cxp = (a[0] + b[0]) / 2 + nx * bend * L, cyp = (a[1] + b[1]) / 2 + ny * bend * L, q = t => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cxp + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cyp + t * t * b[1]];
+    const side = x.s.kind === 'move' ? curveSide(map, a, b) * (x.s.from < x.s.to ? 1 : -1) : 1, bend = x.s.kind === 'jump' ? 0.38 : x.s.kind === 'gap' ? 0.26 : 0.3 * side, cxp = (a[0] + b[0]) / 2 + nx * bend * L, cyp = (a[1] + b[1]) / 2 + ny * bend * L, q = t => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cxp + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cyp + t * t * b[1]];
     const pts = []; for (let i = 0; i <= 48; i++) pts.push(q(i / 48));
     const acc = [0]; for (let i = 1; i < pts.length; i++) acc.push(acc[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     const tot = acc[acc.length - 1], i0 = acc.findIndex(v => v >= t0), i1 = acc.reduce((m, v, i) => v <= tot - t1 ? i : m, 0), ib = acc.reduce((m, v, i) => v <= acc[i1] - HL ? i : m, 0);

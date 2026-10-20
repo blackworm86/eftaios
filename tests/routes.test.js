@@ -18,6 +18,13 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  // back and forth: two arrows on the same two sectors, pushed apart
  const bf=await p.evaluate(()=>{const ps=[...document.querySelectorAll('#marks .routes .rt path')].map(x=>x.getAttribute('d')).filter(Boolean);return ps.length});
  assert(bf>=5,'back-and-forth and shared-route arrows are all drawn');
+ // a bent arrow never crosses empty space or a start sector (every 2-step move with a walkable sector between, on Galilei)
+ const crossed=await p.evaluate(()=>{const m=T.maps.find(x=>x.id==='galilei');T.map=m;const cells=[];for(let r=0;r<m.rows;r++)for(let c=0;c<m.cols;c++)if('.s'.includes(m.grid[r][c]))cells.push(cid(c,r));let n=0,bad=0;
+  for(const a of cells)for(const b of cells){if(!(a<b)||hexDist(m,a,b)!==2||straightMove(m,a,b))continue;if(![...reachable(m,a,1,'alien').keys()].some(k=>hexDist(m,k,b)===1))continue;n++;
+   const pa=parseId(a),pb=parseId(b),ha=hexPos(m,pa[0],pa[1]),hb=hexPos(m,pb[0],pb[1]),s=curveSide(m,[ha.x,ha.y],[hb.x,hb.y]),dx=hb.x-ha.x,dy=hb.y-ha.y,L=Math.hypot(dx,dy),cx=(ha.x+hb.x)/2-dy/L*.3*s*L,cy=(ha.y+hb.y)/2+dx/L*.3*s*L;
+   for(let i=3;i<=17;i++){const q=i/20,px=(1-q)*(1-q)*ha.x+2*(1-q)*q*cx+q*q*hb.x,py=(1-q)*(1-q)*ha.y+2*(1-q)*q*cy+q*q*hb.y,ty=typeAtPoint(m,px,py);if(ty==='x'||ty==='H'||ty==='A'){bad++;break}}}
+  return {n,bad}});
+ assert(crossed.n>100&&crossed.bad===0,'a bent arrow never crosses empty space ('+crossed.n+' moves checked)');
  // pick one player
  await p.evaluate(()=>follow('n:fay'));
  assert(await p.evaluate(()=>document.querySelectorAll('#marks .routes .rt').length)===2,'following a player shows only their arrows');

@@ -186,6 +186,8 @@ const Online = (() => {
   }
 
   const api = {
+    /* host only: the bots' real state, for the saved log */
+    dump() { if (!HD) return null; return { decksLeft: { sector: HD.decks.sector.draw.length, hatch: HD.decks.hatch.draw.length }, bots: Object.values(HD.bots).map(b => ({ id: b.id, name: b.name, level: b.level, role: b.state.role, char: b.state.char || '', reborn: !!b.state.reborn, over: b.state.over || null, items: b.state.items, path: b.state.path })) }; },
     attach() {
       if (!Sync.code || gen === Sync.gen) return; gen = Sync.gen;
       Sync.watchChild(`secret/${Sync.uid}/inbox`, (v, key) => {

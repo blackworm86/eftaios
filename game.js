@@ -216,6 +216,7 @@ Object.assign(actions, {
   quiet() { announce({ say: t('Silent Sector'), tone: 'silent', logged: say('secure', 'silence') }); },   // a Secure sector: public, but different from a Silence card
   drawcard() { drawSector(); },
   hatchdraw() { digitalHatch(); },
+  savelog() { saveGameLog(); },
   attack() { commit(); if (digital()) runAttack(false); else { S.res = { stage: 'attack' }; afterChange(); } },
   attackDone(b) {
     commit(); const k = b.dataset.k; say('', 'attack', S.pos);
@@ -358,6 +359,13 @@ function routesNote() {
   const ps = tablePlayers(), mia = Object.entries(ps).filter(([u, p]) => u !== Sync.uid && !p.route).length;
   return mia ? `<p class="dim hintline" role="status">${t('Waiting for the routes of {n} players…', { n: mia })}</p>` : '';
 }
+/* a file with the whole game (routes, roles, log, decks) to study how the bots played */
+function saveGameLog() {
+  const hot = S.hot, base = { app: 'eftaios', format: 1, savedAt: new Date().toISOString(), mode: S.mode, map: T.map && T.map.id, mapRows: T.map && T.map.grid.map(r => (Array.isArray(r) ? r.join('') : r)), oddColumnsLower: T.map && T.map.odd, turn: S.turn };
+  const data = hot ? Object.assign(base, Hot.dump()) : Object.assign(base, { result: Sync.settings && Sync.settings.result, hatches: S.hatches, log: S.log,
+    players: Object.entries(Sync.players || {}).map(([u, p]) => ({ id: u, name: p.name, role: p.role, char: p.char, out: p.out || null, conv: !!p.conv, route: p.uid === Sync.uid || u === Sync.uid ? S.path : decodeRoute(p.route) })), host: Online.dump && Online.dump() });
+  saveMapFile('eftaios-game-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'), JSON.stringify(data), 'Game log saved to your downloads');
+}
 function globalOverPanel() {
   const r = (S.hot ? Hot.result() : Sync.settings.result) || {}, esc_ = r.escaped || [], ps = tablePlayers();
   const why = { time: 'Time is up: 40 turns have been played.', escape: 'The last Human has escaped.', eliminated: 'The last Human was eliminated.' }[r.reason] || '';
@@ -370,7 +378,7 @@ function globalOverPanel() {
     <p class="dim">${t(why)}</p>${esc_.length ? `<p>${t('Humans who escaped: {n}', { n: esc_.map(esc).join(', ') })}</p>` : ''}
     ${routesNote()}
     <div class="seg revseg" role="radiogroup" aria-label="${t('Map')}"><button role="radio" data-act="revealview" data-v="real" aria-checked="${!T.showAnn}">${t('Real routes')}</button><button role="radio" data-act="revealview" data-v="ann" aria-checked="${!!T.showAnn}">${t('Announcements')}</button></div>
-    <ul class="plist rev">${rows}</ul><button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`;
+    <ul class="plist rev">${rows}</ul><button class="btn big wide" data-act="savelog">${t('Save game log')}</button><button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`;
 }
 
 const catNote = () => S.cat ? `<p class="say alert"><b>${t('Cat is ready: two noises when you draw')}</b></p>` : '';

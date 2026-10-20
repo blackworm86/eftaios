@@ -45,3 +45,5 @@ Tests: serve the folder on port 8123 and run `node tests/lobby.test.js`, `tests/
 **GitHub Pages**: *Settings → Pages → Source: GitHub Actions*. `.github/workflows/pages.yml` publishes on every push.
 
 **Firebase** (Realtime Database): enable *Authentication → Anonymous*, create the database, put the web config in `firebase-config.js`, publish `database.rules.json` (Realtime Database → Rules), and add `<user>.github.io` under *Authentication → Settings → Authorized domains*. The rules must be re-published whenever `database.rules.json` changes.
+
+**Save game log:** the game-over screen has a "Save game log" button that downloads a JSON file with every player's real route, roles, items, the full log, the map and the result (online: the host's file also includes the bots' real state), to study how the bots played.

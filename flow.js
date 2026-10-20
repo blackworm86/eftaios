@@ -312,7 +312,7 @@ Sync.on({
   entry(e) {
     if (!e || !e.id || S.log.some(x => x.id === e.id)) return;
     S.log.push({ id: e.id, by: e.by || '', turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });
-    S.log.sort((a, b) => b.at - a.at); save(); if (S.stage === 'game') { paintOverlay(); if (S.tab === 'table') render(); }
+    S.log.sort((a, b) => b.at - a.at); save(); if (S.stage === 'game') { paintOverlay(); if (S.tab === 'table' || S.tab === 'play') render(); if (window.onPublicEntry) onPublicEntry(S.log.find(x => x.id === e.id)); }
   },
   hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.stage === 'game') afterChange(); }
 });

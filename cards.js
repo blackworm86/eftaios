@@ -54,7 +54,7 @@ function resolveHit(st, mode, turn) {
   if ('1234'.includes(at(map, st.pos))) return { immune: 1 };   // a damaged Escape Pod: nobody can attack there
   const ab = abilOf(st, mode);
   if (st.role === 'alien' && ab === 'Brute Alien') return { reveal: 1, role: st.role, char: st.char };
-  const info = { role: st.role, char: st.char || '' };
+  const info = { role: st.role, char: st.reborn ? '' : (st.char || '') };
   if (st.role === 'human') {
     const has = k => (st.items || []).includes(k);
     if (has('defense')) { st.items.splice(st.items.indexOf('defense'), 1); return Object.assign({ def: 1 }, info); }
@@ -62,7 +62,7 @@ function resolveHit(st, mode, turn) {
       st.items = []; st.pos = find(map, 'H'); st.path = (st.path || []).concat([{ turn, pos: st.pos, note: 'clone' }]);
       return Object.assign({ clone: 1 }, info);
     }
-    st.role = 'alien'; st.fed = false; st.reborn = true; st.items = []; st.char = ''; st.pos = find(map, 'A'); st.path = (st.path || []).concat([{ turn, pos: st.pos, note: 'reborn' }]);
+    st.role = 'alien'; st.fed = false; st.reborn = true; st.items = []; st.pos = find(map, 'A'); st.path = (st.path || []).concat([{ turn, pos: st.pos, note: 'reborn' }]);
     return Object.assign({ killed: 1, conv: 1 }, info);
   }
   st.over = 'dead';

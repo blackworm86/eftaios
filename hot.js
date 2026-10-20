@@ -4,7 +4,7 @@
    Between turns a hand-over screen hides everything until the next player taps their name. */
 const Hot = (() => {
   const KEY = 'eftaios.hot';
-  const PRIV = ['role', 'char', 'pos', 'path', 'fed', 'adr', 'phase', 'res', 'over', 'items', 'reborn', 'ab', 'cat', 'undo', 'sus', 'shapes', 'mkAll', 'outSent', 'tab', 'name', 'track', 'marks', 'notes', 'extraPlayers'];
+  const PRIV = ['role', 'char', 'pos', 'path', 'fed', 'adr', 'phase', 'res', 'over', 'items', 'reborn', 'ab', 'cat', 'undo', 'sus', 'shapes', 'mkN', 'outSent', 'tab', 'name', 'track', 'marks', 'notes', 'extraPlayers'];
   let H = null;
   const load = () => { try { H = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (_) { H = null; } return H; };
   const store = () => { try { localStorage.setItem(KEY, JSON.stringify(H)); } catch (_) { /* full */ } };
@@ -24,7 +24,7 @@ const Hot = (() => {
 
   function out(i, why) {
     const st = seat(i).state;
-    log({ by: seat(i).id, who: seat(i).name, kind: 'out', text: (why === 'dead' ? 'killed' : why) + '|' + st.role + '|' + (st.char || '') });
+    log({ by: seat(i).id, who: seat(i).name, kind: 'out', text: (why === 'dead' ? 'killed' : why) + '|' + st.role + '|' + (st.reborn ? '' : st.char || '') });
     H.last = why === 'escaped' ? 'escaped' : 'lost';
   }
   function evaluate() {
@@ -52,7 +52,7 @@ const Hot = (() => {
     if (!s.seen) { s.seen = true; msgs.push(`<p>${t('Your secret role')}:</p>${roleHtml()}`); }
     (s.notices || []).forEach(m => msgs.push(`<p>${esc(m)}</p>`)); s.notices = [];
     const since = H.log.filter(e => e.at > (s.seenAt || 0) && e.by && e.by !== s.id && RECAP.includes(e.kind)).slice(0, 14).reverse();
-    if (s.seenAt && since.length) msgs.push(`<p class="dim">${t('Since your last turn')}:</p><ul class="recap">${since.map(e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}</li>`).join('')}</ul>`);
+    if (s.seenAt && since.length) msgs.push(`<p class="dim">${t('Since your last turn')}:</p><ul class="recap">${since.map(e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</li>`).join('')}</ul>`);
     s.seenAt = Date.now();
     store();
     if (msgs.length) alertHtml(s.name, msgs.join(''));
@@ -149,7 +149,7 @@ const Hot = (() => {
         decks: { sector: deckNew(SECTOR_DECK), hatch: deckNew(HATCH_DECK) }, seats: [] };
       names.forEach((name, i) => {
         const { role, char } = deal[i], pos = startSector(map, role, char, mode);
-        H.seats.push({ id: 'h' + i, name, bot: (bots && bots[i]) || undefined, role0: role, seen: false, notices: [], state: { name, role, char, pos, path: [{ turn: 0, pos }], fed: false, adr: false, phase: 'move', res: null, over: null, items: [], undo: null, sus: {}, shapes: {}, mkAll: false, outSent: false, tab: 'play', track: track === 'manual' ? 'manual' : 'auto' } });
+        H.seats.push({ id: 'h' + i, name, bot: (bots && bots[i]) || undefined, role0: role, seen: false, notices: [], state: { name, role, char, pos, path: [{ turn: 0, pos }], fed: false, adr: false, phase: 'move', res: null, over: null, items: [], undo: null, sus: {}, shapes: {}, mkN: 5, outSent: false, tab: 'play', track: track === 'manual' ? 'manual' : 'auto' } });
       });
       T.map = map; S = Object.assign(fresh(), { customMaps: keep });
       S.log = H.log; S.hatches = H.hatches;   // bots read hatches and the log before the first person's turn

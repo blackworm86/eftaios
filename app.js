@@ -17,7 +17,7 @@ const parseId = s => { const m = /^([A-Za-z])\s*0?(\d{1,2})$/.exec(String(s).tri
 
 /* ---------------- state ---------------- */
 const fresh = () => ({
-  stage: 'welcome', ready: false, items: [], undo: null, sus: {}, shapes: {}, mkAll: false, track: 'auto', marks: [], notes: [], char: '', online: false, outSent: false, revealed: false, routeSent: false, room: null, mapId: null, mode: 'ultimate', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
+  stage: 'welcome', ready: false, items: [], undo: null, sus: {}, shapes: {}, mkN: 5, track: 'auto', marks: [], notes: [], char: '', online: false, outSent: false, revealed: false, routeSent: false, room: null, mapId: null, mode: 'ultimate', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
   phase: 'move', res: null, over: null, path: [], log: [],
   hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: [], reborn: false, ab: {}, cat: false
 });
@@ -168,7 +168,8 @@ function paintCells() {
    black = me, yellow = not decided, blue = suspected Human, red = suspected Alien.
    My own steps: full = heard (noise in the sector I reached), faded = silent or noise elsewhere,
    dashed border = a bluff, joined to where I really was by a dashed line. */
-const MK_RECENT = 5; // turns of other players' markers shown unless "All turns"
+const MK_STEPS = [1, 3, 5, 7, 0];   // how many turns of other players' markers to show; 0 = all turns
+const mkN = () => S.mkN === undefined ? (S.mkAll ? 0 : 5) : S.mkN;
 const ME_COLOR = ['#f5f5f5', '#101010'];
 const PALETTE = [['#E69F00', '#1a1200'], ['#56B4E9', '#06202e'], ['#009E73', '#ffffff'], ['#F0E442', '#2a2600'],
   ['#CC79A7', '#2b0619'], ['#A6763C', '#ffffff'], ['#A99BF0', '#14102e'], ['#2EC4B6', '#06201d']];
@@ -289,7 +290,7 @@ function paintOverlay() {
     visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind, armed });
   }
   const mine = k => k === 'me' || k === 'bluff';
-  const recent = v => S.mkAll || v.key === focus || mine(v.key) || S.turn - v.turn < MK_RECENT;
+  const recent = v => !mkN() || v.key === focus || mine(v.key) || S.turn - v.turn < mkN();
   // group: sector -> player -> turns
   const bySector = new Map();
   for (const v of visits) {
@@ -620,7 +621,7 @@ function renderMkBar() {
   if (!ps.length && !manual) { bar.hidden = true; return; }
   bar.hidden = false;
   const sus = k => `<div class="msus" role="group" aria-label="${t('Your suspicion')}">${[['', '?'], ['human', t('H')], ['alien', t('A')]].map(([v, l]) => `<button data-act="sus" data-k="${esc(k)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(k) === v}">${l}</button>`).join('')}</div>`;
-  bar.innerHTML = `<button class="mkt" data-act="mkall" data-v="${S.mkAll ? 0 : 1}" aria-pressed="${!!S.mkAll}" aria-label="${S.mkAll ? t('All turns') : t('Last {n} turns', { n: MK_RECENT })}"><b>${S.mkAll ? t('All') : MK_RECENT}</b><span>${t('turns')}</span></button>` +
+  bar.innerHTML = `<button class="mkt" data-act="mkall" aria-pressed="${!mkN() || mkN() > 1}" aria-label="${mkN() ? t('Last {n} turns', { n: mkN() }) : t('All turns')}. ${t('Tap to change')}"><b>${mkN() || t('All')}</b><span>${mkN() === 1 ? t('turn') : t('turns')}</span></button>` +
     (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
@@ -724,6 +725,7 @@ function logIcon(e, w = 18) {
   if (e.kind === 'noise') return gico('noise-here', w);
   if (e.kind === 'silence') return gico(e.text === 'secure' ? 'silent' : 'silence', w);
   if (e.kind === 'attack') return gico(S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === playerKey(e)) ? 'attack' : 'claws', w);
+  if (e.kind === 'reveal') { const i = typeof revealInfo === 'function' && revealInfo(e); if (i && CHAR_ICON[i.char]) return gico(CHAR_ICON[i.char], w); }
   if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) return '';
   if (e.kind === 'reveal') return gico(e.text === 'Sensor' ? 'sensor' : e.text === 'Invisible Alien' || e.text === 'Brute Alien' || e.text === 'Identity' ? 'killed' : 'spotlight', w);
   if (e.kind === 'spot') return gico('spotlight', w);
@@ -817,7 +819,7 @@ const actions = {
   ovclose() { const o = $('#overlay'); if (o) o.remove(); },
   revealview(b) { T.showAnn = b.dataset.v === 'ann'; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); paintOverlay(); },
   routes() { S.routesOn = !S.routesOn; save(); paintOverlay(); const b = document.querySelector('[data-act=routes]'); if (b) b.setAttribute('aria-pressed', !!S.routesOn); toast(t(S.routesOn ? 'Routes shown' : 'Routes hidden')); },
-  mkall(b) { S.mkAll = b.dataset.v === '1'; save(); render(); paintOverlay(); }
+  mkall() { const i = MK_STEPS.indexOf(mkN()); S.mkN = MK_STEPS[(i + 1) % MK_STEPS.length]; save(); render(); paintOverlay(); }
 };
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { setTab(b.dataset.tab); }));
@@ -901,7 +903,7 @@ function hdr() {
   const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.innerHTML = gico(roleIcon(), 20) + '<span>' + (S.role === 'alien' ? (S.fed ? t('Alien') + ' · ' + t('Fed') : t('Alien')) : t('Human')) + '</span>'; r.dataset.act = 'roledlg'; r.setAttribute('role', 'button'); r.tabIndex = 0; r.setAttribute('aria-label', t('Who am I?'));
   document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab));
   const tb = $('#turnbar');
-  if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) { const mine = T.turnState.uid === Sync.uid; tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : ''); tb.textContent = mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' }); } else tb.hidden = true;
+  if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) { const mine = T.turnState.uid === Sync.uid; tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : ''); { const le = typeof recentOthers === 'function' ? recentOthers(1)[0] : null, tail = le ? ' · ' + le.who + ': ' + entryText(le) : ''; tb.textContent = (mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' })) + tail; } } else tb.hidden = true;
 }
 function render() {
   const p = $('#panel-body'); let h = '';

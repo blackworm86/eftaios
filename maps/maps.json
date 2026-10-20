@@ -120,6 +120,54 @@
    "author": "Jasmin Delbrück"
   },
   {
+   "id": "volta",
+   "name": "Volta",
+   "official": true,
+   "description": "The Cargo Zone. Symmetric, but with many Dangerous Sectors. For quick thinkers (4–8).",
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxxxxxxxxxxxxxxxxxxxxxx",
+    "xxx.s...s.xsx...s...xxx",
+    "x..........x....s..s..x",
+    ".1.s...s.x.s.x.s...s.2.",
+    "..sx.xx.........xx.x.s.",
+    "..ssxs.....A...ss.x..s.",
+    ".x....x.sxxxxx...x.....",
+    "..x...ss..sH......xs.ss",
+    ".s.s.......s..........s",
+    "s..xxx.s.s...s.s.xxx...",
+    "s4....x....xs...x....3s",
+    ".....ss..s.x.....x..s.s",
+    "xx..xs.x...s...sx.ss.xx",
+    "xxxx....sx.xsx..xs.xxxx"
+   ],
+   "pack": "Ultimate Edition"
+  },
+  {
+   "id": "levimontalcini",
+   "name": "Levi-Montalcini",
+   "official": true,
+   "description": "The Labyrinth Zone. A tough map for experienced players (4–8).",
+   "oddColumnsLower": true,
+   "rows_data": [
+    "x...xxxxxxxs.sxxxxxxxxx",
+    "xs1.xxxxs...xx.xxxx.xxx",
+    "xxs...s.s.s..xssx..3sxx",
+    "xx..x....x.s...x.s.ssxx",
+    "xs.s..xxs..x..ssxs.xsxx",
+    "xs..x..s..sxs..s.sxs.sx",
+    "xsx.s.xs.xHxAs.sxx.sssx",
+    "xs.sx..x..sxss.x.s.x.xx",
+    "xx....x.s......sxsxssxx",
+    "xx...x..xxs....x.s.4sxx",
+    "xss...s..s...sxx....sxx",
+    "x.2sxxxxs...ss...xxxxxx",
+    "xx.xxxxxxxxxsxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxx"
+   ],
+   "pack": "Ultimate Edition"
+  },
+  {
    "id": "machiavelli",
    "name": "Machiavelli",
    "pack": "Expansion Maps",

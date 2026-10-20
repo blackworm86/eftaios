@@ -692,3 +692,20 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 #hd-role{display:inline-flex;align-items:center;gap:6px;cursor:pointer}#hd-role .gi{flex:none}.rolehelp{text-align:left;padding-left:18px;margin:8px 0;font-size:14px}.rolehelp li{margin:4px 0}
 
 .mdesc{display:block;margin-top:4px;color:var(--dim);font-size:12px;line-height:1.35;white-space:normal}
+
+/* map editor: everything fits the screen, the map takes what is left and zooms inside it */
+.gallery.edit .gbody{overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px))}
+.gallery.edit .tools{grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:6px;flex:none}
+.gallery.edit .tools button{min-height:34px;padding:3px 8px;font-size:12.5px;gap:6px;border-radius:9px}
+.gallery.edit .tools i{width:14px;height:14px}
+.gallery.edit .mmedit{position:relative;flex:1 1 0;min-height:0;margin:0;border-radius:12px;overflow:hidden;background:#0b1222;touch-action:none;user-select:none;-webkit-user-select:none}
+.gallery.edit .mmsvg{display:block;width:100%;height:100%;border-radius:0;touch-action:none;cursor:crosshair}
+.zoomctl{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
+.zoomctl .btn{min-height:38px;width:38px;padding:0;display:grid;place-items:center;font-size:20px;line-height:1;background:#161e32e6}
+.zoomctl .btn[aria-pressed=true]{background:var(--amber);color:#1a1200;border-color:var(--amber)}
+.edhint{position:absolute;left:10px;top:8px;margin:0;max-width:calc(100% - 70px);font-size:11px;line-height:1.3;color:var(--dim);pointer-events:none;opacity:.85}
+.edfoot{flex:none;display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px}
+.edfoot .field{flex:1 1 180px;margin:0;min-width:0}.edfoot .field span{display:none}.edfoot .field input{min-height:40px}
+.edfoot .check{margin:0;min-height:40px;white-space:nowrap}
+.edfoot .row{flex:1 1 180px;margin:0;display:flex;gap:8px}.edfoot .row .btn{flex:1;min-height:40px}
+.gallery.edit header{padding:6px 12px}.gallery.edit h2{font-size:17px}

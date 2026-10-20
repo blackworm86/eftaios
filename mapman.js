@@ -4,9 +4,9 @@ const MM = { ed: null };
 const isCustom = m => (S.customMaps || []).some(c => c.id === m.id);
 const emptyRows = () => Array.from({ length: 14 }, () => '.'.repeat(23));
 const mmClose = () => { const o = $('#mapman'); if (o) o.remove(); };
-function mmShell(title, body, backAct) {
+function mmShell(title, body, backAct, cls) {
   mmClose();
-  const g = document.createElement('div'); g.id = 'mapman'; g.className = 'gallery'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true'); g.setAttribute('aria-label', title);
+  const g = document.createElement('div'); g.id = 'mapman'; g.className = 'gallery' + (cls ? ' ' + cls : ''); g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true'); g.setAttribute('aria-label', title);
   g.innerHTML = `<header><h2>${esc(title)}</h2><button class="icon-btn" data-act="${backAct}" aria-label="${t('Close')}">${ico('close')}</button></header><div class="gbody">${body}</div>`;
   document.body.appendChild(g); return g;
 }
@@ -55,32 +55,76 @@ function edCellHtml(c, r) {
   const e = MM.ed, ty = e.grid[r][c], { x, y } = hexPos(edMap(), c, r);
   return `<polygon data-c="${c}" data-r="${r}" points="${hexPts(x, y, HEX - 1)}" fill="${MM_COL[ty] || '#1e8a4f'}"${ty === 'x' ? ' stroke="#2a3552" stroke-width="1"' : ''}/>${'1234'.includes(ty) ? `<text x="${x}" y="${y}" class="pvn">${ty}</text>` : ''}`;
 }
-function edSvg() {
-  const e = MM.ed, m = edMap(), W = HEX * 2 + 1.5 * HEX * (m.cols - 1), H = Math.sqrt(3) * HEX * (m.rows + 0.5);
-  let g = ''; for (let r = 0; r < m.rows; r++) for (let c = 0; c < m.cols; c++) g += edCellHtml(c, r);
-  return `<svg id="ed-svg" class="mmsvg" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="${t('Map')}">${g}</svg>`;
-}
+const edCells = () => MM.ed.grid.map((row, r) => row.map((_, c) => edCellHtml(c, r)).join('')).join('');
+const edSize = () => { const m = edMap(); return { W: HEX * 2 + 1.5 * HEX * (m.cols - 1), H: Math.sqrt(3) * HEX * (m.rows + 0.5) }; };
 function editorScreen() {
   const e = MM.ed;
-  const g = mmShell(e.id ? t('Edit map') : t('New map'), `<p class="dim">${t('Pick a tool, then tap or drag over the sectors. Start sectors and hatches are unique.')}</p>
-    <div class="tools" role="group">${MM_TOOLS.map(([k, n, c]) => `<button data-act="mmtool" data-t="${k}" aria-pressed="${e.tool === k}"><i style="background:${c};outline:1px solid #fff3"></i>${t(n)}</button>`).join('')}</div>
-    <div class="mmedit">${edSvg()}</div>
-    <label class="field" style="margin-top:14px"><span>${t('Map name')}</span><input id="ed-name" type="text" maxlength="40" value="${esc(e.name)}"></label>
-    <label class="check"><input id="ed-odd" type="checkbox" ${e.odd ? 'checked' : ''}> ${t('Odd columns lower')}</label>
-    <div class="row"><button class="btn" data-act="mmcancel">${t('Cancel')}</button><button class="btn primary" data-act="mmsave">${t('Save map')}</button></div>`, 'mmcancel');
-  const svg = g.querySelector('#ed-svg'); let down = false;
-  const paintAt = ev => {
-    const el = document.elementFromPoint(ev.clientX, ev.clientY); if (!el || !el.dataset || el.dataset.c === undefined) return;
+  const g = mmShell(e.id ? t('Edit map') : t('New map'), `<div class="tools" role="group" aria-label="${t('Tools')}">${MM_TOOLS.map(([k, n, c]) => `<button data-act="mmtool" data-t="${k}" aria-pressed="${e.tool === k}"><i style="background:${c};outline:1px solid #fff3"></i>${t(n)}</button>`).join('')}</div>
+    <div class="mmedit" id="ed-box"><svg id="ed-svg" class="mmsvg" role="img" aria-label="${t('Map')}"><g id="ed-g">${edCells()}</g></svg>
+      <div class="zoomctl" role="group" aria-label="${t('Zoom')}"><button class="btn" data-act="mmzin" aria-label="${t('Zoom in')}">+</button><button class="btn" data-act="mmzout" aria-label="${t('Zoom out')}">−</button><button class="btn" data-act="mmzfit" aria-label="${t('Fit to screen')}">${ico('expand', 18)}</button><button class="btn" id="ed-hand" data-act="mmhand" aria-pressed="false" aria-label="${t('Move the map')}">${ico('hand', 18)}</button></div>
+      <p class="edhint">${t('Wheel or pinch to zoom. Drag with the hand, the right button or two fingers to move.')}</p></div>
+    <div class="edfoot"><label class="field"><span>${t('Map name')}</span><input id="ed-name" type="text" maxlength="40" value="${esc(e.name)}"></label>
+      <label class="check"><input id="ed-odd" type="checkbox" ${e.odd ? 'checked' : ''}> ${t('Odd columns lower')}</label>
+      <div class="row"><button class="btn" data-act="mmcancel">${t('Cancel')}</button><button class="btn primary" data-act="mmsave">${t('Save map')}</button></div></div>`, 'mmcancel', 'edit');
+  const box = g.querySelector('#ed-box'), svg = g.querySelector('#ed-svg'), grp = g.querySelector('#ed-g');
+  const V = MM.view = { k: 1, x: 0, y: 0, fit: 1, hand: false, touched: false };
+  const size = () => ({ w: box.clientWidth || 1, h: box.clientHeight || 1 });
+  const apply = () => grp.setAttribute('transform', `translate(${V.x.toFixed(2)} ${V.y.toFixed(2)}) scale(${V.k.toFixed(4)})`);
+  const fit = () => {
+    const { w, h } = size(), { W, H } = edSize(); svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    const top = w < 520 ? 34 : 24; V.fit = Math.min(w / W, (h - top) / H) * 0.97; V.k = V.fit; V.x = (w - W * V.k) / 2; V.y = top + (h - top - H * V.k) / 2; V.touched = false; apply();
+  };
+  /* zoom by factor f keeping the screen point (px, py) still */
+  const zoomAt = (f, px, py) => {
+    const k = Math.max(V.fit * 0.6, Math.min(V.fit * 10, V.k * f)); f = k / V.k;
+    V.x = px - (px - V.x) * f; V.y = py - (py - V.y) * f; V.k = k; V.touched = true; apply();
+  };
+  const rel = ev => { const r = box.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
+  MM.fit = fit; MM.zoomBy = f => { const { w, h } = size(); zoomAt(f, w / 2, h / 2); };
+  fit(); new ResizeObserver(() => { if (document.body.contains(box) && !V.touched) fit(); }).observe(box);
+  box.addEventListener('wheel', ev => { ev.preventDefault(); const p = rel(ev); zoomAt(Math.exp(-ev.deltaY * (ev.ctrlKey ? 0.01 : 0.0016)), p.x, p.y); }, { passive: false });
+  box.addEventListener('contextmenu', ev => ev.preventDefault());
+
+  const paintCell = el => {
+    if (!el || !el.dataset || el.dataset.c === undefined) return;
     const c = +el.dataset.c, r = +el.dataset.r, tool = MM.ed.tool, gr = MM.ed.grid;
     if (gr[r][c] === tool) return;
-    const dirty = [[c, r]];
-    if ('HA1234'.includes(tool)) for (let rr = 0; rr < gr.length; rr++) for (let cc = 0; cc < gr[rr].length; cc++) if (gr[rr][cc] === tool) { gr[rr][cc] = '.'; dirty.push([cc, rr]); }
-    gr[r][c] = tool; if (dirty.length > 1) svg.innerHTML = Array.from({ length: gr.length }, (_, rr) => gr[rr].map((_, cc) => edCellHtml(cc, rr)).join('')).join(''); else { const p = svg.querySelector(`polygon[data-c="${c}"][data-r="${r}"]`), nx = p.nextElementSibling; if (nx && nx.tagName === 'text') nx.remove(); p.outerHTML = edCellHtml(c, r); }
+    let all = false;
+    if ('HA1234'.includes(tool)) for (let rr = 0; rr < gr.length; rr++) for (let cc = 0; cc < gr[rr].length; cc++) if (gr[rr][cc] === tool) { gr[rr][cc] = '.'; all = true; }
+    gr[r][c] = tool;
+    if (all) grp.innerHTML = edCells(); else { const p = grp.querySelector(`polygon[data-c="${c}"][data-r="${r}"]`), nx = p.nextElementSibling; if (nx && nx.tagName === 'text') nx.remove(); p.outerHTML = edCellHtml(c, r); }
   };
-  svg.addEventListener('pointerdown', ev => { down = true; svg.setPointerCapture && svg.setPointerCapture(ev.pointerId); paintAt(ev); ev.preventDefault(); });
-  svg.addEventListener('pointermove', ev => { if (down) paintAt(ev); });
-  const up = () => { down = false; }; svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
-  g.querySelector('#ed-odd').onchange = ev => { MM.ed.odd = ev.target.checked; MM.ed.name = $('#ed-name').value; editorScreen(); };
+  const under = ev => document.elementFromPoint(ev.clientX, ev.clientY);
+  /* gestures: one finger or the left button paints, the hand tool / right or middle button / two fingers move and zoom */
+  const ptr = new Map(); let mode = '', pend = null, pinch = null, panFrom = null;
+  const dist = () => { const [a, b] = [...ptr.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  const mid = () => { const [a, b] = [...ptr.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+  box.addEventListener('pointerdown', ev => {
+    if (ev.target.closest('.zoomctl')) return;
+    try { box.setPointerCapture(ev.pointerId); } catch (_) { /* synthetic or already released */ } ptr.set(ev.pointerId, rel(ev)); ev.preventDefault();
+    if (ptr.size === 2) { mode = 'pinch'; pend = null; pinch = { d: dist(), c: mid(), k: V.k, x: V.x, y: V.y }; return; }
+    if (ev.button === 1 || ev.button === 2 || V.hand) { mode = 'pan'; panFrom = { p: rel(ev), x: V.x, y: V.y }; return; }
+    mode = 'paint'; pend = { ev, p: rel(ev) };
+  });
+  box.addEventListener('pointermove', ev => {
+    if (!ptr.has(ev.pointerId)) return; ptr.set(ev.pointerId, rel(ev));
+    if (mode === 'pinch' && ptr.size >= 2) {
+      const k = Math.max(V.fit * 0.6, Math.min(V.fit * 10, pinch.k * dist() / pinch.d)), c = mid(), wx = (pinch.c.x - pinch.x) / pinch.k, wy = (pinch.c.y - pinch.y) / pinch.k;
+      V.k = k; V.x = c.x - wx * k; V.y = c.y - wy * k; V.touched = true; apply(); return;
+    }
+    if (mode === 'pan') { const p = rel(ev); V.x = panFrom.x + p.x - panFrom.p.x; V.y = panFrom.y + p.y - panFrom.p.y; V.touched = true; apply(); return; }
+    if (mode === 'paint') {
+      if (pend) { const p = rel(ev); if (Math.hypot(p.x - pend.p.x, p.y - pend.p.y) < 5) return; paintCell(under(pend.ev)); pend = null; }
+      paintCell(under(ev));
+    }
+  });
+  const end = ev => {
+    if (!ptr.has(ev.pointerId)) return; ptr.delete(ev.pointerId);
+    if (mode === 'paint' && pend && ev.type === 'pointerup') paintCell(under(pend.ev));   // a tap
+    pend = null; if (ptr.size === 0) mode = ''; else if (mode === 'pinch') { mode = 'pan'; const [p] = [...ptr.values()]; panFrom = { p, x: V.x, y: V.y }; }
+  };
+  box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+  g.querySelector('#ed-odd').onchange = ev => { MM.ed.odd = ev.target.checked; grp.innerHTML = edCells(); if (!V.touched) fit(); };
 }
 function saveEdit() {
   const e = MM.ed, name = ($('#ed-name').value || t('Custom map')).trim(), odd = $('#ed-odd').checked;
@@ -100,6 +144,10 @@ Object.assign(actions, {
   mmedit(b) { const m = T.maps.find(x => x.id === b.dataset.id); if (m && isCustom(m)) startEdit(m.grid, m.name, m.odd, m.id); },
   mmexport(b) { mapExport(b.dataset.id); },
   mmdel(b) { const id = b.dataset.id; confirmDlg(t('Delete this map?'), t('This cannot be undone.'), () => { S.customMaps = (S.customMaps || []).filter(m => m.id !== id); save(); loadMaps().then(() => { if (S.mapId === id) S.mapId = 'galilei'; mapManager(); }); }); },
+  mmzin() { MM.zoomBy && MM.zoomBy(1.4); },
+  mmzout() { MM.zoomBy && MM.zoomBy(1 / 1.4); },
+  mmzfit() { MM.fit && MM.fit(); },
+  mmhand(b) { MM.view.hand = !MM.view.hand; b.setAttribute('aria-pressed', MM.view.hand); },
   mmtool(b) { MM.ed.tool = b.dataset.t; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); },
   mmcancel() { const e = MM.ed; MM.ed = null; if (e && e.id) mapDetail(e.id); else mapManager(); },
   mmsave() { saveEdit(); },

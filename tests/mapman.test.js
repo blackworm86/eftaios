@@ -13,6 +13,17 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  const before=await p.locator('#ed-svg polygon[fill="#ece6d3"]').count();
  const box=await p.locator('#ed-svg polygon').nth(100).boundingBox();await p.mouse.click(box.x+box.width/2,box.y+box.height/2);
  assert(await p.locator('#ed-svg polygon[fill="#ece6d3"]').count()===before+1||before>0,'painting a sector works');
+ // zoom: wheel, buttons, pinch; the editor never scrolls
+ const ed=await p.evaluate(()=>{const f=document.querySelector('.gallery.edit .gbody');return {s:f.scrollHeight>f.clientHeight+1,b:document.documentElement.scrollHeight>innerHeight}});
+ assert(!ed.s&&!ed.b,'the editor fits the screen without scrolling');
+ const k0=await p.evaluate(()=>MM.view.k);const bx=await p.locator('#ed-box').boundingBox();
+ await p.mouse.move(bx.x+bx.width/2,bx.y+bx.height/2);await p.mouse.wheel(0,-300);
+ assert(await p.evaluate(()=>MM.view.k)>k0,'the mouse wheel zooms in');
+ await p.click('[data-act=mmzout]');await p.click('[data-act=mmzfit]');assert(Math.abs(await p.evaluate(()=>MM.view.k)-k0)<1e-6,'fit restores the auto-fit size');
+ await p.evaluate(()=>{const b=document.querySelector('#ed-box'),r=b.getBoundingClientRect(),mk=(t,id,x,y)=>b.dispatchEvent(new PointerEvent(t,{pointerId:id,clientX:r.left+x,clientY:r.top+y,bubbles:true,isPrimary:id===1,pointerType:'touch',button:0}));window.__pinch=(s)=>{mk('pointerdown',1,100,100);mk('pointerdown',2,140,100);mk('pointermove',2,100+40*s,100);mk('pointerup',2,100+40*s,100);mk('pointerup',1,100,100)};});
+ await p.evaluate(()=>__pinch(3));assert(await p.evaluate(()=>MM.view.k)>k0*2,'pinching two fingers zooms in');
+ await p.click('[data-act=mmzfit]');
+ await p.click('[data-t=s]');
  await p.fill('#ed-name','Test copy');await p.click('[data-act=mmsave]');
  await p.waitForSelector('[data-act=mmdel]');
  assert(await p.evaluate(()=>S.customMaps.length)===1&&await p.locator('[data-act=mmedit]').count()===1,'copy saved as a custom map, now editable');

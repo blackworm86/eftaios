@@ -38,7 +38,7 @@ const mapSelect = (list, cur) => {
     <button type="button" class="mapcard" data-act="mapgallery" aria-haspopup="dialog" aria-label="${t('Map')}: ${esc(m.name)}. ${t('Tap to choose another map')}"><span class="prevbox" id="f-map-prev"></span>
     <span class="mapname"><b id="f-map-name">${esc(m.name)}</b><small id="f-map-desc"></small><small id="f-map-text" class="mdesc"></small><i class="chev" aria-hidden="true">${ico('next', 18)}</i></span></button></div>`;
 };
-const mapInfo = m => [m.players ? t('{n} players', { n: m.players }) : '', m.difficulty ? t(m.difficulty) : '', m.author ? t('Map by {a}', { a: m.author }) : '', t('{n} escape hatches', { n: mapHatches(m).length })].filter(Boolean).join(' · ');
+const mapInfo = m => [m.players ? t('{n} players', { n: m.players }) : '', m.difficulty ? t(m.difficulty) : '', m.author ? t('Map by {a}', { a: m.author }) : '', t('{n} escape pods', { n: mapHatches(m).length })].filter(Boolean).join(' · ');
 function mapGallery() {
   const list = T.mapList || T.maps, cur = ($('#f-map') || {}).value, packs = [];
   list.forEach(m => { const p = m.pack || t('My maps'); if (!packs.includes(p)) packs.push(p); });

@@ -53,7 +53,7 @@ async function saveMapFile(name, json) {
 }
 
 /* ---- editor ---- */
-const MM_TOOLS = [['.', 'Dangerous', '#59627a'], ['s', 'Secure', '#ece6d3'], ['x', 'Empty', '#0b1222'], ['H', 'Human', '#1c5d93'], ['A', 'Alien', '#a53312'], ['1', 'Hatch 1', '#1e8a4f'], ['2', 'Hatch 2', '#1e8a4f'], ['3', 'Hatch 3', '#1e8a4f'], ['4', 'Hatch 4', '#1e8a4f']];
+const MM_TOOLS = [['.', 'Dangerous', '#59627a'], ['s', 'Secure', '#ece6d3'], ['x', 'Empty', '#0b1222'], ['H', 'Human', '#1c5d93'], ['A', 'Alien', '#a53312'], ['1', 'Pod 1', '#1e8a4f'], ['2', 'Pod 2', '#1e8a4f'], ['3', 'Pod 3', '#1e8a4f'], ['4', 'Pod 4', '#1e8a4f']];
 const MM_COL = { '.': '#59627a', s: '#ece6d3', x: '#0b1222', H: '#1c5d93', A: '#a53312' };
 function startEdit(grid, name, odd, id) {
   MM.ed = { tool: '.', mode: 'brush', name, odd, grid: grid.map(r => r.slice()), id: id || null };

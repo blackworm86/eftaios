@@ -70,7 +70,7 @@ function mapPreview(map) {
   }
   return `<svg class="mapprev" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="${esc(map.name)}">${g}</svg>`;
 }
-const label = id => { const ty = at(T.map, id); return ty === 'H' ? t('Human start') : ty === 'A' ? t('Alien start') : '1234'.includes(ty) ? t('Escape Hatch {n}', { n: ty }) : id; };
+const label = id => { const ty = at(T.map, id); return ty === 'H' ? t('Human start') : ty === 'A' ? t('Alien start') : '1234'.includes(ty) ? t('Escape Pod {n}', { n: ty }) : id; };
 const basic = () => S.mode === 'basic';
 /* the abilities of the Character in play (none in the Basic game, none after being reborn as an Alien) */
 const myAbil = () => abilOf(S, S.mode);
@@ -92,7 +92,7 @@ function reachable(map, from, steps, role) {
   return out;
 }
 const allowance = () => (S.role === 'alien' ? (S.fed || (myAbil() === 'Fast Alien' && S.path.length <= 1) ? 3 : 2) : 1) + (S.adr ? 1 : 0);
-const typeName = ty => ({ '.': t('Dangerous sector'), s: t('Secure sector'), x: t('Empty space'), H: t('Human start'), A: t('Alien start') }[ty] || t('Escape Hatch {n}', { n: ty }));
+const typeName = ty => ({ '.': t('Dangerous sector'), s: t('Secure sector'), x: t('Empty space'), H: t('Human start'), A: t('Alien start') }[ty] || t('Escape Pod {n}', { n: ty }));
 
 /* ---------------- map rendering ---------------- */
 const view = { k: 1, x: 0, y: 0 }; let fitK = 1, mapW = 0, mapH = 0;

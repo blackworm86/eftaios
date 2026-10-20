@@ -348,7 +348,7 @@ function waitPanel() {
     ${orderList()}${handHtml()}`;
 }
 function overPanel() {
-  const m = { escaped: ['Escaped!', 'You left the ship and win. That hatch is now blocked.'], time: ['40 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Pod is blocked or damaged. You are eliminated.'] }[S.over];
+  const m = { escaped: ['Escaped!', 'You left the ship and win. That pod is now blocked.'], time: ['40 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Pod is blocked or damaged. You are eliminated.'] }[S.over];
   return `${S.over === 'dead' ? `<div class="dlgico">${gico('killed', 72)}</div>` : ''}<h2>${t(m[0])}</h2><p>${t(m[1])}</p>${inRoom() ? `<p class="dim">${t('You can keep following the game in the Table tab.')}</p>${orderList()}` : `<button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`}`;
 }
 /* online: tell the player why other routes are missing instead of showing a half-empty map */
@@ -457,8 +457,8 @@ function tablePanel() {
     <section class="sec sheetsec${sec === 'sheet' ? ' on' : ''}">${sheetHtml()}${legendHtml()}</section>
     <section class="sec log${sec === 'log' ? ' on' : ''}">${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
       ${ln ? `<ul class="log">${ln}</ul>${digital() || S.hot ? '' : `<button class="btn link wide" data-act="clearlog">${t('Clear announcements')}</button>`}` : `<p class="dim">${t('No announcements yet.')}</p>`}</section>
-    <section class="sec status${sec === 'status' ? ' on' : ''}">${roomBlock()}${skip}<h3>${t('Escape hatches')}${hatchAct ? ` <span class="hint">${t('tap to close or reopen')}</span>` : ''}</h3>
-      <div class="hatches compact">${mapHatches().map(n => { const lbl = `${t('Escape Hatch {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}`; return hatchAct ? `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${lbl}">${n}</button>` : `<span class="hb${S.hatches[n] ? ' closed' : ''}" role="img" aria-label="${lbl}">${n}</span>`; }).join('')}</div>
+    <section class="sec status${sec === 'status' ? ' on' : ''}">${roomBlock()}${skip}<h3>${t('Escape Pods')}${hatchAct ? ` <span class="hint">${t('tap to close or reopen')}</span>` : ''}</h3>
+      <div class="hatches compact">${mapHatches().map(n => { const lbl = `${t('Escape Pod {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}`; return hatchAct ? `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${lbl}">${n}</button>` : `<span class="hb${S.hatches[n] ? ' closed' : ''}" role="img" aria-label="${lbl}">${n}</span>`; }).join('')}</div>
       ${decksHtml()}</section>
     </div>`;
 }

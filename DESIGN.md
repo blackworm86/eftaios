@@ -190,7 +190,7 @@ A restrained navy neutral set with a single amber accent, plus fixed faction and
 
 ### Secondary
 - **Alien Red** (#ff4a2b) and **Human Blue** (#38a3ff): role identity, and alert announcements for red. Never decoration.
-- **Hatch Green** (#3ecf7a): escape hatches and success states (ready, escaped).
+- **Hatch Green** (#3ecf7a): escape pods and success states (ready, escaped).
 
 ### Neutral
 - **Night Bg / Surface / Panel / Raised** (#070b14, #0d1424, #101a2e, #16233c): the ground, inset rows, panels, raised buttons. Each layer is a small step cooler or lighter than the one below.
@@ -232,7 +232,7 @@ Phones: a top bar with turn, role, sector and a hide-screen button; the map; the
 
 Spacing runs on a small scale (6, 10, 14, 20px) with generous separation between groups and tighter spacing inside them. Touch targets are at least 44px; the player strip is the one place buttons drop to 36px.
 
-The Table tab uses sub-tabs on phones (Announcements, Players, Hatches) and shows all three together on wide screens. Long reference content (rules, map list, map gallery) opens as a full-screen sheet.
+The Table tab uses sub-tabs on phones (Announcements, Players, Pods) and shows all three together on wide screens. Long reference content (rules, map list, map gallery) opens as a full-screen sheet.
 
 ## Elevation & Depth
 

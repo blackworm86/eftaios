@@ -21,3 +21,21 @@ sim now records alienAttacks and humanKills, so alienHitRate = share of Alien at
 
 Finding: humanCal changes how often Aliens attack, not how well they choose targets (hit rate stays 35-42%).
 It is a balance knob. Left at 0.35 until the target win rates are agreed.
+
+## Round 4: skill ladder (mixed tables)
+
+tools/sim.js --mix 'hard:1,easy:5' puts seats of different levels in the same game; report.js prints each level's
+side win rate (the side the seat played on: Aliens or Humans).
+
+| table | level | seat side wins |
+|---|---|---|
+| 1 hard + 5 easy | hard | 50.0% (144 seats) |
+| 1 hard + 5 easy | easy | 50.0% (720 seats) |
+| 1 easy + 5 hard | easy | 50.7% (144 seats) |
+| 1 easy + 5 hard | hard | 49.9% (720 seats) |
+
+Finding: today the levels have no measurable skill difference. A hard seat wins no more often than an easy seat at the same table.
+The win-rate gap in the homogeneous tables (easy 35%, hard 41%) comes from the table, not from the seat's skill.
+
+Proposed target (to confirm): in a mixed table, hard seats win clearly more often than easy seats,
+and in an all-easy table the bots are beatable by a person's play, i.e. the ladder ordering is what defines the levels.

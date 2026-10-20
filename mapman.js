@@ -21,12 +21,12 @@ function mapManager() {
 function mapDetail(id) {
   const m = T.maps.find(x => x.id === id); if (!m) return;
   const mine = isCustom(m);
-  mmShell(m.name, `<div class="mmbig">${mapPreview(m)}</div>${m.description ? `<p>${t(m.description)}</p>` : ''}<p class="dim">${esc(mapInfo(m))}${mine ? '' : ' · ' + t('Official map (read-only)')}</p>
+  mmShell(m.name, `<div class="mmbig">${mapPreview(m)}</div>${m.description ? `<p class="mmdesc">${t(m.description)}</p>` : ''}<p class="dim mminfo">${esc(mapInfo(m))}${mine ? '' : ' · ' + t('Official map (read-only)')}</p>
     <div class="mmacts">${mine ? `<button class="btn primary" data-act="mmedit" data-id="${esc(m.id)}">${t('Edit')}</button>` : ''}
     <button class="btn ${mine ? '' : 'primary'}" data-act="mmcopy" data-id="${esc(m.id)}">${t('Make a copy to edit')}</button>
     <button class="btn" data-act="mmexport" data-id="${esc(m.id)}">${t('Export / share')}</button>
     ${mine ? `<button class="btn danger" data-act="mmdel" data-id="${esc(m.id)}">${t('Delete')}</button>` : ''}
-    <button class="btn" data-act="mmlist">${t('Back')}</button></div>`, 'mmlist');
+    <button class="btn" data-act="mmlist">${t('Back')}</button></div>`, 'mmlist', 'detail');
 }
 const mmJson = m => JSON.stringify({ id: m.id, name: m.name, oddColumnsLower: m.odd, rows_data: m.grid.map(r => r.join('')) }, null, 1);
 function mapExport(id) {
@@ -47,7 +47,7 @@ function mapExport(id) {
 const MM_TOOLS = [['.', 'Dangerous', '#59627a'], ['s', 'Secure', '#ece6d3'], ['x', 'Empty', '#0b1222'], ['H', 'Human', '#1c5d93'], ['A', 'Alien', '#a53312'], ['1', 'Hatch 1', '#1e8a4f'], ['2', 'Hatch 2', '#1e8a4f'], ['3', 'Hatch 3', '#1e8a4f'], ['4', 'Hatch 4', '#1e8a4f']];
 const MM_COL = { '.': '#59627a', s: '#ece6d3', x: '#0b1222', H: '#1c5d93', A: '#a53312' };
 function startEdit(grid, name, odd, id) {
-  MM.ed = { tool: '.', name, odd, grid: grid.map(r => r.slice()), id: id || null };
+  MM.ed = { tool: '.', mode: 'brush', name, odd, grid: grid.map(r => r.slice()), id: id || null };
   editorScreen();
 }
 function edMap() { const e = MM.ed; return { cols: e.grid[0].length, rows: e.grid.length, odd: e.odd }; }
@@ -62,6 +62,7 @@ function editorScreen() {
   const g = mmShell(e.id ? t('Edit map') : t('New map'), `<div class="tools" role="group" aria-label="${t('Tools')}">${MM_TOOLS.map(([k, n, c]) => `<button data-act="mmtool" data-t="${k}" aria-pressed="${e.tool === k}"><i style="background:${c};outline:1px solid #fff3"></i>${t(n)}</button>`).join('')}</div>
     <div class="mmedit" id="ed-box"><svg id="ed-svg" class="mmsvg" role="img" aria-label="${t('Map')}"><g id="ed-g">${edCells()}</g></svg>
       <div class="zoomctl" role="group" aria-label="${t('Zoom')}"><button class="btn" data-act="mmzin" aria-label="${t('Zoom in')}">+</button><button class="btn" data-act="mmzout" aria-label="${t('Zoom out')}">−</button><button class="btn" data-act="mmzfit" aria-label="${t('Fit to screen')}">${ico('expand', 18)}</button><button class="btn" id="ed-hand" data-act="mmhand" aria-pressed="false" aria-label="${t('Move the map')}">${ico('hand', 18)}</button></div>
+      <div class="modectl" role="group" aria-label="${t('Mode')}">${[['brush', 'pencil', 'Brush'], ['bucket', 'bucket', 'Paint bucket'], ['pick', 'picker', 'Color picker']].map(([k, i, n]) => `<button class="btn" data-act="mmmode" data-m="${k}" aria-pressed="${e.mode === k}" aria-label="${t(n)}" title="${t(n)}">${ico(i, 18)}</button>`).join('')}</div>
       <p class="edhint">${t('Wheel or pinch to zoom. Drag with the hand, the right button or two fingers to move.')}</p></div>
     <div class="edfoot"><label class="field"><span>${t('Map name')}</span><input id="ed-name" type="text" maxlength="40" value="${esc(e.name)}"></label>
       <label class="check"><input id="ed-odd" type="checkbox" ${e.odd ? 'checked' : ''}> ${t('Odd columns lower')}</label>
@@ -94,17 +95,33 @@ function editorScreen() {
     gr[r][c] = tool;
     if (all) grp.innerHTML = edCells(); else { const p = grp.querySelector(`polygon[data-c="${c}"][data-r="${r}"]`), nx = p.nextElementSibling; if (nx && nx.tagName === 'text') nx.remove(); p.outerHTML = edCellHtml(c, r); }
   };
+  const toolBtns = () => g.querySelectorAll('[data-act=mmtool]').forEach(x => x.setAttribute('aria-pressed', x.dataset.t === MM.ed.tool));
+  const bucket = el => {
+    if (!el || !el.dataset || el.dataset.c === undefined) return;
+    const gr = MM.ed.grid, tool = MM.ed.tool, c0 = +el.dataset.c, r0 = +el.dataset.r, from = gr[r0][c0];
+    if ('HA1234'.includes(tool)) return toast(t('Start sectors and pods are single: use the brush.'));
+    if (from === tool) return; if ('HA1234'.includes(from)) return toast(t('Start sectors and pods cannot be filled over.'));
+    const map = edMap(), q = [[c0, r0]]; gr[r0][c0] = tool;
+    while (q.length) { const [c, r] = q.pop(); for (const [a, b] of neighbors(map, c, r)) if (gr[b][a] === from) { gr[b][a] = tool; q.push([a, b]); } }
+    grp.innerHTML = edCells();
+  };
+  const pick = el => {
+    if (!el || !el.dataset || el.dataset.c === undefined) return;
+    MM.ed.tool = MM.ed.grid[+el.dataset.r][+el.dataset.c]; MM.ed.mode = 'brush'; toolBtns(); setMode();
+  };
+  const setMode = () => { g.querySelectorAll('[data-act=mmmode]').forEach(x => x.setAttribute('aria-pressed', x.dataset.m === MM.ed.mode)); box.dataset.mode = MM.ed.mode; };
+  MM.setMode = setMode; setMode();
   const under = ev => document.elementFromPoint(ev.clientX, ev.clientY);
   /* gestures: one finger or the left button paints, the hand tool / right or middle button / two fingers move and zoom */
   const ptr = new Map(); let mode = '', pend = null, pinch = null, panFrom = null;
   const dist = () => { const [a, b] = [...ptr.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
   const mid = () => { const [a, b] = [...ptr.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
   box.addEventListener('pointerdown', ev => {
-    if (ev.target.closest('.zoomctl')) return;
+    if (ev.target.closest('.zoomctl, .modectl')) return;
     try { box.setPointerCapture(ev.pointerId); } catch (_) { /* synthetic or already released */ } ptr.set(ev.pointerId, rel(ev)); ev.preventDefault();
     if (ptr.size === 2) { mode = 'pinch'; pend = null; pinch = { d: dist(), c: mid(), k: V.k, x: V.x, y: V.y }; return; }
     if (ev.button === 1 || ev.button === 2 || V.hand) { mode = 'pan'; panFrom = { p: rel(ev), x: V.x, y: V.y }; return; }
-    mode = 'paint'; pend = { ev, p: rel(ev) };
+    mode = MM.ed.mode === 'brush' ? 'paint' : 'tap'; pend = { ev, p: rel(ev) };
   });
   box.addEventListener('pointermove', ev => {
     if (!ptr.has(ev.pointerId)) return; ptr.set(ev.pointerId, rel(ev));
@@ -113,6 +130,7 @@ function editorScreen() {
       V.k = k; V.x = c.x - wx * k; V.y = c.y - wy * k; V.touched = true; apply(); return;
     }
     if (mode === 'pan') { const p = rel(ev); V.x = panFrom.x + p.x - panFrom.p.x; V.y = panFrom.y + p.y - panFrom.p.y; V.touched = true; apply(); return; }
+    if (mode === 'tap') { if (pend) { const p = rel(ev); if (Math.hypot(p.x - pend.p.x, p.y - pend.p.y) > 8) pend = null; } return; }
     if (mode === 'paint') {
       if (pend) { const p = rel(ev); if (Math.hypot(p.x - pend.p.x, p.y - pend.p.y) < 5) return; paintCell(under(pend.ev)); pend = null; }
       paintCell(under(ev));
@@ -121,6 +139,7 @@ function editorScreen() {
   const end = ev => {
     if (!ptr.has(ev.pointerId)) return; ptr.delete(ev.pointerId);
     if (mode === 'paint' && pend && ev.type === 'pointerup') paintCell(under(pend.ev));   // a tap
+    if (mode === 'tap' && pend && ev.type === 'pointerup') (MM.ed.mode === 'bucket' ? bucket : pick)(under(pend.ev));
     pend = null; if (ptr.size === 0) mode = ''; else if (mode === 'pinch') { mode = 'pan'; const [p] = [...ptr.values()]; panFrom = { p, x: V.x, y: V.y }; }
   };
   box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
@@ -148,6 +167,7 @@ Object.assign(actions, {
   mmzout() { MM.zoomBy && MM.zoomBy(1 / 1.4); },
   mmzfit() { MM.fit && MM.fit(); },
   mmhand(b) { MM.view.hand = !MM.view.hand; b.setAttribute('aria-pressed', MM.view.hand); },
+  mmmode(b) { MM.ed.mode = b.dataset.m; MM.setMode && MM.setMode(); },
   mmtool(b) { MM.ed.tool = b.dataset.t; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); },
   mmcancel() { const e = MM.ed; MM.ed = null; if (e && e.id) mapDetail(e.id); else mapManager(); },
   mmsave() { saveEdit(); },

@@ -709,3 +709,13 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .edfoot .check{margin:0;min-height:40px;white-space:nowrap}
 .edfoot .row{flex:1 1 180px;margin:0;display:flex;gap:8px}.edfoot .row .btn{flex:1;min-height:40px}
 .gallery.edit header{padding:6px 12px}.gallery.edit h2{font-size:17px}
+.modectl{position:absolute;left:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}.modectl .btn{min-height:38px;width:38px;padding:0;display:grid;place-items:center;background:#161e32e6}.modectl .btn[aria-pressed=true]{background:var(--amber);color:#1a1200;border-color:var(--amber)}
+#ed-box[data-mode=bucket] .mmsvg{cursor:cell}#ed-box[data-mode=pick] .mmsvg{cursor:copy}
+
+/* map detail: the picture takes what the text and buttons leave, so the page never scrolls */
+.gallery.detail .gbody{overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px))}
+.gallery.detail .mmbig{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;background:#0b1222;border-radius:12px;overflow:hidden}
+.gallery.detail .mmbig .mapprev{width:100%;height:100%;max-height:100%;aspect-ratio:auto;border-radius:0;background:none}
+.gallery.detail p{margin:0}.gallery.detail .mmdesc{font-size:14px;line-height:1.35;max-height:5.4em;overflow:auto}.gallery.detail .mminfo{font-size:12.5px}
+.gallery.detail .mmacts{display:flex;flex-wrap:wrap;gap:8px;margin:0;flex:none}.gallery.detail .mmacts .btn{flex:1 1 130px;min-height:42px;padding:6px 10px}
+.gallery.detail header{padding:6px 12px}.gallery.detail h2{font-size:17px}

@@ -275,8 +275,6 @@ function paintOverlay() {
     const fz = followZone(focus), [col] = pal(focus);
     if (fz) fz.zone.forEach((_, id) => { const q = parseId(id), h = hexPos(map, q[0], q[1]); el('polygon', { points: hexPts(h.x, h.y, HEX - 2.2), class: 'fzone', fill: col, stroke: col }, zoneG); });
   }
-  // bluffs: a dashed line from where I really was to the sector I announced
-  own.bluffs.forEach(b => { const p = hp(b.from), q = hp(b.sector); if (p && q) el('line', { x1: p.x, y1: p.y, x2: q.x, y2: q.y, class: 'bluffline' + (focus && focus !== 'me' ? ' dim' : '') }, marks); });
   // collect every visit: my own route + my bluffs + other players' public positions
   const visits = [];
   S.path.forEach(p => visits.push({ key: 'me', sector: p.pos, turn: p.turn, kind: 'route' }));

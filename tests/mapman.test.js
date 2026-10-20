@@ -24,9 +24,21 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.evaluate(()=>__pinch(3));assert(await p.evaluate(()=>MM.view.k)>k0*2,'pinching two fingers zooms in');
  await p.click('[data-act=mmzfit]');
  await p.click('[data-t=s]');
+ // paint bucket fills a region; color picker takes a sector's type
+ await p.evaluate(()=>{MM.ed.grid.forEach(r=>r.fill('.'));document.querySelector('#ed-g').innerHTML=edCells()});
+ await p.click('[data-t=x]');await p.click('[data-act=mmmode][data-m=bucket]');
+ {const bx2=await p.locator('#ed-box').boundingBox();await p.mouse.click(bx2.x+bx2.width/2,bx2.y+bx2.height/2);}
+ assert(await p.evaluate(()=>MM.ed.grid.flat().filter(c=>c==='x').length)===322,'the paint bucket fills a whole region');
+ await p.click('[data-act=mmmode][data-m=pick]');await p.click('[data-t=s]');
+ {const bx2=await p.locator('#ed-box').boundingBox();await p.mouse.click(bx2.x+bx2.width/2,bx2.y+bx2.height/2);}
+ assert(await p.evaluate(()=>MM.ed.tool==='x'&&MM.ed.mode==='brush'),'the color picker takes the sector\'s type and returns to the brush');
+ await p.click('[data-act=mmmode][data-m=bucket]');await p.click('[data-t="."]');{const bx2=await p.locator('#ed-box').boundingBox();await p.mouse.click(bx2.x+bx2.width/2,bx2.y+bx2.height/2);}
+ await p.click('[data-act=mmmode][data-m=brush]');
+ await p.evaluate(()=>{MM.ed.grid[7][11]='H';MM.ed.grid[5][11]='A';document.querySelector('#ed-g').innerHTML=edCells()});
  await p.fill('#ed-name','Test copy');await p.click('[data-act=mmsave]');
  await p.waitForSelector('[data-act=mmdel]');
  assert(await p.evaluate(()=>S.customMaps.length)===1&&await p.locator('[data-act=mmedit]').count()===1,'copy saved as a custom map, now editable');
+ {const f=await p.evaluate(()=>{const b=document.querySelector('.gallery.detail .gbody');return {s:b.scrollHeight>b.clientHeight+1,d:document.documentElement.scrollHeight>innerHeight,inView:document.querySelector('[data-act=mmdel]').getBoundingClientRect().bottom<=innerHeight}});assert(!f.s&&!f.d&&f.inView,'after saving, the map page fits the screen with all its buttons visible');}
  await p.click('[data-act=mmedit]');await p.waitForSelector('#ed-svg');await p.click('[data-act=mmsave]');await p.waitForSelector('[data-act=mmdel]');
  assert(await p.evaluate(()=>S.customMaps.length)===1,'editing updates in place');
  await p.click('[data-act=mmdel]');await p.click('#d-yes');await p.waitForSelector('[data-act=mmnew]');

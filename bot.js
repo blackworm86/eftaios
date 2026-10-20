@@ -285,6 +285,7 @@ const Bot = (() => {
     opts.forEach(id => {
       const c = g.idx.get(id);
       let s = Math.max(0, alienAttackValue(ctx, W, st, c) - sk.attackAt * 0.5);
+      s += (sk.here || 0) * W.humanCnt[c];   // contact now: the sector where the tracker most expects a Human
       // strike range next turn: the most likely sectors where a Human will be
       let top = 0, sum = 0; for (const j of g.reach[speed][c]) { const v = next[j]; sum += v; if (v > top) top = v; }
       s += sk.pot * (0.6 * top + 0.25 * sum);
@@ -299,7 +300,12 @@ const Bot = (() => {
       s += rnd() * 0.3;
       list.push({ id, score: s, cell: c });
     });
-    return choose(list, sk);
+    const pick_ = choose(list, sk);
+    if (window.__moves && window.Hot && Hot.dump) {   // benchmark hook: every option's belief against the Humans really standing there
+      const real = new Map(); Hot.dump().seats.forEach(x => { if (x.id === ctx.me.id || x.over || x.role !== 'human') return; const p = (x.path || []).filter(q => q.note !== 'reborn'); if (p.length) real.set(p[p.length - 1].pos, (real.get(p[p.length - 1].pos) || 0) + 1); });
+      window.__moves.push({ lvl: W.lvl, turn, opts: list.map(o => ({ pred: +W.humanCnt[o.cell].toFixed(3), next: +(next[o.cell] || 0).toFixed(3), score: +o.score.toFixed(2), truth: real.get(o.id) || 0, chosen: o === pick_ ? 1 : 0 })) });
+    }
+    return pick_;
   }
   const hashId = id => { let x = 7; for (const ch of String(id)) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return x; };
 
@@ -389,7 +395,13 @@ const Bot = (() => {
       return;
     }
     // Alien attack
-    if (!human && attackWorth(ctx, W, st, lvl)) { say({ kind: 'attack', sector: st.pos }); const hits = await ctx.attack(st.pos); if (hits.some(h => h.killed && h.role === 'human') && !st.fed) st.fed = true; return; }
+    const worth = !human && attackWorth(ctx, W, st, lvl);
+    if (window.__trace && !human && window.Hot && Hot.dump) {   // benchmark hook: what the tracker believed here against who really stands here
+      const c0 = g.idx.get(st.pos); let truth = 0, aliens = 0;
+      Hot.dump().seats.forEach(x => { if (x.id === me.id || x.over) return; const p = (x.path || []).filter(q => q.note !== 'reborn'); if (p.length && p[p.length - 1].pos === st.pos) { if (x.role === 'human') truth++; else aliens++; } });
+      window.__trace.push({ lvl, turn: H.turn, pred: +W.humanCnt[c0].toFixed(3), predA: +W.alienCnt[c0].toFixed(3), truth, aliens, attack: !!worth, sec: ty !== '.' ? 1 : 0 });
+    }
+    if (worth) { say({ kind: 'attack', sector: st.pos }); const hits = await ctx.attack(st.pos); if (hits.some(h => h.killed && h.role === 'human') && !st.fed) st.fed = true; return; }
     // Human with an Attack card on a likely Alien
     if (human && adv && sk.items && st.items.includes('attack') && humanAttackValue(W, here) >= (lvl === 'hard' ? 3 : 5)) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
     if (ty !== '.') { say({ kind: 'silence', text: 'secure' }); return; }  // Secure sector: declare "Silent Sector"

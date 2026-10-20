@@ -285,6 +285,7 @@ const Bot = (() => {
     opts.forEach(id => {
       const c = g.idx.get(id);
       let s = Math.max(0, alienAttackValue(ctx, W, st, c) - sk.attackAt * 0.5);
+      s += (sk.here || 0) * W.humanCnt[c];   // contact now: the sector where the tracker most expects a Human
       // strike range next turn: the most likely sectors where a Human will be
       let top = 0, sum = 0; for (const j of g.reach[speed][c]) { const v = next[j]; sum += v; if (v > top) top = v; }
       s += sk.pot * (0.6 * top + 0.25 * sum);

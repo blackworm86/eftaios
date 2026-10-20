@@ -10,7 +10,7 @@ Web companion for the physical board game *Escape from the Aliens in Outer Space
 
 Run: `python3 -m http.server` in this folder and open http://localhost:8000.
 
-Maps: Ultimate Edition (Galilei, Fermi, Galvani, Socrates, Morgenland) and Expansion Maps (Machiavelli, Frenzy, En Garde, Sinistra, Sound of Silence), Dilemma, Cavour, Balena, Ascesa, Garibaldi). The map picker groups them by pack and shows a preview. `node tests/maps.check.js` verifies every map.
+Maps: Ultimate Edition (Galilei, Fermi, Galvani, Socrates, Morgenland, Volta, Levi-Montalcini) and Expansion Maps (Machiavelli, Frenzy, En Garde, Sinistra, Sound of Silence), Dilemma, Cavour, Balena, Ascesa, Garibaldi). The map picker groups them by pack and shows a preview. `node tests/maps.check.js` verifies every map.
 
 Map format (`maps/maps.json`): `rows_data` is 14 strings of 23 characters (row 01..14, columns A..W): `.` dangerous, `s` secure, `x` empty space, `H` human, `A` alien, `1`-`4` hatches.
 

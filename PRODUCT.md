@@ -29,7 +29,7 @@ Played in the evening around a table with the physical box. Phones are held in o
 - Moves can be undone until something public or random has happened.
 - Marker model: one colour per player; the circle border carries the faction guess (black = me, yellow = undecided, blue = suspected Human, red = suspected Alien). Markers never overlap. Bluffs are kept as semi-transparent markers of the player's own colour.
 - Notes: stickers with optional text can be placed on the map.
-- Maps: 15 official maps in two groups (Ultimate Edition: Galilei, Fermi, Galvani, Socrates, Morgenland; Expansion Maps: the rest), plus custom maps from the editor. Some maps have fewer than four escape hatches.
+- Maps: 17 official maps in two groups (Ultimate Edition: Galilei, Fermi, Galvani, Socrates, Morgenland, Volta, Levi-Montalcini; Expansion Maps: the rest), plus custom maps from the editor. Some maps have fewer than four escape hatches.
 - Languages: English and Italian; Italian wording follows the Italian rulebook.
 - The app is an unofficial fan companion. It includes no official art, logos or card text, and the physical game is required only in Companion mode.
 - Firebase rules must be republished by the owner through `firebase-rules.html` when they change.

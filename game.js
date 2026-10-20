@@ -422,6 +422,8 @@ function sheetHtml() {
   const turns = Array.from({ length: Math.max(1, Math.min(S.turn, MAX_TURN)) }, (_, i) => i + 1);
   const cur = S.hot ? Hot.curId() : T.turnState && T.turnState.uid;
   const cell = (k, n) => {
+    const ph = S.log.find(e => e.kind === 'hatch' && e.n && e.turn === n && playerKey(e) === k);   // a pod card was drawn on this turn
+    if (ph) return `<td class="c pod ${ph.ok ? 'green' : 'red'}" title="${esc(t(ph.ok ? 'Escape Pod {n}: escaped' : 'Escape Pod {n}: damaged', { n: ph.n }))}">${gico(ph.ok ? 'pod-green' : 'pod-red', 20)}<b>${esc(ph.n)}</b></td>`;
     if (k === 'me') {
       const step = S.path.filter(p => p.turn === n).pop(), bl = own.bluffs.find(b => b.turn === n);
       if (!step) return '<td class="c none">–</td>';

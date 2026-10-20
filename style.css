@@ -719,3 +719,8 @@ dialog a.btn{display:flex;align-items:center;justify-content:center;text-decorat
 .gallery.detail p{margin:0}.gallery.detail .mmdesc{font-size:14px;line-height:1.35;max-height:5.4em;overflow:auto}.gallery.detail .mminfo{font-size:12.5px}
 .gallery.detail .mmacts{display:flex;flex-wrap:wrap;gap:8px;margin:0;flex:none}.gallery.detail .mmacts .btn{flex:1 1 130px;min-height:42px;padding:6px 10px}
 .gallery.detail header{padding:6px 12px}.gallery.detail h2{font-size:17px}
+
+.hex.P.closed.red{fill:#ed192e}.hex.P.closed.green{fill:#37a950}
+#map.classic .hex.P.closed.red{fill:#ed192e;stroke:#151515}#map.classic .hex.P.closed.green{fill:#37a950;stroke:#151515}
+.sheet td.c.pod{display:table-cell}.sheet td.c.pod.red{box-shadow:inset 3px 0 #ed192e}.sheet td.c.pod.green{box-shadow:inset 3px 0 #37a950}.sheet td.c.pod .gi{vertical-align:middle;margin-right:4px}
+.sheet td.c.pod{background:var(--bg2);border-radius:6px;text-align:center}

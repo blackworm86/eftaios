@@ -43,11 +43,12 @@ if (mixed.length) {
   const by = new Map();
   mixed.forEach(g => g.seats.forEach(s => {
     const won = s.role0 === 'alien' ? g.winner === 'alien' : g.winner === 'human';
-    if (!by.has(s.bot)) by.set(s.bot, { n: 0, won: 0, asAlien: 0, asAlienWon: 0, asHuman: 0, asHumanWon: 0 });
-    const b = by.get(s.bot); b.n++; if (won) b.won++;
+    if (!by.has(s.bot)) by.set(s.bot, { escaped: 0, kills: 0, n: 0, won: 0, asAlien: 0, asAlienWon: 0, asHuman: 0, asHumanWon: 0 });
+    const b = by.get(s.bot); b.n++; if (won) b.won++; if (s.role0 === 'human' && s.over === 'escaped') b.escaped++; if (s.role0 === 'alien') b.kills += s.kills || 0;
     if (s.role0 === 'alien') { b.asAlien++; if (won) b.asAlienWon++; } else { b.asHuman++; if (won) b.asHumanWon++; }
   }));
   console.log('\nSkill ladder (mixed tables): seat-side win rate by level');
   console.table([...by].map(([lvl, b]) => ({ level: lvl, seats: b.n, sideWin: pct(b.won / b.n),
-    asAlien: pct(b.asAlienWon / Math.max(1, b.asAlien)), asHuman: pct(b.asHumanWon / Math.max(1, b.asHuman)) })));
+    asAlien: pct(b.asAlienWon / Math.max(1, b.asAlien)), asHuman: pct(b.asHumanWon / Math.max(1, b.asHuman)),
+    humanEscapes: pct(b.escaped / Math.max(1, b.asHuman)), alienKills: (b.kills / Math.max(1, b.asAlien)).toFixed(2) })));
 }

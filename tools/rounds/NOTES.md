@@ -39,3 +39,31 @@ The win-rate gap in the homogeneous tables (easy 35%, hard 41%) comes from the t
 
 Proposed target (to confirm): in a mixed table, hard seats win clearly more often than easy seats,
 and in an all-easy table the bots are beatable by a person's play, i.e. the ladder ordering is what defines the levels.
+
+## Round 4 correction: the ladder exists (personal metrics)
+
+Team win rate hides skill (one seat of six barely moves the outcome). Per-seat metrics, one seat among five of another level:
+
+| table | seat | Human escape | Alien kills/game |
+|---|---|---|---|
+| 1 hard + 5 easy | hard / easy | 84.6% / 52.6% | 1.00 / 0.19 |
+| 1 normal + 5 easy | normal / easy | 77.3% / 56.6% | 0.82 / 0.16 |
+| 1 hard + 5 normal | hard / normal | 71.4% / 56.1% | 0.64 / 0.32 |
+| 1 easy + 5 hard | easy / hard | 47.3% / 52.2% | 0.54 / 0.41 |
+
+easy < normal < hard holds, but is compressed against hard opponents (last row).
+
+## Round 5: tuning sweep for hard (dw, camp, pot, attackAt), 1 hard + 5 normal, 144 games each
+
+Runs with identical baseline settings (dw=28, camp=16, pot=8, attackAt=0.8) differed by up to 13 points in Human escape and 0.15 in kills:
+at 144 games per batch differences under ~10 points are noise. Candidates: dw=14, camp=8.
+
+A/B, 576 games each (tools/ab.sh):
+
+| | side win | Human escape | Alien kills |
+|---|---|---|---|
+| baseline | 54.3% | 66.1% | 0.84 |
+| dw=14, camp=8 | 49.0% | 72.7% | 0.90 |
+
+Result: not adopted (side win drops, escape gain ~1.7 sigma). The hard parameters are near a local optimum:
+further gains need new behaviours (fear, bluffing, personalities), not retuning.

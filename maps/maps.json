@@ -4,7 +4,7 @@
    "id": "galilei",
    "name": "Galilei",
    "official": true,
-   "description": "Balanced zone. Ideal for new players (4–8).",
+   "description": "The Research Zone. Ideal for new players, it is perfectly balanced between the Humans and the Aliens.",
    "oddColumnsLower": true,
    "rows_data": [
     "x.sxxs..ss....xsssxxssx",
@@ -22,13 +22,41 @@
     "s4...x....x..........3.",
     "..ssxxssss.s.ss.sxxs.s."
    ],
-   "pack": "Ultimate Edition"
+   "pack": "Ultimate Edition",
+   "players": "4–8",
+   "difficulty": "Beginner"
+  },
+  {
+   "id": "marconi",
+   "name": "Marconi",
+   "official": true,
+   "pack": "Ultimate Edition",
+   "oddColumnsLower": true,
+   "rows_data": [
+    "s..s..xsxx.s....xxx...x",
+    ".1s.....s.s.s...s....2.",
+    ".....sx....x.......s...",
+    "...s...s.x.s.x.s...s...",
+    "..xx...............xxs.",
+    "s.xxss.s.x.A.xs.s..xxs.",
+    "......x...xxx..sx......",
+    "ss....xs...H....xs.x.xx",
+    "xs.x.......s..........x",
+    "x..xx..s.xsx.x.......sx",
+    "s...........s....sxx..s",
+    ".....xx..s.......xs.x.s",
+    ".4.xxs..sx.x.x.ss.xx.3.",
+    "....ss..sxxxxx....s...."
+   ],
+   "description": "The Recreation Zone. Good for long matches. The absence of Silent Sectors encourages backtracking.",
+   "players": "6–8",
+   "difficulty": "Intermediate"
   },
   {
    "id": "fermi",
    "name": "Fermi",
    "official": true,
-   "description": "Technological zone, demanding (2–6).",
+   "description": "The Technological Zone. Best for competitive players, as it is strategically demanding. Not recommended for novice Humans.",
    "oddColumnsLower": true,
    "rows_data": [
     "xxxxxxxxx3xxx4xxxxxxxxx",
@@ -46,31 +74,9 @@
     "xxxxxxxxxx.xsxxxxxxxxxx",
     "xxxxxxxxxxxxxxxxxxxxxxx"
    ],
-   "pack": "Ultimate Edition"
-  },
-  {
-   "id": "galvani",
-   "name": "Galvani",
-   "official": true,
-   "description": "Corridor zone, for experienced players (2–8).",
-   "oddColumnsLower": true,
-   "rows_data": [
-    "xxx..1xxx.....x2.....sx",
-    "x..xx.s..xxx.s..sx..x.x",
-    ".xx..xx...ssxxs...xx...",
-    ".s.xx..xx..x..xx...x...",
-    ".x.x.xxs.xx.sxs.xs.xxx.",
-    ".x.x.x.xx..A..xx.x.xxx.",
-    ".x.s.x.s.xxxxx.x.x.xxs.",
-    "sx.x.x.x..xHx..x.x.xs..",
-    ".x.x.x..xxs.sxs..x.sxx.",
-    ".4.x..sx..sxx..xx..x.x.",
-    ".s.xx...xx...sx..xx..3.",
-    "..x..xxs.xxsx..xxxx..x.",
-    "xx.xxx..xx..xxxxx..xx..",
-    "xxxxxxxx..sxs.s.s....xx"
-   ],
-   "pack": "Ultimate Edition"
+   "pack": "Ultimate Edition",
+   "players": "2–6",
+   "difficulty": "Advanced"
   },
   {
    "id": "socrates",
@@ -93,7 +99,36 @@
     "xxxxxxxxxxxxxxxxxxxxxxx",
     "xxxxxxxxxxxxxxxxxxxxxxx",
     "xxxxxxxxxxxxxxxxxxxxxxx"
-   ]
+   ],
+   "description": "The Navigation Zone. Good for heavy thinkers. The perfect symmetry of this zone forces players to predict double-bluffs.",
+   "players": "2–6",
+   "difficulty": "Intermediate"
+  },
+  {
+   "id": "galvani",
+   "name": "Galvani",
+   "official": true,
+   "description": "The Transport Zone. Good for experienced players. It seems simple at first, but your early movements in the game will have a long-term impact on the outcome.",
+   "oddColumnsLower": true,
+   "rows_data": [
+    "xxx..1xxx.....x2.....sx",
+    "x..xx.s..xxx.s..sx..x.x",
+    ".xx..xx...ssxxs...xx...",
+    ".s.xx..xx..x..xx...x...",
+    ".x.x.xxs.xx.sxs.xs.xxx.",
+    ".x.x.x.xx..A..xx.x.xxx.",
+    ".x.s.x.s.xxxxx.x.x.xxs.",
+    "sx.x.x.x..xHx..x.x.xs..",
+    ".x.x.x..xxs.sxs..x.sxx.",
+    ".4.x..sx..sxx..xx..x.x.",
+    ".s.xx...xx...sx..xx..3.",
+    "..x..xxs.xxsx..xxxx..x.",
+    "xx.xxx..xx..xxxxx..xx..",
+    "xxxxxxxx..sxs.s.s....xx"
+   ],
+   "pack": "Ultimate Edition",
+   "players": "2–8",
+   "difficulty": "Experienced"
   },
   {
    "id": "morgenland",
@@ -117,13 +152,16 @@
     "xxxxxxxxxxxxxxxxxxxxxxx",
     "xxxxxxxxxxxxxxxxxxxxxxx"
    ],
-   "author": "Jasmin Delbrück"
+   "author": "Jasmin Delbrück",
+   "description": "The Medical Zone. Good for creative players. The narrow corridors are perfect for ambushes and require patience to develop original strategies.",
+   "players": "4–6",
+   "difficulty": "Intermediate"
   },
   {
    "id": "volta",
    "name": "Volta",
    "official": true,
-   "description": "The Cargo Zone. Symmetric, but with many Dangerous Sectors. For quick thinkers (4–8).",
+   "description": "The Cargo Zone. Good for quick-thinking players. The symmetry of the map is counterbalanced by the high concentration of Dangerous Sectors.",
    "oddColumnsLower": true,
    "rows_data": [
     "xxxxxxxxxxxxxxxxxxxxxxx",
@@ -141,13 +179,15 @@
     "xx..xs.x...s...sx.ss.xx",
     "xxxx....sx.xsx..xs.xxxx"
    ],
-   "pack": "Ultimate Edition"
+   "pack": "Ultimate Edition",
+   "players": "4–8",
+   "difficulty": "Intermediate"
   },
   {
    "id": "levimontalcini",
    "name": "Levi-Montalcini",
    "official": true,
-   "description": "The Labyrinth Zone. A tough map for experienced players (4–8).",
+   "description": "The Labyrinth Zone. For advanced players. A competitive map to test your hunting and escaping skills against experienced players.",
    "oddColumnsLower": true,
    "rows_data": [
     "x...xxxxxxxs.sxxxxxxxxx",
@@ -165,7 +205,9 @@
     "xx.xxxxxxxxxsxxxxxxxxxx",
     "xxxxxxxxxxxxxxxxxxxxxxx"
    ],
-   "pack": "Ultimate Edition"
+   "pack": "Ultimate Edition",
+   "players": "4–8",
+   "difficulty": "Advanced"
   },
   {
    "id": "machiavelli",

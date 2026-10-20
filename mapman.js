@@ -21,7 +21,7 @@ function mapManager() {
 function mapDetail(id) {
   const m = T.maps.find(x => x.id === id); if (!m) return;
   const mine = isCustom(m);
-  mmShell(m.name, `<div class="mmbig">${mapPreview(m)}</div><p class="dim">${esc(mapInfo(m))}${mine ? '' : ' · ' + t('Official map (read-only)')}</p>
+  mmShell(m.name, `<div class="mmbig">${mapPreview(m)}</div>${m.description ? `<p>${t(m.description)}</p>` : ''}<p class="dim">${esc(mapInfo(m))}${mine ? '' : ' · ' + t('Official map (read-only)')}</p>
     <div class="mmacts">${mine ? `<button class="btn primary" data-act="mmedit" data-id="${esc(m.id)}">${t('Edit')}</button>` : ''}
     <button class="btn ${mine ? '' : 'primary'}" data-act="mmcopy" data-id="${esc(m.id)}">${t('Make a copy to edit')}</button>
     <button class="btn" data-act="mmexport" data-id="${esc(m.id)}">${t('Export / share')}</button>

@@ -299,7 +299,12 @@ const Bot = (() => {
       s += rnd() * 0.3;
       list.push({ id, score: s, cell: c });
     });
-    return choose(list, sk);
+    const pick_ = choose(list, sk);
+    if (window.__moves && window.Hot && Hot.dump) {   // benchmark hook: every option's belief against the Humans really standing there
+      const real = new Map(); Hot.dump().seats.forEach(x => { if (x.id === ctx.me.id || x.over || x.role !== 'human') return; const p = (x.path || []).filter(q => q.note !== 'reborn'); if (p.length) real.set(p[p.length - 1].pos, (real.get(p[p.length - 1].pos) || 0) + 1); });
+      window.__moves.push({ lvl: W.lvl, turn, opts: list.map(o => ({ pred: +W.humanCnt[o.cell].toFixed(3), next: +(next[o.cell] || 0).toFixed(3), score: +o.score.toFixed(2), truth: real.get(o.id) || 0, chosen: o === pick_ ? 1 : 0 })) });
+    }
+    return pick_;
   }
   const hashId = id => { let x = 7; for (const ch of String(id)) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return x; };
 

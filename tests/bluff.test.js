@@ -13,7 +13,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(bl.length===1&&bl[0].t==='2','one bluff marker, numbered with the turn of the bluff (2)');
  assert(bl[0].dash&&bl[0].fo==='1','bluff marker: dashed border, full colour');
  assert(bl[0].fill===route[0].fill,'bluff marker uses my colour');
- assert(await p.evaluate(()=>document.querySelectorAll('#marks .bluffline').length)===1,'a dashed line joins my real position to the bluff');
+ assert(await p.evaluate(()=>document.querySelectorAll('#marks .bluffline').length)===0,'no dashed line joins my real position to the bluff');
  const r1=route.find(x=>x.t==='1'),r2=route.find(x=>x.t==='2');
  assert(r1&&r1.fo==='1'&&!r1.dash,'an honest noise in my sector: solid border, full colour');
  assert(r2&&+r2.fo<1,'the step where I bluffed elsewhere is faded (nobody heard it)');

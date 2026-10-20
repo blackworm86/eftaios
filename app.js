@@ -314,8 +314,11 @@ function paintOverlay() {
     const spot = items.find(x => x.key === 'spot'), list = items.filter(x => x.key !== 'spot');
     if (spot) { el('circle', { cx: h.x, cy: h.y, r: 17, class: 'mk spot' + (focus ? ' dim' : '') }, marks); el('use', { href: '#gi-spotlight', x: (h.x - 7.5).toFixed(1), y: (h.y - 21).toFixed(1), width: 15, height: 13.8, class: 'mk' + (focus ? ' dim' : '') }, marks); }
     if (!list.length) return;
-    const { size, pts: sp } = slots(list.length);
-    list.forEach((it, i) => {
+    // following a player: their markers sit alone in the middle of each sector (my own bluffs in the same sector stay out of the way)
+    const shown = focus ? list.filter(x => x.key === focus || (x.key === 'bluff' && focus === 'me' && !list.some(y => y.key === 'me'))) : list;
+    if (!shown.length) return;
+    const { size, pts: sp } = slots(shown.length);
+    shown.forEach((it, i) => {
       const [dx, dy] = sp[i], turns = it.turns.sort((x, y) => y - x), last = turns[0];
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
       const ownM = mine(it.key), ck = ownM ? 'me' : it.key, ink = pal(ck)[1], bluff = it.key === 'bluff';
@@ -326,6 +329,7 @@ function paintOverlay() {
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
       if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const rg = el('g', { transform: `translate(${at_.cx} ${at_.cy})` }, me), ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c }, rg); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); }
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
+      if (it.key === 'me' && S.reborn && killedSector(S.path) === sec) killedBadge(g, size);
       // the printed icons of what this player declared on that step, as marks on the marker
       stepIcons(it.key, last, sec).forEach((n, j) => {
         const w = size * (n === 'attack' || n === 'claws' ? 2.1 : 1.75), bx = size * 0.9, by = j ? size * 0.9 : -size * 0.9;   // an attack is the icon people look for
@@ -376,11 +380,18 @@ function hexDist(map, a, b) {
   const A = cubeOf(map, p[0], p[1]), B = cubeOf(map, q[0], q[1]);
   return Math.max(Math.abs(A[0] - B[0]), Math.abs(A[1] - B[1]), Math.abs(A[2] - B[2]));
 }
+/* where a player was killed: the sector before the restart as an Alien, or the last one if they are out */
+function killedSector(path, out) {
+  const p = (path || []).filter(x => x && parseId(x.pos)), i = p.findIndex(x => x.note === 'reborn');
+  return i > 0 ? p[i - 1].pos : out === 'killed' && p.length ? p[p.length - 1].pos : null;
+}
+const killedBadge = (g, size) => el('use', { href: '#gi-killed', x: (size * 0.2).toFixed(1), y: (-size * 1.9).toFixed(1), width: (size * 1.6).toFixed(1), height: (size * 1.6).toFixed(1) }, g);
 /* a real route (my path, or anyone's at game over) as steps */
 function pathSteps(path) {
   const out = [], p = (path || []).filter(x => x && parseId(x.pos));
   for (let i = 1; i < p.length; i++) {
-    const a = p[i - 1], b = p[i], jump = ['teleport', 'reborn', 'clone'].includes(b.note);
+    const a = p[i - 1], b = p[i], jump = ['teleport', 'clone'].includes(b.note);
+    if (b.note === 'reborn') continue;   // the restart in the Alien Sector is not a move: only the marker shows
     out.push({ from: a.pos, to: b.pos, t0: a.turn, t: b.turn, kind: jump ? 'jump' : a.pos === b.pos ? 'stay' : 'move' });
   }
   return out;
@@ -486,15 +497,17 @@ function routeTag(parent, x, y, txt, col, key) {
 /* game over: every player's real route, from the devices that played them (announcements and bluffs are left out) */
 function finalRoutes() {
   if (T.showAnn) return null;
-  if (S.hot) { if (!(window.Hot && Hot.isOver())) return null; const me = myId(); return Object.entries(Hot.routes()).map(([id, v]) => ({ key: id === me ? 'me' : 'u:' + id, path: v.path, role: v.role })); }
+  if (S.hot) { if (!(window.Hot && Hot.isOver())) return null; const me = myId(); const pp = Hot.publicPlayers(); return Object.entries(Hot.routes()).map(([id, v]) => ({ key: id === me ? 'me' : 'u:' + id, path: v.path, role: v.role, out: (pp[id] || {}).out })); }
   if (!(window.Sync && Sync.code && Sync.settings && Sync.settings.status === 'over')) return null;
-  const out = [{ key: 'me', path: S.path, role: S.role }];
-  Object.entries(Sync.players || {}).forEach(([u, p]) => { if (u !== Sync.uid && p.route) out.push({ key: 'u:' + u, path: decodeRoute(p.route), role: p.role }); });
+  const out = [{ key: 'me', path: S.path, role: S.role, out: S.over === 'dead' ? 'killed' : S.over }];
+  Object.entries(Sync.players || {}).forEach(([u, p]) => { if (u !== Sync.uid && p.route) out.push({ key: 'u:' + u, path: decodeRoute(p.route), role: p.role, out: p.out }); });
   return out;
 }
 const ROLE_BORDER = { human: '#2f7dff', alien: '#ff3b30' };
 function paintRoutes(routes, focus, hp, marks) {
   const bySector = new Map(), rpos = new Map();
+  routes = routes.filter(r => !focus || r.key === focus);   // following a player shows only their markers, each alone in its sector
+  routes.forEach(r => { r.dead = killedSector(r.path, r.out); });
   routes.forEach(r => {
     r.path.forEach(p => { if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [] }); m.get(r.key).turns.push(p.turn); });
   });
@@ -508,13 +521,14 @@ function paintRoutes(routes, focus, hp, marks) {
       const g = el('g', { class: 'mk pm route' + (k === 'me' ? ' mine' : '') + (dim ? ' dim' : ''), transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, k, size, { border: k === 'me' ? null : ROLE_BORDER[it.r.role] });
       const tx = el('text', { fill: pal(k)[1], y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
+      if (it.r.dead === sec) killedBadge(g, size);
     });
   });
-  if (S.routesOn) drawRouteArrows(routes.filter(r => !focus || focus === r.key).map(r => ({ key: r.key, steps: pathSteps(r.path) })), rpos, marks, true);
+  if (S.routesOn) drawRouteArrows(routes.map(r => ({ key: r.key, steps: pathSteps(r.path) })), rpos, marks, true);
 }
 /* eliminated / escaped badge on a player's icon in the strip and the sheet */
 function outMark(k) {
-  const o = k === 'me' ? ({ dead: 'killed', escaped: 'escaped', trapped: 'trapped' })[S.over] : k.startsWith('u:') ? (tablePlayers()[k.slice(2)] || {}).out : null;
+  const o = k === 'me' ? ({ dead: 'killed', escaped: 'escaped', trapped: 'trapped' })[S.over] || (S.reborn ? 'killed' : '') : k.startsWith('u:') ? (tablePlayers()[k.slice(2)] || {}).out || ((tablePlayers()[k.slice(2)] || {}).conv ? 'killed' : '') : null;
   if (!o) return '';
   return o === 'escaped' ? `<i class="omark esc" title="${t('escaped')}">${ico('check', 12)}</i>` : `<i class="omark dead" title="${t(o === 'trapped' ? 'trapped' : 'eliminated')}">${o === 'trapped' ? ico('cross', 12) : gico('killed', 16)}</i>`;
 }

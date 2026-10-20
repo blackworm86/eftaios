@@ -27,7 +27,7 @@ function mapGallery() {
   list.forEach(m => { const p = m.pack || t('My maps'); if (!packs.includes(p)) packs.push(p); });
   const g = document.createElement('div'); g.id = 'gallery'; g.className = 'gallery'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true');
   g.innerHTML = `<header><h2>${t('Choose a map')}</h2><button class="icon-btn" data-act="gallclose" aria-label="${t('Close')}">${ico('close')}</button></header><div class="gbody">
-    ${packs.map(p => `<h3>${esc(p)}</h3><div class="ggrid">${list.filter(m => (m.pack || t('My maps')) === p).map(m => `<button class="gcard" data-act="pickmap" data-id="${esc(m.id)}" aria-pressed="${m.id === cur}">${mapPreview(m)}<b>${esc(m.name)}</b><small>${esc(mapInfo(m))}</small></button>`).join('')}</div>`).join('')}</div>`;
+    ${packs.map(p => `<h3>${esc(t(p))}</h3><div class="ggrid">${list.filter(m => (m.pack || t('My maps')) === p).map(m => `<button class="gcard" data-act="pickmap" data-id="${esc(m.id)}" aria-pressed="${m.id === cur}">${mapPreview(m)}<b>${esc(m.name)}</b><small>${esc(mapInfo(m))}</small></button>`).join('')}</div>`).join('')}</div>`;
   document.body.appendChild(g);
   const sel = g.querySelector('[aria-pressed=true]'); if (sel) sel.scrollIntoView({ block: 'center' });
 }

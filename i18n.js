@@ -128,6 +128,8 @@ const IT = {
 "Hunt the Humans: kill them before they reach an Escape Pod.": "Dai la caccia agli Umani: uccidili prima che raggiungano una Capsula.",
 "You move 1 or 2 sectors (3 once you have fed on a Human). After moving you may attack instead of drawing a card.": "Ti muovi di 1 o 2 settori (3 dopo aver divorato un Umano). Dopo il movimento puoi attaccare invece di pescare.",
 "An attack kills everyone in the sector, Aliens included. Keep your identity hidden: bluff like a Human.": "Un attacco uccide tutti nel settore, Alieni compresi. Nascondi la tua identità: bluffa come un Umano.",
+"Ultimate Edition": "Edizione Ultimate",
+"Expansion Maps": "Mappe delle espansioni",
 "Reading the announcements…": "Leggo gli annunci…",
 "Placing the other players on the map…": "Colloco gli altri giocatori sulla mappa…",
 "Weighing the options…": "Valuto le possibilità…",

@@ -15,7 +15,7 @@ function mapManager() {
   T.maps.forEach(m => { const p = m.pack || t('My maps'); if (!packs.includes(p)) packs.push(p); });
   if (!packs.includes(t('My maps'))) packs.push(t('My maps'));
   const body = `<div class="row two mmtop"><button class="btn primary" data-act="mmnew">+ ${t('New map')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div>
-    ${packs.map(p => { const l = T.maps.filter(m => (m.pack || t('My maps')) === p); return `<h3>${esc(p)}</h3>${l.length ? `<div class="ggrid">${l.map(m => `<button class="gcard" data-act="mmopen" data-id="${esc(m.id)}">${mapPreview(m)}<b>${esc(m.name)}</b><small>${esc(mapInfo(m))}</small></button>`).join('')}</div>` : `<p class="dim">${t('No maps of your own yet. Create one, or copy an official map to change it.')}</p>`}`; }).join('')}`;
+    ${packs.map(p => { const l = T.maps.filter(m => (m.pack || t('My maps')) === p); return `<h3>${esc(t(p))}</h3>${l.length ? `<div class="ggrid">${l.map(m => `<button class="gcard" data-act="mmopen" data-id="${esc(m.id)}">${mapPreview(m)}<b>${esc(m.name)}</b><small>${esc(mapInfo(m))}</small></button>`).join('')}</div>` : `<p class="dim">${t('No maps of your own yet. Create one, or copy an official map to change it.')}</p>`}`; }).join('')}`;
   mmShell(t('Maps'), body, 'mmclose');
 }
 function mapDetail(id) {

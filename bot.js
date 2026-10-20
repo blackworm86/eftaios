@@ -20,9 +20,9 @@ const Bot = (() => {
   const SKILL = {
     // think: seconds of visible thinking; mistake: chance to take one of the next-best moves; decoy: 0 random, 1 believable, 2 simulated;
     // allyCost: what it costs to kill a possible Alien by mistake (attacks eliminate everybody in the sector)
-    easy:   { smartBluff: false, temp: 0.5, beta: 0.2, hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.5, items: false, bluff: false, think: 1.4, mistake: 0.18, decoy: 0, allyCost: 8, humanCal: 0.6 },
-    normal: { smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
-    hard:   { smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
+    easy:   { mem: 1.0, smartBluff: false, temp: 0.5, beta: 0.2, hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.5, items: false, bluff: false, think: 1.4, mistake: 0.18, decoy: 0, allyCost: 8, humanCal: 0.6 },
+    normal: { mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
+    hard:   { mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
   };
 
   const skill = lvl => Object.assign({}, SKILL[lvl] || SKILL.normal, window.__skill && window.__skill[lvl]);   // __skill: tuning hook for benchmarks
@@ -263,11 +263,11 @@ const Bot = (() => {
     const cost = pathCosts(W), list = [];
     // the clock: the longer the game runs, the less a detour is worth and the more a risk is worth taking
     const hurry = W.lvl === 'easy' ? 1 : 1 + Math.max(0, W.turn - 6) * 0.08, calm = W.lvl === 'easy' ? 1 : Math.max(0.35, (42 - W.turn) / 36);
-    const recent = new Set(st.path.slice(-5).map(p => p.pos));
+    const recent = new Set(st.path.slice(-5).map(p => p.pos));   // humans do not return to where they were
     opts.forEach(id => {
       const c = g.idx.get(id);
       if (g.isHatch(c)) return list.push({ id, cell: c, score: 1000 });
-      let s = -cost[c] * hurry - W.sk.dw * calm * W.risk(c) - (W.lvl === 'easy' ? 0 : 3 * W.crowd[c]) - (W.lvl === 'easy' || !recent.has(id) ? 0 : 1.5);
+      let s = -cost[c] * hurry - W.sk.dw * calm * W.risk(c) - (W.lvl === 'easy' ? 0 : 3 * W.crowd[c]) - (recent.has(id) ? W.sk.mem : 0);
       if (g.sec[c]) s += 0.4 + (W.lvl === 'easy' ? 0 : 0.4);                   // Secure sectors make no noise
       list.push({ id, cell: c, score: s });
     });
@@ -277,6 +277,7 @@ const Bot = (() => {
     const g = W.g, sk = W.sk, speed = st.fed ? 3 : 2, opts = [...reachable(T.map, st.pos, speed, 'alien').keys()];
     if (!opts.length) return null;
     const next = humanNext(W), turn = ctx.H.turn, late = turn >= 14 ? 1.5 : 1, hs = W.hatches;
+    const recentA = new Set(st.path.slice(-4).map(p => p.pos));
     // hatches that Humans are heading for matter most
     const wH = hs.map(h => { const dh = humanDist([h]); let w = 0.15; for (let s = 0; s < g.N; s++) if (W.humanOcc[s] > 1e-4) w += W.humanOcc[s] * Math.exp(-dh[s] / 2.5); return w; });
     const mineH = hs.length ? hs[hashId(ctx.me.id) % hs.length] : -1, wsum = wH.reduce((a, b) => a + b, 0) + (mineH >= 0 ? 0.6 : 0);
@@ -294,6 +295,7 @@ const Bot = (() => {
         camp += (wH[k] + (h === mineH ? 0.6 : 0)) * cov / ring.length;
       });
       s += sk.camp * late * (wsum ? camp / wsum : 0);
+      if (recentA.has(id)) s -= sk.mem;   // no back-and-forth: an Alien that stops moving is easy to find
       s += rnd() * 0.3;
       list.push({ id, score: s, cell: c });
     });

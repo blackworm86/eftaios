@@ -125,7 +125,7 @@ function buildMap() {
     el('g', { class: 'sicon', transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})` }, g);
     el('text', { x, y, class: 'sym' }, g);
   }
-  el('g', { id: 'zone' }, vp); el('g', { id: 'trail', class: 'trail' }, vp);
+  el('g', { id: 'zone' }, vp);
   el('g', { id: 'marks' }, vp); el('g', { id: 'me' }, vp); el('g', { id: 'notes' }, vp);
   paintCells(); fit();
 }
@@ -258,29 +258,13 @@ function followZone(key) {
   zone.set(last.sector, 0);
   return { last, zone, human, guess };
 }
-/* a route as arrows: one segment per move, an arrowhead on its middle pointing the way I went */
-function arrowRoute(parent, pts, color, cls) {
-  const g = el('g', { class: cls }, parent);
-  for (let i = 1; i < pts.length; i++) {
-    const [x1, y1] = pts[i - 1], [x2, y2] = pts[i], dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy); if (!len) continue;
-    const ux = dx / len, uy = dy / len, mx = (x1 + x2) / 2, my = (y1 + y2) / 2, L = 6.5, W = 4.6;
-    const ln = el('line', { x1: x1.toFixed(1), y1: y1.toFixed(1), x2: x2.toFixed(1), y2: y2.toFixed(1) }, g);
-    const hd = el('path', { class: 'ah', d: `M${(mx + ux * L * 0.6).toFixed(1)} ${(my + uy * L * 0.6).toFixed(1)}L${(mx - ux * L * 0.4 - uy * W).toFixed(1)} ${(my - uy * L * 0.4 + ux * W).toFixed(1)}L${(mx - ux * L * 0.4 + uy * W).toFixed(1)} ${(my - uy * L * 0.4 - ux * W).toFixed(1)}z` }, g);
-    if (color) { ln.setAttribute('stroke', color); hd.setAttribute('fill', color); hd.setAttribute('stroke', color); }
-  }
-  return g;
-}
 function paintOverlay() {
   const map = T.map, inPlay = S.role;
-  const trail = $('#trail'), marks = $('#marks'), me = $('#me'), zoneG = $('#zone');
+  const marks = $('#marks'), me = $('#me'), zoneG = $('#zone');
   marks.textContent = ''; me.textContent = ''; if (zoneG) zoneG.textContent = ''; paintNotes();
   const focus = T.focus || null;
   const hp = sec => { const q = parseId(sec); return q ? hexPos(map, q[0], q[1]) : null; };
   const routes = inPlay ? finalRoutes() : null;
-  trail.textContent = '';
-  const pts = inPlay && !routes ? S.path.map(p => { const h = hp(p.pos); return [h.x, h.y]; }) : [];
-  if (pts.length > 1) arrowRoute(trail, pts, null, 'trailg');
-  trail.setAttribute('class', 'trail' + (focus && focus !== 'me' ? ' dim' : ''));
   renderMkBar(); followBar();
   if (!inPlay) return;
   if (routes) { paintRoutes(routes, focus, hp, marks); return; }
@@ -343,11 +327,6 @@ function paintOverlay() {
       });
     });
   });
-  // route of the followed player: a solid line in their colour between their known steps
-  if (focus && focus !== 'me') {
-    const tl = trackOf(focus).map(v => { const hh = hp(v.sector); return [hh.x, hh.y]; });
-    if (tl.length > 1) { const tlEl = arrowRoute(marks, tl, pal(focus)[0], 'tl'); const first = marks.querySelector('.pm'); if (first) marks.insertBefore(tlEl, first); }
-  }
 }
 /* game over: every player's real route, from the devices that played them (announcements and bluffs are left out) */
 function finalRoutes() {
@@ -361,9 +340,7 @@ function finalRoutes() {
 const ROLE_BORDER = { human: '#2f7dff', alien: '#ff3b30' };
 function paintRoutes(routes, focus, hp, marks) {
   const bySector = new Map();
-  routes.forEach(r => {   // lines first, so the markers sit on top
-    const dim = focus && focus !== r.key, pts = r.path.map(p => hp(p.pos)).filter(Boolean).map(h => [h.x, h.y]);
-    if (pts.length > 1) arrowRoute(marks, pts, pal(r.key)[0], 'rline' + (r.key === 'me' ? ' me' : '') + (dim ? ' dim' : ''));
+  routes.forEach(r => {
     r.path.forEach(p => { if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [] }); m.get(r.key).turns.push(p.turn); });
   });
   bySector.forEach((m, sec) => {

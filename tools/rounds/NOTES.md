@@ -67,3 +67,18 @@ A/B, 576 games each (tools/ab.sh):
 
 Result: not adopted (side win drops, escape gain ~1.7 sigma). The hard parameters are near a local optimum:
 further gains need new behaviours (fear, bluffing, personalities), not retuning.
+
+## Round 6: Alien target judgement
+
+Trace hooks (window.__trace, window.__moves in bot.js, read by tools/belief.js and tools/moves.js; hard, 6 players, 144 games):
+- Alien turns: 10,425; a Human really stood in the sector in 512 (4.9%); Aliens attacked in 141 of those (27.5%); attack hit rate 19%.
+- The belief is informative (expected Humans 0.42 where one stands, 0.12 elsewhere) and the attack calibration (humanCal 0.35) is about right.
+- Move choice: a Human stands in some reachable sector in 22.4% of moves (ceiling); a random option holds one 3.4%; the chosen option 4.4%;
+  the best-by-belief option 8.9%; the best-by-predicted-arrival option 2.6% (worse than random).
+- pot sweep (0/2/4/8): contact falls to 2.3% with pot=0, so the arrival term helps in combination.
+- New skill key `here` (weight on current belief in the move score, default 0). Contact up (21% -> 28% of the ceiling at here=6) but,
+  in the 576-game A/B (1 hard + 5 normal): side win 51.7% vs 54.3%, Alien side 33.0% vs 37.1%, kills 0.88 vs 0.84. Not adopted.
+
+Lesson: a one-step contact metric does not predict results; the game is dynamic (killing a Human changes who plays and how).
+Weight changes do not lift the Aliens; a real gain needs a different decision rule (multi-turn planning, herding Humans toward
+hatches where Aliens camp), to be tested with the same A/B.

@@ -36,7 +36,7 @@ function parseMap(m) {
   const rows = m.rows_data;
   if (!Array.isArray(rows) || !rows.length || rows.some(r => typeof r !== 'string' || r.length !== rows[0].length)) throw new Error('Invalid map rows');
   if (!rows.every(r => /^[.sxHA1-4]+$/.test(r))) throw new Error('Unknown symbol in map (allowed: . s x H A 1 2 3 4)');
-  return { id: m.id || 'map-' + Date.now(), name: m.name || 'Custom map', description: m.description || '', pack: m.pack || '', author: m.author || '', official: !!m.official, cols: rows[0].length, rows: rows.length, odd: m.oddColumnsLower !== false, grid: rows.map(r => r.split('')) };
+  return { id: m.id || 'map-' + Date.now(), name: m.name || 'Custom map', description: m.description || '', players: m.players || '', difficulty: m.difficulty || '', pack: m.pack || '', author: m.author || '', official: !!m.official, cols: rows[0].length, rows: rows.length, odd: m.oddColumnsLower !== false, grid: rows.map(r => r.split('')) };
 }
 async function loadMaps() {
   let list = [];

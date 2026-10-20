@@ -6,7 +6,7 @@ const p=await (await b.newContext({viewport:{width:390,height:844},serviceWorker
 await p.goto('http://localhost:8123/');await p.click('[data-act=hotsetup]');
 assert(await p.locator('select#f-map').count()===0&&await p.locator('.mapcard').count()===1,'no dropdown: a preview card');
 
-await p.click('.mapcard');assert(await p.locator('#gallery .gcard').count()===17,'gallery shows all 17 maps');
+await p.click('.mapcard');assert(await p.locator('#gallery .gcard').count()===18,"gallery shows all 18 maps");
 assert(await p.locator('#gallery h3').count()===2,'grouped in 2 packs');
 
 await p.click('.gcard[data-id="balena"]');

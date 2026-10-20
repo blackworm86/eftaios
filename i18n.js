@@ -154,6 +154,7 @@ const IT = {
 "Color picker": "Contagocce",
 "Start sectors and pods are single: use the brush.": "I settori di partenza e le capsule sono unici: usa il pennello.",
 "Start sectors and pods cannot be filled over.": "Non si possono sovrascrivere i settori di partenza e le capsule.",
+"Map saved to your downloads": "Mappa salvata nei download",
 "Reading the announcements…": "Leggo gli annunci…",
 "Placing the other players on the map…": "Colloco gli altri giocatori sulla mappa…",
 "Weighing the options…": "Valuto le possibilità…",

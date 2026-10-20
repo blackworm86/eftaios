@@ -36,11 +36,20 @@ function mapExport(id) {
     <div class="row mmexp"><button class="btn" id="d-no">${t('Close')}</button><button class="btn" id="d-dl">${t('Download')}</button><button class="btn primary" id="d-copy">${t('Copy')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
   $('#d-copy').onclick = () => copyText(json, t('Copied'));
-  $('#d-dl').onclick = () => {
-    const f = new File([json], (m.name.replace(/[^\w-]+/g, '_') || 'map') + '.json', { type: 'application/json' });
-    if (navigator.canShare && navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: m.name }).catch(() => {}); return; }
-    const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  };
+  $('#d-dl').onclick = () => saveMapFile(m.name, json);
+}
+
+/* save a map as a .json file: the share sheet on phones, otherwise (or when it fails) a file download */
+async function saveMapFile(name, json) {
+  const f = new File([json], (name.replace(/[^\w-]+/g, '_') || 'map') + '.json', { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [f] })) {
+    try { await navigator.share({ files: [f], title: name }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }   // the viewer closed the share sheet
+  }
+  const url = URL.createObjectURL(f), a = document.createElement('a');
+  a.href = url; a.download = f.name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast(t('Map saved to your downloads'));
 }
 
 /* ---- editor ---- */

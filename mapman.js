@@ -40,7 +40,7 @@ function mapExport(id) {
 }
 
 /* save a map as a .json file: the share sheet on phones, otherwise (or when it fails) a file download */
-async function saveMapFile(name, json) {
+async function saveMapFile(name, json, msg) {
   const f = new File([json], (name.replace(/[^\w-]+/g, '_') || 'map') + '.json', { type: 'application/json' });
   if (navigator.canShare && navigator.canShare({ files: [f] })) {
     try { await navigator.share({ files: [f], title: name }); return; }
@@ -49,7 +49,7 @@ async function saveMapFile(name, json) {
   const url = URL.createObjectURL(f), a = document.createElement('a');
   a.href = url; a.download = f.name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
-  toast(t('Map saved to your downloads'));
+  toast(t(msg || 'Map saved to your downloads'));
 }
 
 /* ---- editor ---- */

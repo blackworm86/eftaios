@@ -172,6 +172,8 @@ const IT = {
 "Pen": "Penna",
 "Line": "Linea",
 "Eraser": "Gomma",
+"Save game log": "Salva il log della partita",
+"Game log saved to your downloads": "Log salvato nei download",
 "Text": "Testo",
 "Hand": "Mano",
 "Text note": "Nota di testo",

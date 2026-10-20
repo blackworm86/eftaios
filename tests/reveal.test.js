@@ -11,7 +11,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(await p.locator('#marks .pm.bluff').count()===1,'during the game my bluff is on the map');
  await p.evaluate(()=>{S.over='dead';S.outSent=false;afterChange()});await p.waitForFunction(()=>Hot.isOver(),null,{timeout:60000});await p.evaluate(()=>{closeDlg();render();paintOverlay()});
  const r=await p.evaluate(()=>({lines:document.querySelectorAll('#marks .rline').length,bluff:document.querySelectorAll('#marks .pm.bluff').length,seats:JSON.parse(localStorage.getItem('eftaios.hot')).seats.filter(s=>s.state.path.length>1).length,dead:document.querySelectorAll('#mkbar .omark.dead').length+document.querySelectorAll('#mkbar .omark').length}));
- assert(r.lines>=r.seats-1&&r.lines>=2,'game over: one line per player route ('+r.lines+' lines, '+r.seats+' players moved)');
+ assert(r.lines===0,'game over: no route lines are drawn, only the real markers');
  assert(r.bluff===0,'game over: false leads (bluffs, announcements) are cleared');
  await p.click('.revseg [data-v=ann]');assert(await p.evaluate(()=>document.querySelectorAll('#marks .rline').length)===0,'the game-over panel can switch back to the announcements');
  await p.click('.revseg [data-v=real]');

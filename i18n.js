@@ -142,6 +142,7 @@ const IT = {
 "Beginner": "Principiante",
 "Experienced": "Esperto",
 "{n} players": "{n} giocatori",
+"This map is too large for an online table.": "Questa mappa è troppo grande per un tavolo online.",
 "Reading the announcements…": "Leggo gli annunci…",
 "Placing the other players on the map…": "Colloco gli altri giocatori sulla mappa…",
 "Weighing the options…": "Valuto le possibilità…",

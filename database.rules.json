@@ -26,6 +26,9 @@
           "first": {
             ".validate": "newData.isString() && newData.val().length <= 20"
           },
+          "customMap": {
+            ".validate": "newData.isString() && newData.val().length <= 700"
+          },
           "online": {
             ".validate": "newData.isBoolean()"
           },

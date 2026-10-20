@@ -37,7 +37,7 @@ Played in the evening around a table with the physical box. Phones are held in o
 
 ## Brand Commitments
 - Rules follow the official rulebook (for example, an attack happens in the sector the attacker moved into). The rulebook is authoritative; the in-app summary says so.
-- The visual style keeps the look of the game: hex sectors, start sectors, numbered hatches, announcements in the game's own words.
+- The visual style keeps the look of the game: hex sectors, start sectors, numbered pods, announcements in the game's own words.
 
 ## Evidence on Hand
 - Rulebooks (English and Italian) and map images were supplied by the owner. No testimonials, usage data or screenshots from real games exist yet; do not invent them.

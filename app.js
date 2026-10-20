@@ -337,6 +337,12 @@ function paintOverlay() {
    curve and turns nobody heard a dashed curve. Arrows on the same two sectors are pushed apart into lanes.
    Older moves fade. */
 const cubeOf = (map, c, r) => { const z = r - (map.odd ? (c - (c & 1)) / 2 : (c + (c & 1)) / 2); return [c, -c - z, z]; };
+/* is the line between two sectors a straight row of sectors (so it crosses their centres, not an edge)? */
+function straightMove(map, a, b) {
+  const p = parseId(a), q = parseId(b); if (!p || !q) return true;
+  const A = cubeOf(map, p[0], p[1]), B = cubeOf(map, q[0], q[1]), d = [0, 1, 2].map(i => B[i] - A[i]);
+  return d.filter(v => v === 0).length >= 1;
+}
 function hexDist(map, a, b) {
   const p = parseId(a), q = parseId(b); if (!p || !q) return 0;
   const A = cubeOf(map, p[0], p[1]), B = cubeOf(map, q[0], q[1]);
@@ -389,13 +395,13 @@ function drawRouteArrows(routes, mkPos, marks) {
       const a = at(r.key, s.from), b = at(r.key, s.to); if (!a || !b) return;
       if (s.kind === 'move') {   // repeated trips of the same player the same way are drawn once, at their newest turn
         const id = s.from + '>' + s.to, old = seen.get(id); if (old) { old.t = Math.max(old.t, s.t); return; }
-        const it = { key: r.key, s, a, b, t: s.t, d: hexDist(map, s.from, s.to) }; seen.set(id, it); arrows.push(it);
+        const it = { key: r.key, s, a, b, t: s.t, d: hexDist(map, s.from, s.to), curve: !straightMove(map, s.from, s.to) }; seen.set(id, it); arrows.push(it);
       } else arrows.push({ key: r.key, s, a, b, t: s.t });
     });
   });
   // lanes: straight arrows on the same two sectors are spread so none sits on another
   const groups = new Map();
-  arrows.filter(x => x.s.kind === 'move').forEach(x => { const id = [x.s.from, x.s.to].sort().join('|'); if (!groups.has(id)) groups.set(id, []); groups.get(id).push(x); });
+  arrows.filter(x => x.s.kind === 'move' && !x.curve).forEach(x => { const id = [x.s.from, x.s.to].sort().join('|'); if (!groups.has(id)) groups.set(id, []); groups.get(id).push(x); });
   groups.forEach(list => {
     const [c1, c2] = list[0].s.from < list[0].s.to ? [list[0].a, list[0].b] : [list[0].b, list[0].a];
     let dx = c2[0] - c1[0], dy = c2[1] - c1[1]; const L = Math.hypot(dx, dy) || 1; const nx = -dy / L, ny = dx / L;
@@ -409,7 +415,7 @@ function drawRouteArrows(routes, mkPos, marks) {
   const P = (x, y) => x.toFixed(1) + ' ' + y.toFixed(1);
   arrows.sort((p, q) => p.t - q.t).forEach(x => {
     const col = color(x.key), op = fade(x.t), grp = el('g', { class: 'rt' + (x.key === 'me' ? ' me' : ''), opacity: op.toFixed(2) }, g);
-    const W = 2.6, HL = 7, HW = 7.4;
+    const W = 1.7, HL = 6, HW = 5.8;
     if (x.s.kind === 'stay') {   // stayed or attacked without moving: a little circular arrow by the marker
       const [cx, cy, sz] = x.a, r = (sz || 6) + 4.5, a0 = 3.5, a1 = 8.6, pts = [];
       for (let i = 0; i <= 30; i++) { const an = a0 + (a1 - a0) * i / 30; pts.push([cx + r * Math.cos(an), cy + r * Math.sin(an)]); }
@@ -421,23 +427,23 @@ function drawRouteArrows(routes, mkPos, marks) {
     const off = x.off || [0, 0], a = [x.a[0] + off[0], x.a[1] + off[1]], b = [x.b[0] + off[0], x.b[1] + off[1]];
     const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy); if (L < 1) return;
     const ux = dx / L, uy = dy / L, nx = -uy, ny = ux, t0 = (x.a[2] || 3) + 2.4, t1 = (x.b[2] || 3) + 2.4;
-    if (x.s.kind === 'move') {
+    if (x.s.kind === 'move' && !x.curve) {
       let s0 = t0, s1 = t1; if (L - s0 - s1 < HL + 3) { const k = Math.max(0, (L - HL - 3) / (s0 + s1)); s0 *= k; s1 *= k; }
       const sx = a[0] + ux * s0, sy = a[1] + uy * s0, tx = b[0] - ux * s1, ty = b[1] - uy * s1, bx = tx - ux * HL, by = ty - uy * HL;
       el('path', { d: `M${P(sx + nx * W / 2, sy + ny * W / 2)} L${P(bx + nx * W / 2, by + ny * W / 2)} L${P(bx + nx * HW / 2, by + ny * HW / 2)} L${P(tx, ty)} L${P(bx - nx * HW / 2, by - ny * HW / 2)} L${P(bx - nx * W / 2, by - ny * W / 2)} L${P(sx - nx * W / 2, sy - ny * W / 2)}Z`, fill: col, stroke: col, 'stroke-width': 0.6, 'stroke-linejoin': 'round' }, grp);
-      if (x.d >= 2) routeTag(grp, (sx + bx) / 2 + nx * 7, (sy + by) / 2 + ny * 7, String(x.d), col, x.key);
       return;
     }
-    // a jump or unheard turns: a curve, bending to one side
-    const bend = x.s.kind === 'jump' ? 0.38 : 0.26, cxp = (a[0] + b[0]) / 2 + nx * bend * L, cyp = (a[1] + b[1]) / 2 + ny * bend * L, q = t => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cxp + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cyp + t * t * b[1]];
+    // a jump, unheard turns, or a move that is not in a straight row of sectors: a curve (a straight line there would run along the edge between two sectors)
+    const side = x.s.from < x.s.to ? 1 : -1, bend = x.s.kind === 'jump' ? 0.38 : x.s.kind === 'gap' ? 0.26 : 0.3 * side, cxp = (a[0] + b[0]) / 2 + nx * bend * L, cyp = (a[1] + b[1]) / 2 + ny * bend * L, q = t => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cxp + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cyp + t * t * b[1]];
     const pts = []; for (let i = 0; i <= 48; i++) pts.push(q(i / 48));
     const acc = [0]; for (let i = 1; i < pts.length; i++) acc.push(acc[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     const tot = acc[acc.length - 1], i0 = acc.findIndex(v => v >= t0), i1 = acc.reduce((m, v, i) => v <= tot - t1 ? i : m, 0), ib = acc.reduce((m, v, i) => v <= acc[i1] - HL ? i : m, 0);
     if (i0 < 0 || ib <= i0) return;
-    el('path', { d: 'M' + pts.slice(i0, ib + 1).map(p => P(p[0], p[1])).join(' L'), fill: 'none', stroke: col, 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-dasharray': x.s.kind === 'jump' ? '0.1 4.6' : '5.5 4' }, grp);
+    el('path', { d: 'M' + pts.slice(i0, ib + 1).map(p => P(p[0], p[1])).join(' L'), fill: 'none', stroke: col, 'stroke-width': x.s.kind === 'move' ? 1.7 : 2, 'stroke-linecap': 'round', ...(x.s.kind === 'move' ? {} : { 'stroke-dasharray': x.s.kind === 'jump' ? '0.1 4.6' : '5.5 4' }) }, grp);
     const tip = pts[i1], bs = pts[ib], vx = tip[0] - bs[0], vy = tip[1] - bs[1], l = Math.hypot(vx, vy) || 1, hx = -vy / l * HW / 2, hy = vx / l * HW / 2;
     el('path', { d: `M${P(tip[0], tip[1])} L${P(bs[0] + hx, bs[1] + hy)} L${P(bs[0] - hx, bs[1] - hy)}Z`, fill: col }, grp);
     const mid = q(0.5);
+    if (x.s.kind === 'move') return;
     if (x.s.kind === 'gap') routeTag(grp, mid[0], mid[1], t('T{a}–{b}', { a: x.s.t0, b: x.s.t }), col, x.key);
     else el('path', { d: `M${P(mid[0], mid[1] - 5)} L${P(mid[0] + 1.4, mid[1] - 1.4)} L${P(mid[0] + 5, mid[1])} L${P(mid[0] + 1.4, mid[1] + 1.4)} L${P(mid[0], mid[1] + 5)} L${P(mid[0] - 1.4, mid[1] + 1.4)} L${P(mid[0] - 5, mid[1])} L${P(mid[0] - 1.4, mid[1] - 1.4)}Z`, fill: col }, grp);
   });

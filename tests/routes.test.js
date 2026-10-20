@@ -11,7 +11,9 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.click('[data-act=routes]');
  const r=await p.evaluate(()=>({n:document.querySelectorAll('#marks .routes .rt').length,tags:[...document.querySelectorAll('#marks .rtag')].map(x=>x.textContent),dash:[...document.querySelectorAll('#marks .routes path[stroke-dasharray]')].length,pressed:document.querySelector('[data-act=routes]').getAttribute('aria-pressed')}));
  assert(r.n>=5&&r.pressed==='true','the switch shows the arrows');
- assert(r.tags.includes('3'),'a 3-sector move carries a "3" tag');
+ assert(!r.tags.some(x=>/^\d$/.test(x)),'no length tags next to the arrows');
+ const geo=await p.evaluate(()=>[straightMove(T.map,'K08','J09'),straightMove(T.map,'I10','J11'),straightMove(T.map,'L08','L10'),straightMove(T.map,'K08','L08')]);
+ assert(geo[0]===false&&geo[1]===false&&geo[2]===true&&geo[3]===true,'moves in a straight row are straight; the others bend so they never run along a sector edge');
  assert(r.tags.some(x=>/T3.6/.test(x))&&r.dash>=1,'turns nobody heard are a dashed curve with the turns');
  // back and forth: two arrows on the same two sectors, pushed apart
  const bf=await p.evaluate(()=>{const ps=[...document.querySelectorAll('#marks .routes .rt path')].map(x=>x.getAttribute('d')).filter(Boolean);return ps.length});

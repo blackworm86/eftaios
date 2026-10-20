@@ -1030,7 +1030,7 @@ function importDlg() {
 }
 
 /* ---------------- panels ---------------- */
-function setTab(k) { S.tab = k; T.pick = null; save(); render(); paintCells(); hdr(); }
+function setTab(k) { S.tab = k; if (!(T.pick && T.pick.locked)) T.pick = null; save(); render(); paintCells(); hdr(); }   // a sector you must announce (the card is already drawn) waits for you on the Play tab
 function hdr() {
   { const rb = document.querySelector('[data-act=routes]'); if (rb) rb.setAttribute('aria-pressed', !!S.routesOn); }
   $('#hd-turn').textContent = S.turn; $('#hd-pos').textContent = S.pos ? ('HA'.includes(at(T.map, S.pos)) ? t('Start') : label(S.pos)) : '—';

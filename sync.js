@@ -47,7 +47,7 @@
       for (let i = 0; i < 6 && !code; i++) { const c = Sync.newCode(); if (!(await fb.get(path(c, 'created'))).exists()) code = c; }
       if (!code) { setStatus('error'); return false; }
       await fb.set(path(code, 'created'), fb.serverTimestamp());
-      await fb.set(path(code, 'settings'), { map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', order: [Sync.uid] });
+      await fb.set(path(code, 'settings'), Object.assign({ map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', order: [Sync.uid] }, settings.customMap ? { customMap: settings.customMap } : {}));
       await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false });
       listen(code); Sync.h.joined && Sync.h.joined(code); return true;
     } catch (e) { console.warn(e); Sync.lastError = String(e && (e.code || e.message) || e).slice(0, 80); setStatus('error'); return false; }

@@ -36,12 +36,13 @@ function parseMap(m) {
   const rows = m.rows_data;
   if (!Array.isArray(rows) || !rows.length || rows.some(r => typeof r !== 'string' || r.length !== rows[0].length)) throw new Error('Invalid map rows');
   if (!rows.every(r => /^[.sxHA1-4]+$/.test(r))) throw new Error('Unknown symbol in map (allowed: . s x H A 1 2 3 4)');
-  return { id: m.id || 'map-' + Date.now(), name: m.name || 'Custom map', description: m.description || '', players: m.players || '', difficulty: m.difficulty || '', pack: m.pack || '', author: m.author || '', official: !!m.official, cols: rows[0].length, rows: rows.length, odd: m.oddColumnsLower !== false, grid: rows.map(r => r.split('')) };
+  return { id: m.id || 'map-' + Date.now(), name: m.name || 'Custom map', description: m.description || '', players: m.players || '', difficulty: m.difficulty || '', pack: m.pack || '', author: m.author || '', official: !!m.official, shared: !!(S.sharedMap && S.sharedMap.id === m.id && !(S.customMaps || []).some(c => c.id === m.id)), cols: rows[0].length, rows: rows.length, odd: m.oddColumnsLower !== false, grid: rows.map(r => r.split('')) };
 }
 async function loadMaps() {
   let list = [];
-  try { const r = await fetch('maps/maps.json'); list = (await r.json()).maps || []; } catch (e) { /* offline/file: fall through */ }
+  try { const r = await fetch('maps/maps.json', { cache: 'no-cache' }); list = (await r.json()).maps || []; } catch (e) { /* offline/file: fall through */ }
   list = list.concat(S.customMaps || []);
+  if (S.sharedMap) list.push(S.sharedMap);
   T.maps = [];
   for (const m of list) { try { T.maps.push(parseMap(m)); } catch (e) { console.warn('Skipped map', m && m.id, e.message); } }
   if (!T.maps.length) T.maps.push(parseMap({ id: 'blank', name: 'Blank map (use the editor)', rows_data: Array.from({ length: 14 }, () => '.'.repeat(23)) }));
@@ -810,7 +811,7 @@ function morePanel() {
 /* ---------------- boot ---------------- */
 function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); } catch (_) { /* noop */ } applyStatic(); if (S.stage === 'game' && S.role) { render(); hdr(); paintCells(); } else renderFlow(); }
 /* back to the start screen, keeping only the name and custom maps */
-function resetToWelcome(stage) { const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards }; S = Object.assign(fresh(), keep); S.stage = stage || 'welcome'; T.turnState = null; T.counts = null; Sync.status = 'off'; closeDlg(); save(); boot(); }
+function resetToWelcome(stage) { T.maps = T.maps.filter(m => !m.shared); const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards }; S = Object.assign(fresh(), keep); S.stage = stage || 'welcome'; T.turnState = null; T.counts = null; Sync.status = 'off'; closeDlg(); save(); boot(); }
 function boot() {
   if (S.hot && window.Hot) Hot.rebind();
   T.pick = null; T.sel = null;

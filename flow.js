@@ -3,7 +3,24 @@
 const MODES = { basic: ['Basic', 'First game: no Items and no Character abilities. Item cards count as Silence.'], ultimate: ['Ultimate', 'The complete rules: Items, Character abilities and Escape Pod cards.'] };
 const modeOf = m => (m === 'basic' ? 'basic' : 'ultimate');
 const OPTS = { mode: ['Rules', MODES] };
-const tableMaps = () => T.maps.filter(m => m.official);
+/* online tables can use any map, your own included: the host sends a custom map's rows along with the table settings */
+const tableMaps = () => T.maps.filter(m => !m.shared);
+const encMap = m => { const s = JSON.stringify({ n: m.name, o: m.odd ? 1 : 0, c: m.cols, r: m.grid.map(r => r.join('')).join('') }); return s.length <= 700 ? s : null; };
+const isCustomMap = m => (S.customMaps || []).some(c => c.id === m.id);
+/* what to store in the table settings when the host picks map m */
+const mapPatch = m => ({ map: m.id, customMap: m && isCustomMap(m) ? encMap(m) : null });
+/* the map of a table: one of ours, or the custom map the host sent (kept for this game only) */
+function tableMapOf(st) {
+  const have = T.maps.find(m => m.id === st.map); if (have) return have;
+  if (st.customMap) {
+    try {
+      const j = JSON.parse(st.customMap), rows = []; for (let i = 0; i < j.r.length; i += j.c) rows.push(j.r.slice(i, i + j.c));
+      const rec = { id: st.map, name: j.n, rows_data: rows, oddColumnsLower: !!j.o }, m = parseMap(rec); m.shared = true; m.rec = rec;
+      T.maps.push(m); return m;
+    } catch (e) { console.warn('Bad shared map', e); }
+  }
+  return T.maps[0];
+}
 const isHost = () => Sync.isHost();
 const orderedIds = () => { const ps = Sync.players || {}, ord = (Sync.settings && Sync.settings.order) || []; const l = ord.filter(u => ps[u]); Object.keys(ps).forEach(u => { if (!l.includes(u)) l.push(u); }); return l; };
 const orderedPlayers = () => orderedIds().map(u => [u, Sync.players[u]]);
@@ -19,7 +36,7 @@ const mapSelect = (list, cur) => {
   T.mapList = list; const m = list.find(x => x.id === cur) || list[0];
   return `<div class="field"><input type="hidden" id="f-map" value="${esc(m.id)}">
     <button type="button" class="mapcard" data-act="mapgallery" aria-haspopup="dialog" aria-label="${t('Map')}: ${esc(m.name)}. ${t('Tap to choose another map')}"><span class="prevbox" id="f-map-prev"></span>
-    <span class="mapname"><b id="f-map-name">${esc(m.name)}</b><small id="f-map-desc"></small><i class="chev" aria-hidden="true">${ico('next', 18)}</i></span></button></div>`;
+    <span class="mapname"><b id="f-map-name">${esc(m.name)}</b><small id="f-map-desc"></small><small id="f-map-text" class="mdesc"></small><i class="chev" aria-hidden="true">${ico('next', 18)}</i></span></button></div>`;
 };
 const mapInfo = m => [m.players ? t('{n} players', { n: m.players }) : '', m.difficulty ? t(m.difficulty) : '', m.author ? t('Map by {a}', { a: m.author }) : '', t('{n} escape hatches', { n: mapHatches(m).length })].filter(Boolean).join(' · ');
 function mapGallery() {
@@ -79,9 +96,9 @@ function renderFlow() {
   card.innerHTML = h;
   const fm = $('#f-map');
   const upd = () => {
-    if (fm && $('#f-map-prev')) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-name').textContent = m ? m.name : ''; $('#f-map-desc').textContent = m ? mapInfo(m) : ''; }
+    if (fm && $('#f-map-prev')) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-name').textContent = m ? m.name : ''; $('#f-map-desc').textContent = m ? mapInfo(m) : ''; $('#f-map-text').textContent = m && m.description ? t(m.description) : ''; }
   };
-  if (fm) fm.onchange = () => { S.mapId = fm.value; upd(); if (st === 'lobby') Sync.updateSettings({ map: fm.value }); };
+  if (fm) fm.onchange = () => { S.mapId = fm.value; upd(); if (st === 'lobby') { const m = T.maps.find(x => x.id === fm.value); if (m && isCustomMap(m) && !encMap(m)) { toast(t('This map is too large for an online table.')); return; } Sync.updateSettings(mapPatch(m)); } };
   upd();
   const jc = $('#join-code'); if (jc) jc.onkeydown = e => { if (e.key === 'Enter') actions.joinroom(); };
   document.querySelectorAll('[data-botlvl]').forEach(sel => { sel.onchange = () => Sync.upd('players/' + sel.dataset.botlvl, { bot: sel.value }).catch(() => {}); });
@@ -97,7 +114,7 @@ function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="sta
 
 function lobbyHtml() {
   const st = Sync.settings || {}, host = isHost(), players = orderedPlayers();
-  const map = T.maps.find(m => m.id === st.map) || T.maps[0];
+  const map = tableMapOf(st);
   const nReady = players.filter(([, p]) => p.ready || p.bot).length, allReady = players.length >= 2 && nReady === players.length;
   const rows = players.map(([id, p], i) => `<li class="${p.ready ? 'ok' : ''}"><span class="num">${i + 1}</span><span class="pname">${esc(p.name)}${id === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}${st.host === id ? ` <em class="hostt">${t('Host')}</em>` : ''}</span>
     <span class="ctl"><span class="pst">${p.bot ? (host ? `<select data-botlvl="${esc(id)}" aria-label="${t('Bot level')}">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${p.bot === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>` : t(BOTSEL.find(x => x[0] === p.bot)[1])) : p.ready ? ico('check', 14) + ' ' + t('Ready') : ''}</span>
@@ -138,9 +155,9 @@ async function beginGame() {
   { const sec = await Sync.get('secret/' + Sync.uid); if (sec) { role = sec.role; char = sec.char || ''; } else role = null; }
   T.beginning = false;
   if (!role || !S.ready) { toast(t('The game started without you. Ask the host.')); leaveToWelcome(); return; }
-  T.map = T.maps.find(m => m.id === st.map) || T.maps[0];
-  const keep = S.customMaps, name = S.name, room = S.room;
-  S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, track: 'auto', role, char, online: true, name, room, customMaps: keep, tab: 'play' });
+  T.map = tableMapOf(st);
+  const keep = S.customMaps, name = S.name, room = S.room, shared = T.map.shared ? T.map.rec : null;
+  S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, track: 'auto', role, char, online: true, name, room, customMaps: keep, sharedMap: shared, tab: 'play' });
   S.pos = startSector(T.map, role, char, st.mode); S.path = [{ turn: 0, pos: S.pos }];
   T.turnState = Sync.turn || null; if (T.turnState) S.turn = T.turnState.n;
   save(); boot();
@@ -149,7 +166,7 @@ async function beginGame() {
   if (st.first) dlg.querySelector('.row').insertAdjacentHTML('beforebegin', `<p><b>${t('The game begins!')}</b> ${esc(t('First player: {p}.', { p: st.first }))}</p>`);
   if (T.turnState && T.turnState.uid === Sync.uid) startMyTurn(true);
 }
-function leaveToWelcome() { Sync.leave(); S.room = null; S.stage = 'welcome'; S.ready = false; save(); renderFlow(); }
+function leaveToWelcome() { T.maps = T.maps.filter(m => !m.shared); Sync.leave(); S.room = null; S.stage = 'welcome'; S.ready = false; save(); renderFlow(); }
 
 function soloStart(role) {
   const id = $('#f-map').value; T.map = T.maps.find(m => m.id === id) || T.maps[0];
@@ -207,7 +224,9 @@ Object.assign(actions, {
   ignoreinvite() { T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); },
   async hostcreate() {
     const name = readName(); S.mapId = $('#f-map').value; S.mode = $('#f-mode').value; S.track = 'auto';
-    const ok = await Sync.create({ map: S.mapId, mode: S.mode }, { name });
+    const m = T.maps.find(x => x.id === S.mapId), patch = mapPatch(m);
+    if (isCustomMap(m) && !patch.customMap) { toast(t('This map is too large for an online table.')); return; }
+    const ok = await Sync.create({ map: S.mapId, mode: S.mode, customMap: patch.customMap }, { name });
     if (!ok) renderFlow();
   },
   async joinroom() {

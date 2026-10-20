@@ -135,7 +135,12 @@ const SECTOR_ART = {
   A: 'M-8.7 -13.1L-9.9 -11.0L-3.1 -7.2L-2.5 -6.3L-10.7 -1.6L-10.7 12.5L0.4 6.0L11.3 12.2L11.3 -2.2L3.1 -6.6L10.7 -11.0L9.6 -13.1L0.4 -7.8zM-8.4 -0.1L0.4 -5.1L9.0 -0.4L9.0 7.8L8.7 8.1L0.1 3.4L-8.1 8.1z',
   P: 'M14.3 2.5L12.8 1.6L11.9 1.9L6.3 11.6L-5.1 11.6L-5.1 14.0L7.8 14.0zM5.1 -14.0L-7.8 -14.0L-14.3 -2.5L-12.8 -1.6L-11.9 -1.9L-6.3 -11.6L5.1 -11.6z'
 };
+/* after a pod card the sector is solid red (damaged) or green (escaped) with only the printed black symbol */
+const POD_GLYPH = {"red": "<g transform=\"translate(-46.23 -136.36)\"><path d=\"M 32.824219 135.703125 L 45.09375 135.703125 L 38.957031 125.078125 Z M 32.824219 135.703125 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 52.367188 124.421875 L 40.09375 124.421875 L 46.230469 135.050781 Z M 52.367188 124.421875 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 52.367188 148.300781 L 46.230469 137.671875 L 40.09375 148.300781 Z M 52.367188 148.300781 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 45.09375 137.015625 L 32.824219 137.015625 L 38.957031 147.644531 Z M 45.09375 137.015625 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 47.367188 135.703125 L 59.640625 135.703125 L 53.503906 125.078125 Z M 47.367188 135.703125 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 59.640625 137.015625 L 47.367188 137.015625 L 53.503906 147.644531 Z M 59.640625 137.015625 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/></g>", "green": "<g transform=\"translate(-46.23 -213.93)\"><path d=\"M 42.585938 211.402344 L 40.6875 204.921875 L 40.691406 204.921875 L 39.84375 202.023438 L 51.652344 201.992188 Z M 42.585938 211.402344 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 38.933594 225.128906 L 33.046875 214.992188 L 45.640625 218.332031 Z M 38.933594 225.128906 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 54.527344 211.597656 L 46.609375 209.601562 L 50.589844 205.46875 L 53.402344 202.554688 L 59.367188 212.824219 Z M 54.527344 211.597656 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 40.015625 208.480469 L 40.046875 208.585938 L 42.125 215.695312 L 35.683594 213.988281 L 32.867188 213.238281 L 38.523438 203.382812 Z M 40.015625 208.480469 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 50.167969 212.199219 L 50.171875 212.199219 L 59.59375 214.578125 L 53.703125 224.847656 L 52.386719 220.125 L 52.382812 220.125 Z M 50.167969 212.199219 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/><path d=\"M 43.589844 222.753906 L 49.683594 216.582031 L 52.269531 225.835938 L 40.511719 225.871094 L 43.59375 222.753906 Z M 43.589844 222.753906 \" transform=\"matrix(1.0000 0.0000 0.0000 1.0000 0.0000 0.0000)\" fill=\"#111\" fill-rule=\"nonzero\"/></g>"};
+/* what happened at pod n: 'red', 'green', or '' while it is still open */
+const podState = n => { if (!S.hatches[n]) return ''; const e = S.log.find(x => x.kind === 'hatch' && +x.n === +n); return e ? (e.ok ? 'green' : 'red') : 'red'; };
 function sectorIcon(k) {
+  if (k.startsWith('pod:')) return `<g transform="scale(.71)">${POD_GLYPH[k.slice(4)]}</g>`;
   const pod = '1234'.includes(k);
   return `<path class="sig" fill-rule="evenodd" d="${SECTOR_ART[pod ? 'P' : k]}"/>` + (pod ? `<text class="podn">${k}</text>` : '');
 }
@@ -145,13 +150,14 @@ function paintCells() {
   for (let r = 0; r < map.rows; r++) for (let c = 0; c < map.cols; c++) {
     const id = cid(c, r), g = svg.querySelector(`[data-id="${id}"]`), poly = g.firstChild, sym = g.lastChild, t = map.grid[r][c];
     let cls = 'hex ' + ('1234'.includes(t) ? 'P' : t === '.' ? 'd' : t);
-    if ('1234'.includes(t) && !hatchOpen(+t)) cls += ' closed';
+    const ps = '1234'.includes(t) ? podState(+t) : '';
+    if (ps) cls += ' closed ' + ps;
     if (reach.has(id)) cls += ' reach';
     if (T.sel === id) cls += ' sel';
     if (T.pick) cls += ' pick';
     if (T.inspect === id) cls += ' inspected';
     poly.setAttribute('class', cls);
-    const kind = t === 'H' || t === 'A' || '1234'.includes(t) ? t : '';
+    const kind = ps ? 'pod:' + ps : t === 'H' || t === 'A' || '1234'.includes(t) ? t : '';
     g.children[1].textContent = kind ? '' : id; sym.textContent = '';
     const ic = g.children[2]; if (ic.dataset.k !== kind) { ic.dataset.k = kind; ic.innerHTML = kind ? sectorIcon(kind) : ''; }
   }
@@ -592,6 +598,7 @@ function logIcon(e, w = 18) {
   if (e.kind === 'reveal') return gico(e.text === 'Sensor' ? 'sensor' : e.text === 'Invisible Alien' || e.text === 'Brute Alien' || e.text === 'Identity' ? 'killed' : 'spotlight', w);
   if (e.kind === 'spot') return gico('spotlight', w);
   if (e.kind === 'item') return gico(e.text, w);
+  if (e.kind === 'hatch' && e.n) return gico(e.ok ? 'pod-green' : 'pod-red', w);
   if (e.kind === 'out' && String(e.text).startsWith('killed')) return gico('killed', w);
   return '';
 }
@@ -602,7 +609,7 @@ function entryText(e) {
   if (e.kind === 'attack') return t('Attack in Sector {s}', { s });
   if (e.kind === 'spot') return t('Spotlight on Sector {s}', { s });
   if (e.kind === 'silence') return t(e.text === 'secure' ? 'Silent Sector' : 'Silence in all Sectors');
-  if (e.kind === 'hatch' && e.n) return t(e.ok ? 'Escape Hatch {n}: escaped' : 'Escape Hatch {n}: damaged', { n: e.n });
+  if (e.kind === 'hatch' && e.n) return t(e.ok ? 'Escape Pod {n}: escaped' : 'Escape Pod {n}: damaged', { n: e.n });
   if (e.kind === 'item') return t('plays {i}', { i: t(((typeof ITEMS !== 'undefined' && ITEMS[e.text]) || [e.text])[0]) });
   if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) { const [, role, ch] = e.text.split('|'); return t('identity revealed') + ': ' + roleLabel(role, ch); }
   if (e.kind === 'reveal') return e.text === 'Invisible Alien' || e.text === 'Brute Alien' ? t('{c}: identity revealed', { c: t(e.text) }) : e.text === 'Identity' ? t('identity revealed') : t('Position revealed: {s}', { s });

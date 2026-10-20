@@ -389,7 +389,13 @@ const Bot = (() => {
       return;
     }
     // Alien attack
-    if (!human && attackWorth(ctx, W, st, lvl)) { say({ kind: 'attack', sector: st.pos }); const hits = await ctx.attack(st.pos); if (hits.some(h => h.killed && h.role === 'human') && !st.fed) st.fed = true; return; }
+    const worth = !human && attackWorth(ctx, W, st, lvl);
+    if (window.__trace && !human && window.Hot && Hot.dump) {   // benchmark hook: what the tracker believed here against who really stands here
+      const c0 = g.idx.get(st.pos); let truth = 0, aliens = 0;
+      Hot.dump().seats.forEach(x => { if (x.id === me.id || x.over) return; const p = (x.path || []).filter(q => q.note !== 'reborn'); if (p.length && p[p.length - 1].pos === st.pos) { if (x.role === 'human') truth++; else aliens++; } });
+      window.__trace.push({ lvl, turn: H.turn, pred: +W.humanCnt[c0].toFixed(3), predA: +W.alienCnt[c0].toFixed(3), truth, aliens, attack: !!worth, sec: ty !== '.' ? 1 : 0 });
+    }
+    if (worth) { say({ kind: 'attack', sector: st.pos }); const hits = await ctx.attack(st.pos); if (hits.some(h => h.killed && h.role === 'human') && !st.fed) st.fed = true; return; }
     // Human with an Attack card on a likely Alien
     if (human && adv && sk.items && st.items.includes('attack') && humanAttackValue(W, here) >= (lvl === 'hard' ? 3 : 5)) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
     if (ty !== '.') { say({ kind: 'silence', text: 'secure' }); return; }  // Secure sector: declare "Silent Sector"

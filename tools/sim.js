@@ -48,7 +48,7 @@ function summarize(d, n) {
 async function main() {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 900, height: 800 }, serviceWorkers: 'block' });
-  await ctx.addInitScript(skill => { window.__botPace = 0; if (skill) window.__skill = JSON.parse(skill); }, SKILL);
+  await ctx.addInitScript(skill => { window.__botPace = 0; window.__trace = []; if (skill) window.__skill = JSON.parse(skill); }, SKILL);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));
@@ -61,11 +61,12 @@ async function main() {
   for (const map of maps) for (const tb of tables) for (let g = 0; g < GAMES; g++) {
     const n = tb.bots.length, lvl = tb.lvl, names = NAMES.slice(0, n), bots = tb.bots;
     const d = await p.evaluate(async ({ names, map, mode, bots }) => {
+      window.__trace = [];
       await Hot.start(names, map, mode, 'auto', bots);
-      return Hot.dump();
+      const d = Hot.dump(); d.trace = window.__trace; return d;
     }, { names, map, mode: MODE, bots });
     if (!d || !d.result) { out.push({ map, players: n, level: lvl, error: 'no result' }); continue; }
-    const s = summarize(d, n); s.level = lvl; s.game = g; s.bots = bots;
+    const s = summarize(d, n); s.level = lvl; s.game = g; s.bots = bots; s.trace = d.trace;
     out.push(s);
   }
   fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), mode: MODE, games: out, errors: errs }, null, 1));

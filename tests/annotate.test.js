@@ -1,0 +1,25 @@
+// Stamps and drawings: the bar stays open, stamps can be placed again and again, lines drawn, erased one by one or all. Static server on :8123.
+const {chromium}=require('/opt/node22/lib/node_modules/playwright');
+const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else console.log('ok  ',m)};
+(async()=>{const b=await chromium.launch();const errs=[];
+ const p=await (await b.newContext({viewport:{width:900,height:800},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('http://localhost:8123/');await p.click('[data-act=solo]');await p.click('.role-btn.human');await p.waitForSelector('#app:not([hidden])');
+ const box=await p.locator('#stage').boundingBox();const X=(f)=>box.x+box.width*f,Y=(f)=>box.y+box.height*f;
+ assert(await p.locator('#annotbar:not([hidden])').count()===0,'the annotate bar is closed by default');
+ await p.click('[data-act=annot]');assert(await p.locator('#annotbar:not([hidden])').count()===1,'the notes button opens the annotate bar');
+ await p.mouse.click(X(.3),Y(.3));await p.mouse.click(X(.5),Y(.5));await p.mouse.click(X(.6),Y(.4));
+ assert(await p.evaluate(()=>S.annos.filter(a=>a.type==='stamp').length)===3&&await p.locator('#annotbar:not([hidden])').count()===1,'stamps are placed one after another and the bar stays open');
+ await p.click('[data-act=astamp][data-s=skull]');await p.click('[data-act=acolor][data-c="#3ddc84"]');await p.mouse.click(X(.4),Y(.6));
+ assert(await p.evaluate(()=>{const s=S.annos[S.annos.length-1];return s.icon==='skull'&&s.color===ANNO_COLORS[2]}),'a chosen stamp and color are used');
+ await p.click('[data-act=atool][data-t=pen]');await p.mouse.move(X(.2),Y(.7));await p.mouse.down();for(let i=1;i<=12;i++)await p.mouse.move(X(.2+i*.03),Y(.7+Math.sin(i)*.04));await p.mouse.up();
+ assert(await p.evaluate(()=>S.annos.some(a=>a.type==='line'&&a.pts.length>5)),'the pen draws an irregular line');
+ await p.click('[data-act=atool][data-t=line]');await p.mouse.move(X(.2),Y(.2));await p.mouse.down();await p.mouse.move(X(.5),Y(.25),{steps:5});await p.mouse.up();
+ assert(await p.evaluate(()=>S.annos.some(a=>a.type==='line'&&a.pts.length===2)),'the line tool draws a straight line');
+ const n0=await p.evaluate(()=>S.annos.length);
+ await p.click('[data-act=atool][data-t=erase]');await p.mouse.click(X(.5),Y(.5));
+ assert(await p.evaluate(()=>S.annos.length)===n0-1,'the eraser removes one stamp');
+ await p.click('[data-act=aundo]');assert(await p.evaluate(()=>S.annos.length)===n0-2,'undo removes the last item');
+ await p.click('[data-act=aclear]');await p.click('#d-yes');
+ assert(await p.evaluate(()=>S.annos.length)===0,'clear all asks, then removes everything');
+ await p.click('[data-act=adone]');assert(await p.locator('#annotbar:not([hidden])').count()===0,'Done closes the bar');
+ console.log('errors',errs);await b.close();})();

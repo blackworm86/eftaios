@@ -7,7 +7,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.goto('http://localhost:8123/');await p.click('[data-act=hotsetup]');for(let i=1;i<4;i++)await p.selectOption(`[data-hb="${i}"]`,'normal');
  await p.click('[data-act=hotstart]');await p.waitForTimeout(300);await p.evaluate(()=>closeDlg());
  // during play: a bluff of mine is on the map
- await p.evaluate(()=>{S.log.unshift({id:'bl',by:myId(),who:S.name,turn:S.turn,kind:'noise',sector:'L10',text:'noise',at:Date.now()});paintOverlay()});
+ await p.evaluate(()=>{S.path.push({turn:S.turn,pos:S.pos});S.log.unshift({id:'bl',by:myId(),who:S.name,turn:S.turn,kind:'noise',sector:'L10',text:'noise',at:Date.now()});paintOverlay()});
  assert(await p.locator('#marks .pm.bluff').count()===1,'during the game my bluff is on the map');
  await p.evaluate(()=>{S.over='dead';S.outSent=false;afterChange()});await p.waitForFunction(()=>Hot.isOver(),null,{timeout:60000});await p.evaluate(()=>{closeDlg();render();paintOverlay()});
  const r=await p.evaluate(()=>({lines:document.querySelectorAll('#marks .rline').length,bluff:document.querySelectorAll('#marks .pm.bluff').length,seats:JSON.parse(localStorage.getItem('eftaios.hot')).seats.filter(s=>s.state.path.length>1).length,dead:document.querySelectorAll('#mkbar .omark.dead').length+document.querySelectorAll('#mkbar .omark').length}));

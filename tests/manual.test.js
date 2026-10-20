@@ -45,10 +45,9 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(await p.evaluate(()=>!T.markMode)&&(await p.textContent('#panel-body')).includes('highlighted'),'Done returns to the game');
  // old hand marks become declarations
  const mig=await p.evaluate(()=>{const keep=JSON.parse(JSON.stringify(S));return keep.marks.length});assert(mig===0,'no hand marks are kept');
- // notes
- await p.click('[data-act=notemode]');await p.evaluate(()=>{const cb=T.pick.cb;T.pick=null;cb('J10')});
- await p.click('dialog .stick button:nth-child(3)');await p.fill('#note-txt','alien came from here?');await p.click('#d-yes');
- assert(await p.evaluate(()=>S.notes.length===1&&S.notes[0].icon==='alien')&&await p.evaluate(()=>document.querySelectorAll('#notes .sticker').length)===1,'note sticker added on the map');
+ // notes: the sector note dialog is still used to edit an old note; the annotate bar places stamps and draws
+ await p.evaluate(()=>{S.notes=[{sector:'J10',icon:'alien',text:'alien came from here?'}];save();paintNotes()});
+ assert(await p.evaluate(()=>document.querySelectorAll('#notes .sticker').length)===1,'an old sector note is still drawn on the map');
  await p.evaluate(()=>{S.phase='resolve';onCell('J10')});
  assert((await p.textContent('#inspect')).includes('alien came from here?'),'tapping the sector shows the note');
  await p.click('#inspect [data-act=noteedit]');await p.click('#d-del');

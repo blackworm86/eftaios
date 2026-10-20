@@ -19,7 +19,7 @@ const parseId = s => { const m = /^([A-Za-z])\s*0?(\d{1,2})$/.exec(String(s).tri
 const fresh = () => ({
   stage: 'welcome', ready: false, items: [], undo: null, sus: {}, shapes: {}, mkN: 5, track: 'auto', marks: [], notes: [], char: '', online: false, outSent: false, revealed: false, routeSent: false, room: null, mapId: null, mode: 'ultimate', role: null, name: '', turn: 1, pos: null, fed: false, adr: false,
   phase: 'move', res: null, over: null, path: [], log: [],
-  hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: [], reborn: false, ab: {}, cat: false
+  hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, tab: 'play', customMaps: [], annos: [], reborn: false, ab: {}, cat: false
 });
 let S = fresh();
 try { Object.assign(S, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch (e) { /* ignore */ }
@@ -126,7 +126,7 @@ function buildMap() {
     el('text', { x, y, class: 'sym' }, g);
   }
   el('g', { id: 'zone' }, vp);
-  el('g', { id: 'marks' }, vp); el('g', { id: 'me' }, vp); el('g', { id: 'notes' }, vp);
+  el('g', { id: 'marks' }, vp); el('g', { id: 'me' }, vp); el('g', { id: 'notes' }, vp); el('g', { id: 'annos' }, vp);
   paintCells(); fit();
 }
 /* start sectors and escape hatches: the white line art of the printed maps, traced from the original sectors */
@@ -262,7 +262,7 @@ function followZone(key) {
 function paintOverlay() {
   const map = T.map, inPlay = S.role;
   const marks = $('#marks'), me = $('#me'), zoneG = $('#zone');
-  marks.textContent = ''; me.textContent = ''; if (zoneG) zoneG.textContent = ''; paintNotes();
+  marks.textContent = ''; me.textContent = ''; if (zoneG) zoneG.textContent = ''; paintNotes(); paintAnnos();
   const focus = T.focus || null;
   const hp = sec => { const q = parseId(sec); return q ? hexPos(map, q[0], q[1]) : null; };
   const routes = inPlay ? finalRoutes() : null;
@@ -290,7 +290,10 @@ function paintOverlay() {
     visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind, armed });
   }
   const mine = k => k === 'me' || k === 'bluff';
-  const recent = v => !mkN() || v.key === focus || mine(v.key) || S.turn - v.turn < mkN();
+  // the last N known steps of every player, yours included (0 = all); following someone shows only them, from the start
+  const N = mkN(), winTurns = new Map();
+  new Set(visits.map(v => v.key)).forEach(k => { if (k === 'bluff' || k === 'spot') return; const ts = [...new Set(visits.filter(v => v.key === k).map(v => v.turn))].sort((x, y) => y - x); winTurns.set(k, new Set(N ? ts.slice(0, N) : ts)); });
+  const recent = v => focus ? (v.key === focus || (focus === 'me' && v.key === 'bluff')) : v.key === 'bluff' ? (winTurns.get('me') || new Set()).has(v.turn) : v.key === 'spot' ? (!N || S.turn - v.turn < N) : (winTurns.get(v.key) || new Set()).has(v.turn);
   // group: sector -> player -> turns
   const bySector = new Map();
   for (const v of visits) {
@@ -408,10 +411,10 @@ function liveSteps(focus, recent) {
   });
   return all.filter(r => (!focus || focus === r.key)).map(r => ({ key: r.key, steps: r.steps.filter(s => recent({ key: r.key, turn: s.t })) }));
 }
-function drawRouteArrows(routes, mkPos, marks) {
+function drawRouteArrows(routes, mkPos, marks, solid) {
   const map = T.map, g = el('g', { class: 'routes' }), now = S.turn, classic = svg.classList.contains('classic');
   const at = (k, sec) => { const p = mkPos.get(k + '|' + sec); if (p) return p; const q = parseId(sec); if (!q) return null; const h = hexPos(map, q[0], q[1]); return [h.x, h.y, 0]; };
-  const fade = t => { const age = now - t; return age < 3 ? 1 : Math.max(0.28, 1 - (age - 2) * 0.18); };
+  const fade = t => { if (solid) return 1; const age = now - t; return age < 3 ? 1 : Math.max(0.28, 1 - (age - 2) * 0.18); };
   const color = k => k === 'me' ? (classic ? '#151515' : '#f5f5f5') : pal(k)[0];
   const arrows = [];
   routes.forEach(r => {
@@ -507,7 +510,7 @@ function paintRoutes(routes, focus, hp, marks) {
       const tx = el('text', { fill: pal(k)[1], y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
     });
   });
-  if (S.routesOn) drawRouteArrows(routes.filter(r => !focus || focus === r.key).map(r => ({ key: r.key, steps: pathSteps(r.path), age: true })), rpos, marks);
+  if (S.routesOn) drawRouteArrows(routes.filter(r => !focus || focus === r.key).map(r => ({ key: r.key, steps: pathSteps(r.path) })), rpos, marks, true);
 }
 /* eliminated / escaped badge on a player's icon in the strip and the sheet */
 function outMark(k) {
@@ -666,12 +669,90 @@ function focusOn(id) {
   view.k = Math.max(view.k, Math.min(fitK * 2.2, 2.2)); view.x = r.width / 2 - h.x * view.k; view.y = r.height / 2 - h.y * view.k; applyView();
 }
 
+/* ---------------- notes: stamps and drawings on the map ----------------
+   The annotate bar stays open until you press Done. Stamp: tap to place as many as you like. Pen: free lines.
+   Line: a straight line. Eraser: tap or drag over a stamp or line. Clear all removes everything. */
+const ANNO_COLORS = ['#ff3b30', '#ffb41f', '#3ddc84', '#4aa8ff', '#e8ecf5', '#c77dff'];
+const ANNO_TOOLS = [['stamp', 'Stamp', 'M12 3l2.6 5.6 6 .7-4.4 4.1 1.2 6L12 16.4 6.6 19.4l1.2-6L3.4 9.3l6-.7z'], ['pen', 'Pen', 'M4 20c3-1 5-4 6-7 1-3 3-5 6-6M14 5l5 5'], ['line', 'Line', 'M5 19L19 5M4 20h2v-2M18 6h2V4'], ['erase', 'Eraser', 'M4 16l8-8 6 6-5 5H8zM14 19h6']];
+const annoSvg = (d, s = 20) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+function renderAnnot() {
+  const bar = $('#annotbar'); if (!bar) return; const a = T.annot;
+  bar.hidden = !a; const b = document.querySelector('[data-act=annot]'); if (b) b.setAttribute('aria-pressed', !!a);
+  if (!a) return;
+  bar.innerHTML = `<div class="atools" role="group" aria-label="${t('Tools')}">${ANNO_TOOLS.map(([k, n, d]) => `<button data-act="atool" data-t="${k}" aria-pressed="${a.tool === k}" aria-label="${t(n)}">${annoSvg(d, 20)}<span>${t(n)}</span></button>`).join('')}
+      <button data-act="aundo" aria-label="${t('Undo')}">${ico('undo', 18)}</button><button class="danger" data-act="aclear" aria-label="${t('Clear all')}">${ico('cross', 18)}</button><button class="done" data-act="adone">${t('Done')}</button></div>
+    <div class="aopts">${a.tool === 'stamp' ? STICKERS.map(s => `<button class="as" data-act="astamp" data-s="${s}" aria-pressed="${a.icon === s}" aria-label="${s}">${stickerIco(s, 22)}</button>`).join('') + '<i></i>' : ''}${a.tool === 'erase' ? `<small>${t('Tap or drag over a stamp or a line to erase it')}</small>` : ANNO_COLORS.map(c => `<button class="ac" data-act="acolor" data-c="${c}" style="--c:${c}" aria-pressed="${a.color === c}" aria-label="${c}"></button>`).join('')}</div>`;
+}
+const mapPt = e => { const r = stageRect(); return [(e.clientX - r.left - view.x) / view.k, (e.clientY - r.top - view.y) / view.k]; };
+function paintAnnos() {
+  const g = $('#annos'); if (!g) return; g.textContent = '';
+  (S.annos || []).forEach(n => annoShape(g, n));
+  if (T.stroke && T.stroke.tool !== 'erase') annoShape(g, { type: 'line', color: T.annot ? T.annot.color : '#fff', pts: T.stroke.pts, prev: true });
+}
+function annoShape(g, n) {
+  if (n.type === 'stamp') {
+    const s = el('g', { class: 'astamp', transform: `translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})` }, g);
+    el('rect', { x: -7, y: -7, width: 14, height: 14, rx: 3.4, fill: n.color }, s);
+    el('path', { d: STICKER_PATH[stickerKey(n.icon)], class: 'sglyph', transform: 'translate(-5.4 -5.4) scale(.45)' }, s);
+  } else {
+    el('path', { d: 'M' + n.pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L'), class: 'aline', stroke: n.color, fill: 'none' }, g);
+  }
+}
+function segDist(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1, t_ = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)); return Math.hypot(p[0] - a[0] - t_ * dx, p[1] - a[1] - t_ * dy); }
+function annoErase(p, all) {
+  const R_ = 8 / Math.max(0.6, view.k / (fitK || 1)), list = S.annos || []; let hit = false;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const n = list[i], near = n.type === 'stamp' ? Math.hypot(n.x - p[0], n.y - p[1]) < 9 + R_ / 2 : n.pts.some((q, j) => j && segDist(p, n.pts[j - 1], q) < R_) || (n.pts.length === 1 && Math.hypot(n.pts[0][0] - p[0], n.pts[0][1] - p[1]) < R_);
+    if (near) { list.splice(i, 1); hit = true; if (!all) break; }
+  }
+  const notes = S.notes || [];
+  for (let i = notes.length - 1; i >= 0; i--) { const q = parseId(notes[i].sector), h = q && hexPos(T.map, q[0], q[1]); if (h && Math.hypot(h.x - 11 - p[0], h.y - 11 - p[1]) < 10) { notes.splice(i, 1); hit = true; if (!all) break; } }
+  if (hit) { save(); paintAnnos(); paintNotes(); }
+  return hit;
+}
+function annoStart(e) {
+  const p = mapPt(e), a = T.annot; try { stage.setPointerCapture(e.pointerId); } catch (_) { /* noop */ }
+  T.stroke = { tool: a.tool, pts: [p], start: p };
+  if (a.tool === 'erase') annoErase(p, true);
+  paintAnnos();
+}
+function annoMove(e) {
+  const p = mapPt(e), s = T.stroke;
+  if (s.tool === 'erase') { annoErase(p, true); return; }
+  if (s.tool === 'line') s.pts = [s.start, p];
+  else { const l = s.pts[s.pts.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) > 2.2) s.pts.push(p); }
+  paintAnnos();
+}
+function annoEnd() {
+  const s = T.stroke; T.stroke = null; if (!s) return;
+  if (s.tool !== 'erase') {
+    const pts = s.pts.map(p => [+p[0].toFixed(1), +p[1].toFixed(1)]), len = pts.reduce((m, p, i) => i ? m + Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0, 0);
+    if (len > 5) { (S.annos = S.annos || []).push({ type: 'line', color: T.annot.color, pts: pts.length > 160 ? pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1) : pts }); save(); }
+  }
+  paintAnnos();
+}
+function annoStamp(e) {
+  const p = mapPt(e); (S.annos = S.annos || []).push({ type: 'stamp', icon: T.annot.icon, color: T.annot.color, x: +p[0].toFixed(1), y: +p[1].toFixed(1) });
+  save(); paintAnnos(); buzz();
+}
+const annoActions = {
+  annot() { T.annot = T.annot ? null : { tool: 'stamp', icon: 'alert', color: ANNO_COLORS[1] }; T.stroke = null; renderAnnot(); paintAnnos(); },
+  adone() { T.annot = null; T.stroke = null; renderAnnot(); paintAnnos(); },
+  atool(b) { T.annot.tool = b.dataset.t; renderAnnot(); },
+  astamp(b) { T.annot.icon = b.dataset.s; renderAnnot(); },
+  acolor(b) { T.annot.color = b.dataset.c; renderAnnot(); },
+  aundo() { if ((S.annos || []).length) { S.annos.pop(); save(); paintAnnos(); } },
+  aclear() { if (!(S.annos || []).length && !(S.notes || []).length) return toast(t('Nothing to erase')); confirmDlg(t('Erase everything?'), t('All your stamps, drawings and notes on the map will be removed.'), () => { S.annos = []; S.notes = []; save(); paintAnnos(); paintNotes(); }); }
+};
+
 /* pointer: pan, pinch, tap */
 const ptrs = new Map(); let drag = null, moved = false, pinch0 = null;
-const onMapUi = e => !!(e.target.closest && e.target.closest('button, .mkbar, .zoom, .inspect, .followbar'));
+const onMapUi = e => !!(e.target.closest && e.target.closest('button, .mkbar, .zoom, .inspect, .followbar, .annotbar'));
 stage.addEventListener('pointerdown', e => {
   if (onMapUi(e)) return;
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (T.annot && ptrs.size === 1 && ['pen', 'line', 'erase'].includes(T.annot.tool)) { annoStart(e); drag = null; return; }
+  if (ptrs.size === 2 && T.stroke) { T.stroke = null; paintAnnos(); }
   if (ptrs.size === 1) { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, target: e.target }; moved = false; }
   else if (ptrs.size === 2) {
     const [a, b] = [...ptrs.values()], r = stageRect();
@@ -680,6 +761,7 @@ stage.addEventListener('pointerdown', e => {
 });
 stage.addEventListener('pointermove', e => {
   if (!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (T.stroke && ptrs.size === 1) { annoMove(e); return; }
   if (ptrs.size === 2 && pinch0) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
     const k = Math.max(fitK * 0.7, Math.min(fitK * 9, pinch0.k * d / pinch0.d)), s = k / pinch0.k;
@@ -692,7 +774,8 @@ stage.addEventListener('pointermove', e => {
 });
 const endPtr = e => {
   if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId);
-  if (e.type === 'pointerup' && ptrs.size === 0 && !moved && drag) { const g = drag.target.closest && drag.target.closest('[data-id]'); if (g) onCell(g.dataset.id); }
+  if (T.stroke) { if (e.type === 'pointerup' && ptrs.size === 0) annoEnd(e); else { T.stroke = null; paintAnnos(); } }
+  if (e.type === 'pointerup' && ptrs.size === 0 && !moved && drag) { if (T.annot) { if (T.annot.tool === 'stamp') annoStamp(e); } else { const g = drag.target.closest && drag.target.closest('[data-id]'); if (g) onCell(g.dataset.id); } }
   if (ptrs.size === 0) { drag = null; pinch0 = null; }
 };
 stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);
@@ -811,7 +894,6 @@ const actions = {
   markundo() { undoDeclaration(); },
   mturn(b) { T.markTurn = Math.max(1, Math.min(MAX_TURN, (T.markTurn || S.turn) + +b.dataset.d)); render(); },
   addplayer() { const n = (prompt(t('Player name')) || '').trim().slice(0, 20); if (!n) return; S.extraPlayers = (S.extraPlayers || []).concat([n]); T.markKey = 'n:' + n.toLowerCase(); save(); render(); paintOverlay(); },
-  notemode() { pickSector(t('Tap the sector for your note'), sec => noteDlg(sec)); },
   noteedit(b) { $('#inspect').hidden = true; noteDlg(b.dataset.s); },
   tsec(b) { T.tableSec = b.dataset.k; render(); },
   rules() { overlay(t('How to play'), rulesHtml()); },
@@ -821,6 +903,7 @@ const actions = {
   routes() { S.routesOn = !S.routesOn; save(); paintOverlay(); const b = document.querySelector('[data-act=routes]'); if (b) b.setAttribute('aria-pressed', !!S.routesOn); toast(t(S.routesOn ? 'Routes shown' : 'Routes hidden')); },
   mkall() { const i = MK_STEPS.indexOf(mkN()); S.mkN = MK_STEPS[(i + 1) % MK_STEPS.length]; save(); render(); paintOverlay(); }
 };
+Object.assign(actions, annoActions);
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { setTab(b.dataset.tab); }));
 document.addEventListener('click', e => {
@@ -955,7 +1038,7 @@ function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); }
 function resetToWelcome(stage) { T.maps = T.maps.filter(m => !m.shared); const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards }; S = Object.assign(fresh(), keep); S.stage = stage || 'welcome'; T.turnState = null; T.counts = null; Sync.status = 'off'; closeDlg(); save(); boot(); }
 function boot() {
   if (S.hot && window.Hot) Hot.rebind();
-  T.pick = null; T.sel = null;
+  T.pick = null; T.sel = null; T.annot = null; T.stroke = null; renderAnnot();
   const game = S.stage === 'game' && S.role;
   $('#flow').hidden = !!game; $('#app').hidden = !game;
   applyStatic();

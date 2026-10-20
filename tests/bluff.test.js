@@ -26,6 +26,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.click('.tabs [data-tab=table]');
  assert(await p.locator('.sheet tbody tr').count()===2&&await p.locator('.sheet .c.bluff').count()===1,'the sheet has a row per player and shows the bluff');
  await p.click('.sheet [data-act=follow][data-k="n:zoe"]');assert(await p.evaluate(()=>T.focus==='n:zoe'&&S.tab==='play'),'tapping a name in the sheet follows that player');
+ await p.evaluate(()=>follow(null));
  assert(await p.evaluate(()=>!!document.querySelector('#marks .pm:not(.mine) path')&&!!document.querySelector('#marks .pm.mine path')&&!document.querySelector('#marks .pm circle:not(.mko)')),'every marker, mine and the others, is a hexagon');
  await p.click('#mkbar [data-act=pfocus][data-k=me]').catch(()=>{});
  console.log('errors',errs);await b.close()})()

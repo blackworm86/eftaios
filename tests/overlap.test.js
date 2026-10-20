@@ -21,7 +21,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  // focus on Anna
  await p.click('#mkbar button[title=Anna]');
  const st=await p.evaluate(()=>{const all=[...document.querySelectorAll('#marks .pm')];return {dim:all.filter(g=>g.classList.contains('dim')).length,lit:all.filter(g=>!g.classList.contains('dim')).length,tl:!document.querySelector('#marks .tl'),trail:!document.querySelector('#trail')}});
- assert(st.lit===3&&st.dim>0&&st.tl&&st.trail,'focus shows only that player (3 markers, no route lines), the rest greyed');
+ assert(st.lit===3&&st.dim===0&&st.tl&&st.trail,'focus shows only that player (3 markers, no route lines); everybody else is hidden');
  await p.evaluate(()=>fit());await p.screenshot({path:SS+'/ov-focus.png'});
  await p.click('#mkbar button[title=Anna]');assert(await p.evaluate(()=>document.querySelectorAll('#marks .dim').length)===0,'tapping again shows everyone');
  console.log('errors',errs);await b.close()})()

@@ -733,3 +733,14 @@ dialog .charcard{justify-content:center;margin:10px 0}
 .rev .pst{display:flex;align-items:center;gap:6px}
 .logfilter{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.lfc{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--line);background:var(--bg2);border-radius:999px;padding:4px 10px;font-size:13px;min-height:32px}.lfc[aria-pressed=true]{border-color:var(--amber);background:#ffb41f22}
 .turnbar{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* stamps and drawings */
+.annotbar{position:absolute;left:8px;right:58px;bottom:8px;z-index:25;background:#0b1222f2;border:1.5px solid var(--line);border-radius:14px;padding:8px;display:grid;gap:8px;box-shadow:0 8px 22px #0009}
+.atools{display:flex;gap:6px;flex-wrap:wrap}.atools button,.aopts button{min-height:38px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg2);color:var(--text);display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0 10px;font-size:13px}
+.atools button[aria-pressed=true],.aopts button[aria-pressed=true]{border-color:var(--amber);background:#ffb41f26}.atools .danger{color:#ff8a7a}.atools .done{margin-left:auto;background:var(--amber);color:#1a1200;border-color:var(--amber);font-weight:700}
+.aopts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.aopts small{color:var(--dim)}.aopts i{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
+.aopts .ac{width:34px;min-height:34px;padding:0;border-radius:50%;background:var(--c);border:2px solid #0b1222}.aopts .ac[aria-pressed=true]{outline:2.5px solid #fff;outline-offset:1px}
+.aopts .as{width:38px;padding:0}
+#annos{pointer-events:none}.aline{stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;opacity:.95}.astamp .sglyph{fill:none;stroke:#111;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.stage:has(.annotbar:not([hidden])) #map{cursor:crosshair}
+.zoom [data-act=annot][aria-pressed=true]{background:var(--amber);color:#1a1200;border-color:var(--amber)}

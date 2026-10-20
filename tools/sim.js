@@ -34,6 +34,11 @@ function summarize(d, n) {
   const byId = Object.fromEntries(d.seats.map(s => [s.id, s]));
   const alienAttacks = d.log.filter(e => e.kind === 'attack' && byId[e.by] && byId[e.by].role0 === 'alien').length;
   const humanKills = d.log.filter(e => e.kind === 'out' && String(e.text).startsWith('killed|human')).length;
+  // kills per Alien seat: the Humans killed right after its attack (the log is newest first)
+  const killsBy = {};
+  d.log.forEach((e, i) => { if (e.kind !== 'attack' || !byId[e.by]) return;
+    for (let j = i - 1; j >= Math.max(0, i - 4); j--) { const o = d.log[j]; if (o.turn !== e.turn) break; if (o.kind === 'out' && String(o.text).startsWith('killed|human') && o.by !== e.by) killsBy[e.by] = (killsBy[e.by] || 0) + 1; } });
+  seats.forEach(s => { s.kills = killsBy[s.id] || 0; });
   const escapes = seats.filter(s => s.over === 'escaped').length;
   const res = d.result || {};
   return { n, map: d.map, mode: d.mode, players: n, turns: d.turn, winner: res.aliensWin ? 'alien' : 'human', reason: res.reason,

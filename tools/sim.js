@@ -12,6 +12,7 @@ const PLAYERS = arg('players', '4,6').split(',').map(Number);
 const LEVELS = arg('levels', 'normal').split(',');
 const MAPS = arg('maps', '').split(',').filter(Boolean);
 const NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+const MIX = arg('mix', '');   // a mixed table, e.g. 'hard:1,easy:5': the seats play at these levels, in order
 const SKILL = arg('skill', '');   // JSON overrides per level, e.g. '{"hard":{"humanCal":0.6}}' (the tuning hook in bot.js)
 
 // everything about one finished game, from the dump the app exposes
@@ -50,14 +51,16 @@ async function main() {
   await p.waitForFunction(() => window.Hot && T.maps.length > 3);
   const maps = (MAPS.length ? MAPS : await p.evaluate(() => T.maps.filter(m => m.official || m.pack).map(m => m.id)));
   const out = [];
-  for (const map of maps) for (const n of PLAYERS) for (const lvl of LEVELS) for (let g = 0; g < GAMES; g++) {
-    const names = NAMES.slice(0, n), bots = names.map(() => lvl);
+  const tables = MIX ? [{ n: 0, lvl: 'mix', bots: MIX.split(',').flatMap(x => { const [l, k] = x.split(':'); return Array(+k).fill(l); }) }]
+    : PLAYERS.flatMap(n => LEVELS.map(lvl => ({ n, lvl, bots: NAMES.slice(0, n).map(() => lvl) })));
+  for (const map of maps) for (const tb of tables) for (let g = 0; g < GAMES; g++) {
+    const n = tb.bots.length, lvl = tb.lvl, names = NAMES.slice(0, n), bots = tb.bots;
     const d = await p.evaluate(async ({ names, map, mode, bots }) => {
       await Hot.start(names, map, mode, 'auto', bots);
       return Hot.dump();
     }, { names, map, mode: MODE, bots });
     if (!d || !d.result) { out.push({ map, players: n, level: lvl, error: 'no result' }); continue; }
-    const s = summarize(d, n); s.level = lvl; s.game = g;
+    const s = summarize(d, n); s.level = lvl; s.game = g; s.bots = bots;
     out.push(s);
   }
   fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), mode: MODE, games: out, errors: errs }, null, 1));

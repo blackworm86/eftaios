@@ -35,3 +35,19 @@ byLevel.forEach((gs, lvl) => {
 console.table(rows);
 console.log('cycle = share of moves that go back to the sector of two moves before (A-B-A shuffling); target: low');
 console.log('maxStay = longest run of turns in the same sector; compare with humanMaxStay (secure sectors are fine)');
+
+// Skill ladder for mixed tables: a seat's side wins how often, by the seat's own level.
+// Compare levels across the same tables: a stronger level should win more often than a weaker one, whatever its role.
+const mixed = games.filter(g => g.bots && g.level === 'mix');
+if (mixed.length) {
+  const by = new Map();
+  mixed.forEach(g => g.seats.forEach(s => {
+    const won = s.role0 === 'alien' ? g.winner === 'alien' : g.winner === 'human';
+    if (!by.has(s.bot)) by.set(s.bot, { n: 0, won: 0, asAlien: 0, asAlienWon: 0, asHuman: 0, asHumanWon: 0 });
+    const b = by.get(s.bot); b.n++; if (won) b.won++;
+    if (s.role0 === 'alien') { b.asAlien++; if (won) b.asAlienWon++; } else { b.asHuman++; if (won) b.asHumanWon++; }
+  }));
+  console.log('\nSkill ladder (mixed tables): seat-side win rate by level');
+  console.table([...by].map(([lvl, b]) => ({ level: lvl, seats: b.n, sideWin: pct(b.won / b.n),
+    asAlien: pct(b.asAlienWon / Math.max(1, b.asAlien)), asHuman: pct(b.asHumanWon / Math.max(1, b.asHuman)) })));
+}

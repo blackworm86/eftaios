@@ -75,8 +75,8 @@ async function publishRoute() {
   T.routeBusy = false; save(); if (T.routeErr && S.stage === 'game') render();
 }
 /* a route travels as "turn:sector,turn:sector,…" — published only once the game is over */
-const encodeRoute = path => (path || []).map(p => p.turn + ':' + p.pos).join(',').slice(0, 1500);
-const decodeRoute = s => String(s || '').split(',').map(x => { const [t_, pos] = x.split(':'); return { turn: +t_, pos }; }).filter(p => p.pos && parseId(p.pos));
+const encodeRoute = path => (path || []).map(p => p.turn + ':' + p.pos + (p.note === 'reborn' ? ':r' : '')).join(',').slice(0, 1500);
+const decodeRoute = s => String(s || '').split(',').map(x => { const [t_, pos, n_] = x.split(':'); return n_ === 'r' ? { turn: +t_, pos, note: 'reborn' } : { turn: +t_, pos }; }).filter(p => p.pos && parseId(p.pos));
 
 /* ---------------- moving & announcing ---------------- */
 function confirmMove() {

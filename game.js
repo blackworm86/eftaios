@@ -52,7 +52,7 @@ function reportOut() {
   S.outSent = true;
   const why = S.over === 'dead' ? 'killed' : S.over;
   Sync.setMe({ out: why, role: S.role, char: S.char || '' });
-  Sync.push({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind: 'out', sector: '', text: why + '|' + S.role + '|' + (S.char || ''), at: Date.now() });
+  Sync.push({ id: uid(), turn: S.turn, who: S.name || t('Me'), kind: 'out', sector: '', text: why + '|' + S.role + '|' + (S.reborn ? '' : S.char || ''), at: Date.now() });
   if (inRoom() && T.turnState.uid === Sync.uid) endTurn();
 }
 function afterChange() {
@@ -345,7 +345,7 @@ function orderList() {
 function waitPanel() {
   const cur = T.turnState;
   return `<h2>${t('{p} is playing', { p: esc(pname(cur.uid)) })}</h2>
-    ${orderList()}${handHtml()}`;
+    ${roundCard()}${orderList()}${handHtml()}`;
 }
 function overPanel() {
   const m = { escaped: ['Escaped!', 'You left the ship and win. That pod is now blocked.'], time: ['40 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Pod is blocked or damaged. You are eliminated.'] }[S.over];
@@ -361,7 +361,10 @@ function routesNote() {
 function globalOverPanel() {
   const r = (S.hot ? Hot.result() : Sync.settings.result) || {}, esc_ = r.escaped || [], ps = tablePlayers();
   const why = { time: 'Time is up: 40 turns have been played.', escape: 'The last Human has escaped.', eliminated: 'The last Human was eliminated.' }[r.reason] || '';
-  const rows = tableOrder().filter(u => ps[u]).map(u => { const p = ps[u]; return `<li class="${p.out === 'escaped' ? 'ok' : ''}">${dotIcon(u === myId() ? 'me' : 'u:' + u)}<span class="pname">${esc(p.name)}</span><span class="pst">${p.role ? t(p.role === 'alien' ? 'Alien' : 'Human') + (p.char ? ' · ' + t(p.char) : '') : '…'}</span>${outBadge(p) || ''}</li>`; }).join('');
+  const rows = tableOrder().filter(u => ps[u]).map(u => {
+    const p = ps[u], conv = p.conv && p.role !== 'human' ? true : p.conv, orig = conv ? 'human' : p.role;   // a Human killed or mutated into an Alien shows both roles
+    const roleTxt = p.role ? (conv ? t('Human') + ' → ' + t('Alien') : t(p.role === 'alien' ? 'Alien' : 'Human')) : '…';
+    return `<li class="${p.out === 'escaped' ? 'ok' : ''}">${dotIcon(u === myId() ? 'me' : 'u:' + u)}<span class="pname">${esc(p.name)}${p.char && powerText(p.char) ? `<small class="pow2">${esc(powerText(p.char))}</small>` : ''}</span><span class="pst">${p.char ? charIcon(p.char, 26) : ''}<span>${esc(roleTxt)}${p.char ? ' · ' + esc(t(p.char)) : ''}</span></span>${outBadge(p) || ''}</li>`; }).join('');
   return `<h2>${t('Game over')}</h2>
     ${sayBox(r.aliensWin ? t('The Aliens win!') : t('The Humans win!'), r.aliensWin ? 'alert' : '', 'Result')}
     <p class="dim">${t(why)}</p>${esc_.length ? `<p>${t('Humans who escaped: {n}', { n: esc_.map(esc).join(', ') })}</p>` : ''}
@@ -448,7 +451,7 @@ function decksHtml() {
   return `<p class="decks1">${t('Cards left')}: ${cell('sector', 'Sector cards')} · ${cell('hatch', 'Escape Pod cards')}</p>`;
 }
 function tablePanel() {
-  const ln = S.log.map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k); return `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}</span></li>`; }).join('');
+  const sel = logSel(), ln = S.log.filter(e => !sel.length || sel.includes(playerKey(e))).map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k); return `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span></li>`; }).join('');
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
   const sec = { players: 'sheet', hatches: 'status' }[T.tableSec] || T.tableSec || 'sheet', hatchAct = digital() ? '' : 'hatch';
   const secs = [['sheet', 'Sheet'], ['log', 'Log'], ['status', 'Status']];
@@ -456,12 +459,79 @@ function tablePanel() {
     <div class="tsecs">
     <section class="sec sheetsec${sec === 'sheet' ? ' on' : ''}">${sheetHtml()}${legendHtml()}</section>
     <section class="sec log${sec === 'log' ? ' on' : ''}">${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
+      ${S.log.length ? logFilterHtml() : ''}
       ${ln ? `<ul class="log">${ln}</ul>${digital() || S.hot ? '' : `<button class="btn link wide" data-act="clearlog">${t('Clear announcements')}</button>`}` : `<p class="dim">${t('No announcements yet.')}</p>`}</section>
     <section class="sec status${sec === 'status' ? ' on' : ''}">${roomBlock()}${skip}<h3>${t('Escape Pods')}${hatchAct ? ` <span class="hint">${t('tap to close or reopen')}</span>` : ''}</h3>
       <div class="hatches compact">${mapHatches().map(n => { const lbl = `${t('Escape Pod {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}`; return hatchAct ? `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${lbl}">${n}</button>` : `<span class="hb${S.hatches[n] ? ' closed' : ''}" role="img" aria-label="${lbl}">${n}</span>`; }).join('')}</div>
-      ${decksHtml()}</section>
+      ${decksHtml()}${charsHtml()}</section>
     </div>`;
 }
+
+/* ---------------- what the others did, and who they turned out to be ---------------- */
+const CHAR_NAMES = new Set([...CHARS.human, ...CHARS.alien]);
+const ANN_KINDS = ['noise', 'silence', 'attack', 'spot', 'hatch', 'item', 'reveal', 'out'];
+/* a log line that shows a Character card: { role, char, killed } */
+function revealInfo(e) {
+  if (!e) return null;
+  if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) { const [, role, char] = e.text.split('|'); return char ? { role, char } : null; }
+  if (e.kind === 'reveal' && CHAR_NAMES.has(e.text)) return { role: CHARS.alien.includes(e.text) ? 'alien' : 'human', char: e.text };
+  if (e.kind === 'out') { const [why, role, char] = String(e.text).split('|'); if (char) return { role, char, killed: why === 'killed' }; }
+  return null;
+}
+const powerText = ch => (!ch || basic() || !ABILITIES[ch]) ? '' : t(ABILITIES[ch]);
+const powerNote = e => { const i = revealInfo(e), p = i && powerText(i.char); return p ? `<small class="pow">${esc(p)}</small>` : ''; };
+const charIcon = (ch, w = 32) => CHAR_ICON[ch] ? gico(CHAR_ICON[ch], w) : '';
+/* a Character card with its power */
+const charCardHtml = (ch, role, w = 64) => `<div class="charcard">${charIcon(ch, w)}<div><b>${esc(t(ch))}</b><small>${t(role === 'alien' ? 'Alien' : 'Human')}</small>${powerText(ch) ? `<p>${esc(powerText(ch))}</p>` : ''}</div></div>`;
+/* a player showed a Character card: everybody sees it, with a reminder of the power */
+function showReveal(e, i) {
+  const open = () => { dlg.innerHTML = `<h2>${esc(e.who)}</h2><p class="dim">${t(i.killed ? 'was killed and shows the Character card' : 'reveals the Character card')}</p>${charCardHtml(i.char, i.role, 72)}<div class="row"><button class="btn primary" id="d-no">OK</button></div>`; dlg.showModal(); $('#d-no').onclick = closeDlg; };
+  if (dlg.open) { (T.revQ = T.revQ || []).push(open); } else open();
+}
+dlg.addEventListener('close', () => { const n = (T.revQ || []).shift(); if (n) setTimeout(n, 150); });
+/* a short banner over the map for what another player has just declared */
+function showBanner(e) {
+  const bar = $('#annbar'); if (!bar) return;
+  const k = playerKey(e), d = document.createElement('div'); d.className = 'ann ' + e.kind;
+  d.innerHTML = `${dotIcon(k)}<span><b>${esc(e.who)}</b> ${logIcon(e, 20)}<em>${esc(entryText(e))}</em></span>`;
+  bar.appendChild(d); while (bar.children.length > 3) bar.firstChild.remove();
+  setTimeout(() => { d.classList.add('gone'); setTimeout(() => d.remove(), 400); }, 6500);
+}
+/* called for every public entry that arrives from another player */
+function onPublicEntry(e) {
+  if (S.stage !== 'game' || !ANN_KINDS.includes(e.kind) || Date.now() - (e.at || 0) > 30000) return;
+  showBanner(e);
+  const i = revealInfo(e); if (i && (e.kind === 'reveal' || i.killed)) showReveal(e, i);
+}
+/* the last declarations of other players, newest first */
+function recentOthers(n = 8, from = S.turn - 1) {
+  return S.log.filter(e => ANN_KINDS.includes(e.kind) && playerKey(e) !== 'me' && e.turn >= from).slice(0, n);
+}
+const annLine = e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b>${logIcon(e, 18)}<span>${esc(entryText(e))}</span><i>${t('T{n}', { n: e.turn })}</i></li>`;
+function roundCard() {
+  const es = recentOthers(8); if (!es.length) return '';
+  return `<div class="roundcard"><small>${t('What the others declared')}</small><ul>${es.map(annLine).join('')}</ul></div>`;
+}
+function lastLine() { const e = recentOthers(1)[0]; return e ? `<p class="lastann">${dotIcon(playerKey(e))}<b>${esc(e.who)}</b>${logIcon(e, 18)}<span>${esc(entryText(e))}</span></p>` : ''; }
+/* every Character card the table has seen so far */
+function knownChars() {
+  const m = new Map();
+  S.log.slice().reverse().forEach(e => { const i = revealInfo(e); if (i) m.set(playerKey(e), { name: e.who, role: i.role, char: i.char, killed: !!i.killed }); });
+  if (S.char) m.set('me', { name: S.name || t('Me'), role: S.reborn ? 'human' : S.role, char: S.char, mine: true });
+  return [...m.entries()];
+}
+function charsHtml() {
+  const l = knownChars(); if (!l.length) return '';
+  return `<h3>${t('Character cards')}</h3><ul class="chars">${l.map(([k, c]) => `<li>${dotIcon(k)}<span class="pname">${esc(c.name)}${c.mine ? ` <em>${t('(you)')}</em>` : ''}</span>${charCardHtml(c.char, c.role, 34)}</li>`).join('')}</ul>`;
+}
+/* log filter: all players, some, or one */
+const logSel = () => T.logSel || [];
+function logFilterHtml() {
+  const ps = [['me', t('Me')]].concat(knownPlayers()), sel = logSel();
+  return `<div class="logfilter" role="group" aria-label="${t('Show players')}"><button class="lfc" data-act="logf" data-k="" aria-pressed="${!sel.length}">${t('All')}</button>${ps.map(([k, n]) => `<button class="lfc" data-act="logf" data-k="${esc(k)}" aria-pressed="${sel.includes(k)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`).join('')}</div>`;
+}
+Object.assign(actions, { logf(b) { const k = b.dataset.k; if (!k) T.logSel = []; else { const s = logSel().slice(), i = s.indexOf(k); if (i >= 0) s.splice(i, 1); else s.push(k); T.logSel = s; } render(); } });
+window.onPublicEntry = onPublicEntry;
 
 /* ---------------- who am I: Character icon, role and what it can do ---------------- */
 const ROLE_HELP = {

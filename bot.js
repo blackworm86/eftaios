@@ -220,7 +220,8 @@ const Bot = (() => {
   /* cheapest way to a hatch from every sector, each step costing 1 plus the danger of the sector */
   function pathCosts(W) {
     const g = W.g, N = g.N, cost = new Float64Array(N).fill(1e6), done = new Uint8Array(N);
-    W.hatches.forEach(h => { cost[h] = 0; });
+    // pod choice: a pod that the Aliens' belief covers (within two steps) costs more to head for
+    W.hatches.forEach(h => { let e = 0; if (W.sk.podPick) for (let j = 0; j < N; j++) { const v = W.alienOcc[j]; if (v > 1e-4 && g.dA[h][j] <= 2) e += v; } cost[h] = (W.sk.podPick || 0) * e; });
     for (let it = 0; it < N; it++) {
       let u = -1, best = 1e9; for (let i = 0; i < N; i++) if (!done[i] && cost[i] < best) { best = cost[i]; u = i; }
       if (u < 0) break; done[u] = 1;

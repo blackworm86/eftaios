@@ -2,7 +2,7 @@
 /* Runs the browser test suite on Windows.
    The tests still say require('/opt/node22/lib/node_modules/playwright'); the -r shim maps that to tools/pw.js.
    Usage: node tools/test.js [nameFilter] */
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -18,6 +18,12 @@ async function waitUp(ms = 15000) {
   const end = Date.now() + ms;
   while (Date.now() < end) { if (await up()) return true; await new Promise(r => setTimeout(r, 150)); }
   return false;
+}
+// A timed-out test can leave its headless Chrome behind; those processes then starve the next tests.
+function cleanupChrome() {
+  if (process.platform !== 'win32') return;
+  const ps = "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { $_.CommandLine -like '*eftaios-chrome-*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
+  try { spawnSync('powershell.exe', ['-NoProfile', '-Command', ps], { stdio: 'ignore', windowsHide: true, timeout: 20000 }); } catch (e) { /* ignore */ }
 }
 function run(file) {
   return new Promise(resolve => {
@@ -36,6 +42,7 @@ function run(file) {
 }
 
 (async () => {
+  cleanupChrome();
   let server = null;
   if (!(await up())) {
     server = spawn(process.execPath, [path.join(__dirname, 'serve.js'), String(PORT)], { cwd: ROOT, stdio: 'ignore', windowsHide: true });
@@ -47,6 +54,7 @@ function run(file) {
     console.log('\n=== ' + f + ' ===');
     const r = await run(path.join('tests', f));
     rows.push({ test: f, result: r.code === 0 ? 'pass' : String(r.code), seconds: (r.ms / 1000).toFixed(1) });
+    if (r.code !== 0) cleanupChrome();
     console.log('--- ' + f + ': ' + (r.code === 0 ? 'pass' : r.code) + ' (' + (r.ms / 1000).toFixed(1) + 's)');
   }
   console.log('\n=== summary ===');

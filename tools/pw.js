@@ -9,6 +9,7 @@ async function launch() {
     get(target, prop) {
       if (prop === 'close') return () => raw.close();
       if (prop === '__raw') return raw;
+      if (prop === 'newContext') return (opts = {}) => target.newContext(Object.assign({ locale: 'en-US' }, opts));
       const v = target[prop];
       return typeof v === 'function' ? v.bind(target) : v;
     }

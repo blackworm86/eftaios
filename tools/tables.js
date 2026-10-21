@@ -16,7 +16,7 @@ const TABLES = {
   e1n5: { mix: 'easy:1,normal:5', pair: ['normal', 'easy'] },
   h1n2: { mix: 'hard:1,normal:2', pair: ['hard', 'normal'] },
   n1e2: { mix: 'normal:1,easy:2', pair: ['normal', 'easy'] },
-  marconi8: { players: 8, levels: 'hard', maps: ['marconi'] }
+  marconi8: { players: 8, levels: 'hard', maps: ['marconi'], games: 64 }
 };
 
 module.exports = { TRAIN, HOLDOUT, TABLES };

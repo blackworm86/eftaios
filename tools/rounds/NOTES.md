@@ -180,3 +180,96 @@ Each Alien leans toward its own map quadrant (chosen from its id), so Aliens cha
 | 4 | 64 | 60.9% | 44.1% | 2.84 | 20.4% |
 
 Result: the 32-game gain at weight 4 did not hold at 64 games (the difference is within noise, and kills went down). Not adopted: laneW stays 0.
+
+## Round 13: portable seeded harness and baseline (2026-10-21)
+
+The simulator now runs on the Windows development machine: Chrome is driven over CDP (the default Playwright transport needs a
+named pipe the Windows sandbox denies), the static server is Node, and every game has a fixed seed through the existing
+`window.__rng` hook. This removes the run-to-run drift that made earlier comparisons hard (up to 5 points on identical settings).
+
+Design of the baseline:
+- 12 training maps: socrates, galvani, morgenland, volta, levimontalcini, engarde, sinistra, dilemma, cavour, balena, ascesa, garibaldi.
+- 6 held-out maps: galilei, marconi, fermi, frenzy, machiavelli, soundofsilence.
+- 24 games per map per table (288 training / 144 held-out games per row), 64 games for 8-player Marconi, seed 20261021.
+- 95% intervals in the report are Wilson intervals. Map-to-map variance is larger than these intervals; the train/holdout split is
+  there to expose it.
+- Reproducibility: five 3-player hard Marconi games at seed 42 were run twice and the game records were identical; the same five
+  games with 1 worker and with 4 workers were also identical. Raw data: `tools/rounds/eval-baseline.json` (ignored);
+  report: `tools/rounds/baseline.report.txt`.
+
+### Homogeneous tables (Alien win / Human escape)
+
+| table | train (288) | holdout (144) |
+|---|---|---|
+| 3 hard | 52.1% / 47.9% | 57.6% / 42.4% |
+| 6 hard | 44.8% / 47.3% | 52.8% / 41.9% |
+| 8 hard | 50.7% / 41.8% | 67.4% / 36.8% |
+| 6 normal | 34.7% / 51.7% | 30.6% / 57.2% |
+| 6 easy | 30.6% / 66.2% | 33.3% / 71.3% |
+| 8 hard Marconi (64) | - | 68.8% / 45.7% |
+
+Targets: hard Alien win at least 55% and Human escape at most 35%; easy Human escape at least 50% and Alien win at most 50%.
+Easy passes on both sets. Hard passes Alien win only on the 8-player holdout and Marconi; Human escape is 36.8-47.9% everywhere
+(8-player holdout is closest at 36.8%).
+
+### Mixed tables (seat Human escape; kills per Alien seat)
+
+| table | set | strong seat | weak seat | escape gap | kill gap |
+|---|---|---|---|---|---|
+| 1 hard + 5 normal | train | 57.7% | 52.4% | +5.3 | +0.40 |
+| 1 hard + 5 normal | holdout | 82.8% | 51.6% | +31.2 | +0.64 |
+| 1 normal + 5 hard | train | 50.8% | 51.4% | -0.6 | -0.01 |
+| 1 normal + 5 hard | holdout | 47.1% | 55.8% | -8.7 | +0.06 |
+| 1 normal + 5 easy | train | 75.5% | 56.0% | +19.5 | +0.72 |
+| 1 normal + 5 easy | holdout | 90.3% | 58.9% | +31.4 | +0.75 |
+| 1 easy + 5 normal | train | 50.6% | 59.2% | -8.6 | -0.03 |
+| 1 easy + 5 normal | holdout | 55.2% | 50.0% | +5.2 | +0.36 |
+| 3p: 1 hard + 2 normal | train | 71.0% | 60.5% | +10.5 | +0.18 |
+| 3p: 1 hard + 2 normal | holdout | 76.9% | 56.2% | +20.7 | +0.20 |
+| 3p: 1 normal + 2 easy | train | 94.8% | 68.0% | +26.8 | +0.26 |
+| 3p: 1 normal + 2 easy | holdout | 100.0% | 60.6% | +39.4 | +0.36 |
+
+The hard-vs-normal gap changes sign with which level is the minority: +5.3/+31.2 when hard is the lone seat, -0.6/-8.7 when normal
+is the lone seat. Normal-vs-easy shows the same pattern (+19.5/+31.4 as minority, -8.6/+5.2 as majority). So the current levels are
+still mostly a table-composition effect, not a seat-skill effect, which is the problem round 4 identified and rounds 7-12 only
+partly moved.
+
+### Clustering and deaths
+
+| table | set | cluster turns | games with a 10+ run | worst run |
+|---|---|---|---|---|
+| 6 hard | train | 19.3% | 19/288 | 28 |
+| 6 hard | holdout | 14.8% | 10/144 | 13 |
+| 8 hard | train | 57.6% | 89/288 | 41 |
+| 8 hard | holdout | 52.8% | 47/144 | 41 |
+| 8 hard Marconi | holdout | 33.8% | 8/64 | 17 |
+| 6 easy | train | 4.3% | 2/288 | 14 |
+| 6 normal | train | 16.1% | 9/288 | 18 |
+
+The user's report is reproduced: in 8-player hard games more than half of all turns have four or more Aliens inside one 3-sector
+area, and 31-33% of games contain a run of ten or more such turns. Death audit: clean on all 4,816 games (every killed/escaped/trapped
+end state has a matching log entry, no movement after elimination, reborn Humans counted as conversions).
+
+### Tests
+
+`node tools/test.js` on this machine: 32/34 pass, including bots, kills, layout, online, lobby and all map/marker tests.
+Two failures are environment/known issues, not caused by the harness:
+- `scan.test.js` needs `python3` with PIL to build a Y4M video; Python is not installed on this machine.
+- `turns.test.js` still fails with the known turn-flow problem (the End turn button is intercepted by the dialog).
+
+The test runner pins `en-US` (otherwise labels differ and assertions fail), uses `CDPScreenshotNewSurface` for screenshots, and
+disables background throttling so timing tests are stable.
+
+### Verdict
+
+1. The seeded harness works and is worth keeping: identical settings now reproduce exactly, so future A/B rows can use paired seeds.
+2. The primary target is not met. 6-player hard loses to the Humans on the training set (Alien win 44.8%) and Human escape stays
+   above 35% in every hard table.
+3. Hard is not reliably better than normal at the same table. The ladder gap is below +15 points and flips sign with seat composition.
+4. Easy is already beatable and meets its target on both map sets.
+5. The Marconi clustering is real and large, not a 32-game artefact.
+
+Next: screen the hard Alien parameters on paired seeds (3-player and 6-player hard plus the mixed ladder), then test one structural
+anti-clustering term if the weights plateau. Do not start a full 15-dimensional search yet: map variance is larger than the effect
+we are looking for.
+

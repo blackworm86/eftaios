@@ -30,33 +30,44 @@ function run(cmd, args) {
 }
 
 (async () => {
-  const runs = [];
-  for (const set of SETS) {
-    if (!MAP_SETS[set]) { console.error('unknown set ' + set); process.exit(1); }
-    for (const name of NAMES) {
-      const t = TABLES[name];
-      if (!t) { console.error('unknown table ' + name); process.exit(1); }
-      const maps = t.maps || MAP_SETS[set];
-      // a fixed-map table (Marconi 8) is evaluated on the holdout pass only
-      if (t.maps && set !== 'holdout') continue;
-      const file = path.join('tools', 'rounds', `eval-${LABEL}-${name}-${set}.json`);
-      const args = [path.join('tools', 'sim.js'), file, '--games', String(GAMES), '--maps', maps.join(','), '--seed', String(SEED), '--workers', String(WORKERS)];
-      if (t.mix) args.push('--mix', t.mix); else args.push('--players', String(t.players), '--levels', t.levels);
-      if (SKILL) args.push('--skill', SKILL);
-      console.log(`\n### ${label(name, set)}  games/map=${GAMES} maps=${maps.length} workers=${WORKERS}`);
-      const r = await run(process.execPath, args);
-      if (r.code !== 0 || !fs.existsSync(path.join(ROOT, file))) { console.error(`run failed: ${name}/${set} (exit ${r.code})`); process.exit(1); }
-      runs.push({ table: name, set, file, seconds: +(r.ms / 1000).toFixed(1) });
-      console.log(`### ${name}/${set} done in ${(r.ms / 1000).toFixed(0)}s`);
+  const out = path.join('tools', 'rounds', `eval-${LABEL}.json`);
+  let runs = [], runSeed = SEED;
+  if (argv.includes('--merge-only')) {
+    const prev = JSON.parse(fs.readFileSync(path.join(ROOT, out), 'utf8'));
+    runs = prev.runs;
+    runSeed = +arg('seed', prev.seed || SEED);
+    console.log(`re-merging ${runs.length} existing table files (seed ${runSeed})`);
+  } else {
+    for (const set of SETS) {
+      if (!MAP_SETS[set]) { console.error('unknown set ' + set); process.exit(1); }
+      for (const name of NAMES) {
+        const t = TABLES[name];
+        if (!t) { console.error('unknown table ' + name); process.exit(1); }
+        const maps = t.maps || MAP_SETS[set];
+        // a fixed-map table (Marconi 8) is evaluated on the holdout pass only
+        if (t.maps && set !== 'holdout') continue;
+        const file = path.join('tools', 'rounds', `eval-${LABEL}-${name}-${set}.json`);
+        const games = t.games || GAMES;
+        const args = [path.join('tools', 'sim.js'), file, '--games', String(games), '--maps', maps.join(','), '--seed', String(SEED), '--workers', String(WORKERS), '--no-trace'];
+        if (t.mix) args.push('--mix', t.mix); else args.push('--players', String(t.players), '--levels', t.levels);
+        if (SKILL) args.push('--skill', SKILL);
+        console.log(`\n### ${label(name, set)}  games/map=${games} maps=${maps.length} workers=${WORKERS}`);
+        const r = await run(process.execPath, args);
+        if (r.code !== 0 || !fs.existsSync(path.join(ROOT, file))) { console.error(`run failed: ${name}/${set} (exit ${r.code})`); process.exit(1); }
+        runs.push({ table: name, set, file, seconds: +(r.ms / 1000).toFixed(1) });
+        console.log(`### ${name}/${set} done in ${(r.ms / 1000).toFixed(0)}s`);
+      }
     }
   }
-  const merged = { at: new Date().toISOString(), label: LABEL, seed: SEED, games: [], maps: {}, runs };
+  const merged = { at: new Date().toISOString(), label: LABEL, seed: runSeed, games: [], maps: {}, runs };
   for (const r of runs) {
     const d = JSON.parse(fs.readFileSync(path.join(ROOT, r.file), 'utf8'));
     Object.assign(merged.maps, d.maps);
-    d.games.forEach(g => { g.table = r.table; g.set = r.set; merged.games.push(g); });
+    d.games.forEach(g => {
+      delete g.trace; delete g.moves;   // --no-trace normally leaves these null; strip anyway
+      g.table = r.table; g.set = r.set; merged.games.push(g);
+    });
   }
-  const out = path.join('tools', 'rounds', `eval-${LABEL}.json`);
   fs.writeFileSync(path.join(ROOT, out), JSON.stringify(merged));
   console.log(`\nmerged ${merged.games.length} games -> ${out}`);
   console.log(runs.map(r => `${r.table}/${r.set}: ${r.seconds}s`).join('\n'));

@@ -28,9 +28,16 @@ async function launch(opts = {}) {
   const port = opts.port || freePort();
   const userDataDir = opts.userDataDir || fs.mkdtempSync(path.join(os.tmpdir(), 'eftaios-chrome-'));
   const args = [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
+    '--headless=new', '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-extensions', '--disable-sync',
+    '--disable-component-update', '--disable-client-side-phishing-detection',
+    '--disable-default-apps', '--disable-dev-shm-usage',
+    '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding', '--disable-hang-monitor', '--disable-ipc-flooding-protection',
+    '--disable-popup-blocking', '--disable-prompt-on-repost', '--allow-pre-commit-input',
     '--mute-audio', '--hide-scrollbars', '--no-sandbox',
+    '--enable-unsafe-swiftshader', '--enable-features=CDPScreenshotNewSurface',
+    '--force-color-profile=srgb', '--metrics-recording-only', '--lang=en-US',
     '--disable-crash-reporter', '--disable-breakpad',
     ...(process.env.PW_SINGLE_PROCESS ? ['--single-process', '--in-process-gpu'] : []),
     '--user-data-dir=' + userDataDir,

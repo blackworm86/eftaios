@@ -1,0 +1,147 @@
+EFTAIOS bot evaluation: baseline   seed 20261021   4816 games
+generated 2026-10-21 13:30:07
+
+## hard3 / train (288 games)
+alien win 52.1% +/-5.7   human escape 47.9% +/-5.7   turns 8.8   kills/game 0.60   hit rate 29.1%  target: alien win >=55%, human escape <=35%
+cluster turns 0.0%   max run avg 0.00 / worst 0   games with 10+ run 0/288   death audit clean
+
+## hard3 / holdout (144 games)
+alien win 57.6% +/-8.0   human escape 42.4% +/-8.0   turns 12.9   kills/game 0.72   hit rate 25.6%  target: alien win >=55%, human escape <=35%
+cluster turns 0.0%   max run avg 0.00 / worst 0   games with 10+ run 0/144   death audit clean
+
+## hard6 / train (288 games)
+alien win 44.8% +/-5.7   human escape 47.3% +/-3.3   turns 19.9   kills/game 1.81   hit rate 25.4%  target: alien win >=55%, human escape <=35%
+cluster turns 19.3%   max run avg 2.34 / worst 28   games with 10+ run 19/288   death audit clean
+
+## hard6 / holdout (144 games)
+alien win 52.8% +/-8.0   human escape 41.9% +/-4.6   turns 25.0   kills/game 1.80   hit rate 17.9%  target: alien win >=55%, human escape <=35%
+cluster turns 14.8%   max run avg 2.18 / worst 13   games with 10+ run 10/144   death audit clean
+
+## hard8 / train (288 games)
+alien win 50.7% +/-5.7   human escape 41.8% +/-2.8   turns 21.2   kills/game 2.52   hit rate 31.7%  target: alien win >=55%, human escape <=35%
+cluster turns 57.6%   max run avg 8.19 / worst 41   games with 10+ run 89/288   death audit clean
+
+## hard8 / holdout (144 games)
+alien win 67.4% +/-7.6   human escape 36.8% +/-3.9   turns 27.8   kills/game 2.65   hit rate 19.1%  target: alien win >=55%, human escape <=35%
+cluster turns 52.8%   max run avg 9.27 / worst 41   games with 10+ run 47/144   death audit clean
+
+## easy6 / train (288 games)
+alien win 30.6% +/-5.3   human escape 66.2% +/-3.1   turns 23.2   kills/game 0.87   hit rate 57.9%  target: human escape >=50%, alien win <=50%
+cluster turns 4.3%   max run avg 0.64 / worst 14   games with 10+ run 2/288   death audit clean
+
+## easy6 / holdout (144 games)
+alien win 33.3% +/-7.6   human escape 71.3% +/-4.3   turns 29.6   kills/game 0.63   hit rate 54.6%  target: human escape >=50%, alien win <=50%
+cluster turns 1.5%   max run avg 0.30 / worst 9   games with 10+ run 0/144   death audit clean
+
+## normal6 / train (288 games)
+alien win 34.7% +/-5.5   human escape 51.7% +/-3.3   turns 17.4   kills/game 1.56   hit rate 49.5%
+cluster turns 16.1%   max run avg 1.71 / worst 18   games with 10+ run 9/288   death audit clean
+
+## normal6 / holdout (144 games)
+alien win 30.6% +/-7.4   human escape 57.2% +/-4.6   turns 23.1   kills/game 1.58   hit rate 35.2%
+cluster turns 12.5%   max run avg 1.47 / worst 14   games with 10+ run 3/144   death audit clean
+
+## h1n5 / train (288 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+hard        288         149       57.7%          139             0.78    46.5%
+normal     1440         715       52.4%          725             0.38    50.7%
+gap hard-normal: escape +5.3 pts   kills/alienSeat +0.40   (target escape gap >= +15 pts)
+cluster turns 15.2%   games with 10+ run 6/288   death audit clean
+
+## h1n5 / holdout (144 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+hard        144          64       82.8%           80             0.97    49.3%
+normal      720         368       51.6%          352             0.33    50.1%
+gap hard-normal: escape +31.2 pts   kills/alienSeat +0.64   (target escape gap >= +15 pts)
+cluster turns 9.7%   games with 10+ run 2/144   death audit clean
+
+## n1h5 / train (288 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+hard       1440         722       50.8%          718             0.50    50.2%
+normal      288         142       51.4%          146             0.51    49.0%
+gap hard-normal: escape -0.6 pts   kills/alienSeat -0.01   (target escape gap >= +15 pts)
+cluster turns 17.2%   games with 10+ run 19/288   death audit clean
+
+## n1h5 / holdout (144 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+hard        720         380       47.1%          340             0.48    48.3%
+normal      144          52       55.8%           92             0.42    58.3%
+gap hard-normal: escape -8.7 pts   kills/alienSeat +0.06   (target escape gap >= +15 pts)
+cluster turns 11.5%   games with 10+ run 5/144   death audit clean
+
+## n1e5 / train (288 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+normal      288         151       75.5%          137             0.95    51.4%
+easy       1440         713       56.0%          727             0.23    49.7%
+gap normal-easy: escape +19.5 pts   kills/alienSeat +0.72   (target escape gap >= +15 pts)
+cluster turns 4.4%   games with 10+ run 4/288   death audit clean
+
+## n1e5 / holdout (144 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+normal      144          72       90.3%           72             0.90    59.0%
+easy        720         360       58.9%          360             0.15    48.2%
+gap normal-easy: escape +31.4 pts   kills/alienSeat +0.75   (target escape gap >= +15 pts)
+cluster turns 2.7%   games with 10+ run 2/144   death audit clean
+
+## e1n5 / train (288 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+normal     1440         717       50.6%          723             0.44    49.2%
+easy        288         147       59.2%          141             0.47    54.2%
+gap normal-easy: escape -8.6 pts   kills/alienSeat -0.03   (target escape gap >= +15 pts)
+cluster turns 13.2%   games with 10+ run 4/288   death audit clean
+
+## e1n5 / holdout (144 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+normal      720         368       55.2%          352             0.49    51.1%
+easy        144          64       50.0%           80             0.13    44.4%
+gap normal-easy: escape +5.2 pts   kills/alienSeat +0.36   (target escape gap >= +15 pts)
+cluster turns 8.4%   games with 10+ run 3/144   death audit clean
+
+## h1n2 / train (288 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+hard        288          93       71.0%          195             0.30    49.7%
+normal      576         195       60.5%          381             0.12    43.2%
+gap hard-normal: escape +10.5 pts   kills/alienSeat +0.18   (target escape gap >= +15 pts)
+cluster turns 0.0%   games with 10+ run 0/288   death audit clean
+
+## h1n2 / holdout (144 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+hard        144          39       76.9%          105             0.32    52.8%
+normal      288         105       56.2%          183             0.12    42.7%
+gap hard-normal: escape +20.7 pts   kills/alienSeat +0.20   (target escape gap >= +15 pts)
+cluster turns 0.0%   games with 10+ run 0/144   death audit clean
+
+## n1e2 / train (288 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+normal      288         116       94.8%          172             0.28    57.3%
+easy        576         172       68.0%          404             0.02    31.9%
+gap normal-easy: escape +26.8 pts   kills/alienSeat +0.26   (target escape gap >= +15 pts)
+cluster turns 0.0%   games with 10+ run 0/288   death audit clean
+
+## n1e2 / holdout (144 games)
+level     seats  humanSeats  escapeRate   alienSeats  kills/alienSeat  sideWin
+normal      144          40      100.0%          104             0.36    56.3%
+easy        288         104       60.6%          184             0.00    36.1%
+gap normal-easy: escape +39.4 pts   kills/alienSeat +0.36   (target escape gap >= +15 pts)
+cluster turns 0.0%   games with 10+ run 0/144   death audit clean
+
+## marconi8 / holdout (64 games)
+alien win 68.8% +/-11.1   human escape 45.7% +/-6.1   turns 22.0   kills/game 2.95   hit rate 14.8%
+cluster turns 33.8%   max run avg 4.67 / worst 17   games with 10+ run 8/64   death audit clean
+
+## target scorecard
+hard6/holdout: alien win >=55% FAIL (52.8%)   human escape <=35% FAIL (41.9%)
+hard6/train: alien win >=55% FAIL (44.8%)   human escape <=35% FAIL (47.3%)
+hard8/holdout: alien win >=55% PASS (67.4%)   human escape <=35% FAIL (36.8%)
+hard8/train: alien win >=55% FAIL (50.7%)   human escape <=35% FAIL (41.8%)
+marconi8/holdout: alien win >=55% PASS (68.8%)   human escape <=35% FAIL (45.7%)
+easy6/holdout: human escape >=50% PASS (71.3%)   alien win <=50% PASS (33.3%)
+easy6/train: human escape >=50% PASS (66.2%)   alien win <=50% PASS (30.6%)
+h1n5/holdout: hard escape 82.8% vs normal 51.6% -> gap +31.2 pts PASS (target +15)
+h1n5/train: hard escape 57.7% vs normal 52.4% -> gap +5.3 pts FAIL (target +15)
+n1h5/holdout: hard escape 47.1% vs normal 55.8% -> gap -8.7 pts FAIL (target +15)
+n1h5/train: hard escape 50.8% vs normal 51.4% -> gap -0.6 pts FAIL (target +15)
+n1e5/holdout: normal escape 90.3% vs easy 58.9% -> gap +31.4 pts PASS (target +15)
+n1e5/train: normal escape 75.5% vs easy 56.0% -> gap +19.5 pts PASS (target +15)
+e1n5/holdout: normal escape 55.2% vs easy 50.0% -> gap +5.2 pts FAIL (target +15)
+e1n5/train: normal escape 50.6% vs easy 59.2% -> gap -8.6 pts FAIL (target +15)

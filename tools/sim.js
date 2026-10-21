@@ -20,6 +20,7 @@ const SKILL = arg('skill', '');   // JSON overrides per level, e.g. '{"hard":{"h
 const SEED = +arg('seed', 1);
 const WORKERS = Math.max(1, +arg('workers', 1));
 const POSITIONS = !has('no-positions');
+const NO_TRACE = has('no-trace');   // suite runs do not need the per-move trace; it calls Hot.dump on every move and is slow
 const NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 // stable per-game seed, independent of scheduling order: the same (seed, map, table, game) always pairs
@@ -88,29 +89,38 @@ function summarize(d, n, meta) {
   };
 }
 
-async function main() {
-  fs.mkdirSync(path.dirname(path.resolve(OUT)), { recursive: true });
+async function open(n) {
   const b = await B.launch();
-  const errs = [];
-  const pages = [];
-  for (let i = 0; i < WORKERS; i++) {
-    const ctx = await b.browser.newContext({ viewport: { width: 900, height: 800 }, serviceWorkers: 'block' });
-    await ctx.addInitScript(s => {
-      window.__botPace = 0; window.__trace = []; window.__moves = [];
+  const pages = [], errs = [];
+  let dead = false;
+  b.browser.on('disconnected', () => { dead = true; });
+  for (let i = 0; i < n; i++) {
+    const ctx = await b.browser.newContext({ viewport: { width: 900, height: 800 }, locale: 'en-US', serviceWorkers: 'block' });
+    await ctx.addInitScript(o => {
+      const trace = !o.noTrace;
+      window.__botPace = 0; window.__trace = trace ? [] : null; window.__moves = trace ? [] : null;
       window.__mkRng = a => { a = a >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
-      if (s) window.__skill = JSON.parse(s);
-    }, SKILL);
+      if (o.skill) window.__skill = JSON.parse(o.skill);
+    }, { noTrace: NO_TRACE, skill: SKILL });
     const p = await ctx.newPage();
     p.on('pageerror', e => errs.push(e.message));
+    p.on('crash', () => { dead = true; console.log('page crashed'); });
     await p.goto('http://localhost:8123/');
     await p.waitForFunction(() => window.Hot && T.maps.length > 3);
     pages.push(p);
   }
-  const maps = (MAPS.length ? MAPS : await pages[0].evaluate(() => T.maps.filter(m => m.official || m.pack).map(m => m.id)));
+  return { b, pages, errs, isDead: () => dead, close: () => b.close() };
+}
+
+async function main() {
+  fs.mkdirSync(path.dirname(path.resolve(OUT)), { recursive: true });
+  const errs = [];
+  let sess = await open(WORKERS);
+  const maps = (MAPS.length ? MAPS : await sess.pages[0].evaluate(() => T.maps.filter(m => m.official || m.pack).map(m => m.id)));
   // adjacency of every played map, so tools/cluster.js can measure distance without re-implementing the grid
   const boards = {};
   for (const id of maps) {
-    boards[id] = await pages[0].evaluate(mapId => {
+    boards[id] = await sess.pages[0].evaluate(mapId => {
       const map = T.maps.find(m => m.id === mapId), cells = [], idx = {};
       for (let r = 0; r < map.rows; r++) for (let c = 0; c < map.cols; c++) if (map.grid[r][c] !== 'x') { idx[cid(c, r)] = cells.length; cells.push(cid(c, r)); }
       const nb = cells.map(id => { const [c, r] = parseId(id); return neighbors(map, c, r).map(([a, b]) => idx[cid(a, b)]).filter(j => j !== undefined); });
@@ -126,35 +136,52 @@ async function main() {
       seed: (SEED + hash(map + '|' + tb.lvl + '|' + tb.bots.join(',') + '|' + g)) >>> 0 });
   }
   const out = new Array(tasks.length);
-  let next = 0, done = 0;
+  let pending = tasks.map((_, i) => i);
+  let attempt = 0;
   const t0 = Date.now();
-  await Promise.all(pages.map(async p => {
-    while (true) {
-      const i = next++;
-      if (i >= tasks.length) break;
-      const task = tasks[i];
-      try {
-        const d = await p.evaluate(async a => {
-          window.__rng = window.__mkRng(a.seed);
-          window.__trace = []; window.__moves = [];
-          await Hot.start(a.names, a.map, a.mode, 'auto', a.bots);
-          const d = Hot.dump(); d.trace = window.__trace; d.moves = window.__moves; return d;
-        }, { names: NAMES.slice(0, task.n), map: task.map, mode: MODE, bots: task.bots, seed: task.seed });
-        if (!d || !d.result) out[i] = { map: task.map, players: task.n, level: task.lvl, seed: task.seed, error: 'no result' };
-        else out[i] = summarize(d, task.n, { level: task.lvl, game: task.game, bots: task.bots, seed: task.seed, trace: d.trace, moves: d.moves });
-      } catch (e) {
-        out[i] = { map: task.map, players: task.n, level: task.lvl, seed: task.seed, error: e.message };
-      }
-      done++;
-      if (done % 25 === 0 || done === tasks.length) {
-        const s = (Date.now() - t0) / 1000;
-        console.log(`${done}/${tasks.length} games  ${s.toFixed(0)}s  ${(done / Math.max(1, s)).toFixed(2)}/s`);
-      }
+  while (pending.length && attempt < 4) {
+    if (attempt > 0) {
+      console.log(`reopening browser for ${pending.length} unfinished games (attempt ${attempt + 1})`);
+      sess = await open(WORKERS);
     }
-  }));
+    attempt++;
+    errs.push(...sess.errs);
+    let qi = 0;
+    const dead = sess.isDead;
+    await Promise.all(sess.pages.map(async p => {
+      while (true) {
+        if (dead()) break;
+        const i = pending[qi++];
+        if (i === undefined) break;
+        const task = tasks[i];
+        try {
+          const d = await p.evaluate(async a => {
+            window.__rng = window.__mkRng(a.seed);
+            if (window.__trace) window.__trace = [];
+            if (window.__moves) window.__moves = [];
+            await Hot.start(a.names, a.map, a.mode, 'auto', a.bots);
+            const d = Hot.dump(); d.trace = window.__trace; d.moves = window.__moves; return d;
+          }, { names: NAMES.slice(0, task.n), map: task.map, mode: MODE, bots: task.bots, seed: task.seed });
+          if (!d || !d.result) out[i] = { map: task.map, players: task.n, level: task.lvl, seed: task.seed, error: 'no result' };
+          else out[i] = summarize(d, task.n, { level: task.lvl, game: task.game, bots: task.bots, seed: task.seed, trace: d.trace, moves: d.moves });
+        } catch (e) {
+          out[i] = { map: task.map, players: task.n, level: task.lvl, seed: task.seed, error: e.message };
+          if (dead() || /closed|crash|disconnected/i.test(e.message)) { console.log(`browser lost during ${task.map} game ${task.game}`); break; }
+        }
+        const finished = out.filter(Boolean).length;
+        if (finished % 25 === 0 || finished === tasks.length) {
+          const s = (Date.now() - t0) / 1000;
+          console.log(`${finished}/${tasks.length} games  ${s.toFixed(0)}s  ${(finished / Math.max(1, s)).toFixed(2)}/s`);
+        }
+      }
+    }));
+    await sess.close();
+    pending = pending.filter(i => !out[i] || (out[i].error && /closed|crash|disconnected/i.test(out[i].error)));
+    pending.forEach(i => { out[i] = undefined; });
+    if (pending.length && attempt >= 4) console.log(`${pending.length} games still unfinished after ${attempt} attempts`);
+  }
   const games = out.filter(Boolean);
   fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), mode: MODE, seed: SEED, workers: WORKERS, games, maps: boards, errors: errs }, null, 1));
   console.log('games', games.length, 'errors', games.filter(g => g.error).length, 'page errors', errs.length, 'written to', OUT);
-  await b.close();
 }
 main().catch(e => { console.error(e); process.exit(1); });

@@ -111,3 +111,17 @@ Validation (576 seats per row unless noted), seat-side win / human escape / alie
 | 6 hard (16 games per map) | Alien hit rate 35% | Alien win 44.4%, hit rate 43.1%, 1.79 kills, Alien shuffle 5.3% |
 
 Ladder order kept: kills hard 1.40 vs easy 0.18 in the same table.
+
+## Round 8: Human fear (3 players, all hard, 576 games per row)
+
+`fear` penalises Human moves into sectors the tracker places within two steps of an Alien.
+
+| fear | Alien win | Human escape | turns |
+|---|---|---|---|
+| 0 (current) | 47.2% | 52.8% | 10.5 |
+| 3 | 49.1% | 50.9% | 11.7 |
+| 8 | 56.1% | 43.9% | 13.4 |
+
+Result: fear hurts the Humans. Avoiding the sectors near the Aliens' belief pushes them away from the pods and into longer routes.
+Not adopted: `fear` stays 0. The Human side needs a different idea (for example, routes to pods that respect the Aliens' belief
+without being pushed away from them), tested with the same A/B.

@@ -1,7 +1,1 @@
-page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8123/
-Call log:
-[2m  - navigating to "http://localhost:8123/", waiting until "load"[22m
-
-    at main (/home/user/eftaios/tools/sim.js:55:11) {
-  name: 'Error'
-}
+games 576 written to tools/rounds/ab-humf8.json page errors 0

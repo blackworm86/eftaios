@@ -758,3 +758,15 @@ dialog .charcard{justify-content:center;margin:10px 0}
 .panel-closed #panel-body{display:none}
 .panel-closed .panel{flex:none}
 .panel-closed .tabs{border-bottom:0}
+
+/* player chips on the left (and top) bar: filled with the player colour, outline = affiliation, name centred,
+   the face-down count and the status icon on a footer row inside the chip */
+.mkbar button.pchip{background:var(--c);color:var(--t);border:3px solid var(--b);width:100%;height:auto;min-height:0;flex:0 0 auto;flex-direction:column;justify-content:space-between;align-items:center;gap:1px;padding:2px 3px 2px;border-radius:10px;font:700 10px var(--font);line-height:1.05;overflow:visible}
+.mkbar button.pchip[aria-pressed=true]{background:var(--c);border-color:var(--b);outline:2px solid var(--amber);outline-offset:2px}
+.mkbar button.pchip .pnm{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mkbar button.pchip .pft{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:14px;gap:2px}
+.mkbar button.pchip .cdn,.mkbar button.pchip .omark{position:static;transform:none;margin:0;flex:none}
+.mkbar button.pchip .omark.dead:has(.gi){position:static;right:auto;bottom:auto;width:17px;height:17px}
+.mkbar button.pchip .omark{width:14px;height:14px}
+.mkbar button.pchip .cdn{min-width:15px;height:14px;font-size:9px;line-height:12px;background:#0b1222;border-color:#fff;color:#fff}
+.mkbar button.pchip.isout{opacity:.75}

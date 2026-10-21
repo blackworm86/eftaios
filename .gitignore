@@ -1,3 +1,11 @@
 # raw simulator output is large and regenerable (node tools/sim.js ...); reports and notes are kept
 tools/rounds/*.json
 tools/*.json
+
+# local dependencies and browser scratch used by the simulator on Windows
+node_modules/
+.npm-cache/
+chrome-profile*/
+chrome-*.log
+chrome-*.err
+chrome-*.out

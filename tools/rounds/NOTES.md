@@ -141,3 +141,17 @@ Not adopted: podPick stays 0.
 
 Lesson for the Human side: none of the three ideas (fear, pod choice) beats the baseline. Humans may be near a plateau with
 this tracker; bluffing (the Human's announcements) is the next lever, as agreed.
+
+## Round 10: bluffing (3 players, all hard, 576 games per row)
+
+Existing bluffing: a Human holding "noise in any sector" scores each decoy by what the Aliens' tracker would make of it (decoy level 2).
+
+| setting | Alien win | Human escape |
+|---|---|---|
+| decoy 2, bluffW 0.5 (current) | 44.6% | 55.4% |
+| decoy 1 (basic decoy) | 50.0% | 50.0% |
+| decoy 0 (no deception scoring) | 52.8% | 47.2% |
+| decoy 2, bluffW 1.0 | 45.5% | 54.5% |
+| decoy 2, bluffW 0.25 | 43.9% | 56.1% |
+
+Result: the deception scoring is worth about 8 points for Humans, and it is already in place. Its weight (bluffW) is flat between 0.25 and 1.0, so bluffW stays at 0.5.

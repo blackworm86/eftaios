@@ -281,6 +281,9 @@ const Bot = (() => {
     if (!opts.length) return null;
     const next = humanNext(W), turn = ctx.H.turn, late = turn >= 14 ? 1.5 : 1, hs = W.hatches;
     const recentA = new Set(st.path.slice(-4).map(p => p.pos));
+    // each Alien leans toward its own quadrant of the map (from its id), so the Aliens do not all chase the same place
+    const lane = hashId(ctx.me.id) % 4, cols = T.map.cols, rows = T.map.rows;
+    const laneOf = j => { const [c, r] = parseId(g.ids[j]); return (c >= cols / 2 ? 2 : 0) + (r >= rows / 2 ? 1 : 0); };
     // hatches that Humans are heading for matter most
     const wH = hs.map(h => { const dh = humanDist([h]); let w = 0.15; for (let s = 0; s < g.N; s++) if (W.humanOcc[s] > 1e-4) w += W.humanOcc[s] * Math.exp(-dh[s] / 2.5); return w; });
     const mineH = hs.length ? hs[hashId(ctx.me.id) % hs.length] : -1, wsum = wH.reduce((a, b) => a + b, 0) + (mineH >= 0 ? 0.6 : 0);
@@ -291,7 +294,7 @@ const Bot = (() => {
       s += (sk.here || 0) * W.humanCnt[c];   // contact now: the sector where the tracker most expects a Human
       // planner: close in on the whole picture of where Humans may be (by real walking distance, not only what one move reaches),
       // and do not end up where the other Aliens already cover
-      if (sk.chase) { let m = 0, z = 0; for (let j = 0; j < g.N; j++) { const v = W.humanCnt[j]; if (v < 1e-4) continue; z += v; const d = g.dA[c][j]; if (d !== 255) m += v * Math.exp(-d / (sk.lam || 3)); } s += sk.chase * (z ? m / z : 0); }
+      if (sk.chase) { let m = 0, z = 0; for (let j = 0; j < g.N; j++) { const v = W.humanCnt[j]; if (v < 1e-4) continue; const w = sk.laneW && laneOf(j) === lane ? 1 + sk.laneW : 1; z += v * w; const d = g.dA[c][j]; if (d !== 255) m += v * w * Math.exp(-d / (sk.lam || 3)); } s += sk.chase * (z ? m / z : 0); }
       if (sk.spread) { let m = 0; for (let j = 0; j < g.N; j++) { const v = W.alienCnt[j]; if (v < 1e-4) continue; const d = g.dA[c][j]; if (d !== 255) m += v * Math.exp(-d / 2); } s -= sk.spread * m; }
       // strike range next turn: the most likely sectors where a Human will be
       let top = 0, sum = 0; for (const j of g.reach[speed][c]) { const v = next[j]; sum += v; if (v > top) top = v; }

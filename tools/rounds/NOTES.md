@@ -166,3 +166,17 @@ Result: the deception scoring is worth about 8 points for Humans, and it is alre
 
 Result: no clear winner; the margin at 32 games is about ±8 points. Stronger spreading does not stop the clustering seen in the user's log.
 Not adopted; the next step is the clustering itself (what keeps Aliens in the same few sectors), not the weight.
+
+## Round 12: Alien lanes (laneW), 8 hard players on Marconi
+
+Each Alien leans toward its own map quadrant (chosen from its id), so Aliens chase different parts of the Human picture.
+
+| laneW | games | Alien win | Human escape | kills/game | attack hit |
+|---|---|---|---|---|---|
+| 0 | 32 | 59.4% | 49.2% | 2.78 | 19.8% |
+| 2 | 32 | 50.0% | 41.4% | 3.03 | 22.7% |
+| 4 | 32 | 71.9% | 39.8% | 3.31 | 23.6% |
+| 0 | 64 | 57.8% | 46.1% | 3.17 | 19.6% |
+| 4 | 64 | 60.9% | 44.1% | 2.84 | 20.4% |
+
+Result: the 32-game gain at weight 4 did not hold at 64 games (the difference is within noise, and kills went down). Not adopted: laneW stays 0.

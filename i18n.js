@@ -172,6 +172,8 @@ const IT = {
 "Pen": "Penna",
 "Line": "Linea",
 "Eraser": "Gomma",
+"Rectangle": "Rettangolo",
+"Ellipse": "Ellisse",
 "{n} cards face down": "{n} carte coperte",
 "{n} Silence cards face down": "{n} carte Silenzio coperte",
 "Your cards": "Le tue carte",

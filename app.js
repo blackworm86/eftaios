@@ -702,7 +702,7 @@ function focusOn(id) {
    Line: a straight line. Eraser: tap or drag over a stamp or line. Clear all removes everything. */
 // the colours of the game: Alien red, Human blue, Undecided yellow, the eight players' colours, black and white
 const ANNO_COLORS = ['#ff3b30', '#2f7dff', '#ffd23f', ...PALETTE.map(p => p[0]), '#000000', '#ffffff'];
-const ANNO_TOOLS = [['stamp', 'Stamp', 'M12 3l2.6 5.6 6 .7-4.4 4.1 1.2 6L12 16.4 6.6 19.4l1.2-6L3.4 9.3l6-.7z'], ['pen', 'Pen', 'M4 20c3-1 5-4 6-7 1-3 3-5 6-6M14 5l5 5'], ['line', 'Line', 'M5 19L19 5M4 20h2v-2M18 6h2V4'], ['text', 'Text', 'M5 6V4h14v2M12 4v16M9 20h6'], ['move', 'Hand', 'M8 13V6.5a1.5 1.5 0 013 0V11m0-5.5a1.5 1.5 0 013 0V11m0-3.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-1a6 6 0 01-4.6-2.2L4 15.500a1.500 1.500 0 012.300-1.900L8 15'], ['erase', 'Eraser', 'M4 16l8-8 6 6-5 5H8zM14 19h6']];
+const ANNO_TOOLS = [['stamp', 'Stamp', 'M12 3l2.6 5.6 6 .7-4.4 4.1 1.2 6L12 16.4 6.6 19.4l1.2-6L3.4 9.3l6-.7z'], ['pen', 'Pen', 'M4 20c3-1 5-4 6-7 1-3 3-5 6-6M14 5l5 5'], ['line', 'Line', 'M5 19L19 5M4 20h2v-2M18 6h2V4'], ['text', 'Text', 'M5 6V4h14v2M12 4v16M9 20h6'], ['move', 'Hand', 'M8 13V6.5a1.5 1.5 0 013 0V11m0-5.5a1.5 1.5 0 013 0V11m0-3.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-1a6 6 0 01-4.6-2.2L4 15.500a1.500 1.500 0 012.300-1.900L8 15'], ['rect', 'Rectangle', 'M4 6h16v12H4z'], ['ellipse', 'Ellipse', 'M3 12a9 6.5 0 1 0 18 0a9 6.5 0 1 0-18 0'], ['erase', 'Eraser', 'M4 16l8-8 6 6-5 5H8zM14 19h6']];
 const annoSvg = (d, s = 20) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 function renderAnnot() {
   const bar = $('#annotbar'); if (!bar) return; const a = T.annot;
@@ -716,9 +716,18 @@ const mapPt = e => { const r = stageRect(); return [(e.clientX - r.left - view.x
 function paintAnnos() {
   const g = $('#annos'); if (!g) return; g.textContent = '';
   (S.annos || []).forEach(n => annoShape(g, n));
-  if (T.stroke && T.stroke.pts) annoShape(g, { type: 'line', color: T.annot ? T.annot.color : '#fff', pts: T.stroke.pts, prev: true });
+  if (T.stroke && T.stroke.pts) annoShape(g, { type: T.stroke.tool === 'rect' || T.stroke.tool === 'ellipse' ? 'shape' : 'line', kind: T.stroke.tool, color: T.annot ? T.annot.color : '#fff', pts: T.stroke.pts, prev: true });
+}
+/* the outline of a drawn rectangle or ellipse (from one corner to the opposite one), as a closed polyline */
+function shapeOutline(n) {
+  const [a, b = a] = n.pts;   // while dragging the far corner is still the start point
+  if (n.kind === 'rect') return [[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]], [a[0], a[1]]];
+  const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, rx = Math.abs(b[0] - a[0]) / 2, ry = Math.abs(b[1] - a[1]) / 2;
+  const out = Array.from({ length: 49 }, (_, i) => { const t = i / 48 * 2 * Math.PI; return [cx + rx * Math.cos(t), cy + ry * Math.sin(t)]; });
+  return out;
 }
 function annoShape(g, n) {
+  if (n.type === 'shape') { const o = shapeOutline(n); el('path', { d: 'M' + o.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L') + 'Z', class: 'aline', stroke: n.color, fill: 'none' }, g); return; }
   if (n.type === 'stamp') {
     const s = el('g', { class: 'astamp', transform: `translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})` }, g);
     el('rect', { x: -7, y: -7, width: 14, height: 14, rx: 3.4, fill: n.color }, s);
@@ -733,6 +742,7 @@ function segDist(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * 
 function annoNear(n, p, R_) {
   if (n.type === 'stamp') return Math.hypot(n.x - p[0], n.y - p[1]) < 9 + R_ / 2;
   if (n.type === 'text') return Math.abs(n.x - p[0]) < n.text.length * 2.6 + 3 && Math.abs(n.y - p[1]) < 7;
+  if (n.type === 'shape') { const o = shapeOutline(n); return o.some((q, j) => j && segDist(p, o[j - 1], q) < R_); }
   return n.pts.some((q, j) => j && segDist(p, n.pts[j - 1], q) < R_) || (n.pts.length === 1 && Math.hypot(n.pts[0][0] - p[0], n.pts[0][1] - p[1]) < R_);
 }
 function annoHit(p) {
@@ -779,7 +789,7 @@ function annoMove(e) {
     if (n.pts) n.pts = n.pts.map(q => [+(q[0] + dx).toFixed(1), +(q[1] + dy).toFixed(1)]); else { n.x = +(n.x + dx).toFixed(1); n.y = +(n.y + dy).toFixed(1); }
     s.did = true; paintAnnos(); return;
   }
-  if (s.tool === 'line') s.pts = [s.start, p];
+  if (s.tool === 'line' || s.tool === 'rect' || s.tool === 'ellipse') s.pts = [s.start, p];
   else { const l = s.pts[s.pts.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) > 2.2) s.pts.push(p); }
   paintAnnos();
 }
@@ -788,7 +798,10 @@ function annoEnd() {
   if (s.tool === 'move') { if (s.did) save(); paintAnnos(); return; }
   if (s.tool !== 'erase') {
     const pts = s.pts.map(p => [+p[0].toFixed(1), +p[1].toFixed(1)]), len = pts.reduce((m, p, i) => i ? m + Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0, 0);
-    if (len > 5) { (S.annos = S.annos || []).push({ type: 'line', color: T.annot.color, pts: pts.length > 160 ? pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1) : pts }); save(); }
+    if (s.tool === 'rect' || s.tool === 'ellipse') {
+      const a = pts[0], b = pts[pts.length - 1];
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 5) { (S.annos = S.annos || []).push({ type: 'shape', kind: s.tool, color: T.annot.color, pts: [a, b] }); save(); }
+    } else if (len > 5) { (S.annos = S.annos || []).push({ type: 'line', color: T.annot.color, pts: pts.length > 160 ? pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1) : pts }); save(); }
   }
   paintAnnos();
 }
@@ -814,7 +827,7 @@ stage.addEventListener('pointerdown', e => {
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   const lmb = e.pointerType !== 'mouse' || e.button === 0;   // the middle and right mouse buttons always pan
   if (!lmb) e.preventDefault();
-  if (T.annot && lmb && ptrs.size === 1 && ['pen', 'line', 'erase'].includes(T.annot.tool)) { annoStart(e); drag = null; return; }
+  if (T.annot && lmb && ptrs.size === 1 && ['pen', 'line', 'rect', 'ellipse', 'erase'].includes(T.annot.tool)) { annoStart(e); drag = null; return; }
   if (T.annot && lmb && ptrs.size === 1 && T.annot.tool === 'move') {
     const p = mapPt(e), idx = annoHit(p);
     if (idx >= 0) { try { stage.setPointerCapture(e.pointerId); } catch (_) { /* noop */ } T.stroke = { tool: 'move', idx, last: p }; drag = null; return; }

@@ -761,10 +761,10 @@ dialog .charcard{justify-content:center;margin:10px 0}
 
 /* player chips on the left (and top) bar: one fixed size for every chip; the face-down count is always on the left
    of the footer row and the status icon always on the right, so the two slots never move */
-.mkbar button.pchip{background:var(--c);color:var(--t);border:3px solid var(--b);width:100%;height:42px;min-height:0;box-sizing:border-box;flex:0 0 auto;flex-direction:column;justify-content:space-between;align-items:stretch;gap:0;padding:3px 3px 2px;border-radius:10px;font:700 10px var(--font);line-height:1.1;overflow:visible}
+.mkbar button.pchip{background:var(--c);color:var(--t);border:3px solid var(--b);width:100%;height:36px;min-height:0;box-sizing:border-box;flex:0 0 auto;flex-direction:column;justify-content:space-between;align-items:stretch;gap:0;padding:2px 3px 2px;border-radius:10px;font:700 10px var(--font);line-height:1.1;overflow:visible}
 .mkbar button.pchip[aria-pressed=true]{background:var(--c);border-color:var(--b);outline:2px solid var(--amber);outline-offset:2px}
 .mkbar button.pchip .pnm{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
-.mkbar button.pchip .pft{display:flex;justify-content:space-between;align-items:center;width:100%;height:14px;gap:2px}
+.mkbar button.pchip .pft{display:flex;justify-content:space-between;align-items:center;width:100%;height:13px;gap:2px}
 .mkbar button.pchip .pl,.mkbar button.pchip .pr{flex:0 0 15px;width:15px;height:14px;display:flex;align-items:center;justify-content:center}
 .mkbar button.pchip .pr{justify-content:center}
 .mkbar button.pchip .cdn,.mkbar button.pchip .omark{position:static;transform:none;margin:0}

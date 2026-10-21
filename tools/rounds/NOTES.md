@@ -155,3 +155,14 @@ Existing bluffing: a Human holding "noise in any sector" scores each decoy by wh
 | decoy 2, bluffW 0.25 | 43.9% | 56.1% |
 
 Result: the deception scoring is worth about 8 points for Humans, and it is already in place. Its weight (bluffW) is flat between 0.25 and 1.0, so bluffW stays at 0.5.
+
+## Round 11: 8 hard players on Marconi (the user's reported table), 32 games per row
+
+| spread | Alien win | Human escape | turns | Alien kills/game | Alien attack hit rate |
+|---|---|---|---|---|---|
+| 2 (current) | 62.5% | 49.2% | 22.5 | 2.75 | 19.2% |
+| 6 | 53.1% | 43.0% | 22.0 | 3.06 | 21.1% |
+| 12 | 59.4% | 33.6% | 18.2 | 3.16 | 23.7% |
+
+Result: no clear winner; the margin at 32 games is about ±8 points. Stronger spreading does not stop the clustering seen in the user's log.
+Not adopted; the next step is the clustering itself (what keeps Aliens in the same few sectors), not the weight.

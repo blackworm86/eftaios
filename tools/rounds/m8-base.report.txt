@@ -1,0 +1,8 @@
+base skill {}
+┌─────────┬────────┬───────┬──────────┬────────────┬────────┬────────┬─────────┬──────────────┬───────────────┬───────────────┬────────────┬────────────┬──────────────┬──────────────┐
+│ (index) │ level  │ games │ alienWin │ escapeRate │ turns  │ kills  │ attacks │ alienHitRate │ alienMoveRate │ humanMoveRate │ alienCycle │ humanCycle │ alienMaxStay │ humanMaxStay │
+├─────────┼────────┼───────┼──────────┼────────────┼────────┼────────┼─────────┼──────────────┼───────────────┼───────────────┼────────────┼────────────┼──────────────┼──────────────┤
+│ 0       │ 'hard' │ 32    │ '62.5%'  │ '49.2%'    │ '22.5' │ '2.75' │ '14.69' │ '19.2%'      │ '100.0%'      │ '100.0%'      │ '0.9%'     │ '2.2%'     │ '0.0'        │ '0.0'        │
+└─────────┴────────┴───────┴──────────┴────────────┴────────┴────────┴─────────┴──────────────┴───────────────┴───────────────┴────────────┴────────────┴──────────────┴──────────────┘
+cycle = share of moves that go back to the sector of two moves before (A-B-A shuffling); target: low
+maxStay = longest run of turns in the same sector; compare with humanMaxStay (secure sectors are fine)

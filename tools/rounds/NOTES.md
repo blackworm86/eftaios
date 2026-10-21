@@ -125,3 +125,19 @@ Ladder order kept: kills hard 1.40 vs easy 0.18 in the same table.
 Result: fear hurts the Humans. Avoiding the sectors near the Aliens' belief pushes them away from the pods and into longer routes.
 Not adopted: `fear` stays 0. The Human side needs a different idea (for example, routes to pods that respect the Aliens' belief
 without being pushed away from them), tested with the same A/B.
+
+## Round 9: Human pod choice (podPick), 3 players, all hard
+
+Pods are costed by how much Alien belief covers them (within two steps).
+
+| podPick | 576 games: escape | 1152 games: escape | Alien win (1152) |
+|---|---|---|---|
+| 0 | 50.0% | 55.3% | 44.7% |
+| 3 | 53.3% | - | - |
+| 8 | 53.6% | 54.0% | 46.0% |
+
+Result: the 576-game gain did not hold at 1152 games (baseline moved by 5 points between runs, so the noise floor here is about 2-3 points).
+Not adopted: podPick stays 0.
+
+Lesson for the Human side: none of the three ideas (fear, pod choice) beats the baseline. Humans may be near a plateau with
+this tracker; bluffing (the Human's announcements) is the next lever, as agreed.

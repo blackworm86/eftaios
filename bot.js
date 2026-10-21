@@ -286,6 +286,10 @@ const Bot = (() => {
       const c = g.idx.get(id);
       let s = Math.max(0, alienAttackValue(ctx, W, st, c) - sk.attackAt * 0.5);
       s += (sk.here || 0) * W.humanCnt[c];   // contact now: the sector where the tracker most expects a Human
+      // planner: close in on the whole picture of where Humans may be (by real walking distance, not only what one move reaches),
+      // and do not end up where the other Aliens already cover
+      if (sk.chase) { let m = 0, z = 0; for (let j = 0; j < g.N; j++) { const v = W.humanCnt[j]; if (v < 1e-4) continue; z += v; const d = g.dA[c][j]; if (d !== 255) m += v * Math.exp(-d / (sk.lam || 3)); } s += sk.chase * (z ? m / z : 0); }
+      if (sk.spread) { let m = 0; for (let j = 0; j < g.N; j++) { const v = W.alienCnt[j]; if (v < 1e-4) continue; const d = g.dA[c][j]; if (d !== 255) m += v * Math.exp(-d / 2); } s -= sk.spread * m; }
       // strike range next turn: the most likely sectors where a Human will be
       let top = 0, sum = 0; for (const j of g.reach[speed][c]) { const v = next[j]; sum += v; if (v > top) top = v; }
       s += sk.pot * (0.6 * top + 0.25 * sum);

@@ -741,3 +741,12 @@ dialog .charcard{justify-content:center;margin:10px 0}
 #annos{pointer-events:none}.atext{font:700 8px system-ui,sans-serif;paint-order:stroke;stroke:#0b1222;stroke-width:2.4px;stroke-linejoin:round}.aline{stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;opacity:.95}.astamp .sglyph{fill:none;stroke:#111;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .stage:has(.annotbar:not([hidden])) #map{cursor:crosshair}
 .zoom [data-act=annot][aria-pressed=true]{background:var(--amber);color:#1a1200;border-color:var(--amber)}
+
+/* cards in front of a player: a count on the player's marker, used Items shown beside the name, a stack of face-down Silence cards in the hand */
+.cdn{position:absolute;left:-7px;bottom:-5px;min-width:15px;height:15px;padding:0 3px;box-sizing:border-box;border-radius:5px;background:#2a3b66;border:1.5px solid #7f96d1;color:#e8ecf5;font:700 10px/12px system-ui,sans-serif;text-align:center;font-style:normal}
+.shown{display:inline-flex;vertical-align:middle;margin-left:3px}
+.slots .pile{position:relative;min-width:84px;min-height:68px;border-radius:12px;border:1.5px dashed #34466f;background:#101a33}
+.slots .pile .c{position:absolute;left:9px;top:17px;width:34px;height:44px;border-radius:7px;background:#2a3b66;border:1.5px solid #7f96d1}
+.slots .pile .c:nth-child(2){transform:translate(7px,-3px)}.slots .pile .c:nth-child(3){transform:translate(14px,-6px)}
+.slots .pile .n{position:absolute;right:6px;bottom:4px;font-weight:700;font-size:15px;background:#0b1222cc;border-radius:8px;padding:0 6px}
+.slots .pile .lab{position:absolute;left:8px;top:2px;font-size:10px;color:#9aa8c6}

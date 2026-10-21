@@ -640,7 +640,7 @@ function renderMkBar() {
     (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
-      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : 'eliminated') : ''}" title="${esc(n)}" class="${outMark(k) ? 'isout' : ''}"><span class="dotw">${dotIcon(k)}${outMark(k)}</span><span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('') +
+      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : 'eliminated') : ''}" title="${esc(n)}" class="${outMark(k) ? 'isout' : ''}"><span class="dotw">${dotIcon(k)}${outMark(k)}${cardBadge(k)}</span><span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('') +
     (T.markMode && !Sync.code && !S.hot && ps.length < 7 ? `<button class="mkt" data-act="addplayer" aria-label="${t('Add player')}"><b>+</b></button>` : '');
 }
 /* follow one player (or only my route): grey out the rest and frame what matters */

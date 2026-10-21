@@ -320,11 +320,28 @@ function abilList() {
   if (ab === 'Medic' && once(ab) && S.phase !== 'wait') b.push(['medic', 'Reveal a player']);
   return b;
 }
+/* the cards in front of each player: Silence and Item cards are kept face down, so everybody can count them; a used Item is shown.
+   Counted from the public log: every drawn Silence or Item card is announced as Silence, every used Item is announced. A kill clears the pile. */
+function cardCounts() {
+  const m = {}, get = k => m[k] || (m[k] = { down: 0, shown: [] });
+  S.log.slice().reverse().forEach(e => {
+    const k = playerKey(e), id = String(e.text || '').toLowerCase();
+    if (e.kind === 'silence' && e.text === 'silence') get(k).down++;
+    else if (e.kind === 'item' && ITEMS[id]) { const c = get(k); c.down = Math.max(0, c.down - 1); c.shown.push(id); }
+    else if (e.kind === 'out' && String(e.text).startsWith('killed')) get(k).down = 0;
+  });
+  return m;
+}
+const cardBadge = k => { if (!digital()) return ''; const n = (cardCounts()[k] || {}).down || 0; return n ? `<i class="cdn" title="${esc(t('{n} cards face down', { n }))}" aria-label="${esc(t('{n} cards face down', { n }))}">${n}</i>` : ''; };
+const shownItems = k => ((cardCounts()[k] || {}).shown || []).map(id => `<span class="shown" title="${esc(t(ITEMS[id][0]))}">${gico(id, 16)}</span>`).join('');
 const handHtml = () => {
-  if (!digital() || basic()) return '';
+  if (!digital()) return '';
   const ab = abilList().map(([a, l]) => `<button class="slot abil" data-act="${a}" aria-label="${esc(t(S.char))}: ${esc(t(l))}" title="${esc(t(S.char))}">${ico('next', 16)}<span>${t(l)}</span></button>`).join('');
   const items = S.items.map(k => `<button class="slot" data-act="itemdlg" data-i="${k}">${gico(k, 28)}<span>${t(ITEMS[k][0])}</span></button>`).join('');
-  return `<div class="slots" role="group" aria-label="${t('Your items')}">${ab}${items || (ab ? '' : `<span class="slot empty">${t('No items')}</span>`)}</div>`;
+  const sil = Math.max(0, ((cardCounts().me || {}).down || 0) - S.items.length);
+  const pile = sil ? `<div class="pile" role="img" aria-label="${esc(t('{n} Silence cards face down', { n: sil }))}"><span class="c"></span>${sil > 1 ? '<span class="c"></span>' : ''}${sil > 2 ? '<span class="c"></span>' : ''}<span class="n">×${sil}</span><span class="lab">${t('Silence')}</span></div>` : '';
+  if (basic()) return pile ? `<div class="slots" role="group" aria-label="${t('Your cards')}">${pile}</div>` : '';
+  return `<div class="slots" role="group" aria-label="${t('Your cards')}">${ab}${items}${pile}${items || pile || ab ? '' : `<span class="slot empty">${t('No items')}</span>`}</div>`;
 };
 function itemDlg(k) {
   const can = canUse(k) && myTurn() && !S.over && !gameOver();
@@ -449,14 +466,15 @@ function sheetHtml() {
   const body = rows.map(([k, n]) => {
     const u = k.startsWith('u:') ? k.slice(2) : k === 'me' ? myId() : null, p = u && ps[u], g = suspicion(k);
     const guess = k === 'me' ? '' : `<button class="gb ${g || 'none'}" data-act="sus" data-k="${esc(k)}" data-v="${NEXT_SUS[g]}" aria-label="${t('Your suspicion')}: ${t(g === 'human' ? 'Suspected Human' : g === 'alien' ? 'Suspected Alien' : 'No idea')}">${g === 'human' ? t('H') : g === 'alien' ? t('A') : '?'}</button>`;
-    return `<tr class="${u && u === cur ? 'cur' : ''}${p && p.out ? ' out' : ''}"><th><span class="who"><button class="name" data-act="follow" data-k="${esc(k)}" aria-label="${t('Follow {p}', { p: esc(n) })}"><span class="dotw">${dotIcon(k)}${outMark(k)}</span><span>${esc(shortName(n))}</span></button>${guess}</span></th>${turns.map(x => cell(k, x)).join('')}</tr>`;
+    return `<tr class="${u && u === cur ? 'cur' : ''}${p && p.out ? ' out' : ''}"><th><span class="who"><button class="name" data-act="follow" data-k="${esc(k)}" aria-label="${t('Follow {p}', { p: esc(n) })}"><span class="dotw">${dotIcon(k)}${outMark(k)}${cardBadge(k)}</span><span>${esc(shortName(n))}</span></button>${shownItems(k)}${guess}</span></th>${turns.map(x => cell(k, x)).join('')}</tr>`;
   }).join('');
   return `<div class="sheet${rows.length > 5 ? ' dense' : ''}" id="sheet"><table><thead><tr><th></th>${turns.map(n => `<th>${t('T{n}', { n })}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 function decksHtml() {
   const c = T.counts || {}; if (!digital() || !c.sector) return '';
   const cell = (k, n) => `<span><b>${c[k].d}</b>/${c[k].d + c[k].x} ${t(n)}</span>`;
-  return `<p class="decks1">${t('Cards left')}: ${cell('sector', 'Sector cards')} · ${cell('hatch', 'Escape Pod cards')}</p>`;
+  const front = Object.values(cardCounts()).reduce((a, v) => a + v.down, 0);
+  return `<p class="decks1">${t('Cards left')}: ${cell('sector', 'Sector cards')} · ${cell('hatch', 'Escape Pod cards')}${front ? ` · <span><b>${front}</b> ${t('face down in front of players')}</span>` : ''}</p>`;
 }
 function tablePanel() {
   const sel = logSel(), ln = S.log.filter(e => !sel.length || sel.includes(playerKey(e))).map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k); return `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span></li>`; }).join('');

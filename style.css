@@ -753,3 +753,8 @@ dialog .charcard{justify-content:center;margin:10px 0}
 
 /* a list row never makes its list wider than the screen: long ability text wraps inside the row */
 .plist li{min-width:0;max-width:100%}.plist.rev .pname{white-space:normal;overflow:visible;text-overflow:clip;min-width:0;flex:1 1 140px}.plist.rev .pst{white-space:normal;flex:0 1 auto;max-width:100%}
+
+/* the panel hidden: only the PLAY / TABLE / MORE bar stays, and the map takes the rest of the screen */
+.panel-closed #panel-body{display:none}
+.panel-closed .panel{flex:none}
+.panel-closed .tabs{border-bottom:0}

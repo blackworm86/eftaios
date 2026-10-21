@@ -82,3 +82,32 @@ Trace hooks (window.__trace, window.__moves in bot.js, read by tools/belief.js a
 Lesson: a one-step contact metric does not predict results; the game is dynamic (killing a Human changes who plays and how).
 Weight changes do not lift the Aliens; a real gain needs a different decision rule (multi-turn planning, herding Humans toward
 hatches where Aliens camp), to be tested with the same A/B.
+
+## Round 7: Alien planner (chase / spread / lam)
+
+New skill keys in the Alien move score: `chase` (pull toward the whole picture of where Humans may be, by walking distance, falloff `lam`)
+and `spread` (penalty for ending where the other Aliens already cover). 3 players, all hard (1 Human + 2 Aliens), 576 games per row:
+
+| chase / spread / lam | Alien win | kills/game | attacks/game |
+|---|---|---|---|
+| 0 / 0 / - (before) | 38.5% | 0.42 | 1.64 |
+| 4 / 0 / 3 | 38.9% | 0.47 | 1.82 |
+| 8 / 0 / 3 | 42.4% | 0.52 | 1.89 |
+| 8 / 2 / 3 | 42.9% | 0.52 | 1.83 |
+| 16 / 2 / 3 | 42.9% | 0.51 | 1.82 |
+| 16 / 2 / 5 | 45.0% | 0.55 | 2.07 |
+| 16 / 2 / 8 | 45.5% | 0.50 | 1.84 |
+| 30 / 2 / 5 | 48.4% | 0.59 | 1.94 |
+
+Adopted: hard chase 30, spread 2, lam 5; normal chase 12, spread 1, lam 4; easy unchanged (no planner).
+
+Validation (576 seats per row unless noted), seat-side win / human escape / alien kills per game:
+
+| table | before | after |
+|---|---|---|
+| 1 hard + 5 normal: hard seat | 54.3% / 66.1% / 0.84 | 51.0% / 62.5% / 0.85 (normal opponents are stronger too: kills 0.31 -> 0.39) |
+| 1 normal + 5 easy: normal seat | 77.3% Human escape, 0.82 kills | 81.0%, 0.97 |
+| 1 hard + 5 easy: hard seat | 84.6% / 1.00 kills | 82.1% / 1.40 kills |
+| 6 hard (16 games per map) | Alien hit rate 35% | Alien win 44.4%, hit rate 43.1%, 1.79 kills, Alien shuffle 5.3% |
+
+Ladder order kept: kills hard 1.40 vs easy 0.18 in the same table.

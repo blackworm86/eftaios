@@ -354,7 +354,7 @@ const Bot = (() => {
         // what an attacking Alien would see: the value of hitting my real sector, and the bait of the decoy sector
         const worth = c => KILL_VALUE * hum(c) - sk.allyCost * ali(c);
         let real = -1e9; near.forEach(c => { real = Math.max(real, worth(c)); });
-        score = (sk.decoy > 1 ? 0.5 * worth(x) : 0) - 2 * Math.max(0, real);
+        score = (sk.decoy > 1 ? (sk.bluffW === undefined ? 0.5 : sk.bluffW) * worth(x) : 0) - 2 * Math.max(0, real);
       } else {
         let threat = 0; strikeZone.forEach(c => { threat += ali(c); });
         score = -(threat * 8 + o.pA * 5);

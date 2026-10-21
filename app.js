@@ -263,12 +263,12 @@ function paintOverlay() {
   const map = T.map, inPlay = S.role;
   const marks = $('#marks'), me = $('#me'), zoneG = $('#zone');
   marks.textContent = ''; me.textContent = ''; if (zoneG) zoneG.textContent = ''; paintNotes(); paintAnnos();
-  const focus = T.focus || null;
+  const focus = T.focus || null, fset = T.focusSet || [];   // fset: every player picked on the bar (one = focus)
   const hp = sec => { const q = parseId(sec); return q ? hexPos(map, q[0], q[1]) : null; };
   const routes = inPlay ? finalRoutes() : null;
   renderMkBar(); followBar();
   if (!inPlay) return;
-  if (routes) { paintRoutes(routes, focus, hp, marks); return; }
+  if (routes) { paintRoutes(routes, fset, hp, marks); return; }
   const own = ownSteps();
   // follow mode: shade the sectors the followed player could have reached since they were last heard
   if (focus && focus !== 'me' && zoneG) {
@@ -291,7 +291,7 @@ function paintOverlay() {
   // the last N known steps of every player, yours included (0 = all); following someone shows only them, from the start
   const N = mkN(), winTurns = new Map();
   new Set(visits.map(v => v.key)).forEach(k => { if (k === 'bluff' || k === 'spot') return; const ts = [...new Set(visits.filter(v => v.key === k).map(v => v.turn))].sort((x, y) => y - x); winTurns.set(k, new Set(N ? ts.slice(0, N) : ts)); });
-  const recent = v => focus ? (v.key === focus || (focus === 'me' && v.key === 'bluff')) : v.key === 'bluff' ? (winTurns.get('me') || new Set()).has(v.turn) : v.key === 'spot' ? (!N || S.turn - v.turn < N) : (winTurns.get(v.key) || new Set()).has(v.turn);
+  const recent = v => fset.length ? (fset.includes(v.key) || (fset.includes('me') && v.key === 'bluff')) : v.key === 'bluff' ? (winTurns.get('me') || new Set()).has(v.turn) : v.key === 'spot' ? (!N || S.turn - v.turn < N) : (winTurns.get(v.key) || new Set()).has(v.turn);
   // group: sector -> player -> turns
   const bySector = new Map();
   for (const v of visits) {
@@ -310,10 +310,10 @@ function paintOverlay() {
     const h = hp(sec); if (!h) return;
     const items = [...m.values()].sort((x, y) => order(x.key) - order(y.key));
     const spot = items.find(x => x.key === 'spot'), list = items.filter(x => x.key !== 'spot');
-    if (spot) { el('circle', { cx: h.x, cy: h.y, r: 17, class: 'mk spot' + (focus ? ' dim' : '') }, marks); el('use', { href: '#gi-spotlight', x: (h.x - 7.5).toFixed(1), y: (h.y - 21).toFixed(1), width: 15, height: 13.8, class: 'mk' + (focus ? ' dim' : '') }, marks); }
+    if (spot) { el('circle', { cx: h.x, cy: h.y, r: 17, class: 'mk spot' + (fset.length ? ' dim' : '') }, marks); el('use', { href: '#gi-spotlight', x: (h.x - 7.5).toFixed(1), y: (h.y - 21).toFixed(1), width: 15, height: 13.8, class: 'mk' + (fset.length ? ' dim' : '') }, marks); }
     if (!list.length) return;
     // following a player: their markers sit alone in the middle of each sector (my own bluffs in the same sector stay out of the way)
-    const shown = focus ? list.filter(x => x.key === focus || (x.key === 'bluff' && focus === 'me' && !list.some(y => y.key === 'me'))) : list;
+    const shown = fset.length ? list.filter(x => fset.includes(x.key) || (x.key === 'bluff' && fset.includes('me') && !list.some(y => y.key === 'me'))) : list;
     if (!shown.length) return;
     const { size, pts: sp } = slots(shown.length);
     shown.forEach((it, i) => {
@@ -321,11 +321,11 @@ function paintOverlay() {
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
       const ownM = mine(it.key), ck = ownM ? 'me' : it.key, ink = pal(ck)[1], bluff = it.key === 'bluff';
       const faded = it.key === 'me' && !own.heard.has(last);
-      const dim = focus && !(it.key === focus || (focus === 'me' && ownM)), old = !focus && !ownM && S.turn - last >= 2;
+      const dim = fset.length && !(fset.includes(it.key) || (fset.includes('me') && ownM)), old = !fset.length && !ownM && S.turn - last >= 2;
       if (!bluff) mkPos.set((ownM ? 'me' : it.key) + '|' + sec, [h.x + dx, h.y + dy, size]);
       const g = el('g', { class: `mk pm ${it.kind}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
-      if (it.key === 'me' && sec === S.pos) { const cls = focus && focus !== 'me' ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const rg = el('g', { transform: `translate(${at_.cx} ${at_.cy})` }, me), ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c }, rg); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); }
+      if (it.key === 'me' && sec === S.pos) { const cls = fset.length && !fset.includes('me') ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const rg = el('g', { transform: `translate(${at_.cx} ${at_.cy})` }, me), ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c }, rg); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); }
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
       if (it.key === 'me' && S.reborn && killedSector(S.path) === sec) killedBadge(g, size);
       // the printed icons of what this player declared on that step, as marks on the marker
@@ -335,7 +335,7 @@ function paintOverlay() {
       });
     });
   });
-  if (S.routesOn) drawRouteArrows(liveSteps(focus, recent), mkPos, marks);
+  if (S.routesOn) drawRouteArrows(liveSteps(fset, recent), mkPos, marks);
 }
 /* ---------------- routing overlay ----------------
    Colored arrows join each player's known steps, from their marker in one sector to their marker in the next.
@@ -395,7 +395,7 @@ function pathSteps(path) {
   return out;
 }
 /* what the table knows about everyone, as steps: my real route, and the others' announced positions */
-function liveSteps(focus, recent) {
+function liveSteps(fset, recent) {
   const per = new Map();
   S.log.forEach(e => {
     if (!e.sector || !['noise', 'attack', 'reveal'].includes(e.kind)) return;
@@ -418,7 +418,7 @@ function liveSteps(focus, recent) {
     }
     all.push({ key: k, steps });
   });
-  return all.filter(r => (!focus || focus === r.key)).map(r => ({ key: r.key, steps: r.steps.filter(s => recent({ key: r.key, turn: s.t })) }));
+  return all.filter(r => (!fset.length || fset.includes(r.key))).map(r => ({ key: r.key, steps: r.steps.filter(s => recent({ key: r.key, turn: s.t })) }));
 }
 function drawRouteArrows(routes, mkPos, marks, solid) {
   const map = T.map, g = el('g', { class: 'routes' }), now = S.turn, classic = svg.classList.contains('classic');
@@ -502,9 +502,10 @@ function finalRoutes() {
   return out;
 }
 const ROLE_BORDER = { human: '#2f7dff', alien: '#ff3b30' };
-function paintRoutes(routes, focus, hp, marks) {
+function paintRoutes(routes, fset, hp, marks) {
+  fset = Array.isArray(fset) ? fset : (fset ? [fset] : []);   // a list of picked players (a single key or null is accepted too)
   const bySector = new Map(), rpos = new Map();
-  routes = routes.filter(r => !focus || r.key === focus);   // following a player shows only their markers, each alone in its sector
+  routes = routes.filter(r => !fset.length || fset.includes(r.key));   // following a player shows only their markers, each alone in its sector
   routes.forEach(r => { r.dead = killedSector(r.path, r.out); });
   routes.forEach(r => {
     r.path.forEach(p => { if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [] }); m.get(r.key).turns.push(p.turn); });
@@ -513,7 +514,7 @@ function paintRoutes(routes, focus, hp, marks) {
     const h = hp(sec); if (!h) return;
     const list = [...m.values()].sort((a, b) => colorOf(a.r.key) - colorOf(b.r.key)), { size, pts: sp } = slots(list.length);
     list.forEach((it, i) => {
-      const [dx, dy] = sp[i], k = it.r.key, turns = [...new Set(it.turns)].sort((a, b) => b - a), dim = focus && focus !== k;
+      const [dx, dy] = sp[i], k = it.r.key, turns = [...new Set(it.turns)].sort((a, b) => b - a), dim = fset.length && !fset.includes(k);
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
       rpos.set(k + '|' + sec, [h.x + dx, h.y + dy, size]);
       const g = el('g', { class: 'mk pm route' + (k === 'me' ? ' mine' : '') + (dim ? ' dim' : ''), transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
@@ -533,6 +534,11 @@ function outMark(k) {
 /* banner under the top bar while following a player */
 function followBar() {
   const bar = $('#followbar'); if (!bar) return;
+  const picked = T.focusSet || [];
+  if (picked.length > 1 && S.role) {
+    bar.hidden = false; bar.style.setProperty('--fc', pal(picked[0])[0]);
+    bar.textContent = t('Showing {n} players', { n: picked.length }); return;
+  }
   const k = T.focus;
   if (!k || !S.role) { bar.hidden = true; return; }
   const name = k === 'me' ? t('Me') : ((knownPlayers().find(([x]) => x === k) || [0, '?'])[1]);
@@ -640,16 +646,26 @@ function renderMkBar() {
     (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
-      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${T.focus === k}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : 'eliminated') : ''}" title="${esc(n)}" class="${outMark(k) ? 'isout' : ''}"><span class="dotw">${dotIcon(k)}${outMark(k)}${cardBadge(k)}</span><span>${esc(shortName(n))}</span></button>${T.focus === k && k !== 'me' ? sus(k) : ''}`).join('') +
+      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${(T.focusSet || []).includes(k)}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : 'eliminated') : ''}" title="${esc(n)}" class="${outMark(k) ? 'isout' : ''}"><span class="dotw">${dotIcon(k)}${outMark(k)}${cardBadge(k)}</span><span>${esc(shortName(n))}</span></button>${(T.focusSet || []).includes(k) && k !== 'me' ? sus(k) : ''}`).join('') +
     (T.markMode && !Sync.code && !S.hot && ps.length < 7 ? `<button class="mkt" data-act="addplayer" aria-label="${t('Add player')}"><b>+</b></button>` : '');
 }
 /* follow one player (or only my route): grey out the rest and frame what matters */
-function follow(k) {
-  T.focus = k || null; paintOverlay();
-  if (!T.focus) return;
-  if (T.focus === 'me') return frameSectors(S.path.map(p => p.pos).concat(ownSteps().bluffs.map(b => b.sector)));
-  const fz = followZone(T.focus);
-  frameSectors(trackOf(T.focus).map(v => v.sector).concat(fz ? [...fz.zone.keys()] : []));
+function follow(k) { followSet(k ? [k] : []); }
+/* the players picked on the bar: one player shows only them; several show exactly those; none shows everybody */
+function followSet(keys) {
+  T.focusSet = keys.slice(); T.focus = keys.length === 1 ? keys[0] : null; paintOverlay();
+  if (!keys.length) return;
+  const secs = [];
+  keys.forEach(k => {
+    if (k === 'me') return secs.push(...S.path.map(p => p.pos), ...ownSteps().bluffs.map(b => b.sector));
+    const fz = followZone(k); secs.push(...trackOf(k).map(v => v.sector), ...(fz ? [...fz.zone.keys()] : []));
+  });
+  frameSectors(secs);
+}
+/* tapping a player on the bar adds or removes them from the picked set */
+function pickPlayer(k) {
+  const cur = T.focusSet || [];
+  followSet(cur.includes(k) ? cur.filter(x => x !== k) : cur.concat([k]));
 }
 /* zoom so that all the given sectors are visible */
 function frameSectors(ids) {
@@ -684,7 +700,8 @@ function focusOn(id) {
 /* ---------------- notes: stamps and drawings on the map ----------------
    The annotate bar stays open until you press Done. Stamp: tap to place as many as you like. Pen: free lines.
    Line: a straight line. Eraser: tap or drag over a stamp or line. Clear all removes everything. */
-const ANNO_COLORS = ['#ff3b30', '#ffb41f', '#3ddc84', '#4aa8ff', '#e8ecf5', '#c77dff'];
+// the colours of the game: Alien red, Human blue, Undecided yellow, the eight players' colours, black and white
+const ANNO_COLORS = ['#ff3b30', '#2f7dff', '#ffd23f', ...PALETTE.map(p => p[0]), '#000000', '#ffffff'];
 const ANNO_TOOLS = [['stamp', 'Stamp', 'M12 3l2.6 5.6 6 .7-4.4 4.1 1.2 6L12 16.4 6.6 19.4l1.2-6L3.4 9.3l6-.7z'], ['pen', 'Pen', 'M4 20c3-1 5-4 6-7 1-3 3-5 6-6M14 5l5 5'], ['line', 'Line', 'M5 19L19 5M4 20h2v-2M18 6h2V4'], ['text', 'Text', 'M5 6V4h14v2M12 4v16M9 20h6'], ['move', 'Hand', 'M8 13V6.5a1.5 1.5 0 013 0V11m0-5.5a1.5 1.5 0 013 0V11m0-3.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-1a6 6 0 01-4.6-2.2L4 15.500a1.500 1.500 0 012.300-1.900L8 15'], ['erase', 'Eraser', 'M4 16l8-8 6 6-5 5H8zM14 19h6']];
 const annoSvg = (d, s = 20) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 function renderAnnot() {
@@ -780,7 +797,7 @@ function annoStamp(e) {
   save(); paintAnnos(); buzz();
 }
 const annoActions = {
-  annot() { T.annot = T.annot ? null : { tool: 'stamp', icon: 'alert', color: ANNO_COLORS[1] }; T.stroke = null; renderAnnot(); paintAnnos(); },
+  annot() { T.annot = T.annot ? null : { tool: 'stamp', icon: 'alert', color: ANNO_COLORS[2] }; T.stroke = null; renderAnnot(); paintAnnos(); },
   adone() { T.annot = null; T.stroke = null; renderAnnot(); paintAnnos(); },
   atool(b) { T.annot.tool = b.dataset.t; renderAnnot(); },
   astamp(b) { T.annot.icon = b.dataset.s; renderAnnot(); },
@@ -907,7 +924,7 @@ const actions = {
   zin() { const r = stageRect(); zoomAt(1.4, r.width / 2, r.height / 2); },
   zout() { const r = stageRect(); zoomAt(1 / 1.4, r.width / 2, r.height / 2); },
   fit, focus() { S.pos && focusOn(S.pos); },
-  tab(b) { setTab(b.dataset.tab); },
+  tab(b) { tabClick(b.dataset.tab); },
   addann() { addDlg(); },
   clearlog() { confirmDlg(t('Clear all announcements?'), t('The history on this device will be erased.'), () => { S.log = []; afterChange(); }); },
   newgame() {
@@ -927,10 +944,10 @@ const actions = {
   cancelpick() { T.pick = null; paintCells(); render(); },
   noop() { },
   sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
-  pfocus(b) { follow(T.focus === b.dataset.k ? null : b.dataset.k); },
+  pfocus(b) { pickPlayer(b.dataset.k); },
   unfollow() { follow(null); },
   follow(b) { setTab('play'); follow(b.dataset.k); },
-  markmode() { T.markMode = !T.markMode; T.markTurn = S.turn; T.markKind = 'noise'; T.markStack = []; T.focus = null; if (T.markMode && !T.markKey) { const ps = knownPlayers(); if (ps.length === 1) T.markKey = ps[0][0]; } render(); paintOverlay(); },
+  markmode() { T.markMode = !T.markMode; T.markTurn = S.turn; T.markKind = 'noise'; T.markStack = []; T.focus = null; T.focusSet = []; if (T.markMode && !T.markKey) { const ps = knownPlayers(); if (ps.length === 1) T.markKey = ps[0][0]; } render(); paintOverlay(); },
   markwho(b) { T.markKey = b.dataset.k; render(); paintOverlay(); },
   markkind(b) {
     const k = b.dataset.k, who = T.markKey; if (!who) { toast(t('First pick the player, on the left.')); return; }
@@ -956,7 +973,7 @@ const actions = {
 };
 Object.assign(actions, annoActions);
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
-document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { setTab(b.dataset.tab); }));
+document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => { tabClick(b.dataset.tab); }));
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const f = actions[b.dataset.act]; if (f) { e.preventDefault(); f(b); }
@@ -1030,7 +1047,13 @@ function importDlg() {
 }
 
 /* ---------------- panels ---------------- */
-function setTab(k) { S.tab = k; if (!(T.pick && T.pick.locked)) T.pick = null; save(); render(); paintCells(); hdr(); }   // a sector you must announce (the card is already drawn) waits for you on the Play tab
+function setTab(k) { S.tab = k; T.collapsed = false; applyCollapse(); if (!(T.pick && T.pick.locked)) T.pick = null; save(); render(); paintCells(); hdr(); }
+/* a tap on the tab that is already open hides the panel and leaves only the tab bar; a tap while hidden reopens it on that tab */
+function tabClick(k) {
+  if (!T.collapsed && S.tab === k) { T.collapsed = true; applyCollapse(); paintCells(); return; }
+  setTab(k);
+}
+function applyCollapse() { document.body.classList.toggle('panel-closed', !!T.collapsed); }   // a sector you must announce (the card is already drawn) waits for you on the Play tab
 function hdr() {
   { const rb = document.querySelector('[data-act=routes]'); if (rb) rb.setAttribute('aria-pressed', !!S.routesOn); }
   $('#hd-turn').textContent = S.turn; $('#hd-pos').textContent = S.pos ? ('HA'.includes(at(T.map, S.pos)) ? t('Start') : label(S.pos)) : '—';

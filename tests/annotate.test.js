@@ -9,8 +9,8 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.click('[data-act=annot]');assert(await p.locator('#annotbar:not([hidden])').count()===1,'the notes button opens the annotate bar');
  await p.mouse.click(X(.3),Y(.3));await p.mouse.click(X(.5),Y(.5));await p.mouse.click(X(.6),Y(.4));
  assert(await p.evaluate(()=>S.annos.filter(a=>a.type==='stamp').length)===3&&await p.locator('#annotbar:not([hidden])').count()===1,'stamps are placed one after another and the bar stays open');
- await p.click('[data-act=astamp][data-s=skull]');await p.click('[data-act=acolor][data-c="#3ddc84"]');await p.mouse.click(X(.4),Y(.6));
- assert(await p.evaluate(()=>{const s=S.annos[S.annos.length-1];return s.icon==='skull'&&s.color===ANNO_COLORS[2]}),'a chosen stamp and color are used');
+ await p.click('[data-act=astamp][data-s=skull]');await p.click('[data-act=acolor][data-c="#E69F00"]');await p.mouse.click(X(.4),Y(.6));
+ assert(await p.evaluate(()=>{const s=S.annos[S.annos.length-1];return s.icon==='skull'&&s.color==='#E69F00'}),'a chosen stamp and color are used');
  await p.click('[data-act=atool][data-t=pen]');await p.mouse.move(X(.2),Y(.7));await p.mouse.down();for(let i=1;i<=12;i++)await p.mouse.move(X(.2+i*.03),Y(.7+Math.sin(i)*.04));await p.mouse.up();
  assert(await p.evaluate(()=>S.annos.some(a=>a.type==='line'&&a.pts.length>5)),'the pen draws an irregular line');
  await p.click('[data-act=atool][data-t=line]');await p.mouse.move(X(.2),Y(.2));await p.mouse.down();await p.mouse.move(X(.5),Y(.25),{steps:5});await p.mouse.up();

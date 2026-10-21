@@ -111,3 +111,47 @@ Validation (576 seats per row unless noted), seat-side win / human escape / alie
 | 6 hard (16 games per map) | Alien hit rate 35% | Alien win 44.4%, hit rate 43.1%, 1.79 kills, Alien shuffle 5.3% |
 
 Ladder order kept: kills hard 1.40 vs easy 0.18 in the same table.
+
+## Round 8: Human fear (3 players, all hard, 576 games per row)
+
+`fear` penalises Human moves into sectors the tracker places within two steps of an Alien.
+
+| fear | Alien win | Human escape | turns |
+|---|---|---|---|
+| 0 (current) | 47.2% | 52.8% | 10.5 |
+| 3 | 49.1% | 50.9% | 11.7 |
+| 8 | 56.1% | 43.9% | 13.4 |
+
+Result: fear hurts the Humans. Avoiding the sectors near the Aliens' belief pushes them away from the pods and into longer routes.
+Not adopted: `fear` stays 0. The Human side needs a different idea (for example, routes to pods that respect the Aliens' belief
+without being pushed away from them), tested with the same A/B.
+
+## Round 9: Human pod choice (podPick), 3 players, all hard
+
+Pods are costed by how much Alien belief covers them (within two steps).
+
+| podPick | 576 games: escape | 1152 games: escape | Alien win (1152) |
+|---|---|---|---|
+| 0 | 50.0% | 55.3% | 44.7% |
+| 3 | 53.3% | - | - |
+| 8 | 53.6% | 54.0% | 46.0% |
+
+Result: the 576-game gain did not hold at 1152 games (baseline moved by 5 points between runs, so the noise floor here is about 2-3 points).
+Not adopted: podPick stays 0.
+
+Lesson for the Human side: none of the three ideas (fear, pod choice) beats the baseline. Humans may be near a plateau with
+this tracker; bluffing (the Human's announcements) is the next lever, as agreed.
+
+## Round 10: bluffing (3 players, all hard, 576 games per row)
+
+Existing bluffing: a Human holding "noise in any sector" scores each decoy by what the Aliens' tracker would make of it (decoy level 2).
+
+| setting | Alien win | Human escape |
+|---|---|---|
+| decoy 2, bluffW 0.5 (current) | 44.6% | 55.4% |
+| decoy 1 (basic decoy) | 50.0% | 50.0% |
+| decoy 0 (no deception scoring) | 52.8% | 47.2% |
+| decoy 2, bluffW 1.0 | 45.5% | 54.5% |
+| decoy 2, bluffW 0.25 | 43.9% | 56.1% |
+
+Result: the deception scoring is worth about 8 points for Humans, and it is already in place. Its weight (bluffW) is flat between 0.25 and 1.0, so bluffW stays at 0.5.

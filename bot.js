@@ -220,7 +220,8 @@ const Bot = (() => {
   /* cheapest way to a hatch from every sector, each step costing 1 plus the danger of the sector */
   function pathCosts(W) {
     const g = W.g, N = g.N, cost = new Float64Array(N).fill(1e6), done = new Uint8Array(N);
-    W.hatches.forEach(h => { cost[h] = 0; });
+    // pod choice: a pod that the Aliens' belief covers (within two steps) costs more to head for
+    W.hatches.forEach(h => { let e = 0; if (W.sk.podPick) for (let j = 0; j < N; j++) { const v = W.alienOcc[j]; if (v > 1e-4 && g.dA[h][j] <= 2) e += v; } cost[h] = (W.sk.podPick || 0) * e; });
     for (let it = 0; it < N; it++) {
       let u = -1, best = 1e9; for (let i = 0; i < N; i++) if (!done[i] && cost[i] < best) { best = cost[i]; u = i; }
       if (u < 0) break; done[u] = 1;
@@ -267,7 +268,9 @@ const Bot = (() => {
     opts.forEach(id => {
       const c = g.idx.get(id);
       if (g.isHatch(c)) return list.push({ id, cell: c, score: 1000 });
-      let s = -cost[c] * hurry - W.sk.dw * calm * W.risk(c) - (W.lvl === 'easy' ? 0 : 3 * W.crowd[c]) - (recent.has(id) ? W.sk.mem : 0);
+      // fear: Aliens the tracker places within two steps of this sector (not only the ones that can strike this turn)
+      let near = 0; for (let j = 0; j < g.N; j++) { const v = W.alienOcc[j]; if (v > 1e-4 && g.dA[c][j] <= 2) near += v; }
+      let s = -cost[c] * hurry - W.sk.dw * calm * W.risk(c) - (W.sk.fear || 0) * near - (W.lvl === 'easy' ? 0 : 3 * W.crowd[c]) - (recent.has(id) ? W.sk.mem : 0);
       if (g.sec[c]) s += 0.4 + (W.lvl === 'easy' ? 0 : 0.4);                   // Secure sectors make no noise
       list.push({ id, cell: c, score: s });
     });
@@ -351,7 +354,7 @@ const Bot = (() => {
         // what an attacking Alien would see: the value of hitting my real sector, and the bait of the decoy sector
         const worth = c => KILL_VALUE * hum(c) - sk.allyCost * ali(c);
         let real = -1e9; near.forEach(c => { real = Math.max(real, worth(c)); });
-        score = (sk.decoy > 1 ? 0.5 * worth(x) : 0) - 2 * Math.max(0, real);
+        score = (sk.decoy > 1 ? (sk.bluffW === undefined ? 0.5 : sk.bluffW) * worth(x) : 0) - 2 * Math.max(0, real);
       } else {
         let threat = 0; strikeZone.forEach(c => { threat += ali(c); });
         score = -(threat * 8 + o.pA * 5);

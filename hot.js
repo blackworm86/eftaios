@@ -104,7 +104,7 @@ const Hot = (() => {
       else if (r.clone) { log({ by: s.id, who: s.name, kind: 'item', text: 'clone' }); notify(i, t('You were attacked, but your Clone saved you! You restart from the Human sector.')); }
       else if (r.reveal) { log({ by: s.id, who: s.name, kind: 'reveal', text: 'Brute Alien' }); notify(i, t('You were attacked: you are immune, and your identity is revealed.')); }
       else if (r.conv) { log({ by: s.id, who: s.name, kind: 'out', text: 'killed|human|' + (r.char || '') }); H.last = 'lost'; notify(i, t('You were killed and restart from the Alien Sector as an Alien.')); }
-      else { st.outSent = true; out(i, 'dead'); notify(i, t('You were attacked and eliminated!')); }
+      else { st.over = 'dead'; st.outSent = true; out(i, 'dead'); notify(i, t('You were attacked and eliminated!')); }
       hits.push(Object.assign(nm, r));
     });
     evaluate(); T.counts = counts();

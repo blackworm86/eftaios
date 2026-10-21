@@ -68,6 +68,7 @@ const Online = (() => {
         else if (r.clone) Sync.push({ id: uid(), turn: S.turn, who: me, kind: 'item', text: 'clone', sector: '', at: Date.now() });
         else if (r.reveal) Sync.push({ id: uid(), turn: S.turn, who: me, kind: 'reveal', text: 'Brute Alien', sector: '', at: Date.now() });
         else if (r.conv) { Sync.setMe({ conv: true, role: 'human', char: r.char || '' }); Sync.push({ id: uid(), turn: S.turn, who: me, kind: 'out', text: 'killed|human|' + (r.char || ''), sector: '', at: Date.now() }); }
+        else if (r.killed) S.over = 'dead';   // eliminated: afterChange reports it to the table (log and map)
       }
     }
     const here = rep.in;
@@ -118,7 +119,7 @@ const Online = (() => {
           else if (r.clone) botPush(b, { kind: 'item', text: 'clone' });
           else if (r.reveal) botPush(b, { kind: 'reveal', text: 'Brute Alien' });
           else if (r.conv) { Sync.set('players/' + id, Object.assign({}, Sync.players[id] || {}, { conv: true, role: 'human', char: r.char || '' })); botPush(b, { kind: 'out', text: 'killed|human|' + (r.char || '') }); }
-          else botOut(id, 'dead', st);
+          else { st.over = 'dead'; st.outSent = true; botOut(id, 'dead', st); botPush(b, { kind: 'out', text: 'killed|' + (st.role0 || st.role) + '|' + (st.char || '') }); }
         }
       }
       Sync.set(`attacks/${key}/replies/${id}`, rep);

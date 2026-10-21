@@ -267,7 +267,9 @@ const Bot = (() => {
     opts.forEach(id => {
       const c = g.idx.get(id);
       if (g.isHatch(c)) return list.push({ id, cell: c, score: 1000 });
-      let s = -cost[c] * hurry - W.sk.dw * calm * W.risk(c) - (W.lvl === 'easy' ? 0 : 3 * W.crowd[c]) - (recent.has(id) ? W.sk.mem : 0);
+      // fear: Aliens the tracker places within two steps of this sector (not only the ones that can strike this turn)
+      let near = 0; for (let j = 0; j < g.N; j++) { const v = W.alienOcc[j]; if (v > 1e-4 && g.dA[c][j] <= 2) near += v; }
+      let s = -cost[c] * hurry - W.sk.dw * calm * W.risk(c) - (W.sk.fear || 0) * near - (W.lvl === 'easy' ? 0 : 3 * W.crowd[c]) - (recent.has(id) ? W.sk.mem : 0);
       if (g.sec[c]) s += 0.4 + (W.lvl === 'easy' ? 0 : 0.4);                   // Secure sectors make no noise
       list.push({ id, cell: c, score: s });
     });

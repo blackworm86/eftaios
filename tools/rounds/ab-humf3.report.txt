@@ -1,0 +1,1 @@
+humf3  mix hard:3  skill {"hard":{"fear":3}}

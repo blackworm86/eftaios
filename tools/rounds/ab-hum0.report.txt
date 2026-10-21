@@ -1,0 +1,1 @@
+hum0  mix hard:3  skill {}

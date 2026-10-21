@@ -11,7 +11,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(await p.evaluate(()=>S.annos.filter(a=>a.type==='stamp').length)===3&&await p.locator('#annotbar:not([hidden])').count()===1,'stamps are placed one after another and the bar stays open');
  await p.click('[data-act=astamp][data-s=skull]');await p.click('[data-act=acolor][data-c="#E69F00"]');await p.mouse.click(X(.4),Y(.6));
  assert(await p.evaluate(()=>{const s=S.annos[S.annos.length-1];return s.icon==='skull'&&s.color==='#E69F00'}),'a chosen stamp and color are used');
- await p.click('[data-act=atool][data-t=pen]');await p.mouse.move(X(.2),Y(.7));await p.mouse.down();for(let i=1;i<=12;i++)await p.mouse.move(X(.2+i*.03),Y(.7+Math.sin(i)*.04));await p.mouse.up();
+ await p.click('[data-act=atool][data-t=pen]');await p.mouse.move(X(.2),Y(.4));await p.mouse.down();for(let i=1;i<=12;i++)await p.mouse.move(X(.2+i*.03),Y(.4+Math.sin(i)*.04));await p.mouse.up();
  assert(await p.evaluate(()=>S.annos.some(a=>a.type==='line'&&a.pts.length>5)),'the pen draws an irregular line');
  await p.click('[data-act=atool][data-t=line]');await p.mouse.move(X(.2),Y(.2));await p.mouse.down();await p.mouse.move(X(.5),Y(.25),{steps:5});await p.mouse.up();
  assert(await p.evaluate(()=>S.annos.some(a=>a.type==='line'&&a.pts.length===2)),'the line tool draws a straight line');
@@ -35,5 +35,13 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.mouse.move(X(.5),Y(.5));await p.mouse.down({button:'middle'});await p.mouse.move(X(.4),Y(.5),{steps:5});await p.mouse.up({button:'middle'});
  assert(await p.evaluate(()=>S.annos.length)===n1&&await p.evaluate(()=>view.x)<v1-3,'the middle button pans instead of drawing');
  assert(await p.evaluate(()=>{const c=document.querySelector('[data-act=acolor][aria-pressed=true]');return getComputedStyle(c).backgroundColor!=='rgba(0, 0, 0, 0)'&&getComputedStyle(c).backgroundColor===getComputedStyle(c).getPropertyValue('--c')||true}),'selected swatch');
+ // rectangle and ellipse: drawn corner to corner, outline only
+ await p.click('[data-act=atool][data-t=rect]');await p.mouse.move(X(.3),Y(.3));await p.mouse.down();await p.mouse.move(X(.45),Y(.45),{steps:5});await p.mouse.up();
+ assert(await p.evaluate(()=>S.annos.some(a=>a.type==='shape'&&a.kind==='rect'&&a.pts.length===2&&a.pts[0][0]!==a.pts[1][0])),'the rectangle tool draws a rectangle');
+ await p.click('[data-act=atool][data-t=ellipse]');await p.mouse.move(X(.4),Y(.3));await p.mouse.down();await p.mouse.move(X(.55),Y(.45),{steps:5});await p.mouse.up();
+ assert(await p.evaluate(()=>S.annos.some(a=>a.type==='shape'&&a.kind==='ellipse')),'the ellipse tool draws an ellipse');
+ assert(await p.evaluate(()=>{const el=[...document.querySelectorAll('#annos .aline')].pop();return el&&el.getAttribute('fill')==='none'}),'shapes have no fill');
+ const n2=await p.evaluate(()=>S.annos.length);await p.click('[data-act=atool][data-t=erase]');await p.mouse.click(X(.3),Y(.375));
+ assert(await p.evaluate(()=>S.annos.length)===n2-1,'the eraser removes a rectangle on its outline');
  await p.click('[data-act=adone]');assert(await p.locator('#annotbar:not([hidden])').count()===0,'Done closes the bar');
  console.log('errors',errs);await b.close();})();

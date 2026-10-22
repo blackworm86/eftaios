@@ -236,7 +236,7 @@
   Sync.pubMaps = async () => { await ensure(); return (await fb.get(at('pubmaps'))).val() || {}; };
 
   /* ---------------- table ---------------- */
-  Sync.newCode = () => Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random() * 32 | 0]).join('');
+  Sync.newCode = () => Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random() * 32 | 0]).join('');
 
   function listen(code) {
     Sync.code = code; Sync.gen++; Sync.settings = null; Sync.players = {};

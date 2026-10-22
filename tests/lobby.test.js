@@ -13,7 +13,7 @@ assert(await A.locator('[data-f=cards],[data-f=track]').count()===0,'host setup:
 assert((await A.locator('[role=radio][data-f=mode]').evaluateAll(els=>els.map(e=>e.dataset.v))).join()==='basic,ultimate','rules are listed Basic, Ultimate');
 await A.click('.mapcard');await A.click(`.gcard[data-id=\"${'fermi'}\"]`);await A.click('[data-f=mode][data-v=basic]');
 await A.click('[data-act=hostcreate]');await A.waitForSelector('.roomcard b');
-const code=await A.textContent('.roomcard b');assert(/^[A-Z2-9]{4}$/.test(code),'host got code '+code);
+const code=await A.textContent('.roomcard b');assert(/^[A-Z2-9]{6}$/.test(code),'host got code '+code);
 assert(await A.locator('.startbtn').isDisabled(),'start disabled with 1 player');
 await A.screenshot({path:S+'/lobby-host.png'});
 await B.goto('http://localhost:8123/?room='+code);

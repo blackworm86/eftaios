@@ -6,8 +6,10 @@ The simulator plays the real app code in headless Chrome. On Windows every scrip
 ## One-time setup
 
 ```
-npm install playwright-core --no-save --no-package-lock --cache .npm-cache
+npm install
 ```
+
+Installs `playwright-core` and `firebase-admin` together from `package.json`; installing one on its own used to prune the other.
 
 Chrome is started from `C:\Program Files\Google\Chrome\Application\chrome.exe` (override with `PW_CHROME`). Playwright's normal
 transport uses a named pipe, which the Windows sandbox denies, so `tools/browser.js` starts Chrome with `--remote-debugging-port`

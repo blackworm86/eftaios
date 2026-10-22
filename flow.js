@@ -62,6 +62,7 @@ const readName = () => { const el = $('#flow-name'); if (el) S.name = el.value.t
 function renderFlow() {
   const card = $('#flow-card'); let h = '';
   const st = S.stage;
+  const ver = document.getElementById('ver'); if (ver) ver.hidden = st !== 'welcome';
   card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
   if (st === 'host') {
     h = `${fhead(t('Host a table'))}${Sync.registered ? '' : nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
@@ -132,7 +133,7 @@ function lobbyHtml() {
       ${kv}${host ? `<button class="btn edit" data-act="lobbyopts" aria-label="${t('Game options')}">${ico('pencil', 20)}</button>` : ''}</div>
     <h3>${t('Turn order')} ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>${players.length < 8 ? `<button class="mini-link" data-act="addlobbybot">+ ${t('Add bot')}</button>` : ''}` : ''}</h3>
     <ul class="plist">${rows}</ul>
-    <p class="dim hintline">${t('Roles and cards are dealt when the game starts.')}</p>
+    <p class="dim hintline lobbyhint">${t('Roles and cards are dealt when the game starts.')}</p>
     <div class="row lobbyact"><button class="btn big ${S.ready ? 'ok' : host ? '' : 'primary'}" data-act="ready">${S.ready ? ico('check') + ' ' + t('Ready') : t("I'm ready")}</button>
     ${host ? `<button class="btn primary big startbtn" data-act="startgame" ${allReady ? '' : 'disabled'}>${t('Start game')}<small>${t('{n}/{m} ready', { n: nReady, m: players.length })}</small></button>` : ''}</div>
     ${!host && S.ready ? `<p class="dim hintline center">${t('Waiting for the host to start the game…')}</p>` : ''}`;

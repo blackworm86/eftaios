@@ -22,52 +22,61 @@ const Admin = (() => {
   function html() {
     if (!Sync.isAdmin) return `<header class="fhead"><button class="icon-btn" data-act="adminclose" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${t('Admin')}</h2></header><p class="dim">${t('This account is not an administrator.')}</p>`;
     const head = `<header class="fhead"><button class="icon-btn" data-act="adminclose" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${t('Admin')}</h2></header>`;
-    const tabs = `<div class="seg" role="tablist">${[['users', 'Players'], ['rooms', 'Rooms'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
+    const tabs = `<div class="seg adm-tabs" role="tablist">${[['users', 'Players'], ['rooms', 'Rooms'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
     if (!T.admin) return `${head}${tabs}<p class="dim">${t('Loading…')}</p>`;
     if (T.admin.error) return `${head}${tabs}<p class="dim">${t('Could not load the admin data')}: ${esc(T.admin.error)}</p>`;
     return `${head}${tabs}${T.admin[tab()] === undefined ? '' : roster(tab())}`;
   }
+  /* lists are paged so the panel never scrolls: five rows per screen on a phone */
+  function paged(which, entries, per, row) {
+    const pages = Math.max(1, Math.ceil(entries.length / per));
+    const page = Math.min(Math.max((T.adminPage || {})[which] || 0, 0), pages - 1);
+    T.adminPage = Object.assign({}, T.adminPage, { [which]: page });
+    const rows = entries.slice(page * per, page * per + per).map(row).join('');
+    const pager = pages > 1
+      ? `<div class="pager"><button data-act="adminpage" data-k="${which}" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">&lsaquo;</button><span>${page + 1} / ${pages}</span><button data-act="adminpage" data-k="${which}" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">&rsaquo;</button></div>`
+      : '';
+    return `<ul class="plist">${rows || `<li>${t('Nothing here yet.')}</li>`}</ul>${pager}`;
+  }
+  const nRooms = n => `${n} ${t(n === 1 ? 'room' : 'rooms')}`;
+
   function roster(which) {
     const d = T.admin;
     if (which === 'users') {
-      const list = Object.entries(d.users || {}).map(([uid, u]) => {
+      const list = Object.entries(d.users || {});
+      const rows = paged('users', list, 5, ([uid, u]) => {
         const p = (u && u.profile) || {}, banned = !!(d.bans || {})[uid], me = uid === Sync.uid;
         const rooms = Object.keys((u && u.rooms) || {}).length;
         const actions = me
           ? `<span class="pst">${t('This is you')}</span>`
-          : `<button class="btn" data-act="adminban" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}" data-b="${banned ? 1 : 0}">${banned ? t('Unban') : t('Ban')}</button>
-          <button class="btn danger" data-act="adminwipe" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}">${t('Delete data')}</button>`;
-        return `<li><span class="pname">${esc(p.name || '(no profile)')}<small>@${esc(p.handle || '')} · ${uid.slice(0, 8)}…</small></span>
-          <span class="pst">${rooms} ${t('rooms')}${banned ? ' · ' + t('banned') : ''}</span>${actions}</li>`;
-      }).join('');
-      return `<ul class="plist">${list || `<li>${t('No players yet.')}</li>`}</ul>
-        <div class="row two"><button class="btn" data-act="adminreset">${t('Send a password reset')}</button><button class="btn" data-act="admincloseroom">${t('Close a room')}</button></div>`;
+          : `<div class="acts"><button class="btn" data-act="adminban" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}" data-b="${banned ? 1 : 0}">${banned ? t('Unban') : t('Ban')}</button>
+          <button class="btn danger" data-act="adminwipe" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}">${t('Delete')}</button></div>`;
+        return `<li class="adm-row"><span class="who"><b>${esc(p.name || '(no profile)')}</b><small>@${esc(p.handle || '—')} · ${nRooms(rooms)}${banned ? ' · ' + t('banned') : ''}</small></span>${actions}</li>`;
+      });
+      return `${rows}<div class="row two"><button class="btn" data-act="adminreset">${t('Send a password reset')}</button><button class="btn" data-act="admincloseroom">${t('Close a room')}</button></div>`;
     }
     if (which === 'rooms') {
       const users = d.users || {};
-      const list = Object.entries(d.rooms || {}).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).map(([code, r]) => {
+      const list = Object.entries(d.rooms || {}).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
+      return paged('rooms', list, 5, ([code, r]) => {
         const host = (users[r.host] && users[r.host].profile) || {};
-        return `<li><span class="pname">${esc(code)}<small>${esc(r.map || '')} · ${r.players || 1} ${t('players')}</small></span>
-          <span class="pst">${esc(r.status || '')}${host.name ? ' · ' + esc(host.name) : ''}</span>
-          <button class="btn" data-act="adminroomclose" data-c="${esc(code)}">${t('Close')}</button></li>`;
-      }).join('');
-      return `<ul class="plist">${list || `<li>${t('No open rooms.')}</li>`}</ul>`;
+        return `<li class="adm-row"><span class="who"><b>${esc(code)}</b><small>${esc(r.map || '')} · ${r.players || 1} ${t('players')}${host.name ? ' · ' + esc(host.name) : ''}</small></span>
+          <div class="acts"><span class="pst">${esc(r.status || '')}</span><button class="btn" data-act="adminroomclose" data-c="${esc(code)}">${t('Close')}</button></div></li>`;
+      });
     }
     if (which === 'maps') {
-      const list = Object.entries(d.maps || {}).map(([id, m]) => `<li><span class="pname">${esc(m.name)}<small>${esc(m.author || '')} · ${m.rows ? m.rows.length : 0}×${m.rows && m.rows[0] ? m.rows[0].length : 0}</small></span>
-        <span class="pst">${m.hidden ? t('hidden') : t('published')}</span>
-        <button class="btn" data-act="adminmap" data-id="${esc(id)}" data-h="${m.hidden ? 1 : 0}">${m.hidden ? t('Restore') : t('Hide')}</button>
-        <button class="btn danger" data-act="adminmapdel" data-id="${esc(id)}">${t('Delete')}</button></li>`).join('');
-      return `<ul class="plist">${list || `<li>${t('No published maps.')}</li>`}</ul>`;
+      const list = Object.entries(d.maps || {});
+      return paged('maps', list, 5, ([id, m]) => `<li class="adm-row"><span class="who"><b>${esc(m.name)}</b><small>${esc(m.author || '')} · ${m.rows ? m.rows.length : 0}×${m.rows && m.rows[0] ? m.rows[0].length : 0} · ${m.hidden ? t('hidden') : t('published')}</small></span>
+        <div class="acts"><button class="btn" data-act="adminmap" data-id="${esc(id)}" data-h="${m.hidden ? 1 : 0}">${m.hidden ? t('Restore') : t('Hide')}</button>
+        <button class="btn danger" data-act="adminmapdel" data-id="${esc(id)}">${t('Delete')}</button></div></li>`);
     }
     if (which === 'reports') {
-      const list = Object.entries(d.reports || {}).filter(([, r]) => !r.done).map(([id, r]) => `<li><span class="pname">${esc(r.kind)}: ${esc(r.target)}<small>${esc(r.text || '')}</small></span>
-        <span class="pst">${when(r.at)}</span><button class="btn" data-act="adminreport" data-id="${esc(id)}">${t('Resolve')}</button></li>`).join('');
-      return `<ul class="plist">${list || `<li>${t('No open reports.')}</li>`}</ul>`;
+      const list = Object.entries(d.reports || {}).filter(([, r]) => !r.done);
+      return paged('reports', list, 5, ([id, r]) => `<li class="adm-row"><span class="who"><b>${esc(r.kind)}: ${esc(r.target)}</b><small>${esc(r.text || '')} · ${when(r.at)}</small></span>
+        <div class="acts"><button class="btn" data-act="adminreport" data-id="${esc(id)}">${t('Resolve')}</button></div></li>`);
     }
-    const list = Object.entries(d.log || {}).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 60)
-      .map(([, e]) => `<li><span class="pname">${esc(e.action)} <small>${esc(e.target || '')} ${esc(e.detail || '')}</small></span><span class="pst">${when(e.at)}</span></li>`).join('');
-    return `<ul class="plist">${list || `<li>${t('Nothing logged yet.')}</li>`}</ul>`;
+    const list = Object.entries(d.log || {}).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
+    return paged('audit', list, 8, ([, e]) => `<li class="adm-row"><span class="who"><b>${esc(e.action)} ${esc(e.target || '')}</b><small>${esc(e.detail || '')} · ${when(e.at)}</small></span></li>`);
   }
 
   async function closeRoom(code) {
@@ -84,6 +93,7 @@ const Admin = (() => {
   const actions = {
     adminopen() { S.stage = 'admin'; T.adminTab = 'users'; save(); load(); },
     admintab(b) { T.adminTab = b.dataset.k; renderFlow(); },
+    adminpage(b) { const k = b.dataset.k; T.adminPage = Object.assign({}, T.adminPage, { [k]: Math.max(0, ((T.adminPage || {})[k] || 0) + Number(b.dataset.d)) }); renderFlow(); },
     adminclose() { S.stage = 'welcome'; save(); renderFlow(); },
     adminrefresh() { load(); },
     async adminban(b) {

@@ -772,3 +772,47 @@ dialog .charcard{justify-content:center;margin:10px 0}
 .mkbar button.pchip .omark{width:14px;height:14px}
 .mkbar button.pchip .omark.dead:has(.gi){position:static;right:auto;bottom:auto;width:15px;height:15px}
 .mkbar button.pchip.isout{opacity:.75}
+
+/* ---------- v14: account, games, admin and lobby consistency ---------- */
+input[type=email],input[type=password],input[type=search],input[type=url],input[type=tel]{width:100%;min-height:var(--tap);background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:400 16px var(--font);outline:0}
+input[type=email]:focus,input[type=password]:focus{background:#0e1730;border-color:var(--amber)}
+.kv dd{overflow:hidden;text-overflow:ellipsis}
+/* games: code and status stacked, one compact action and a quiet remove */
+.grow{display:flex;align-items:center;gap:8px}
+.grow .pname{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;font:700 15px var(--mono);letter-spacing:.06em}
+.grow .pname small{color:var(--dim);font:600 11px var(--font);letter-spacing:.06em;text-transform:uppercase}
+.grow .btn{min-height:40px;padding:6px 14px}
+.grow .x{width:40px;min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--dim);font-size:18px;line-height:1}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.pager button{min-height:36px;padding:4px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--text)}
+.pager button:disabled{opacity:.4}
+.pager span{font:600 12px var(--mono);color:var(--dim)}
+/* admin: five sections on a phone, two-line rows */
+.adm-tabs button{font-size:12px;padding:4px}
+li.adm-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:8px 10px}
+.adm-row .who{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.adm-row .who b{font:600 15px var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm-row .who small{color:var(--dim);font:600 11px var(--mono);letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm-row .acts{display:flex;gap:6px}
+.adm-row .acts .btn{min-height:40px;padding:6px 10px;font-size:13px}
+@media (max-width:400px){.adm-tabs button{font-size:11px;letter-spacing:.02em}}
+/* lobby: leave breathing room at 640 so the action row never touches the edge */
+@media (max-height:700px){
+  .setup-card .roomcard{padding:4px 8px}
+  .setup-card .roomcard b{font-size:22px}
+  .setcard{grid-template-columns:64px minmax(0,1fr) auto;padding:4px;gap:8px}
+  .setcard .mapprev{max-height:48px}
+  .setup-card .plist li{min-height:38px}
+  .setup-card h3{margin:8px 0 4px}
+  .lobbyhint{display:none}
+  .lobbyact{margin-top:8px}
+  .lobbyact .btn{min-height:52px}
+  .setup-card .hintline{margin:6px 0}
+}
+.ver[hidden]{display:none}
+/* keep the table code and its two actions on one line on a phone */
+@media (max-width:520px){
+  .setup-card .roomcard{flex-wrap:nowrap}
+  .setup-card .roomcard .btn{flex:0 0 auto;padding:8px 10px;font-size:13px}
+  .authlinks .btn{font-size:13px}
+}

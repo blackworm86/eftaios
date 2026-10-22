@@ -1158,6 +1158,7 @@ function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); }
 function resetToWelcome(stage) { T.maps = T.maps.filter(m => !m.shared); const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards }; S = Object.assign(fresh(), keep); S.stage = stage || 'welcome'; T.turnState = null; T.counts = null; Sync.status = 'off'; closeDlg(); save(); boot(); }
 function boot() {
   if (S.hot && window.Hot) Hot.rebind();
+  const ver = $('#ver'); if (ver) ver.hidden = S.stage !== 'welcome';
   T.pick = null; T.sel = null; T.annot = null; T.stroke = null; renderAnnot();
   const game = S.stage === 'game' && S.role;
   $('#flow').hidden = !!game; $('#app').hidden = !game;

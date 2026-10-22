@@ -35,13 +35,15 @@ const Auth = (() => {
       ${T.authReason ? `<p class="banner">${esc(T.authReason)}</p>` : ''}
       <p class="dim hintline">${t('Guests can join a table with a code. An account keeps your games, maps and statistics, and lets you host.')}</p>
       ${pending ? `<p class="dim hintline">${t('We sent a sign-in link. Open it on this device, or enter the email again below.')}</p>` : ''}
-      <button class="btn primary big wide" data-act="authgoogle">${t('Continue with Google')}</button>
+      ${Sync.isLink()
+        ? `<button class="btn primary big wide" data-act="authcomplete">${t('Complete the sign-in')}</button>`
+        : `<button class="btn primary big wide" data-act="authgoogle">${t('Continue with Google')}</button>
       <div class="or"><span>${t('or')}</span></div>
       <label class="field"><span>${t('Email')}</span><input id="a-email" type="email" autocomplete="email" value="${esc(T.authEmail || '')}" placeholder="you@example.com"></label>
       <label class="field"><span>${t('Password')}</span><input id="a-pass" type="password" autocomplete="current-password" placeholder="${t('At least 6 characters')}"></label>
-      <div class="row two"><button class="btn primary" data-act="authsignin">${t('Sign in')}</button><button class="btn" data-act="authsignup">${t('Create account')}</button></div>
-      <div class="row two"><button class="btn link" data-act="authreset">${t('Forgot the password?')}</button><button class="btn link" data-act="authlink">${t('Email me a link instead')}</button></div>
-      ${Sync.isLink() ? `<button class="btn primary wide" data-act="authcomplete">${t('Complete the sign-in')}</button>` : ''}
+      <button class="btn wide" data-act="authsignin">${t('Sign in')}</button>
+      <button class="btn link wide" data-act="authsignup">${t('Create account')}</button>
+      <div class="row two"><button class="btn link" data-act="authreset">${t('Forgot the password?')}</button><button class="btn link" data-act="authlink">${t('Email me a link instead')}</button></div>`}
       ${T.authMsg ? `<p class="dim hintline" role="status">${esc(T.authMsg)}</p>` : ''}`;
   }
   function accountHtml() {
@@ -63,8 +65,14 @@ const Auth = (() => {
   function gamesHtml() {
     if (!T.myGames) return `${head(t('Your games'))}<p class="dim">${t('Loading…')}</p>`;
     if (!T.myGames.length) return `${head(t('Your games'))}<p class="dim hintline">${t('No games yet. Host a table to start one.')}</p>`;
-    const rows = T.myGames.map(([code, g]) => `<li><span class="pname">${esc(code)}</span><span class="pst">${esc(g.status || '')}</span><button class="btn" data-act="resumeroom" data-c="${esc(code)}">${t('Open')}</button><button class="btn danger" data-act="forgetroom" data-c="${esc(code)}" aria-label="${t('Remove')}">&times;</button></li>`).join('');
-    return `${head(t('Your games'))}<ul class="plist">${rows}</ul><p class="dim hintline">${t('Finished games stay here for your last 20.')}</p>`;
+    const per = 5, pages = Math.max(1, Math.ceil(T.myGames.length / per));
+    const page = Math.min(Math.max(T.gamesPage || 0, 0), pages - 1);
+    T.gamesPage = page;
+    const rows = T.myGames.slice(page * per, page * per + per).map(([code, g]) => `<li class="grow"><span class="pname">${esc(code)}<small>${esc(g.status || '')}</small></span><button class="btn" data-act="resumeroom" data-c="${esc(code)}">${t('Open')}</button><button class="x" data-act="forgetroom" data-c="${esc(code)}" aria-label="${t('Remove')}">&times;</button></li>`).join('');
+    const pager = pages > 1
+      ? `<div class="pager"><button data-act="gamespage" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">&lsaquo;</button><span>${page + 1} / ${pages}</span><button data-act="gamespage" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">&rsaquo;</button></div>`
+      : '';
+    return `${head(t('Your games'))}<ul class="plist">${rows}</ul>${pager}<p class="dim hintline">${t('Finished games stay here for your last 20.')}</p>`;
   }
 
   async function open(stage) { S.stage = stage; save(); renderFlow(); }
@@ -96,7 +104,8 @@ const Auth = (() => {
     authcomplete() { guard(async () => { await Sync.completeLink(($('#a-email') || {}).value); postSignIn(); }); },
     accountcreate() { guard(async () => { await Sync.saveProfile({ handle: $('#a-handle').value, name: $('#a-name').value }); T.authMsg = t('Account ready.'); postSignIn(); }); },
     accountsave() { guard(async () => { await Sync.renameMe($('#a-name').value); T.authMsg = t('Saved.'); renderFlow(); }); },
-    accountgames() { S.stage = 'games'; save(); loadGames(); },
+    accountgames() { S.stage = 'games'; T.gamesPage = 0; save(); loadGames(); },
+    gamespage(b) { T.gamesPage = Math.max(0, (T.gamesPage || 0) + Number(b.dataset.d)); renderFlow(); },
     accountstats() { guard(stats); },
     accountsignout() { guard(async () => { await Sync.signOut(); S.stage = 'welcome'; T.authMsg = ''; save(); renderFlow(); }); },
     accountdelete() {

@@ -259,6 +259,12 @@ Equal-width options in a framed track; the selected option gets an amber tint an
 ### Rows and lists
 Players, announcements and turn order are 1px-bordered rows on the surface colour. The current turn gets an amber border and tint; a ready player gets a green border and tint.
 
+### Account screens
+Sign-in, account, games and admin share the setup card: one condensed title with a back arrow, then fields and rows. Email, password and text fields use the same inset surface, 10px radius and amber focus ring. A screen carries one amber action: on sign-in that is Google, and the email form is the quiet alternative. Admin rows are two lines (name, then handle and counts) with compact actions on the right.
+
+### Pagination
+Lists that can grow past a screen (your games, admin players/rooms/maps/reports/audit) page in place: five rows and a `‹ 1 / 2 ›` control, never a scrolling panel. A gallery of maps is the one exception: it is a full-screen sheet and scrolls, as the map list has no natural page size.
+
 ### Announcement ("Say aloud")
 A bordered callout with a small label and a large condensed headline. Amber for normal noises, red for attacks, neutral grey for silence.
 

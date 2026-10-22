@@ -25,6 +25,7 @@ node tools/cluster.js out.json --by-map   # Alien clustering + death audit
 node tools/test.js                         # browser tests (starts its own server if needed)
 node tools/rules-check.js                  # structural invariants of database.rules.json
 node tools/verify-live.js                  # real Firebase + real rules (needs the service-account key)
+node tools/cleanup-rooms.js                 # retention sweep, dry run; --apply to delete
 ```
 
 Suite runner (the agreed tables and the train/holdout map split are in `tools/tables.js`):

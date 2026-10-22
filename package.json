@@ -6,6 +6,7 @@
     "serve": "node tools/serve.js 8123",
     "test": "node tools/test.js",
     "rules:check": "node tools/rules-check.js",
+    "cleanup:rooms": "node tools/cleanup-rooms.js",
     "admin": "node tools/admin.js"
   },
   "devDependencies": {

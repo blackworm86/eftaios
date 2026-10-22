@@ -18,6 +18,7 @@ Tracks the security and maintenance work. One row per item, updated as it lands.
 | 10 | Live verification of the published rules | **done** | `tools/verify-live.js`: six-letter code, member write, outsider log and mid-game seat denied, kick marker, live ban |
 | 11 | Kicked player cannot lift the kick | **done** | `kicks/<uid>` written only by the host/lease; the seat guard refuses a kicked account; verified live |
 | 12 | A ban ends the open session | **done** | The client watches `bans/<uid>` and signs the tab out; verified live |
+| 13 | Room retention | **done** | `npm run cleanup:rooms` (dry run) deletes closed tables older than 14 days, optionally abandoned lobbies/games with `--stale-live`, prunes stale index entries and player-list references; 4 stale entries removed on first run |
 
 ## What changed in this pass
 
@@ -62,10 +63,11 @@ Until then, `tools/rules-check.js` is the regression guard: it catches an invari
 
 - **App Check** — deferred: classic reCAPTCHA registration is closed, Fraud Defense needs billing. Revisit only if the project goes public.
 - **Emulator tests** remain the main gap.
-- **Data retention**: account deletion closes rooms but never deletes them; a monthly cleanup script is in the maintenance plan.
+- **Retention**: run `npm run cleanup:rooms` monthly; use `--stale-live 30` to also clear lobbies and games that were abandoned a month ago.
 
 ## Log
 
 - 2026-10-22 — Priority 1 items 1–5 implemented; rules invariant checker added; `package.json` + lockfile; lobby/online/rejoin/close/online-bots tests pass; `rules:check` 19/19.
 - 2026-10-22 — Published rules verified against the real project with `tools/verify-live.js`: member write, outsider denials, kick marker, and a ban that signs the open tab out. CSP added and verified. App Check deferred (provider deprecation) — decision recorded.
 - 2026-10-22 — Kick rules verified live (table can mark, kicked seat cannot rewrite itself, self-read allowed). Added the CSP meta tag and verified it against the real project: sign-in, RTDB reads/writes and the app boot with no CSP console errors; browser suite green.
+- 2026-10-22 — Room retention tool added and run: 4 stale index entries removed, no rooms old enough yet. Command: `npm run cleanup:rooms` (dry run) and `--apply`.

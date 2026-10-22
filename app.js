@@ -26,11 +26,19 @@ try { Object.assign(S, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch
 S.tab = { play: 'play', table: 'table', notes: 'table', rules: 'more', menu: 'more', more: 'more' }[S.tab] || 'play';
 /* older companion games kept the other players' steps as hand marks: they are declarations now */
 if (S.marks && S.marks.length) { const nm = k => String(k).replace(/^n:/, ''); S.marks.forEach((m, i) => S.log.push({ id: 'mk' + i, by: '', who: nm(m.key), turn: m.turn, kind: 'noise', sector: m.sector, text: 'noise', at: 0, mine: false })); S.marks = []; }
-const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); if (S.room && Sync.uid && S.stage === 'game') localStorage.setItem('eftaios.room.' + S.room + '.' + Sync.uid, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); if (S.room && Sync.uid && S.stage === 'game') localStorage.setItem('eftaios.room.' + S.room + '.' + Sync.uid, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } if (S.online && S.room) queueSeat(); };
+/* the same state, on the table, readable only by this account: a lost tab can be rebuilt from it */
+let seatTimer = null;
+function flushSeat() {
+  if (!(S.online && S.room && S.stage === 'game' && S.role && Sync.code)) return;
+  S.seatAt = Date.now();
+  Sync.saveSeat({ turn: S.turn, pos: S.pos || '', path: JSON.stringify(S.path || []), items: S.items || [], over: S.over || '', char: S.char || '', role: S.role, at: S.seatAt });
+}
+const queueSeat = () => { clearTimeout(seatTimer); seatTimer = setTimeout(flushSeat, 300); };
 /* closing the tab must leave the room snapshot behind, or the table cannot be resumed */
 addEventListener('pagehide', () => {
   if (S.stage === 'game' && S.room) {
-    save();
+    save(); flushSeat();
     /* leaving the tab should free the bots for the rest of the table */
     try { if (window.Sync && Sync.isHolder && Sync.isHolder()) Sync.releaseHost(); } catch (_) { /* noop */ }
   }
@@ -877,6 +885,8 @@ const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(3
 const PUBLIC = ['noise', 'attack', 'spot', 'silence', 'hatch', 'item', 'reveal', 'out'];
 function say(text, kind, sector, extra = {}) {
   const e = Object.assign({ id: uid(), by: myId() || '', turn: S.turn, who: S.name || t('Me'), kind, sector: sector || null, text: text || kind, mine: !S.hot, at: Date.now() }, extra);
+  /* the checkpoint goes out before the announcement, so a crash cannot leave the table ahead of the seat */
+  if (S.online && Sync.code) flushSeat();
   S.log.unshift(e);
   if (window.Sync && Sync.code && PUBLIC.includes(kind)) Sync.push({ id: e.id, by: Sync.uid, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at, n: e.n || 0, ok: e.ok ? 1 : 0 });
   if (S.log.length > 400) S.log.length = 400;

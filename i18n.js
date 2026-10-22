@@ -690,6 +690,8 @@ const IT = {
 "Rooms": "Tavoli",
 "No open rooms.": "Nessun tavolo aperto.",
 "players": "giocatori",
+"Game restored from the table.": "Partita ripristinata dal tavolo.",
+"This table is already running, but this device has no saved game for it. Reopen it from My games on the device that played it.": "Questo tavolo è già in corso, ma questo dispositivo non ha una partita salvata. Riaprila da Le tue partite sul dispositivo che ci ha giocato.",
 "Could not load the admin data": "Impossibile caricare i dati di amministrazione",
 "rooms": "tavoli",
 "banned": "bloccato",

@@ -155,7 +155,7 @@ function lobbyOpts() {
 }
 
 async function beginGame() {
-  const st = Sync.settings; if (!st || S.stage !== 'lobby' || T.beginning) return;
+  const st = Sync.settings; if (!st || S.stage !== 'lobby' || T.beginning || T.resuming) return;
   T.beginning = true;
   let role = null, char = '';
   { const sec = await Sync.get('secret/' + Sync.uid); if (sec) { role = sec.role; char = sec.char || ''; } else role = null; }
@@ -357,6 +357,46 @@ async function recordResult(st) {
   await Sync.recordGame({ result: win ? 'win' : 'loss', role: S.role, chars: S.char || '', map: S.mapId || '', players: Object.keys(Sync.players || {}).length, escaped: S.over === 'escaped' });
 }
 
+/* rebuild a seat from the private checkpoint on the table, for a device that has no local game */
+async function serverResume(code) {
+  if (T.resuming) return false;
+  T.resuming = true;
+  try {
+    const [seat, sec, st] = await Promise.all([
+      Sync.readSeat(code).catch(() => null),
+      Sync.getPath(`rooms/${code}/secret/${Sync.uid}`).catch(() => null),
+      Sync.getPath(`rooms/${code}/settings`).catch(() => null)
+    ]);
+    if (!st || st.status !== 'playing' || !seat || !sec || !sec.role) return false;
+    const name = S.name;
+    T.map = T.maps.find(m => m.id === st.map) || tableMapOf(st);
+    S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, track: 'auto', role: sec.role, char: sec.char || '', online: true, name, room: code, customMaps: S.customMaps, tab: 'play' });
+    S.pos = seat.pos || startSector(T.map, sec.role, sec.char, st.mode);
+    try { S.path = JSON.parse(seat.path || '[]'); } catch (_) { S.path = []; }
+    if (!Array.isArray(S.path) || !S.path.length) S.path = [{ turn: 0, pos: S.pos }];
+    S.items = Array.isArray(seat.items) ? seat.items : [];
+    S.turn = seat.turn || 1; S.over = seat.over || null; S.seatAt = seat.at || 0;
+    T.turnState = Sync.turn || null;
+    save(); boot();
+    if (typeof Online !== 'undefined') { Online.attach(); Online.hostCheck(); }
+    toast(t('Game restored from the table.'));
+    return true;
+  } catch (e) { console.warn('resume', e); return false; }
+  finally { T.resuming = false; }
+}
+/* this device has a game already: the table's checkpoint wins if it is on a later turn */
+async function applySeatIfNewer(code) {
+  try {
+    const seat = await Sync.readSeat(code);
+    if (!seat || !seat.at || Number(seat.at) <= Number(S.seatAt || 0)) return;
+    if (seat.pos) S.pos = seat.pos;
+    try { S.path = JSON.parse(seat.path || '[]'); } catch (_) { /* keep local */ }
+    if (Array.isArray(seat.items)) S.items = seat.items;
+    S.turn = seat.turn || S.turn; S.over = seat.over || S.over; S.seatAt = seat.at;
+    save(); boot();
+  } catch (_) { /* offline: local state stands */ }
+}
+
 Sync.on({
   status(s) {
     if ((S.stage === 'lobby' || S.stage === 'game') && (s === 'no-room' || s === 'started' || s === 'closed' || s === 'full')) { toast(t(FLOW_MSG[s])); Sync.leave(true); resetToWelcome(); return; }
@@ -376,11 +416,20 @@ Sync.on({
         if (typeof Online !== 'undefined') Online.attach();
         return;
       }
-      S.stage = 'lobby'; T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow();
+      /* no saved game on this device: rebuild the seat from the private checkpoint on the table */
+      S.stage = 'lobby'; T.pendingRoom = null; renderFlow();
+      serverResume(code).then(ok => {
+        if (ok) return;
+        try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ }
+        renderFlow();
+      });
+      return;
     }
     save(); if (S.stage === 'game') { if (S.online && (typeof Online !== 'undefined')) Online.attach(); if (S.tab === 'table') render(); }
+    applySeatIfNewer(code);
   },
   settings(st) {
+    if (T.resuming) return;
     if (st && st.status === 'over' && st.result && st.result.reason === 'closed' && (S.stage === 'lobby' || S.stage === 'game') && !Sync.isHost()) { toast(t('The host closed this game.')); Sync.leave(true); resetToWelcome(); return; }
     if (S.stage === 'lobby') { if (st && st.status === 'playing') beginGame(); else { syncOrder(); renderFlow(); } }
     else if (S.stage === 'game') { if (st && st.status === 'over') { showGameOver(); paintOverlay(); recordResult(st); } hdr(); if (S.tab === 'play' || S.tab === 'table') render(); }

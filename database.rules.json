@@ -306,6 +306,22 @@
             }
           }
         },
+        "seats": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['turn', 'at'])",
+            "pos": { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "path": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+            "items": { "$i": { ".validate": "newData.isString() && newData.val().length <= 40" } },
+            "over": { ".validate": "newData.isString() && newData.val().length <= 12" },
+            "char": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "role": { ".validate": "newData.val() === 'human' || newData.val() === 'alien'" },
+            "turn": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 40" },
+            "at": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
         "turn": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
           ".write": "auth != null && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid || data.child('uid').val() === auth.uid)",

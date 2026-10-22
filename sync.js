@@ -136,6 +136,12 @@
     try { localStorage.removeItem('eftaios.account'); } catch (_) { /* noop */ }
   };
   Sync.getPath = async p => { await ensure(); return (await fb.get(at(p))).val(); };
+  /* the private checkpoint a player's own device writes, readable only by them */
+  Sync.saveSeat = seat => {
+    if (!Sync.code || !Sync.uid || !db) return;
+    fb.set(at(`rooms/${Sync.code}/seats/${Sync.uid}`), seat).catch(() => {});
+  };
+  Sync.readSeat = async code => { await ensure(); return (await fb.get(at(`rooms/${code}/seats/${Sync.uid}`))).val(); };
 
   function readProfile(uid) {
     return fb.get(at(`users/${uid}/profile`)).then(s => s.val() || null).catch(() => null);

@@ -44,7 +44,9 @@ Tests: serve the folder on port 8123 and run `node tests/lobby.test.js`, `tests/
 
 ## Deploy: GitHub Pages + Firebase
 
-**GitHub Pages**: *Settings → Pages → Source: GitHub Actions*. `.github/workflows/pages.yml` publishes on every push.
+**GitHub Pages**: *Settings → Pages → Source: GitHub Actions*. `.github/workflows/pages.yml` publishes on every push and stamps `version.json` with the commit, which the footer shows. Bump `version` there for a release.
+
+**Version:** the footer on every screen reads `EFTAIOS v<version> · <build>`; the build is written by the Pages workflow, so it moves with each commit without editing anything.
 
 **Firebase** (Realtime Database): enable *Authentication → Anonymous*, create the database, put the web config in `firebase-config.js`, publish `database.rules.json` (Realtime Database → Rules), and add `<user>.github.io` under *Authentication → Settings → Authorized domains*. The rules must be re-published whenever `database.rules.json` changes.
 

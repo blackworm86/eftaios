@@ -18,6 +18,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Stamp the build
+        run: node -e "const fs=require('fs');const v=JSON.parse(fs.readFileSync('version.json','utf8'));v.build=process.env.GITHUB_SHA.slice(0,7);v.built=new Date().toISOString().slice(0,10);fs.writeFileSync('version.json',JSON.stringify(v))"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

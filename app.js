@@ -1146,3 +1146,12 @@ function boot() {
   fitDone = false; buildMap(); refreshReach(); render(); paintCells(); hdr();
   requestAnimationFrame(() => { fit(); fitDone = true; if (S.pos) focusOn(S.pos); });
 }
+
+/* the deployed build: version.json is stamped by the Pages workflow with the commit */
+(async () => {
+  const el = document.getElementById('ver'); if (!el) return;
+  let v = {};
+  try { const r = await fetch('version.json', { cache: 'no-store' }); if (r.ok) v = await r.json(); } catch (_) { /* offline */ }
+  el.textContent = 'EFTAIOS v' + (v.version || '1.0.0') + (v.build ? ' · ' + v.build : '');
+})();
+

@@ -28,7 +28,13 @@ S.tab = { play: 'play', table: 'table', notes: 'table', rules: 'more', menu: 'mo
 if (S.marks && S.marks.length) { const nm = k => String(k).replace(/^n:/, ''); S.marks.forEach((m, i) => S.log.push({ id: 'mk' + i, by: '', who: nm(m.key), turn: m.turn, kind: 'noise', sector: m.sector, text: 'noise', at: 0, mine: false })); S.marks = []; }
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); if (S.room && Sync.uid && S.stage === 'game') localStorage.setItem('eftaios.room.' + S.room + '.' + Sync.uid, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
 /* closing the tab must leave the room snapshot behind, or the table cannot be resumed */
-addEventListener('pagehide', () => { if (S.stage === 'game' && S.room) save(); });
+addEventListener('pagehide', () => {
+  if (S.stage === 'game' && S.room) {
+    save();
+    /* leaving the tab should free the bots for the rest of the table */
+    try { if (window.Sync && Sync.isHolder && Sync.isHolder()) Sync.releaseHost(); } catch (_) { /* noop */ }
+  }
+});
 
 /* transient (not persisted) */
 const T = { maps: [], map: null, sel: null, pick: null, inspect: null, noteType: 'noise', noteWho: '' };

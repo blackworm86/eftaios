@@ -160,7 +160,8 @@ async function beginGame() {
   let role = null, char = '';
   { const sec = await Sync.get('secret/' + Sync.uid); if (sec) { role = sec.role; char = sec.char || ''; } else role = null; }
   T.beginning = false;
-  if (!role || !S.ready) { toast(t('The game started without you. Ask the host.')); leaveToWelcome(); return; }
+  if (!role) { toast(t('The game started without you. Ask the host.')); leaveToWelcome(); return; }
+  if (!S.ready) { toast(t('This table is already running, but this device has no saved game for it. Reopen it from My games on the device that played it.')); leaveToWelcome(); return; }
   T.map = tableMapOf(st);
   const keep = S.customMaps, name = S.name, room = S.room, shared = T.map.shared ? T.map.rec : null;
   S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, track: 'auto', role, char, online: true, name, room, customMaps: keep, sharedMap: shared, tab: 'play' });

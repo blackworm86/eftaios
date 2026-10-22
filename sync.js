@@ -287,7 +287,12 @@
   /* the device currently running the bots: the creator unless the lease moved */
   Sync.holder = () => (Sync.lease && Sync.lease.uid) || (Sync.settings && Sync.settings.host) || null;
   Sync.isHolder = () => !!Sync.uid && Sync.holder() === Sync.uid;
-  Sync.claimHost = async () => { if (Sync.code) { await fb.set(path(Sync.code, 'lease'), { uid: Sync.uid, at: Date.now() }); } };
+  Sync.claimHost = async () => {
+    if (!Sync.code) return;
+    await fb.set(path(Sync.code, 'lease'), { uid: Sync.uid, at: Date.now() });
+    /* if this tab goes away, drop the lease at once so the table can take over */
+    try { if (fb.onDisconnect) await fb.onDisconnect(at(`rooms/${Sync.code}/lease`)).remove(); } catch (_) { /* fake or offline */ }
+  };
   Sync.releaseHost = () => { if (Sync.code && Sync.isHolder()) fb.remove(path(Sync.code, 'lease')).catch(() => {}); };
   Sync.updateSettings = p => Sync.code && fb.update(path(Sync.code, 'settings'), p).catch(e => { rulesError(e); });
   Sync.setMeP = p => fb.update(path(Sync.code, 'players/' + Sync.uid), p);

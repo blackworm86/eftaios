@@ -141,11 +141,15 @@ const Online = (() => {
   /* host: when the turn passes to a bot, play it after a short pause, then pass the turn on */
   function maybeBotTurn() {
     const ts = T.turnState;
+    /* the table can be restored (or the host duties re-attached) before the map is on screen:
+       running a bot then crashes in its graph */
+    if (S.stage !== 'game' || !T.map || !T.map.grid) return;
     if (!Sync.isHolder() || !HD || !ts || !isBotId(ts.uid) || !Sync.settings || Sync.settings.status !== 'playing') return;
     const tag = ts.n + ':' + ts.idx + ':' + ts.uid; if (botBusy === tag) return; botBusy = tag;
     setTimeout(() => playBot(ts, tag).catch(e => { console.warn(e); botBusy = ''; }), 900);
   }
   async function playBot(ts, tag) {
+    if (S.stage !== 'game' || !T.map || !T.map.grid) { botBusy = ''; return; }
     const b = HD.bots[ts.uid]; if (!b) return;
     if (!b.state.over) {
       const ord = (Sync.settings && Sync.settings.order) || [];

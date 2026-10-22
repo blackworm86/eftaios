@@ -694,6 +694,7 @@ const IT = {
 "Previous": "Precedente",
 "Next": "Successivo",
 "Nothing here yet.": "Ancora niente qui.",
+"Your account has been suspended.": "Il tuo account è stato sospeso.",
 "Account": "Account",
 "Playing as a guest": "Stai giocando come ospite",
 "Sign in to keep your games": "Accedi per conservare le partite",

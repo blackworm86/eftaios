@@ -94,6 +94,12 @@ const check = (ok, label, extra) => { console.log((ok ? 'ok   ' : 'FAIL ') + lab
     check(afterKick.seat !== 'ok' && /permission/i.test(afterKick.seat), 'a kicked seat cannot rewrite itself', afterKick.seat);
     check(afterKick.read === true, 'a kicked player can still read their own marker');
 
+    // a ban takes effect on the open tab, not only at the next sign-in
+    await db.ref('bans/' + user.uid).set(true);
+    await H.waitForTimeout(2000);
+    const banned = await H.evaluate(() => ({ err: Sync.authError, registered: Sync.registered, user: !!Sync.user }));
+    check(banned.err === 'banned' && !banned.registered && !banned.user, 'a banned account is dropped from its open session', JSON.stringify(banned));
+
     check(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
   } finally {
     await b.close().catch(() => {});
@@ -102,6 +108,7 @@ const check = (ok, label, extra) => { console.log((ok ? 'ok   ' : 'FAIL ') + lab
       if (r && r.settings && r.settings.host === user.uid) await db.ref('rooms/' + code).remove();
     }
     await db.ref('users/' + user.uid).remove();
+    await db.ref('bans/' + user.uid).remove().catch(() => {});
     await db.ref('roomIndex').orderByChild('host').equalTo(user.uid).get()
       .then(s => Promise.all(Object.keys(s.val() || {}).map(c => db.ref('roomIndex/' + c).remove()))).catch(() => {});
     await auth.deleteUser(user.uid).catch(() => {});

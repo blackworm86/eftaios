@@ -15,7 +15,7 @@
   };
   let fb = null, db = null, auth = null, unsub = [], ready = null, joining = false;
   const authListeners = [];
-  let authSettlers = [];
+  let authSettlers = [], banUnsub = null;
   const setStatus = s => { Sync.status = s; Sync.h.status && Sync.h.status(s); };
   const clean = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const path = (code, p) => fb.ref(db, `rooms/${code}/${p}`);
@@ -46,6 +46,7 @@
 
   async function handleUser(u) {
     const prev = Sync.uid;
+    if (banUnsub) { try { banUnsub(); } catch (_) { /* noop */ } banUnsub = null; }
     Sync.authSettled = false;
     Sync.user = u || null; Sync.uid = u ? u.uid : null;
     Sync.isAdmin = false; Sync.profile = null; Sync.registered = false;
@@ -57,6 +58,16 @@
       if (Sync.banned) { Sync.authError = 'banned'; try { const au = await fbAuth(); await au.signOut(auth); } catch (_) { /* noop */ } return; }
       Sync.authError = '';
       try { if (Sync.registered) localStorage.setItem('eftaios.account', '1'); } catch (_) { /* noop */ }
+      /* a ban can also arrive while the tab is open: drop the session instead of playing on */
+      try {
+        banUnsub = fb.onValue(at(`bans/${u.uid}`), s => {
+          if (s.val() !== true) return;
+          Sync.banned = true; Sync.authError = 'banned';
+          try { if (window.toast) window.toast(window.t ? t('Your account has been suspended.') : 'Account suspended.'); } catch (_) { /* noop */ }
+          try { if (window.resetToWelcome) resetToWelcome('welcome'); } catch (_) { /* noop */ }
+          fbAuth().then(au => au.signOut(auth)).catch(() => {});
+        });
+      } catch (_) { /* rules or offline */ }
     }
     authListeners.forEach(fn => { try { fn(Sync.user); } catch (_) { /* noop */ } });
     if (Sync.h.auth) Sync.h.auth();

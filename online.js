@@ -186,8 +186,9 @@ const Online = (() => {
     });
   }
 
-  let reqWatched = false, hbTimer = null, hdLoading = false;
-  function watchRequests() { if (reqWatched) return; reqWatched = true; Sync.watchChild('requests', hostReq); }
+  let reqGen = -1, hbTimer = null, hdLoading = false;
+  /* one requests listener per table generation: a new join or a new room must attach a fresh one */
+  function watchRequests() { if (reqGen === Sync.gen) return; reqGen = Sync.gen; Sync.watchChild('requests', hostReq); }
   /* the lease holder keeps saying it is alive, so the table can tell a gone host from a slow one */
   function startHeartbeat() {
     clearInterval(hbTimer);
@@ -230,7 +231,8 @@ const Online = (() => {
       const id = uid();
       return new Promise((res, rej) => {
         pending[id] = { res };
-        Sync.set('requests/' + id, Object.assign({ id, uid: Sync.uid, type, at: Date.now() }, extra || {})).catch(rej);
+        Sync.set('requests/' + id, Object.assign({ id, uid: Sync.uid, type, at: Date.now() }, extra || {}))
+          .catch(rej);
         setTimeout(() => { if (pending[id]) { delete pending[id]; rej(new Error('timeout')); } }, 20000);
       });
     },

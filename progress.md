@@ -11,7 +11,7 @@ Tracks the security and maintenance work. One row per item, updated as it lands.
 | 3 | Six-character room codes | **done (code)** | `Sync.newCode` generates 6; the rules still accept 4–8 so existing rooms keep working |
 | 4 | Append-only admin log | **done (code)** | Entries can be created, never changed or deleted; `by` must be the admin |
 | 5 | Structural rule checks | **done** | `npm run rules:check`, 19 invariants asserted against `database.rules.json` |
-| 6 | Firebase Emulator rules tests | **blocked** | Needs Java 11+ and `firebase-tools`; this machine has Java 1.8. Plan is written below |
+| 6 | Firebase Emulator rules tests | **written, needs Java 21** | 20 cases in `tests/rules/rules.test.js`, `npm run test:rules`, CI on every push; local run blocked by Java 8 |
 | 7 | App Check for RTDB | **deferred** | Google closed new reCAPTCHA v3 registrations (the console field is disabled); the replacement, Fraud Defense / reCAPTCHA Enterprise, needs a Cloud billing account. Decision: skip — membership rules and CSP cover room abuse. |
 | 8 | CSP meta tag | **done** | `default-src 'self'`, scripts only from self + gstatic, Firebase and wss endpoints, no objects; verified live (sign-in, RTDB reads/writes, no CSP console errors) |
 | 9 | Publish rules in Firebase | **done** | Membership rules and the kick marker are live |
@@ -47,17 +47,18 @@ npm test             # browser suite
 2. Push the code; Pages updates automatically.
 3. New tables get 6-character codes; old links and rooms keep working.
 
-## Blocked: emulator suite
+## Emulator suite
 
-The Firebase Emulator needs **Java 11+**; only Java 8 is installed, and `firebase-tools` is not in the repo.
-To unblock:
+The suite is written and wired; it needs **Java 21** (firebase-tools 15 refuses anything older) and this machine has Java 8. One-time setup:
 
-1. Install a JRE 11+ (Temurin) and `npm install --save-dev firebase-tools`;
-2. add `firebase.json` with `database.rules` and an emulator port;
-3. add `@firebase/rules-unit-testing` and one test per write path (guest join, seat in progress, log as non-member, seat checkpoint owner, ban, admin close, append-only audit);
-4. add `npm run test:rules` and a CI workflow.
+1. Install Temurin 21: `winget install --id EclipseAdoptium.Temurin.21.JDK -e`;
+2. open a new terminal, check `java -version` shows 21 (if not, set `JAVA_HOME` to the JDK folder and add its `bin` to `PATH`);
+3. `npm install` (already done: `firebase-tools`, `@firebase/rules-unit-testing`, `firebase`);
+4. `npm run test:rules` — starts the database emulator on port 9000 and runs every case in `tests/rules/rules.test.js`.
 
-Until then, `tools/rules-check.js` is the regression guard: it catches an invariant being deleted, not a wrong expression.
+CI runs the same command on every push (`.github/workflows/checks.yml`, Ubuntu + Java 21). Until the local JDK is upgraded, that workflow is the real gate.
+
+`tools/rules-check.js` stays as the fast structural guard: it catches an invariant being deleted, not a wrong expression.
 
 ## Next in Priority 1
 
@@ -73,7 +74,7 @@ Until then, `tools/rules-check.js` is the regression guard: it catches an invari
 | 2 | One restore path | **done** | The local per-room snapshot is gone; `seats/<uid>` is the only source. Two resume functions remain by design: rebuild (no local game) and adopt-if-newer (reload) |
 | 3 | Architecture map | **done** | `ARCHITECTURE.md`: modules, the three authorities, data model, flows, invariants, limits |
 | 4 | Reproducible toolchain | **done** | `package.json`, lockfile, `npm` scripts |
-| 5 | Emulator and CI | **blocked** | Java 11+ needed |
+| 5 | Emulator and CI | **written, needs Java 21** | `firebase.json`, 20 rules cases, `npm run test:rules`, CI workflow |
 
 ## Log
 
@@ -82,3 +83,4 @@ Until then, `tools/rules-check.js` is the regression guard: it catches an invari
 - 2026-10-22 — Kick rules verified live (table can mark, kicked seat cannot rewrite itself, self-read allowed). Added the CSP meta tag and verified it against the real project: sign-in, RTDB reads/writes and the app boot with no CSP console errors; browser suite green.
 - 2026-10-22 — Room retention tool added and run: 4 stale index entries removed, no rooms old enough yet. Command: `npm run cleanup:rooms` (dry run) and `--apply`.
 - 2026-10-22 — Clean-code pass: removed five dead symbols/tools, deleted the duplicate local resume path (server seat is now the only one), wrote `ARCHITECTURE.md`. Lobby/online/rejoin/layout tests green.
+- 2026-10-22 — Emulator suite written: `firebase.json`, 20 rules cases (`tests/rules/rules.test.js`), `npm run test:rules`, CI workflow. Local execution needs JDK 21; CI runs it on every push.

@@ -1,0 +1,23 @@
+name: Checks
+
+on:
+  push:
+    branches: [ccr-6928b416-rtom29]
+  pull_request:
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run rules:check
+      - run: npm run test:rules

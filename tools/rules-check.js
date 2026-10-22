@@ -29,6 +29,8 @@ check(has(rules.bans.$uid['.write'], 'auth.token.admin === true'), 'only the adm
 check(has(rules.adminlog['.read'], 'auth.token.admin === true'), 'only the admin can read the audit log');
 check(has(rules.rooms.$room.created['.write'], "child('profile/handle').exists()"), 'only a registered player can create a table');
 check(has(rules.rooms.$room.created['.write'], "val() !== true"), 'a banned player cannot create a table');
+check(has(room.players.$uid['.write'], "child('kicks')"), 'a kicked player cannot rewrite their seat');
+check(has(room.kicks.$uid['.write'], "settings/host") && has(room.kicks.$uid['.write'], "lease/uid"), 'only the table can kick a player');
 check(has(room.players.$uid['.write'], "val() !== true"), 'a banned player cannot write a seat');
 
 console.log(bad ? `\n${bad} rule invariant(s) broken` : '\nall rule invariants hold');

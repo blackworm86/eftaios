@@ -272,7 +272,7 @@
         "players": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
           "$uid": {
-            ".write": "auth != null && root.child('bans').child(auth.uid).val() !== true && (data.exists() || root.child('rooms').child($room).child('settings/status').val() !== 'playing') && (auth.uid === $uid || auth.token.admin === true || ($uid.beginsWith('bot_') && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid)))",
+            ".write": "auth != null && root.child('bans').child(auth.uid).val() !== true && !root.child('rooms').child($room).child('kicks').child(auth.uid).exists() && (data.exists() || root.child('rooms').child($room).child('settings/status').val() !== 'playing') && (auth.uid === $uid || auth.token.admin === true || ($uid.beginsWith('bot_') && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid)))",
             ".validate": "newData.hasChildren(['name', 'ready'])",
             "name": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
@@ -320,6 +320,13 @@
             "turn": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 40" },
             "at": { ".validate": "newData.isNumber()" },
             "$other": { ".validate": false }
+          }
+        },
+        "kicks": {
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid || auth.token.admin === true)",
+            ".write": "auth != null && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid || auth.token.admin === true)",
+            ".validate": "newData.isBoolean()"
           }
         },
         "turn": {

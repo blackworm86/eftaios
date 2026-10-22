@@ -269,6 +269,7 @@ Object.assign(actions, {
     if (!T.turnAt || Date.now() - T.turnAt < st.autoKick * 60000) return;
     const p = (Sync.players || {})[u] || {};
     confirmDlg(t('Remove {p}?', { p: p.name || '?' }), t('They have been idle past the time set in the lobby. Their seat is out of this game.'), () => {
+      Sync.set('kicks/' + u, true).catch(() => {});
       Sync.upd('players/' + u, { out: 'kicked' });
       Sync.push({ id: uid(), turn: T.turnState.n, who: p.name || '?', kind: 'info', text: 'kicked', sector: '', at: Date.now() });
       const nx = nextTurn(); if (nx) Sync.setTurn(nx);

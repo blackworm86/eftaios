@@ -14,7 +14,9 @@ Tracks the security and maintenance work. One row per item, updated as it lands.
 | 6 | Firebase Emulator rules tests | **blocked** | Needs Java 11+ and `firebase-tools`; this machine has Java 1.8. Plan is written below |
 | 7 | App Check for RTDB | **todo** | Needs the console, a reCAPTCHA key and live testing |
 | 8 | CSP meta tag | **deferred** | Must be verified against real Firebase auth first; a wrong `connect-src` breaks sign-in silently |
-| 9 | Republish rules in Firebase | **pending owner** | None of the above protects anything until the rules are published |
+| 9 | Republish rules in Firebase | **pending owner** | The membership rules and the kick marker both need a publish |
+| 10 | Live verification of the published rules | **done** | `tools/verify-live.js`: six-character code, member write allowed, outsider log write and mid-game seat both `PERMISSION_DENIED` |
+| 11 | Kicked player cannot lift the kick | **done (code)** | New `kicks/<uid>` node written only by the host/lease; the seat guard refuses a kicked account |
 
 ## What changed in this pass
 
@@ -61,4 +63,5 @@ Until then, `tools/rules-check.js` is the regression guard: it catches an invari
 
 ## Log
 
-- 2026-10-22 — Priority 1 items 1–5 implemented; rules invariant checker added; `package.json` + lockfile; lobby/online/rejoin/close/online-bots tests pass; `rules:check` 17/17. Emulator still blocked on Java.
+- 2026-10-22 — Priority 1 items 1–5 implemented; rules invariant checker added; `package.json` + lockfile; lobby/online/rejoin/close/online-bots tests pass; `rules:check` 19/19.
+- 2026-10-22 — Published rules verified against the real project with `tools/verify-live.js` (six-letter code; member can write the log; an outsider is denied the log and a mid-game seat). Added the `kicks/<uid>` marker so a removed player cannot clear their own `out`; needs one more publish.

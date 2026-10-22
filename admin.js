@@ -25,7 +25,8 @@ const Admin = (() => {
     const tabs = `<div class="seg adm-tabs" role="tablist">${[['users', 'Players'], ['rooms', 'Rooms'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
     if (!T.admin) return `${head}${tabs}<p class="dim">${t('Loading…')}</p>`;
     if (T.admin.error) return `${head}${tabs}<p class="dim">${t('Could not load the admin data')}: ${esc(T.admin.error)}</p>`;
-    return `${head}${tabs}${T.admin[tab()] === undefined ? '' : roster(tab())}`;
+    const nuke = tab() === 'audit' ? `<div class="row two"><button class="btn danger" data-act="adminnuke">${t('Nuke the app')}</button></div>` : '';
+    return `${head}${tabs}${T.admin[tab()] === undefined ? '' : roster(tab())}${nuke}`;
   }
   /* lists are paged so the panel never scrolls: five rows per screen on a phone */
   function paged(which, entries, per, row) {
@@ -87,6 +88,27 @@ const Admin = (() => {
     await act('close-room', code);
   }
 
+  /* back to a blank state: every other player, table, report and ban goes; the admin, the maps and the audit log stay.
+     Logins cannot be removed from a browser, so a deleted player can register again with the same email. */
+  async function nuke() {
+    const d = T.admin || {}, me = Sync.uid;
+    let n = { users: 0, rooms: 0 };
+    for (const [code, r] of Object.entries(d.rooms || {})) { await Sync.delPath('roomIndex/' + code).catch(() => {}); await Sync.delPath('rooms/' + code).catch(() => {}); n.rooms++; }
+    for (const [uid, u] of Object.entries(d.users || {})) {
+      if (uid === me) { for (const k of ['rooms', 'games']) await Sync.delPath(`users/${uid}/${k}`).catch(() => {}); continue; }
+      for (const code of Object.keys((u && u.rooms) || {})) {   // tables the index never saw
+        try { if (await Sync.getPath(`rooms/${code}/settings/host`) === uid) await Sync.delPath('rooms/' + code); } catch (_) { /* noop */ }
+      }
+      const h = u && u.profile && u.profile.handle;
+      await Sync.delPath(`users/${uid}`).catch(() => {});
+      if (h) await Sync.delPath('handles/' + h).catch(() => {});
+      n.users++;
+    }
+    for (const id of Object.keys(d.reports || {})) await Sync.delPath('reports/' + id).catch(() => {});
+    for (const uid of Object.keys(d.bans || {})) await Sync.delPath('bans/' + uid).catch(() => {});
+    await act('nuke', '', `${n.users} players, ${n.rooms} rooms`);
+    toast(t('Done: {u} players and {r} rooms removed.', { u: n.users, r: n.rooms }));
+  }
   async function act(action, target, detail) {
     try { await Sync.adminLog(action, target || '', detail || ''); } catch (_) { /* log is best effort */ }
     await load();
@@ -139,6 +161,14 @@ const Admin = (() => {
       };
     },
     adminroomclose(b) { closeRoom(b.dataset.c); },
+    adminnuke() {
+      dlg.innerHTML = `<h2>${t('Nuke the app')}</h2><p>${t('Removes every other player, all tables, reports and bans. Your account, the maps and the audit log stay. This cannot be undone.')}</p>
+        <label class="field"><span>${t('Type NUKE to confirm')}</span><input id="ad-nuke" autocapitalize="characters" autocomplete="off"></label>
+        <div class="row"><button class="btn" id="d-no">${t('Cancel')}</button><button class="btn danger" id="ad-go" disabled>${t('Nuke')}</button></div>`;
+      if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
+      $('#ad-nuke').oninput = () => { $('#ad-go').disabled = $('#ad-nuke').value.trim().toUpperCase() !== 'NUKE'; };
+      $('#ad-go').onclick = async () => { closeDlg(); toast(t('Working…')); try { await nuke(); } catch (e) { toast(t('Could not finish: {e}', { e: String(e && (e.code || e.message) || e).slice(0, 60) })); } };
+    },
     async adminsweep() {
       const cutoff = Date.now() - 7 * 86400000;
       const old = Object.entries(T.admin.rooms || {}).filter(([, r]) => r.status === 'over' || (r.at || 0) < cutoff).map(([c]) => c);

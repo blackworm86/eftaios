@@ -123,7 +123,7 @@
     "handles": {
       ".read": "auth != null",
       "$h": {
-        ".write": "auth != null && ((!newData.exists() && data.val() === auth.uid) || (newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid)))",
+        ".write": "auth != null && ((!newData.exists() && (data.val() === auth.uid || auth.token.admin === true)) || (newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid)))",
         ".validate": "newData.isString()"
       }
     },

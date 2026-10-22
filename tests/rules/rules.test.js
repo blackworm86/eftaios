@@ -57,6 +57,8 @@ const log = (text = 'hello') => ({ id: 'l' + Date.now() + Math.random(), turn: 1
         await s(`rooms/${c}/requests/r1`, { uid: 'guest', type: 'sector' });
         await s(`roomIndex/${c}`, { host: 'host', status: 'over', at: 1 });
       }
+      await s('handles/ghost', 'guest');
+      await s('handles/ghost2', 'guest');
       await s('adminlog/old', { action: 'created', at: 1, by: 'admin1' });
     });
 
@@ -110,6 +112,10 @@ const log = (text = 'hello') => ({ id: 'l' + Date.now() + Math.random(), turn: 1
     await ok('the admin can delete a table\'s index entry', () => assertSucceeds(remove(ref(admin, 'roomIndex/DEL003'))));
     await ok('a table cannot be overwritten, only deleted', () => assertFails(set(ref(host, 'rooms/DEL004'), { settings: { map: 'x', mode: 'basic', host: 'host', status: 'lobby' } })));
     await ok('a player can clear their own seat checkpoint for the next game', () => assertSucceeds(remove(ref(guest, 'rooms/DEL004/seats/guest'))));
+    await ok('an outsider cannot release someone else\'s handle', () => assertFails(remove(ref(outsider, 'handles/ghost'))));
+    await ok('the admin can release a handle (nuke, delete player)', () => assertSucceeds(remove(ref(admin, 'handles/ghost'))));
+    await ok('the admin cannot grab a handle for someone else', () => assertFails(set(ref(admin, 'handles/stolen'), 'guest')));
+    await ok('the owner can still release their own handle', () => assertSucceeds(remove(ref(guest, 'handles/ghost2'))));
   } finally {
     await env.cleanup();
   }

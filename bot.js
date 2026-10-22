@@ -326,7 +326,7 @@ const Bot = (() => {
     const feed = !st.fed ? FEED_BONUS : 0;
     // measured: the Humans an attack finds are about a third of what the tracker expects (the best-looking sector is picked), and
     // Aliens hunt the same targets, so they are met about 2.5 times as often as expected
-    return W.humanCnt[c] * W.sk.humanCal * (KILL_VALUE + feed) - Math.min(1, W.alienCnt[c] * 2.5) * W.sk.allyCost;
+    return W.humanCnt[c] * W.sk.humanCal * (KILL_VALUE + feed) - Math.min(W.sk.allyCap || 1, W.alienCnt[c] * 2.5) * W.sk.allyCost;
   }
   /* the same for a Human playing an Attack card: Aliens hit are a big gain, a Human hit is a loss */
   function humanAttackValue(W, c) { return W.alienCnt[c] * ALIEN_KILL_VALUE - W.humanCnt[c] * HUMAN_LOSS; }

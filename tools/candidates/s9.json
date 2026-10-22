@@ -1,0 +1,10 @@
+[
+  { "tag": "dw22_b09", "skill": { "hard": { "humanCal": 0.8, "dw": 22, "beta": 0.9 } } },
+  { "tag": "dw22_b09_lw2", "skill": { "hard": { "humanCal": 0.8, "dw": 22, "beta": 0.9, "lw": 2 } } },
+  { "tag": "dw22_b09_lw4", "skill": { "hard": { "humanCal": 0.8, "dw": 22, "beta": 0.9, "lw": 4 } } },
+  { "tag": "dw22_b09_m2", "skill": { "hard": { "humanCal": 0.8, "dw": 22, "beta": 0.9, "mem": 2 } } },
+  { "tag": "dw22_b09_t01", "skill": { "hard": { "humanCal": 0.8, "dw": 22, "beta": 0.9, "temp": 0.1 } } },
+  { "tag": "dw20_b09", "skill": { "hard": { "humanCal": 0.8, "dw": 20, "beta": 0.9 } } },
+  { "tag": "dw26_b09", "skill": { "hard": { "humanCal": 0.8, "dw": 26, "beta": 0.9 } } },
+  { "tag": "dw22_b105", "skill": { "hard": { "humanCal": 0.8, "dw": 22, "beta": 1.05 } } }
+]

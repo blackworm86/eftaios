@@ -1,0 +1,7 @@
+[
+  { "tag": "base", "skill": {} },
+  { "tag": "hc0.5", "skill": { "hard": { "humanCal": 0.5 } } },
+  { "tag": "hc0.65", "skill": { "hard": { "humanCal": 0.65 } } },
+  { "tag": "hc0.8", "skill": { "hard": { "humanCal": 0.8 } } },
+  { "tag": "hc1.0", "skill": { "hard": { "humanCal": 1.0 } } }
+]

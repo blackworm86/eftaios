@@ -1,0 +1,29 @@
+EFTAIOS bot evaluation: c1   seed 20261021   928 games
+generated 2026-10-21 15:06:33
+
+## hard6 / train (288 games)
+alien win 49.0% +/-5.7   human escape 39.6% +/-3.3   turns 16.9   kills/game 2.48   hit rate 16.8%  target: alien win >=55%, human escape <=35%
+cluster turns 16.8%   max run avg 1.99 / worst 20   games with 10+ run 17/288   death audit clean
+
+## hard6 / holdout (144 games)
+alien win 54.2% +/-8.0   human escape 33.3% +/-4.4   turns 22.4   kills/game 2.42   hit rate 13.6%  target: alien win >=55%, human escape <=35%
+cluster turns 22.2%   max run avg 2.90 / worst 27   games with 10+ run 18/144   death audit clean
+
+## hard8 / train (288 games)
+alien win 54.2% +/-5.7   human escape 32.2% +/-2.7   turns 17.9   kills/game 3.91   hit rate 20.3%  target: alien win >=55%, human escape <=35%
+cluster turns 37.5%   max run avg 4.70 / worst 35   games with 10+ run 41/288   death audit clean
+
+## hard8 / holdout (144 games)
+alien win 59.0% +/-7.9   human escape 34.0% +/-3.9   turns 25.1   kills/game 3.49   hit rate 13.1%  target: alien win >=55%, human escape <=35%
+cluster turns 41.6%   max run avg 6.59 / worst 33   games with 10+ run 28/144   death audit clean
+
+## marconi8 / holdout (64 games)
+alien win 50.0% +/-11.9   human escape 36.7% +/-5.9   turns 19.3   kills/game 3.52   hit rate 12.1%
+cluster turns 28.0%   max run avg 3.97 / worst 14   games with 10+ run 6/64   death audit clean
+
+## target scorecard
+hard6/holdout: alien win >=55% FAIL (54.2%)   human escape <=35% PASS (33.3%)
+hard6/train: alien win >=55% FAIL (49.0%)   human escape <=35% FAIL (39.6%)
+hard8/holdout: alien win >=55% PASS (59.0%)   human escape <=35% PASS (34.0%)
+hard8/train: alien win >=55% FAIL (54.2%)   human escape <=35% PASS (32.2%)
+marconi8/holdout: alien win >=55% FAIL (50.0%)   human escape <=35% FAIL (36.7%)

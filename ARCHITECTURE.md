@@ -58,7 +58,9 @@ rooms/<code>/
 - **Turn**: the active player edits their own `seats/<uid>` and writes public `log` entries; attacks and Spotlights go to their own node and every other device answers for itself.
 - **Bot turn**: only the lease holder plays it; `hostdata` holds every bot seat. Takeover loads `hostdata` and re-attaches the request listener for the current room generation.
 - **Resume**: a device with no local game reads `seats/<uid>` (owner-only) plus `secret/<uid>` and rebuilds the view. There is no local per-room copy anymore.
-- **Close/retention**: closing sets `settings.status = over`; `tools/cleanup-rooms.js` removes closed tables after the window.
+- **Table and games**: a room is a table that hosts many games. `settings.n` counts them. When a game ends (`status = over`) the host can **Play again**: `Sync.rematch` wipes the per-game nodes (turn, log, hatches, counts, attacks, spots, requests, hostdata, secrets) in one multi-path update and puts the table back in `lobby` with `n + 1`. Each player clears their own row and seat (`Sync.resetMine`), since rules let only them write those.
+- **Records**: each registered player's result is written once per game to `users/<uid>/games/<code>[-n]` (last 20) and added to `stats`.
+- **Close**: the host's close sets `over`/`closed` so every device sees it, then deletes `roomIndex/<code>` and `rooms/<code>` after a short grace. The rules allow deleting a whole room only to the host or the admin. The admin panel's *Delete closed and idle rooms* sweeps leftovers (closed, or idle over 7 days); `tools/cleanup-rooms.js` does the same from a terminal.
 
 ## Invariants the rules enforce
 

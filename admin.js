@@ -25,7 +25,8 @@ const Admin = (() => {
     const tabs = `<div class="seg adm-tabs" role="tablist">${[['users', 'Players'], ['rooms', 'Rooms'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
     if (!T.admin) return `${head}${tabs}<p class="dim">${t('Loading…')}</p>`;
     if (T.admin.error) return `${head}${tabs}<p class="dim">${t('Could not load the admin data')}: ${esc(T.admin.error)}</p>`;
-    return `${head}${tabs}${T.admin[tab()] === undefined ? '' : roster(tab())}`;
+    const nuke = tab() === 'audit' ? `<div class="row two"><button class="btn danger" data-act="adminnuke">${t('Nuke the app')}</button></div>` : '';
+    return `${head}${tabs}${T.admin[tab()] === undefined ? '' : roster(tab())}${nuke}`;
   }
   /* lists are paged so the panel never scrolls: five rows per screen on a phone */
   function paged(which, entries, per, row) {
@@ -58,7 +59,8 @@ const Admin = (() => {
     if (which === 'rooms') {
       const users = d.users || {};
       const list = Object.entries(d.rooms || {}).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
-      return paged('rooms', list, 5, ([code, r]) => {
+      const sweep = `<div class="row two"><button class="btn danger" data-act="adminsweep">${t('Delete closed and idle rooms')}</button></div>`;
+      return sweep + paged('rooms', list, 5, ([code, r]) => {
         const host = (users[r.host] && users[r.host].profile) || {};
         return `<li class="adm-row"><span class="who"><b>${esc(code)}</b><small>${esc(r.map || '')} · ${r.players || 1} ${t('players')}${host.name ? ' · ' + esc(host.name) : ''}</small></span>
           <div class="acts"><span class="pst">${esc(r.status || '')}</span><button class="btn" data-act="adminroomclose" data-c="${esc(code)}">${t('Close')}</button></div></li>`;
@@ -86,6 +88,27 @@ const Admin = (() => {
     await act('close-room', code);
   }
 
+  /* back to a blank state: every other player, table, report and ban goes; the admin, the maps and the audit log stay.
+     Logins cannot be removed from a browser, so a deleted player can register again with the same email. */
+  async function nuke() {
+    const d = T.admin || {}, me = Sync.uid;
+    let n = { users: 0, rooms: 0 };
+    for (const [code, r] of Object.entries(d.rooms || {})) { await Sync.delPath('roomIndex/' + code).catch(() => {}); await Sync.delPath('rooms/' + code).catch(() => {}); n.rooms++; }
+    for (const [uid, u] of Object.entries(d.users || {})) {
+      if (uid === me) { for (const k of ['rooms', 'games']) await Sync.delPath(`users/${uid}/${k}`).catch(() => {}); continue; }
+      for (const code of Object.keys((u && u.rooms) || {})) {   // tables the index never saw
+        try { if (await Sync.getPath(`rooms/${code}/settings/host`) === uid) await Sync.delPath('rooms/' + code); } catch (_) { /* noop */ }
+      }
+      const h = u && u.profile && u.profile.handle;
+      await Sync.delPath(`users/${uid}`).catch(() => {});
+      if (h) await Sync.delPath('handles/' + h).catch(() => {});
+      n.users++;
+    }
+    for (const id of Object.keys(d.reports || {})) await Sync.delPath('reports/' + id).catch(() => {});
+    for (const uid of Object.keys(d.bans || {})) await Sync.delPath('bans/' + uid).catch(() => {});
+    await act('nuke', '', `${n.users} players, ${n.rooms} rooms`);
+    toast(t('Done: {u} players and {r} rooms removed.', { u: n.users, r: n.rooms }));
+  }
   async function act(action, target, detail) {
     try { await Sync.adminLog(action, target || '', detail || ''); } catch (_) { /* log is best effort */ }
     await load();
@@ -106,9 +129,18 @@ const Admin = (() => {
       const uid = b.dataset.u, h = b.dataset.h;
       if (uid === Sync.uid) { toast(t('You cannot do that to your own account.')); return; }
       if (!confirm(t('Delete this player and all their data?'))) return;
+      /* tables they host go with them, so no dead room is left behind */
+      const mine = Object.keys((T.admin.users[uid] || {}).rooms || {});
+      for (const code of mine) {
+        try {
+          const host = await Sync.getPath(`rooms/${code}/settings/host`);
+          if (host === uid) { await Sync.delPath('roomIndex/' + code); await Sync.delPath('rooms/' + code); }
+        } catch (e) { console.warn('wipe room', code, e); }
+      }
       await Sync.delPath(`users/${uid}`);
       await Sync.delPath(`bans/${uid}`).catch(() => {});
       if (h) await Sync.delPath('handles/' + h).catch(() => {});
+      toast(t('Data deleted. The login stays: the player can register again, or remove it with tools/admin.js delete.'));
       await act('delete-user', uid, h || '');
     },
     adminreset() {
@@ -129,6 +161,26 @@ const Admin = (() => {
       };
     },
     adminroomclose(b) { closeRoom(b.dataset.c); },
+    adminnuke() {
+      dlg.innerHTML = `<h2>${t('Nuke the app')}</h2><p>${t('Removes every other player, all tables, reports and bans. Your account, the maps and the audit log stay. This cannot be undone.')}</p>
+        <label class="field"><span>${t('Type NUKE to confirm')}</span><input id="ad-nuke" autocapitalize="characters" autocomplete="off"></label>
+        <div class="row"><button class="btn" id="d-no">${t('Cancel')}</button><button class="btn danger" id="ad-go" disabled>${t('Nuke')}</button></div>`;
+      if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
+      $('#ad-nuke').oninput = () => { $('#ad-go').disabled = $('#ad-nuke').value.trim().toUpperCase() !== 'NUKE'; };
+      $('#ad-go').onclick = async () => { closeDlg(); toast(t('Working…')); try { await nuke(); } catch (e) { toast(t('Could not finish: {e}', { e: String(e && (e.code || e.message) || e).slice(0, 60) })); } };
+    },
+    async adminsweep() {
+      const cutoff = Date.now() - 7 * 86400000;
+      const old = Object.entries(T.admin.rooms || {}).filter(([, r]) => r.status === 'over' || (r.at || 0) < cutoff).map(([c]) => c);
+      if (!old.length) { toast(t('Nothing to delete.')); return; }
+      if (!confirm(t('Delete closed rooms and rooms idle for over 7 days? This cannot be undone.') + ' (' + old.length + ')')) return;
+      let n = 0;
+      for (const code of old) {
+        try { await Sync.delPath('roomIndex/' + code); await Sync.delPath('rooms/' + code); n++; } catch (e) { console.warn('sweep', code, e); }
+      }
+      toast(t('Deleted {n} rooms.', { n }));
+      await act('sweep-rooms', '', String(n));
+    },
     async adminmap(b) {
       await Sync.setPath(`pubmaps/${b.dataset.id}/hidden`, b.dataset.h === '1' ? null : true);
       await act(b.dataset.h === '1' ? 'restore-map' : 'hide-map', b.dataset.id);

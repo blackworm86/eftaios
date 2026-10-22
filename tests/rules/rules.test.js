@@ -46,6 +46,19 @@ const log = (text = 'hello') => ({ id: 'l' + Date.now() + Math.random(), turn: 1
       await s('rooms/KICK01/players/host', { name: 'Host', ready: true });
       await s('rooms/KICK01/players/kicked', { name: 'Kicked', ready: true });
       await s('rooms/KICK01/kicks/kicked', true);
+      for (const c of ['DEL001', 'DEL002', 'DEL003', 'DEL004']) {
+        await s(`rooms/${c}/settings`, { map: 'galilei', mode: 'basic', host: 'host', status: 'over', n: 1 });
+        await s(`rooms/${c}/players/host`, { name: 'Host', ready: true });
+        await s(`rooms/${c}/players/guest`, { name: 'Guest', ready: true });
+        await s(`rooms/${c}/seats/guest`, { pos: 'H1', turn: 1, at: 1 });
+        await s(`rooms/${c}/secret/guest`, { role: 'human' });
+        await s(`rooms/${c}/attacks/a1`, { by: 'host', sector: '01', at: 1 });
+        await s(`rooms/${c}/spots/s1`, { by: 'host', sector: '01', at: 1 });
+        await s(`rooms/${c}/requests/r1`, { uid: 'guest', type: 'sector' });
+        await s(`roomIndex/${c}`, { host: 'host', status: 'over', at: 1 });
+      }
+      await s('handles/ghost', 'guest');
+      await s('handles/ghost2', 'guest');
       await s('adminlog/old', { action: 'created', at: 1, by: 'admin1' });
     });
 
@@ -80,6 +93,29 @@ const log = (text = 'hello') => ({ id: 'l' + Date.now() + Math.random(), turn: 1
     await ok('a non-admin cannot read the audit log', () => assertFails(get(ref(adminNo, 'adminlog'))));
     await ok('a registered player can create a table', () => assertSucceeds(set(ref(outsider, 'rooms/NEW001/created'), Date.now())));
     await ok('an account without a handle cannot create a table', () => assertFails(set(ref(env.authenticatedContext('noprofile').database(), 'rooms/NEW002/created'), Date.now())));
+    await ok('the host can wipe a finished game\'s attacks, spots and requests', async () => {
+      await assertSucceeds(remove(ref(host, 'rooms/DEL001/attacks')));
+      await assertSucceeds(remove(ref(host, 'rooms/DEL001/spots')));
+      await assertSucceeds(remove(ref(host, 'rooms/DEL001/requests')));
+    });
+    await ok('a guest cannot wipe attacks', () => assertFails(remove(ref(guest, 'rooms/DEL002/attacks'))));
+    await ok('the host can start the next game of the table (counter, lobby)', () => assertSucceeds(update(ref(host, 'rooms/DEL001/settings'), { status: 'lobby', n: 2 })));
+    await ok('the game counter must be a number', () => assertFails(update(ref(host, 'rooms/DEL001/settings'), { n: 'two' })));
+    await ok('a guest cannot delete a table', () => assertFails(remove(ref(guest, 'rooms/DEL002'))));
+    await ok('an outsider cannot delete a table', () => assertFails(remove(ref(outsider, 'rooms/DEL002'))));
+    await ok('the host can delete the whole table, other players\' seats included', async () => {
+      await assertSucceeds(remove(ref(host, 'roomIndex/DEL002')));
+      await assertSucceeds(remove(ref(host, 'rooms/DEL002')));
+    });
+    await ok('a table cannot be emptied through its parent by a guest', () => assertFails(update(ref(guest, 'rooms'), { DEL003: null })));
+    await ok('the admin can delete any table', () => assertSucceeds(remove(ref(admin, 'rooms/DEL003'))));
+    await ok('the admin can delete a table\'s index entry', () => assertSucceeds(remove(ref(admin, 'roomIndex/DEL003'))));
+    await ok('a table cannot be overwritten, only deleted', () => assertFails(set(ref(host, 'rooms/DEL004'), { settings: { map: 'x', mode: 'basic', host: 'host', status: 'lobby' } })));
+    await ok('a player can clear their own seat checkpoint for the next game', () => assertSucceeds(remove(ref(guest, 'rooms/DEL004/seats/guest'))));
+    await ok('an outsider cannot release someone else\'s handle', () => assertFails(remove(ref(outsider, 'handles/ghost'))));
+    await ok('the admin can release a handle (nuke, delete player)', () => assertSucceeds(remove(ref(admin, 'handles/ghost'))));
+    await ok('the admin cannot grab a handle for someone else', () => assertFails(set(ref(admin, 'handles/stolen'), 'guest')));
+    await ok('the owner can still release their own handle', () => assertSucceeds(remove(ref(guest, 'handles/ghost2'))));
   } finally {
     await env.cleanup();
   }

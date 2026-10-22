@@ -182,6 +182,15 @@ async function beginGame() {
   if (st.first) dlg.querySelector('.row').insertAdjacentHTML('beforebegin', `<p><b>${t('The game begins!')}</b> ${esc(t('First player: {p}.', { p: st.first }))}</p>`);
   if (T.turnState && T.turnState.uid === Sync.uid) startMyTurn(true);
 }
+/* the host started another game at this table: keep the seat, drop the last game's state */
+function backToLobby() {
+  const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards, room: S.room };
+  S = Object.assign(fresh(), keep, { stage: 'lobby' });
+  T.turnState = null; T.counts = null; T.pick = null; T.showAnn = false; T.sel = null;
+  if (typeof Online !== 'undefined') Online.reset();
+  closeDlg(); Sync.resetMine().finally(renderFlow); save(); boot();
+  toast(t('Back in the lobby. Tap ready for the next game.'));
+}
 function leaveToWelcome() { T.maps = T.maps.filter(m => !m.shared); Sync.leave(); S.room = null; S.stage = 'welcome'; S.ready = false; save(); renderFlow(); }
 
 function soloStart(role) {
@@ -298,8 +307,7 @@ Object.assign(actions, {
   closetable() {
     if (!Sync.isHost()) return;
     confirmDlg(t('Close the table?'), t('The game ends for everyone at the table. This cannot be undone.'), () => {
-      Sync.writeRoomIndex({ status: 'over' });
-      Sync.updateSettings({ status: 'over', result: { reason: 'closed' } });
+      Sync.closeRoom().catch(() => {});
       Sync.leave(true); S.room = null; S.stage = 'host'; T.turnState = null; save(); boot(); renderFlow();
     });
   },
@@ -356,12 +364,13 @@ function syncOrder() {  if (!isHost() || !Sync.settings || Sync.settings.status 
 async function recordResult(st) {
   if (!Sync.registered || S.hot || !S.role || !st || !st.result || !Sync.code) return;
   T.recDone = T.recDone || {};
-  if (T.recDone[Sync.code]) return;
-  T.recDone[Sync.code] = 1;
-  try { if (await Sync.getPath(`users/${Sync.uid}/games/${Sync.code}`)) return; } catch (_) { return; }
+  const key = Sync.code + (st.n > 1 ? '-' + st.n : '');   // one record per game: a table hosts many
+  if (T.recDone[key]) return;
+  T.recDone[key] = 1;
+  try { if (await Sync.getPath(`users/${Sync.uid}/games/${key}`)) return; } catch (_) { return; }
   const aliensWin = !!st.result.aliensWin;
   const win = S.role === 'alien' ? aliensWin : !aliensWin;
-  await Sync.recordGame({ result: win ? 'win' : 'loss', role: S.role, chars: S.char || '', map: S.mapId || '', players: Object.keys(Sync.players || {}).length, escaped: S.over === 'escaped' });
+  await Sync.recordGame(key, { result: win ? 'win' : 'loss', role: S.role, chars: S.char || '', map: S.mapId || '', players: Object.keys(Sync.players || {}).length, escaped: S.over === 'escaped' });
 }
 
 /* rebuild a seat from the private checkpoint on the table, for a device that has no local game */
@@ -427,6 +436,8 @@ Sync.on({
   },
   settings(st) {
     if (T.resuming) return;
+    if (!st && Sync.code && !Sync.isHost() && (S.stage === 'lobby' || S.stage === 'game')) { toast(t('The host closed this game.')); Sync.leave(true); resetToWelcome(); return; }
+    if (st && st.status === 'lobby' && S.stage === 'game' && S.online) { backToLobby(); return; }
     if (st && st.status === 'over' && st.result && st.result.reason === 'closed' && (S.stage === 'lobby' || S.stage === 'game') && !Sync.isHost()) { toast(t('The host closed this game.')); Sync.leave(true); resetToWelcome(); return; }
     if (S.stage === 'lobby') { if (st && st.status === 'playing') beginGame(); else { syncOrder(); renderFlow(); } }
     else if (S.stage === 'game') { if (st && st.status === 'over') { showGameOver(); paintOverlay(); recordResult(st); } hdr(); if (S.tab === 'play' || S.tab === 'table') render(); }

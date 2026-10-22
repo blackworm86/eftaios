@@ -957,12 +957,13 @@ const actions = {
   tab(b) { tabClick(b.dataset.tab); },
   addann() { addDlg(); },
   clearlog() { confirmDlg(t('Clear all announcements?'), t('The history on this device will be erased.'), () => { S.log = []; afterChange(); }); },
+  rematch() { Sync.rematch().then(ok => { if (!ok) toast(t('Could not start another game.')); }); },
   newgame() {
     const host = !!(Sync.code && Sync.isHost());
     const [title, body] = S.hot ? ['Close this game?', 'The pass-and-play game ends for everyone.'] : !Sync.code ? ['Start a new game?', 'Your route, notes and role will be erased.'] : host ? ['Close this game?', 'The game ends for everyone at the table. You can then host a new one.'] : ['Leave this game?', 'You leave the table. Your route and notes on this device are erased.'];
     confirmDlg(t(title), t(body), async () => {
       if (S.hot) Hot.clear();
-      if (host) { Sync.writeRoomIndex({ status: 'over' }); await Sync.updateSettings({ status: 'over', result: { reason: 'closed' } }); }
+      if (host) await Sync.closeRoom().catch(() => {});
       Sync.leave(true); resetToWelcome(host ? 'host' : 'welcome');
     });
   },

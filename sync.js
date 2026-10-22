@@ -33,6 +33,7 @@
       const a = app.initializeApp(cfg);
       auth = fireAuth(au.getAuth(a));
       db = rtdb.getDatabase(a); fb = rtdb;
+      au.getRedirectResult(auth).catch(e => console.warn(e));
       au.onAuthStateChanged(auth, u => { handleUser(u).catch(e => console.warn(e)); });
       /* the persisted session is restored asynchronously: wait for it, or a reload would replace a
          signed-in player with a fresh anonymous guest and lose the account */
@@ -84,7 +85,12 @@
   Sync.signInGoogle = async () => {
     await ensure(); const au = await fbAuth(); Sync.authSettled = false;
     const p = new au.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
-    return au.signInWithPopup(auth, p);
+    try { return await au.signInWithPopup(auth, p); }
+    catch (e) {
+      /* the popup helper can fail on mobile browsers and installed apps: fall back to a full-page redirect */
+      if (!/internal-error|popup-blocked|operation-not-supported/.test(String(e && e.code))) throw e;
+      return au.signInWithRedirect(auth, p);
+    }
   };
   Sync.signInEmail = async (email, pass) => { await ensure(); const au = await fbAuth(); Sync.authSettled = false; return au.signInWithEmailAndPassword(auth, email, pass); };
   Sync.signUpEmail = async (email, pass, name) => {

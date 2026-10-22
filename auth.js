@@ -56,7 +56,8 @@ const Auth = (() => {
         <div class="row two"><button class="btn" data-act="accountgames">${t('Your games')}</button><button class="btn" data-act="accountstats">${t('Statistics')}</button></div>
         <button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>
         <button class="btn danger wide" data-act="accountdelete">${t('Delete my account')}</button>`
-      : `<p class="dim hintline">${t('Choose a handle once: it is how the table and the statistics know you.')}</p>
+      : `${Sync.profileError ? `<p class="banner">${t('Your profile could not be read. The database rules may be out of date.')} <code>${esc(Sync.profileError)}</code></p>` : ''}
+        <p class="dim hintline">${t('Choose a handle once: it is how the table and the statistics know you.')}</p>
         <label class="field"><span>${t('Handle')}</span><input id="a-handle" maxlength="16" autocapitalize="off" placeholder="riccardo" value="${esc(p.handle || '')}"></label>
         <label class="field"><span>${t('Display name')}</span><input id="a-name" maxlength="20" value="${esc(p.name || (u.displayName || ''))}"></label>
         <button class="btn primary wide" data-act="accountcreate">${t('Create account')}</button>

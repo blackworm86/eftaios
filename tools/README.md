@@ -28,6 +28,7 @@ node tools/verify-live.js                  # real Firebase + real rules (needs t
 node tools/cleanup-rooms.js                 # retention sweep, dry run; --apply to delete
 node tools/reset-all.js                     # blank slate: every test login and all its data (dry run; --apply)
 node tools/admin.js delete <email>          # remove one login and all its data
+node tools/cleanup-guests.js                # remove guest logins unseen for 30 days (dry run; --apply, --days N)
 npm run test:rules                          # database emulator + all rules cases (needs Java 21)
 ```
 

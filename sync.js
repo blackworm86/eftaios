@@ -25,8 +25,15 @@
 
   /* ---------------- auth ---------------- */
   function fireAuth(mod) { return mod; }
-  async function ensure() {
-    if (db) return;
+  /* a guest login is made only when something needs one (a table), never for signing in:
+     signing in replaces the guest, so every attempt used to leave an orphan login behind */
+  let guestP = null;
+  function guest() {
+    if (window.__FAKE_FB || !auth || auth.currentUser) return Promise.resolve();
+    return guestP || (guestP = fbAuth().then(au => au.signInAnonymously(auth)).catch(e => { Sync.authError = String(e && e.code || e); }).finally(() => { guestP = null; }));
+  }
+  async function ensure(noGuest) {
+    if (db) { if (!noGuest) await guest(); return; }
     if (!ready) ready = (async () => {
       if (window.__FAKE_FB) { const f = await window.__FAKE_FB(); fb = f.fb; db = f.db; auth = f.auth || null; Sync.uid = f.uid; Sync.registered = true; Sync.profile = { handle: 'tester', name: 'Tester' }; Sync.authReady = true; return; }
       const [app, au, rtdb] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-database.js'].map(f => import(B + f)));
@@ -38,10 +45,10 @@
       /* the persisted session is restored asynchronously: wait for it, or a reload would replace a
          signed-in player with a fresh anonymous guest and lose the account */
       try { await au.getAuth(a).authStateReady(); } catch (_) { /* older SDK */ }
-      if (!auth.currentUser) await au.signInAnonymously(auth).catch(e => { Sync.authError = String(e && e.code || e); });
       Sync.authReady = true;
     })().finally(() => { ready = null; });
     await ready;
+    if (!noGuest) await guest();
   }
   Sync.ensure = ensure;
 
@@ -86,7 +93,7 @@
   /* a sign-in that fails never changes the user, so nothing would ever mark auth as settled again */
   const attempt = async fn => { Sync.authSettled = false; try { return await fn(); } catch (e) { Sync.authSettled = true; throw e; } };
   Sync.signInGoogle = async () => {
-    await ensure(); const au = await fbAuth(); Sync.authSettled = false;
+    await ensure(true); const au = await fbAuth(); Sync.authSettled = false;
     const p = new au.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
     try { return await au.signInWithPopup(auth, p); }
     catch (e) {
@@ -96,23 +103,23 @@
       return au.signInWithRedirect(auth, p);
     }
   };
-  Sync.signInEmail = async (email, pass) => { await ensure(); const au = await fbAuth(); return attempt(() => au.signInWithEmailAndPassword(auth, email, pass)); };
+  Sync.signInEmail = async (email, pass) => { await ensure(true); const au = await fbAuth(); return attempt(() => au.signInWithEmailAndPassword(auth, email, pass)); };
   Sync.signUpEmail = async (email, pass, name) => {
-    await ensure(); const au = await fbAuth();
+    await ensure(true); const au = await fbAuth();
     const r = await attempt(() => au.createUserWithEmailAndPassword(auth, email, pass));
     if (name) await au.updateProfile(r.user, { displayName: name }).catch(() => {});
     return r;
   };
-  Sync.resetPassword = async email => { await ensure(); const au = await fbAuth(); return au.sendPasswordResetEmail(auth, email); };
+  Sync.resetPassword = async email => { await ensure(true); const au = await fbAuth(); return au.sendPasswordResetEmail(auth, email); };
   Sync.sendLink = async email => {
-    await ensure(); const au = await fbAuth();
+    await ensure(true); const au = await fbAuth();
     await au.sendSignInLinkToEmail(auth, email, { url: location.origin + location.pathname, handleCodeInApp: true });
     try { localStorage.setItem('eftaios.linkEmail', email); } catch (_) { /* noop */ }
   };
   Sync.linkEmailPending = () => { try { return !!localStorage.getItem('eftaios.linkEmail'); } catch (_) { return false; } };
   Sync.isLink = () => /[?&]oobCode=/.test(location.search) && /mode=signIn/.test(location.search);
   Sync.completeLink = async email => {
-    await ensure(); const au = await fbAuth();
+    await ensure(true); const au = await fbAuth();
     email = email || (() => { try { return localStorage.getItem('eftaios.linkEmail'); } catch (_) { return ''; } })();
     if (!email) throw new Error('email-required');
     const r = await attempt(() => au.signInWithEmailLink(auth, email, location.href));

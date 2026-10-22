@@ -1,6 +1,8 @@
 # raw simulator output is large and regenerable (node tools/sim.js ...); reports and notes are kept
 tools/rounds/*.json
 tools/*.json
+tools/rounds/*.log
+tools/rounds/*.done
 
 # local dependencies and browser scratch used by the simulator on Windows
 node_modules/
@@ -9,3 +11,7 @@ chrome-profile*/
 chrome-*.log
 chrome-*.err
 chrome-*.out
+
+# machine-local impeccable state (shared config.json stays committable)
+.impeccable/config.local.json
+.impeccable/hook.cache.json

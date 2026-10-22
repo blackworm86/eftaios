@@ -538,7 +538,6 @@ function roundCard() {
   const es = recentOthers(8); if (!es.length) return '';
   return `<div class="roundcard"><small>${t('What the others declared')}</small><ul>${es.map(annLine).join('')}</ul></div>`;
 }
-function lastLine() { const e = recentOthers(1)[0]; return e ? `<p class="lastann">${dotIcon(playerKey(e))}<b>${esc(e.who)}</b>${logIcon(e, 18)}<span>${esc(entryText(e))}</span></p>` : ''; }
 /* every Character card the table has seen so far */
 function knownChars() {
   const m = new Map();

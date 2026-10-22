@@ -176,7 +176,7 @@ async function beginGame() {
   S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, track: 'auto', role, char, online: true, name, room, customMaps: keep, sharedMap: shared, tab: 'play' });
   S.pos = startSector(T.map, role, char, st.mode); S.path = [{ turn: 0, pos: S.pos }];
   T.turnState = Sync.turn || null; if (T.turnState) S.turn = T.turnState.n;
-  save(); boot();
+  save(); flushSeat(); boot();
   if (typeof Online !== 'undefined') Online.attach();
   roleDlg();
   if (st.first) dlg.querySelector('.row').insertAdjacentHTML('beforebegin', `<p><b>${t('The game begins!')}</b> ${esc(t('First player: {p}.', { p: st.first }))}</p>`);
@@ -290,6 +290,7 @@ Object.assign(actions, {
         const other = Object.keys(Sync.players || {}).find(u => u !== Sync.uid && !Sync.players[u].bot && !Sync.players[u].out);
         if (other) Sync.updateSettings({ host: other });
       }
+      flushSeat();
       Sync.releaseHost();
       Sync.leave(true); S.room = null; S.stage = 'welcome'; T.turnState = null; save(); boot(); renderFlow();
     });
@@ -346,9 +347,6 @@ async function scanDlg() {
 }
 
 /* keep the stored order in line with who is at the table (host only) */
-function roomSnapshot(code) {
-  try { return JSON.parse(localStorage.getItem('eftaios.room.' + code + '.' + Sync.uid) || 'null'); } catch (_) { return null; }
-}
 function syncOrder() {  if (!isHost() || !Sync.settings || Sync.settings.status !== 'lobby') return;
   const want = orderedIds(), have = Sync.settings.order || [];
   if (want.length !== have.length || want.some((u, i) => u !== have[i])) Sync.updateSettings({ order: want });
@@ -415,17 +413,7 @@ Sync.on({
     S.room = code;
     if (Sync.registered && Sync.profile) S.name = Sync.profile.name;
     if (S.stage !== 'game') {
-      /* coming back to a table we already played: restore this device's saved game instead of the lobby */
-      const snap = roomSnapshot(code);
-      if (snap && snap.stage === 'game' && snap.role && snap.pos) {
-        const name = S.name;
-        S = snap; S.room = code; S.name = S.name || name; S.online = true;
-        T.turnState = Sync.turn || T.turnState;
-        save(); boot();
-        if (typeof Online !== 'undefined') Online.attach();
-        return;
-      }
-      /* no saved game on this device: rebuild the seat from the private checkpoint on the table */
+      /* nothing local to trust: rebuild the seat from the private checkpoint on the table */
       S.stage = 'lobby'; T.pendingRoom = null; renderFlow();
       serverResume(code).then(ok => {
         if (ok) return;

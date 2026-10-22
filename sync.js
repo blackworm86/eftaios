@@ -157,7 +157,6 @@
   function readProfile(uid) {
     return fb.get(at(`users/${uid}/profile`)).then(s => s.val() || null).catch(() => null);
   }
-  Sync.readProfile = readProfile;
   Sync.saveProfile = async ({ handle, name }) => {
     await ensure();
     handle = String(handle || '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 16);
@@ -193,8 +192,6 @@
     const all = (await fb.get(at(`users/${Sync.uid}/rooms`))).val() || {};
     return Object.entries(all).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
   };
-  Sync.watchRooms = cb => { if (!db) return () => {}; return fb.onValue(at(`users/${Sync.uid}/rooms`), s => cb(Object.entries(s.val() || {}))); };
-
   /* ---------------- history and stats ---------------- */
   Sync.recordGame = async g => {
     if (!Sync.registered || !Sync.uid || !Sync.code) return;
@@ -222,10 +219,6 @@
   Sync.writeRoomIndex = patch => {
     if (!Sync.code || !db) return;
     fb.update(at('roomIndex/' + Sync.code), Object.assign({ host: Sync.uid, at: Date.now() }, patch)).catch(() => {});
-  };
-  Sync.writeIndexFor = (code, patch) => {
-    if (!code || !db) return;
-    fb.update(at('roomIndex/' + code), Object.assign({ host: Sync.uid, at: Date.now() }, patch)).catch(() => {});
   };
 
   /* ---------------- maps ---------------- */

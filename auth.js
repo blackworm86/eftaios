@@ -126,8 +126,7 @@ const Auth = (() => {
       confirmDlg(t('Remove this game from your list?'), t('The room is closed for everyone if you host it. This cannot be undone.'), () => guard(async () => {
         await Sync.forgetRoom(code); T.myGames = null; loadGames();
       }));
-    },
-    adminopen() { S.stage = 'admin'; save(); renderFlow(); }
+    }
   };
   async function postSignIn() {
     T.authMsg = '';

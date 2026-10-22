@@ -65,9 +65,20 @@ Until then, `tools/rules-check.js` is the regression guard: it catches an invari
 - **Emulator tests** remain the main gap.
 - **Retention**: run `npm run cleanup:rooms` monthly; use `--stale-live 30` to also clear lobbies and games that were abandoned a month ago.
 
+## Priority 2 — maintenance and clean code
+
+| # | Item | Status | Notes |
+|---|---|---|---|
+| 1 | Dead helpers removed | **done** | `Sync.watchRooms`, `writeIndexFor`, the duplicate `Auth.adminopen`, unused `readProfile` export, `.accountbar` CSS, `tools/cleanup-e2e.js` |
+| 2 | One restore path | **done** | The local per-room snapshot is gone; `seats/<uid>` is the only source. Two resume functions remain by design: rebuild (no local game) and adopt-if-newer (reload) |
+| 3 | Architecture map | **done** | `ARCHITECTURE.md`: modules, the three authorities, data model, flows, invariants, limits |
+| 4 | Reproducible toolchain | **done** | `package.json`, lockfile, `npm` scripts |
+| 5 | Emulator and CI | **blocked** | Java 11+ needed |
+
 ## Log
 
 - 2026-10-22 — Priority 1 items 1–5 implemented; rules invariant checker added; `package.json` + lockfile; lobby/online/rejoin/close/online-bots tests pass; `rules:check` 19/19.
 - 2026-10-22 — Published rules verified against the real project with `tools/verify-live.js`: member write, outsider denials, kick marker, and a ban that signs the open tab out. CSP added and verified. App Check deferred (provider deprecation) — decision recorded.
 - 2026-10-22 — Kick rules verified live (table can mark, kicked seat cannot rewrite itself, self-read allowed). Added the CSP meta tag and verified it against the real project: sign-in, RTDB reads/writes and the app boot with no CSP console errors; browser suite green.
 - 2026-10-22 — Room retention tool added and run: 4 stale index entries removed, no rooms old enough yet. Command: `npm run cleanup:rooms` (dry run) and `--apply`.
+- 2026-10-22 — Clean-code pass: removed five dead symbols/tools, deleted the duplicate local resume path (server seat is now the only one), wrote `ARCHITECTURE.md`. Lobby/online/rejoin/layout tests green.

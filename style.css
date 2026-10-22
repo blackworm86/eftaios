@@ -216,8 +216,6 @@ dialog .row{margin-top:16px}
 .or{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:13px;margin:14px 0}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 .hintline{font-size:13px;margin:8px 0 12px}.field+.hintline{margin-top:-6px}
-.accountbar{display:flex;justify-content:flex-end;gap:8px;margin:-2px 0 8px}.accountbar .btn{font-size:13px;padding:6px 10px;min-height:36px}
-.accountbar .btn small{display:block;font-weight:400;color:var(--dim);font-size:11px}
 .ver{position:fixed;right:8px;bottom:4px;z-index:1;pointer-events:none;font:600 10px var(--mono);letter-spacing:.04em;color:var(--dim);opacity:.55}
 .setup-card h3{font-size:14px;color:var(--amber);margin:22px 0 8px}
 .plist{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:6px}

@@ -84,3 +84,5 @@ CI runs the same command on every push (`.github/workflows/checks.yml`, Ubuntu +
 - 2026-10-22 — Room retention tool added and run: 4 stale index entries removed, no rooms old enough yet. Command: `npm run cleanup:rooms` (dry run) and `--apply`.
 - 2026-10-22 — Clean-code pass: removed five dead symbols/tools, deleted the duplicate local resume path (server seat is now the only one), wrote `ARCHITECTURE.md`. Lobby/online/rejoin/layout tests green.
 - 2026-10-22 — Emulator suite written: `firebase.json`, 20 rules cases (`tests/rules/rules.test.js`), `npm run test:rules`, CI workflow. Local execution needs JDK 21; CI runs it on every push.
+- 2026-10-22 — Emulator suite green in CI: 20/20 rules cases pass on Ubuntu + Java 21. Added firebase-tools, rules-unit-testing and picomatch to dev dependencies; the lockfile is valid for 
+pm ci on Linux.

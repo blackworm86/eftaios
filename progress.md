@@ -12,8 +12,8 @@ Tracks the security and maintenance work. One row per item, updated as it lands.
 | 4 | Append-only admin log | **done (code)** | Entries can be created, never changed or deleted; `by` must be the admin |
 | 5 | Structural rule checks | **done** | `npm run rules:check`, 17 invariants asserted against `database.rules.json` |
 | 6 | Firebase Emulator rules tests | **blocked** | Needs Java 11+ and `firebase-tools`; this machine has Java 1.8. Plan is written below |
-| 7 | App Check for RTDB | **todo** | Needs the console, a reCAPTCHA key and live testing |
-| 8 | CSP meta tag | **deferred** | Must be verified against real Firebase auth first; a wrong `connect-src` breaks sign-in silently |
+| 7 | App Check for RTDB | **owner step** | Console → App Check → reCAPTCHA v3 key, then enforce for Realtime Database; code hooks are described below |
+| 8 | CSP meta tag | **done** | `default-src 'self'`, scripts only from self + gstatic, Firebase and wss endpoints, no objects; verified live (sign-in, RTDB reads/writes, no CSP console errors) |
 | 9 | Republish rules in Firebase | **pending owner** | The membership rules and the kick marker both need a publish |
 | 10 | Live verification of the published rules | **done** | `tools/verify-live.js`: six-character code, member write allowed, outsider log write and mid-game seat both `PERMISSION_DENIED` |
 | 11 | Kicked player cannot lift the kick | **done (code)** | New `kicks/<uid>` node written only by the host/lease; the seat guard refuses a kicked account |
@@ -57,11 +57,19 @@ Until then, `tools/rules-check.js` is the regression guard: it catches an invari
 
 ## Next in Priority 1
 
-- Publish the rules (owner).
-- App Check + CSP once there is a live-auth test path.
-- A kick cannot be undone by the player today? Rules allow clearing `out`; needs an owner-only write on that field.
+- **App Check** (owner): Console → App Check → register the web app with a reCAPTCHA v3 key, then enable enforcement for Realtime Database. Code side, in `sync.js` before `getDatabase`:
+  ```js
+  if (cfg.appCheckKey) {
+    const ac = await import(B + 'firebase-app-check.js');
+    ac.initializeAppCheck(a, { provider: new ac.ReCaptchaV3Provider(cfg.appCheckKey), isTokenAutoRefreshEnabled: true });
+  }
+  ```
+  Add `appCheckKey` to `firebase-config.js`; leave it empty until enforcement is ready, or every unverified request will be rejected.
+- **Emulator tests** remain the main gap.
+- **Data retention**: account deletion closes rooms but never deletes them; a monthly cleanup script is in the maintenance plan.
 
 ## Log
 
 - 2026-10-22 — Priority 1 items 1–5 implemented; rules invariant checker added; `package.json` + lockfile; lobby/online/rejoin/close/online-bots tests pass; `rules:check` 19/19.
 - 2026-10-22 — Published rules verified against the real project with `tools/verify-live.js` (six-letter code; member can write the log; an outsider is denied the log and a mid-game seat). Added the `kicks/<uid>` marker so a removed player cannot clear their own `out`; needs one more publish.
+- 2026-10-22 — Kick rules verified live (table can mark, kicked seat cannot rewrite itself, self-read allowed). Added the CSP meta tag and verified it against the real project: sign-in, RTDB reads/writes and the app boot with no CSP console errors; browser suite green.

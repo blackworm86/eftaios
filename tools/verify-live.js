@@ -24,6 +24,7 @@ const check = (ok, label, extra) => { console.log((ok ? 'ok   ' : 'FAIL ') + lab
     const c = await b.browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', locale: 'en-US' });
     const p = await c.newPage();
     p.on('pageerror', e => errs.push('page: ' + e.message));
+    p.on('console', m => { const t = m.text(); if (/Content Security Policy|Refused to/i.test(t)) errs.push('csp: ' + t.slice(0, 160)); });
     return p;
   };
   try {
@@ -77,6 +78,21 @@ const check = (ok, label, extra) => { console.log((ok ? 'ok   ' : 'FAIL ') + lab
     }, code);
     check(outsider.log !== 'ok' && /permission/i.test(outsider.log), 'an outsider cannot write the log', outsider.log);
     check(outsider.seat !== 'ok' && /permission/i.test(outsider.seat), 'an outsider cannot take a seat mid-game', outsider.seat);
+
+    // a kick sticks: the table writes the marker, the removed seat can no longer rewrite itself
+    const guestUid = await G.evaluate(() => Sync.uid);
+    const kicked = await H.evaluate(async ({ code, uid }) => {
+      Sync.code = code;
+      const write = await Sync.setPath(`rooms/${code}/kicks/${uid}`, true).then(() => 'ok').catch(e => String(e && e.code || e));
+      return write;
+    }, { code, uid: guestUid });
+    check(kicked === 'ok', 'the table can mark a seat as kicked', kicked);
+    const afterKick = await G.evaluate(async ({ code, uid }) => ({
+      seat: await Sync.setPath(`rooms/${code}/players/${uid}`, { name: 'Guest', ready: true }).then(() => 'ok').catch(e => String(e && e.code || e)),
+      read: await Sync.get('kicks/' + uid).then(v => !!v).catch(() => false)
+    }), { code, uid: guestUid });
+    check(afterKick.seat !== 'ok' && /permission/i.test(afterKick.seat), 'a kicked seat cannot rewrite itself', afterKick.seat);
+    check(afterKick.read === true, 'a kicked player can still read their own marker');
 
     check(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
   } finally {

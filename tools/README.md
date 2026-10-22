@@ -23,6 +23,8 @@ node tools/sim.js out.json --games 8 --maps marconi --players 8 --levels hard --
 node tools/report.js out.json             # old-style table
 node tools/cluster.js out.json --by-map   # Alien clustering + death audit
 node tools/test.js                         # browser tests (starts its own server if needed)
+node tools/rules-check.js                  # structural invariants of database.rules.json
+node tools/verify-live.js                  # real Firebase + real rules (needs the service-account key)
 ```
 
 Suite runner (the agreed tables and the train/holdout map split are in `tools/tables.js`):

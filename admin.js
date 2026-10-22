@@ -10,10 +10,10 @@ const Admin = (() => {
     if (!Sync.isAdmin) { T.admin = null; renderFlow(); return; }
     T.admin = null; renderFlow();
     try {
-      const [users, maps, reports, log] = await Promise.all([
-        Sync.adminList('users'), Sync.adminList('pubmaps'), Sync.adminList('reports'), Sync.adminList('adminlog')
+      const [users, maps, reports, log, bans] = await Promise.all([
+        Sync.adminList('users'), Sync.adminList('pubmaps'), Sync.adminList('reports'), Sync.adminList('adminlog'), Sync.adminList('bans')
       ]);
-      T.admin = { users, maps, reports, log };
+      T.admin = { users, maps, reports, log, bans };
     } catch (e) { T.admin = { error: String(e && (e.code || e.message) || e).slice(0, 80) }; }
     renderFlow();
   }
@@ -31,11 +31,11 @@ const Admin = (() => {
     const d = T.admin;
     if (which === 'users') {
       const list = Object.entries(d.users || {}).map(([uid, u]) => {
-        const p = (u && u.profile) || {};
+        const p = (u && u.profile) || {}, banned = !!(d.bans || {})[uid];
         const rooms = Object.keys((u && u.rooms) || {}).length;
         return `<li><span class="pname">${esc(p.name || '(no profile)')}<small>@${esc(p.handle || '')} · ${uid.slice(0, 8)}…</small></span>
-          <span class="pst">${rooms} ${t('rooms')}</span>
-          <button class="btn" data-act="adminban" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}" data-b="${p.banned ? 1 : 0}">${p.banned ? t('Unban') : t('Ban')}</button>
+          <span class="pst">${rooms} ${t('rooms')}${banned ? ' · ' + t('banned') : ''}</span>
+          <button class="btn" data-act="adminban" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}" data-b="${banned ? 1 : 0}">${banned ? t('Unban') : t('Ban')}</button>
           <button class="btn danger" data-act="adminwipe" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}">${t('Delete data')}</button></li>`;
       }).join('');
       return `<ul class="plist">${list || `<li>${t('No players yet.')}</li>`}</ul>
@@ -69,13 +69,14 @@ const Admin = (() => {
     adminrefresh() { load(); },
     async adminban(b) {
       const uid = b.dataset.u, on = b.dataset.b !== '1';
-      await Sync.setPath(`users/${uid}/profile/banned`, on ? true : null);
+      await Sync.setPath(`bans/${uid}`, on ? true : null);
       await act(on ? 'ban' : 'unban', uid, b.dataset.h || '');
     },
     async adminwipe(b) {
       const uid = b.dataset.u, h = b.dataset.h;
       if (!confirm(t('Delete this player and all their data?'))) return;
       await Sync.delPath(`users/${uid}`);
+      await Sync.delPath(`bans/${uid}`).catch(() => {});
       if (h) await Sync.delPath('handles/' + h).catch(() => {});
       await act('delete-user', uid, h || '');
     },

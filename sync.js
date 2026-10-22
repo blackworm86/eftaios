@@ -48,6 +48,9 @@
       try { const t = await u.getIdTokenResult(); Sync.isAdmin = !!(t.claims && t.claims.admin); } catch (_) { /* token not ready */ }
       Sync.profile = await readProfile(u.uid);
       Sync.registered = !!(Sync.profile && Sync.profile.handle);
+      try { Sync.banned = !!(await fb.get(at(`bans/${u.uid}`))).val(); } catch (_) { Sync.banned = false; }
+      if (Sync.banned) { Sync.authError = 'banned'; try { const au = await fbAuth(); await au.signOut(auth); } catch (_) { /* noop */ } return; }
+      Sync.authError = '';
       try { if (Sync.registered) localStorage.setItem('eftaios.account', '1'); } catch (_) { /* noop */ }
     }
     authListeners.forEach(fn => { try { fn(Sync.user); } catch (_) { /* noop */ } });

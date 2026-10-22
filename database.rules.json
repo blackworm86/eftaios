@@ -16,9 +16,6 @@
           "created": {
             ".validate": "newData.isNumber()"
           },
-          "banned": {
-            ".validate": "newData.isBoolean()"
-          },
           "about": {
             ".validate": "newData.isString() && newData.val().length <= 140"
           },
@@ -101,8 +98,14 @@
         }
       }
     },
-    "handles": {
-      ".read": "auth != null",
+    "bans": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.admin === true)",
+        ".write": "auth != null && auth.token.admin === true",
+        ".validate": "newData.isBoolean()"
+      }
+    },
+    "handles": {      ".read": "auth != null",
       "$h": {
         ".write": "auth != null && ((!newData.exists() && data.val() === auth.uid) || (newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid)))",
         ".validate": "newData.isString()"
@@ -144,7 +147,7 @@
     "reports": {
       ".read": "auth != null && auth.token.admin === true",
       "$id": {
-        ".write": "auth != null && (!data.exists() || auth.token.admin === true)",
+        ".write": "auth != null && ((!data.exists() && root.child('bans').child(auth.uid).val() !== true) || auth.token.admin === true)",
         ".validate": "newData.hasChildren(['kind', 'target', 'by', 'at'])",
         "kind": {
           ".validate": "newData.val() === 'map' || newData.val() === 'user'"
@@ -180,7 +183,7 @@
       "$room": {
         "created": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
-          ".write": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/) && !data.exists() && root.child('users').child(auth.uid).child('profile/handle').exists()",
+          ".write": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/) && !data.exists() && root.child('users').child(auth.uid).child('profile/handle').exists() && root.child('bans').child(auth.uid).val() !== true",
           ".validate": "newData.isNumber()"
         },
         "lease": {
@@ -253,7 +256,7 @@
         "players": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
           "$uid": {
-            ".write": "auth != null && (auth.uid === $uid || auth.token.admin === true || ($uid.beginsWith('bot_') && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid)))",
+            ".write": "auth != null && root.child('bans').child(auth.uid).val() !== true && (auth.uid === $uid || auth.token.admin === true || ($uid.beginsWith('bot_') && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid)))",
             ".validate": "newData.hasChildren(['name', 'ready'])",
             "name": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
@@ -317,7 +320,7 @@
         },
         "log": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
-          ".write": "auth != null",
+          ".write": "auth != null && root.child('bans').child(auth.uid).val() !== true",
           "$id": {
             ".validate": "newData.hasChildren(['id', 'turn', 'who', 'kind', 'text', 'at']) && newData.child('text').val().length <= 80 && newData.child('who').val().length <= 20 && newData.child('kind').val().matches(/^(noise|attack|spot|silence|hatch|info|item|reveal)$/)"
           }
@@ -325,7 +328,7 @@
         "attacks": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
           "$id": {
-            ".write": "auth != null && !data.exists() && (newData.child('by').val() === auth.uid || (newData.child('by').val().beginsWith('bot_') && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid)))",
+            ".write": "auth != null && root.child('bans').child(auth.uid).val() !== true && !data.exists() && (newData.child('by').val() === auth.uid || (newData.child('by').val().beginsWith('bot_') && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid)))",
             ".validate": "newData.hasChildren(['by', 'sector', 'at'])",
             "replies": {
               "$uid": {
@@ -338,7 +341,7 @@
         "spots": {
           ".read": "auth != null && $room.matches(/^[A-Z0-9]{4,8}$/)",
           "$id": {
-            ".write": "auth != null && !data.exists() && (newData.child('by').val() === auth.uid || (newData.child('by').val().beginsWith('bot_') && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid)))",
+            ".write": "auth != null && root.child('bans').child(auth.uid).val() !== true && !data.exists() && (newData.child('by').val() === auth.uid || (newData.child('by').val().beginsWith('bot_') && (root.child('rooms').child($room).child('settings/host').val() === auth.uid || root.child('rooms').child($room).child('lease/uid').val() === auth.uid)))",
             ".validate": "newData.hasChildren(['by', 'sector', 'at'])",
             "replies": {
               "$uid": {

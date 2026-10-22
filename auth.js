@@ -31,6 +31,7 @@ const Auth = (() => {
   function signInHtml() {
     const pending = Sync.linkEmailPending();
     return `${head(t('Sign in'))}
+      ${Sync.authError === 'banned' ? `<p class="banner">${t('This account is banned.')}</p>` : ''}
       ${T.authReason ? `<p class="banner">${esc(T.authReason)}</p>` : ''}
       <p class="dim hintline">${t('Guests can join a table with a code. An account keeps your games, maps and statistics, and lets you host.')}</p>
       ${pending ? `<p class="dim hintline">${t('We sent a sign-in link. Open it on this device, or enter the email again below.')}</p>` : ''}

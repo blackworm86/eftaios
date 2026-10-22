@@ -252,6 +252,23 @@ Object.assign(actions, {
     try { await Sync.claimHost(); if (typeof Online !== 'undefined') Online.hostCheck(); toast(t('You are running the bots now.')); } catch (_) { toast(t('Could not take over the table.')); }
     if (S.stage === 'game') { render(); hdr(); } else renderFlow();
   },
+  handover() {
+    const me = Sync.uid;
+    const others = Object.entries(Sync.players || {}).filter(([u, p]) => u !== me && !p.bot && !p.out);
+    if (!others.length) { toast(t('Nobody else is at the table.')); return; }
+    dlg.innerHTML = `<h2>${t('Hand over hosting')}</h2><p class="dim">${t('Bots will run on the device you choose. You can take over again later.')}</p>
+      <ul class="plist">${others.map(([u, p]) => `<li><span class="pname">${esc(p.name)}</span><button class="btn" data-act="gohost" data-u="${esc(u)}">${t('Choose')}</button></li>`).join('')}</ul>
+      <div class="row"><button class="btn" id="d-no">${t('Cancel')}</button></div>`;
+    if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
+  },
+  async gohost(b) {
+    const u = b.dataset.u; closeDlg();
+    try {
+      await Sync.updateSettings({ host: u });
+      await Sync.delPath(`rooms/${Sync.code}/lease`).catch(() => {});
+      toast(t('Hosting handed over.'));
+    } catch (_) { toast(t('Could not hand over hosting.')); }
+  },
   mvup(b) { reorder(b.dataset.u, -1); },
   mvdown(b) { reorder(b.dataset.u, 1); },
   shuffleorder() { const ids = orderedIds(); for (let i = ids.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [ids[i], ids[j]] = [ids[j], ids[i]]; } Sync.updateSettings({ order: ids }); },

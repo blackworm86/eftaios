@@ -80,16 +80,20 @@ function renderFlow() {
       ${T.hotBots.some(Boolean) && T.hotBots.every(Boolean) ? `<p class="dim hintline">${t('At least one seat must be a person.')}</p>` : ''}
       ${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
       <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>`;
+  } else if (st === 'auth' || st === 'account' || st === 'games' || st === 'admin') {
+    h = (st === 'admin' && window.Admin) ? Admin.html() : Auth.html();
   } else if (st === 'lobby') {
     h = lobbyHtml();
   } else {
     h = `${hero()}
+      ${Auth.bar()}
       ${T.pendingRoom ? `<p class="banner">${t('You are invited to table {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${nameField()}
       ${T.pendingRoom ? `<button class="btn primary big wide" data-act="joinroom">${t('Join table {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button>`
       : `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>
         <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
         <div class="or"><span>${t('or')}</span></div>
         <div class="row two"><button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button><button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button></div>
+        ${Sync.registered ? `<button class="btn link wide" data-act="accountgames">${t('Your games')}</button>` : ''}
         <button class="btn link wide" data-act="maps_">${t('Maps')}: ${t('browse, create and share')}</button>`}
       ${flowStatus()}`;
   }
@@ -116,7 +120,7 @@ function lobbyHtml() {
   const st = Sync.settings || {}, host = isHost(), players = orderedPlayers();
   const map = tableMapOf(st);
   const nReady = players.filter(([, p]) => p.ready || p.bot).length, allReady = players.length >= 2 && nReady === players.length;
-  const rows = players.map(([id, p], i) => `<li class="${p.ready ? 'ok' : ''}"><span class="num">${i + 1}</span><span class="pname">${esc(p.name)}${id === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}${st.host === id ? ` <em class="hostt">${t('Host')}</em>` : ''}</span>
+  const rows = players.map(([id, p], i) => `<li class="${p.ready ? 'ok' : ''}"><span class="num">${i + 1}</span><span class="pname">${esc(p.name)}${id === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}${st.host === id ? ` <em class="hostt">${t('Host')}</em>` : ''}</span>${host && !p.bot && id !== Sync.uid ? `<button class="mini-link" data-act="makehost" data-u="${esc(id)}">${t('Make host')}</button>` : ''}
     <span class="ctl"><span class="pst">${p.bot ? (host ? `<select data-botlvl="${esc(id)}" aria-label="${t('Bot level')}">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${p.bot === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>` : t(BOTSEL.find(x => x[0] === p.bot)[1])) : p.ready ? ico('check', 14) + ' ' + t('Ready') : ''}</span>
     ${host && p.bot ? `<button class="x" data-act="delbot" data-u="${esc(id)}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}
     ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>${ico('up')}</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>${ico('down')}</button></span>` : ''}</span></li>`).join('');
@@ -224,6 +228,8 @@ Object.assign(actions, {
   ignoreinvite() { T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); },
   async hostcreate() {
     const name = readName(); S.mapId = $('#f-map').value; S.mode = $('#f-mode').value; S.track = 'auto';
+    try { await Sync.ensure(); } catch (_) { /* stays offline */ }
+    if (!Sync.registered) { T.afterAuth = 'host'; S.stage = 'auth'; T.authReason = t('Create an account to host a table.'); save(); renderFlow(); return; }
     const m = T.maps.find(x => x.id === S.mapId), patch = mapPatch(m);
     if (isCustomMap(m) && !patch.customMap) { toast(t('This map is too large for an online table.')); return; }
     const ok = await Sync.create({ map: S.mapId, mode: S.mode, customMap: patch.customMap }, { name });
@@ -235,6 +241,15 @@ Object.assign(actions, {
     if (!ok) renderFlow();
   },
   ready() { S.ready = !S.ready; Sync.setMe({ ready: S.ready }); save(); renderFlow(); },
+  makehost(b) {
+    if (!isHost()) return;
+    Sync.updateSettings({ host: b.dataset.u });
+    toast(t('Bots will run on that player’s device.'));
+  },
+  async takeover() {
+    try { await Sync.claimHost(); if (typeof Online !== 'undefined') Online.hostCheck(); toast(t('You are running the bots now.')); } catch (_) { toast(t('Could not take over the table.')); }
+    if (S.stage === 'game') { render(); hdr(); } else renderFlow();
+  },
   mvup(b) { reorder(b.dataset.u, -1); },
   mvdown(b) { reorder(b.dataset.u, 1); },
   shuffleorder() { const ids = orderedIds(); for (let i = ids.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [ids[i], ids[j]] = [ids[j], ids[i]]; } Sync.updateSettings({ order: ids }); },
@@ -243,6 +258,7 @@ Object.assign(actions, {
   solostart(b) { soloStart(b.dataset.role); },
   scanqr() { scanDlg(); }
 });
+Object.assign(actions, Auth.actions, window.Admin ? Admin.actions : {});
 
 /* join by scanning the table's QR code with the camera (the decoder is loaded the first time it is needed) */
 let scanStream = null;
@@ -283,10 +299,21 @@ async function scanDlg() {
 }
 
 /* keep the stored order in line with who is at the table (host only) */
-function syncOrder() {
-  if (!isHost() || !Sync.settings || Sync.settings.status !== 'lobby') return;
+function syncOrder() {  if (!isHost() || !Sync.settings || Sync.settings.status !== 'lobby') return;
   const want = orderedIds(), have = Sync.settings.order || [];
   if (want.length !== have.length || want.some((u, i) => u !== have[i])) Sync.updateSettings({ order: want });
+}
+
+/* once a game is over, add it to this player's history and running totals */
+async function recordResult(st) {
+  if (!Sync.registered || S.hot || !S.role || !st || !st.result || !Sync.code) return;
+  T.recDone = T.recDone || {};
+  if (T.recDone[Sync.code]) return;
+  T.recDone[Sync.code] = 1;
+  try { if (await Sync.getPath(`users/${Sync.uid}/games/${Sync.code}`)) return; } catch (_) { return; }
+  const aliensWin = !!st.result.aliensWin;
+  const win = S.role === 'alien' ? aliensWin : !aliensWin;
+  await Sync.recordGame({ result: win ? 'win' : 'loss', role: S.role, chars: S.char || '', map: S.mapId || '', players: Object.keys(Sync.players || {}).length, escaped: S.over === 'escaped' });
 }
 
 Sync.on({
@@ -301,7 +328,8 @@ Sync.on({
   settings(st) {
     if (st && st.status === 'over' && st.result && st.result.reason === 'closed' && (S.stage === 'lobby' || S.stage === 'game') && !Sync.isHost()) { toast(t('The host closed this game.')); Sync.leave(true); resetToWelcome(); return; }
     if (S.stage === 'lobby') { if (st && st.status === 'playing') beginGame(); else { syncOrder(); renderFlow(); } }
-    else if (S.stage === 'game') { if (st && st.status === 'over') { showGameOver(); paintOverlay(); } hdr(); if (S.tab === 'play' || S.tab === 'table') render(); }
+    else if (S.stage === 'game') { if (st && st.status === 'over') { showGameOver(); paintOverlay(); recordResult(st); } hdr(); if (S.tab === 'play' || S.tab === 'table') render(); }
+    if (typeof Online !== 'undefined') Online.hostCheck();
   },
   players() {
     if (S.stage === 'lobby') { syncOrder(); renderFlow(); }
@@ -314,13 +342,16 @@ Sync.on({
     S.log.push({ id: e.id, by: e.by || '', turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });
     S.log.sort((a, b) => b.at - a.at); save(); if (S.stage === 'game') { paintOverlay(); if (S.tab === 'table' || S.tab === 'play') render(); if (window.onPublicEntry) onPublicEntry(S.log.find(x => x.id === e.id)); }
   },
-  hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.stage === 'game') afterChange(); }
+  hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.stage === 'game') afterChange(); },
+  lease(l) { if (typeof Online !== 'undefined' && l && l.uid === Sync.uid) Online.hostCheck(); }
 });
 
 { const q = new URLSearchParams(location.search).get('room'); if (q) { const c = q.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); if (S.stage === 'game') { try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } } else T.pendingRoom = c; } }
 loadMaps().then(() => {
+  if (Sync.isLink()) { S.stage = 'auth'; save(); }
   boot();
   if (S.hot) Hot.showPass();
+  try { if (localStorage.getItem('eftaios.account')) Sync.ensure().then(() => { if (S.stage !== 'game') renderFlow(); }).catch(() => {}); } catch (_) { /* storage unavailable */ }
   if (S.room && (S.stage === 'lobby' || S.stage === 'game')) Sync.join(S.room, { name: S.name || t('Player') });
   else if (S.stage === 'lobby') { S.stage = 'welcome'; renderFlow(); }
 });

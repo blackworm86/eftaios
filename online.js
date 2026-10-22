@@ -56,7 +56,7 @@ const Online = (() => {
   /* ---- victim / target side ---- */
   function onAttack(ev, key) {
     if (!ev || seen.has('a' + key)) return; seen.add('a' + key);
-    if (Sync.isHost()) botsAnswerAttack(ev, key);
+    if (Sync.isHolder()) botsAnswerAttack(ev, key);
     if (ev.by === Sync.uid || S.over || S.stage !== 'game' || Date.now() - ev.at > 60000) return;
     if (ev.replies && ev.replies[Sync.uid]) return;
     let rep = { in: false };
@@ -82,7 +82,7 @@ const Online = (() => {
   }
   function onSpot(ev, key) {
     if (!ev || seen.has('s' + key)) return; seen.add('s' + key);
-    if (Sync.isHost()) botsAnswerSpot(ev, key);
+    if (Sync.isHolder()) botsAnswerSpot(ev, key);
     if (S.over || S.stage !== 'game' || Date.now() - ev.at > 60000) return;
     if (ev.replies && ev.replies[Sync.uid]) return;
     if (ev.target && ev.target !== Sync.uid) return;
@@ -141,7 +141,7 @@ const Online = (() => {
   /* host: when the turn passes to a bot, play it after a short pause, then pass the turn on */
   function maybeBotTurn() {
     const ts = T.turnState;
-    if (!Sync.isHost() || !HD || !ts || !isBotId(ts.uid) || !Sync.settings || Sync.settings.status !== 'playing') return;
+    if (!Sync.isHolder() || !HD || !ts || !isBotId(ts.uid) || !Sync.settings || Sync.settings.status !== 'playing') return;
     const tag = ts.n + ':' + ts.idx + ':' + ts.uid; if (botBusy === tag) return; botBusy = tag;
     setTimeout(() => playBot(ts, tag).catch(e => { console.warn(e); botBusy = ''; }), 900);
   }
@@ -186,6 +186,29 @@ const Online = (() => {
     });
   }
 
+  let reqWatched = false, hbTimer = null, hdLoading = false;
+  function watchRequests() { if (reqWatched) return; reqWatched = true; Sync.watchChild('requests', hostReq); }
+  /* the lease holder keeps saying it is alive, so the table can tell a gone host from a slow one */
+  function startHeartbeat() {
+    clearInterval(hbTimer);
+    hbTimer = setInterval(() => {
+      if (!Sync.code || !Sync.isHolder()) return;
+      if (Sync.settings && Sync.settings.status === 'playing') Sync.claimHost().catch(() => {});
+    }, 20000);
+  }
+  /* start (or restart, after a reload) the bot runner on this device if it holds the lease */
+  function attachHost() {
+    if (!Sync.code || !Sync.isHolder()) return;
+    if (!Sync.lease || Sync.lease.uid !== Sync.uid) Sync.claimHost().catch(() => {});
+    watchRequests(); startHeartbeat();
+    if (HD) { maybeBotTurn(); return; }
+    if (hdLoading) return;
+    hdLoading = true;
+    hdReady = loadHost()
+      .catch(e => { console.warn('hostdata', e); return null; })
+      .finally(() => { hdLoading = false; });
+    hdReady.then(() => { if (HD) maybeBotTurn(); });
+  }
   const api = {
     /* host only: the bots' real state, for the saved log */
     dump() { if (!HD) return null; return { decksLeft: { sector: HD.decks.sector.draw.length, hatch: HD.decks.hatch.draw.length }, bots: Object.values(HD.bots).map(b => ({ id: b.id, name: b.name, level: b.level, role: b.state.role, char: b.state.char || '', reborn: !!b.state.reborn, over: b.state.over || null, items: b.state.items, path: b.state.path })) }; },
@@ -200,8 +223,9 @@ const Online = (() => {
       });
       Sync.watchChild('attacks', onAttack);
       Sync.watchChild('spots', onSpot);
-      if (Sync.isHost()) { hdReady = loadHost(); hdReady.then(() => { Sync.watchChild('requests', hostReq); maybeBotTurn(); }); }
+      attachHost();
     },
+    hostCheck: attachHost,
     request(type, extra) {
       const id = uid();
       return new Promise((res, rej) => {
@@ -250,12 +274,12 @@ const Online = (() => {
         if (isBotId(order[i])) { const p = Sync.players[order[i]] || {}, pos = startSector(map, role, char, Sync.settings.mode); HD.bots[order[i]] = { id: order[i], name: p.name || 'Bot', level: p.bot || 'normal', state: { role, role0: role, char, pos, path: [{ turn: 0, pos }], items: [], fed: false, adr: false, over: null } }; }
         else await Sync.set('secret/' + order[i], { role, char });
       }
-      await persist(); await Sync.startGame(first, order);
+      await persist(); await Sync.startGame(first, order); attachHost();
     },
     /* host: decide whether the game is over */
     onPlayers() { api.evaluate(); },
     evaluate() {
-      if (!Sync.isHost() || !HD || !Sync.settings || Sync.settings.status !== 'playing') return;
+      if (!Sync.isHolder() || !HD || !Sync.settings || Sync.settings.status !== 'playing') return;
       const ps = Sync.players || {}; let changed = false;
       for (const u of Object.keys(HD.roles)) {
         const p = ps[u]; if (!p) continue;

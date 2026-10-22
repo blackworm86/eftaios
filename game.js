@@ -16,7 +16,7 @@ function onTurn(v) {
   S.turn = Math.min(v.n, MAX_TURN);
   const was = prev && prev.uid === Sync.uid && prev.n === v.n;
   if (v.uid === Sync.uid && !was) startMyTurn();
-  if (isHost()) { Online.evaluate(); Online.maybeBotTurn(); }
+  if (Sync.isHolder()) { Online.evaluate(); Online.maybeBotTurn(); }
   save(); hdr(); paintCells(); if (S.tab === 'play' || S.tab === 'table') render();
 }
 function startMyTurn(silent) {
@@ -63,7 +63,7 @@ function afterChange() {
 }
 function showGameOver() {
   if (!Sync.code) return;
-  if (Sync.isHost() && typeof Online !== 'undefined') Online.revealBots();
+  if (Sync.isHolder() && typeof Online !== 'undefined') Online.revealBots();
   if (!S.revealed) { S.revealed = true; Sync.setMe({ role: S.role, char: S.char || '' }); save(); }
   publishRoute();
 }

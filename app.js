@@ -1073,7 +1073,14 @@ function hdr() {
   const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.innerHTML = gico(roleIcon(), 20) + '<span>' + (S.role === 'alien' ? (S.fed ? t('Alien') + ' · ' + t('Fed') : t('Alien')) : t('Human')) + '</span>'; r.dataset.act = 'roledlg'; r.setAttribute('role', 'button'); r.tabIndex = 0; r.setAttribute('aria-label', t('Who am I?'));
   document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab));
   const tb = $('#turnbar');
-  if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) { const mine = T.turnState.uid === Sync.uid; tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : ''); { const le = typeof recentOthers === 'function' ? recentOthers(1)[0] : null, tail = le ? ' · ' + le.who + ': ' + entryText(le) : ''; tb.textContent = (mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' })) + tail; } } else tb.hidden = true;
+  if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) {
+    const mine = T.turnState.uid === Sync.uid, le = typeof recentOthers === 'function' ? recentOthers(1)[0] : null, tail = le ? ' · ' + le.who + ': ' + entryText(le) : '';
+    const paused = !mine && typeof Online !== 'undefined' && Online.isBotId(T.turnState.uid) && !Sync.isHolder();
+    tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : '');
+    tb.innerHTML = paused
+      ? `<span>${t('Bots are paused: the host is away.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`
+      : esc((mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' })) + tail);
+  } else tb.hidden = true;
 }
 function render() {
   const p = $('#panel-body'); let h = '';

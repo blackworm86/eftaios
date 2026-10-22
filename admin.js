@@ -107,9 +107,18 @@ const Admin = (() => {
       const uid = b.dataset.u, h = b.dataset.h;
       if (uid === Sync.uid) { toast(t('You cannot do that to your own account.')); return; }
       if (!confirm(t('Delete this player and all their data?'))) return;
+      /* tables they host go with them, so no dead room is left behind */
+      const mine = Object.keys((T.admin.users[uid] || {}).rooms || {});
+      for (const code of mine) {
+        try {
+          const host = await Sync.getPath(`rooms/${code}/settings/host`);
+          if (host === uid) { await Sync.delPath('roomIndex/' + code); await Sync.delPath('rooms/' + code); }
+        } catch (e) { console.warn('wipe room', code, e); }
+      }
       await Sync.delPath(`users/${uid}`);
       await Sync.delPath(`bans/${uid}`).catch(() => {});
       if (h) await Sync.delPath('handles/' + h).catch(() => {});
+      toast(t('Data deleted. The login stays: the player can register again, or remove it with tools/admin.js delete.'));
       await act('delete-user', uid, h || '');
     },
     adminreset() {

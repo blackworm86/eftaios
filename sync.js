@@ -83,20 +83,23 @@
   const CLOSE_GRACE = 4000;   // lets the other devices see the close before the table disappears
   const fbAuth = () => import(B + 'firebase-auth.js');
 
+  /* a sign-in that fails never changes the user, so nothing would ever mark auth as settled again */
+  const attempt = async fn => { Sync.authSettled = false; try { return await fn(); } catch (e) { Sync.authSettled = true; throw e; } };
   Sync.signInGoogle = async () => {
     await ensure(); const au = await fbAuth(); Sync.authSettled = false;
     const p = new au.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
     try { return await au.signInWithPopup(auth, p); }
     catch (e) {
+      Sync.authSettled = true;
       /* the popup helper can fail on mobile browsers and installed apps: fall back to a full-page redirect */
       if (!/internal-error|popup-blocked|operation-not-supported/.test(String(e && e.code))) throw e;
       return au.signInWithRedirect(auth, p);
     }
   };
-  Sync.signInEmail = async (email, pass) => { await ensure(); const au = await fbAuth(); Sync.authSettled = false; return au.signInWithEmailAndPassword(auth, email, pass); };
+  Sync.signInEmail = async (email, pass) => { await ensure(); const au = await fbAuth(); return attempt(() => au.signInWithEmailAndPassword(auth, email, pass)); };
   Sync.signUpEmail = async (email, pass, name) => {
-    await ensure(); const au = await fbAuth(); Sync.authSettled = false;
-    const r = await au.createUserWithEmailAndPassword(auth, email, pass);
+    await ensure(); const au = await fbAuth();
+    const r = await attempt(() => au.createUserWithEmailAndPassword(auth, email, pass));
     if (name) await au.updateProfile(r.user, { displayName: name }).catch(() => {});
     return r;
   };
@@ -109,10 +112,10 @@
   Sync.linkEmailPending = () => { try { return !!localStorage.getItem('eftaios.linkEmail'); } catch (_) { return false; } };
   Sync.isLink = () => /[?&]oobCode=/.test(location.search) && /mode=signIn/.test(location.search);
   Sync.completeLink = async email => {
-    await ensure(); const au = await fbAuth(); Sync.authSettled = false;
+    await ensure(); const au = await fbAuth();
     email = email || (() => { try { return localStorage.getItem('eftaios.linkEmail'); } catch (_) { return ''; } })();
     if (!email) throw new Error('email-required');
-    const r = await au.signInWithEmailLink(auth, email, location.href);
+    const r = await attempt(() => au.signInWithEmailLink(auth, email, location.href));
     try { localStorage.removeItem('eftaios.linkEmail'); } catch (_) { /* noop */ }
     try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ }
     return r;

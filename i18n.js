@@ -567,6 +567,7 @@ const IT = {
 "Move undone": "Mossa annullata",
 "You reached an Escape Pod.": "Hai raggiunto un Settore Capsula.",
 "Enter the Escape Pod": "Entra nella capsula",
+"Data deleted. The login stays: the player can register again, or remove it with tools/admin.js delete.": "Dati eliminati. Il login resta: il giocatore può registrarsi di nuovo, oppure rimuoverlo con tools/admin.js delete.",
 "Play again": "Gioca ancora",
 "Back in the lobby. Tap ready for the next game.": "Di nuovo nella sala. Tocca pronto per la prossima partita.",
 "Could not start another game.": "Impossibile avviare un'altra partita.",

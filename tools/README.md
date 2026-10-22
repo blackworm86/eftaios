@@ -26,6 +26,8 @@ node tools/test.js                         # browser tests (starts its own serve
 node tools/rules-check.js                  # structural invariants of database.rules.json
 node tools/verify-live.js                  # real Firebase + real rules (needs the service-account key)
 node tools/cleanup-rooms.js                 # retention sweep, dry run; --apply to delete
+node tools/reset-all.js                     # blank slate: every test login and all its data (dry run; --apply)
+node tools/admin.js delete <email>          # remove one login and all its data
 npm run test:rules                          # database emulator + all rules cases (needs Java 21)
 ```
 

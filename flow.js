@@ -468,4 +468,15 @@ loadMaps().then(() => {
   if (S.room && (S.stage === 'lobby' || S.stage === 'game')) Sync.join(S.room, { name: S.name || t('Player') });
   else if (S.stage === 'lobby') { S.stage = 'welcome'; renderFlow(); }
 });
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { /* optional */ });
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  /* a new version takes over the open tab: reload at once on the menus, but never in the middle of a table */
+  const hadWorker = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadWorker) return;   // first install: nothing was running before
+    if (S.stage === 'game' || S.stage === 'lobby') { toast(t('A new version is ready. Reload when the game is over.')); return; }
+    try { if (sessionStorage.getItem('eftaios.reloaded') === '1') return; sessionStorage.setItem('eftaios.reloaded', '1'); } catch (_) { /* noop */ }
+    location.reload();
+  });
+  setTimeout(() => { try { sessionStorage.removeItem('eftaios.reloaded'); } catch (_) { /* noop */ } }, 10000);   // only guards against a reload loop
+  navigator.serviceWorker.register('sw.js').catch(() => { /* optional */ });
+}

@@ -576,6 +576,7 @@ const IT = {
 "Done: {u} players and {r} rooms removed.": "Fatto: rimossi {u} giocatori e {r} stanze.",
 "Could not finish: {e}": "Non completato: {e}",
 "Your profile could not be read. The database rules may be out of date.": "Non riesco a leggere il tuo profilo. Le regole del database potrebbero essere obsolete.",
+"A new version is ready. Reload when the game is over.": "È disponibile una nuova versione. Ricarica quando la partita è finita.",
 "Play again": "Gioca ancora",
 "Back in the lobby. Tap ready for the next game.": "Di nuovo nella sala. Tocca pronto per la prossima partita.",
 "Could not start another game.": "Impossibile avviare un'altra partita.",

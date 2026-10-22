@@ -727,6 +727,9 @@ dialog .charcard{justify-content:center;margin:10px 0}
 .rev .pst{display:flex;align-items:center;gap:6px}
 .logfilter{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.lfc{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--line);background:var(--bg2);border-radius:999px;padding:4px 10px;font-size:13px;min-height:32px}.lfc[aria-pressed=true]{border-color:var(--amber);background:#ffb41f22}
 .turnbar{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.turnbar{display:flex;align-items:center;justify-content:center;gap:10px}
+.turnbar>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.turnbar .btn{min-height:32px;padding:4px 10px;font-size:12px}
 
 /* stamps and drawings */
 .annotbar{position:absolute;left:8px;right:58px;bottom:8px;z-index:25;background:#0b1222f2;border:1.5px solid var(--line);border-radius:14px;padding:8px;display:grid;gap:8px;box-shadow:0 8px 22px #0009}

@@ -318,6 +318,9 @@ async function scanDlg() {
 }
 
 /* keep the stored order in line with who is at the table (host only) */
+function roomSnapshot(code) {
+  try { return JSON.parse(localStorage.getItem('eftaios.room.' + code + '.' + Sync.uid) || 'null'); } catch (_) { return null; }
+}
 function syncOrder() {  if (!isHost() || !Sync.settings || Sync.settings.status !== 'lobby') return;
   const want = orderedIds(), have = Sync.settings.order || [];
   if (want.length !== have.length || want.some((u, i) => u !== have[i])) Sync.updateSettings({ order: want });
@@ -341,7 +344,20 @@ Sync.on({
     if (S.stage === 'game') { if (S.tab === 'table') render(); } else renderFlow();
   },
   joined(code) {
-    S.room = code; if (S.stage !== 'game') { S.stage = 'lobby'; T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow(); }
+    S.room = code;
+    if (S.stage !== 'game') {
+      /* coming back to a table we already played: restore this device's saved game instead of the lobby */
+      const snap = roomSnapshot(code);
+      if (snap && snap.stage === 'game' && snap.role && snap.pos) {
+        const name = S.name;
+        S = snap; S.room = code; S.name = S.name || name; S.online = true;
+        T.turnState = Sync.turn || T.turnState;
+        save(); boot();
+        if (typeof Online !== 'undefined') Online.attach();
+        return;
+      }
+      S.stage = 'lobby'; T.pendingRoom = null; try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } renderFlow();
+    }
     save(); if (S.stage === 'game') { if (S.online && (typeof Online !== 'undefined')) Online.attach(); if (S.tab === 'table') render(); }
   },
   settings(st) {
@@ -362,7 +378,7 @@ Sync.on({
     S.log.sort((a, b) => b.at - a.at); save(); if (S.stage === 'game') { paintOverlay(); if (S.tab === 'table' || S.tab === 'play') render(); if (window.onPublicEntry) onPublicEntry(S.log.find(x => x.id === e.id)); }
   },
   hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.stage === 'game') afterChange(); },
-  lease(l) { if (typeof Online !== 'undefined' && l && l.uid === Sync.uid) Online.hostCheck(); },
+  lease(l) { if (typeof Online !== 'undefined' && l && l.uid === Sync.uid) Online.hostCheck(); if (S.stage === 'game') hdr(); },
   auth() { if (['welcome', 'lobby', 'auth', 'account', 'games', 'admin'].includes(S.stage)) renderFlow(); }
 });
 

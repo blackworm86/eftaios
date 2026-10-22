@@ -26,7 +26,7 @@ try { Object.assign(S, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch
 S.tab = { play: 'play', table: 'table', notes: 'table', rules: 'more', menu: 'more', more: 'more' }[S.tab] || 'play';
 /* older companion games kept the other players' steps as hand marks: they are declarations now */
 if (S.marks && S.marks.length) { const nm = k => String(k).replace(/^n:/, ''); S.marks.forEach((m, i) => S.log.push({ id: 'mk' + i, by: '', who: nm(m.key), turn: m.turn, kind: 'noise', sector: m.sector, text: 'noise', at: 0, mine: false })); S.marks = []; }
-const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); if (S.room && Sync.uid && S.stage === 'game') localStorage.setItem('eftaios.room.' + S.room + '.' + Sync.uid, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
 
 /* transient (not persisted) */
 const T = { maps: [], map: null, sel: null, pick: null, inspect: null, noteType: 'noise', noteWho: '' };
@@ -1076,13 +1076,15 @@ function hdr() {
   if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) {
     const mine = T.turnState.uid === Sync.uid, le = typeof recentOthers === 'function' ? recentOthers(1)[0] : null, tail = le ? ' · ' + le.who + ': ' + entryText(le) : '';
     const bot = typeof Online !== 'undefined' && Online.isBotId(T.turnState.uid);
-    const paused = !mine && bot && !Sync.isHolder();
     const ak = (Sync.settings && Sync.settings.autoKick) || 0;
     const idle = !mine && !bot && ak > 0 && T.turnAt && Date.now() - T.turnAt > ak * 60000 && Sync.isHolder();
+    const away = !mine && !Sync.isHolder() && Sync.settings && Sync.settings.status === 'playing' && (!Sync.lease || Date.now() - (Sync.lease.at || 0) > 45000);
     tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : '');
-    tb.innerHTML = paused
-      ? `<span>${t('Bots are paused: the host is away.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`
-      : `${esc((mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' })) + tail)}${idle ? `<button class="btn" data-act="kickturn">${t('Remove idle player')}</button>` : ''}`;
+    tb.innerHTML = away
+      ? `<span>${t('The host is away: cards and bots are paused.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`
+      : bot && !Sync.isHolder()
+        ? `<span>${t('Bots are paused: the host is away.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`
+        : `${esc((mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' })) + tail)}${idle ? `<button class="btn" data-act="kickturn">${t('Remove idle player')}</button>` : ''}`;
   } else tb.hidden = true;
 }
 function render() {

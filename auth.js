@@ -63,7 +63,7 @@ const Auth = (() => {
   function gamesHtml() {
     if (!T.myGames) return `${head(t('Your games'))}<p class="dim">${t('Loading…')}</p>`;
     if (!T.myGames.length) return `${head(t('Your games'))}<p class="dim hintline">${t('No games yet. Host a table to start one.')}</p>`;
-    const rows = T.myGames.map(([code, g]) => `<li><span class="pname">${esc(code)}</span><span class="pst">${esc(g.status || '')}</span><button class="btn" data-act="resumeroom" data-c="${esc(code)}">${t('Open')}</button></li>`).join('');
+    const rows = T.myGames.map(([code, g]) => `<li><span class="pname">${esc(code)}</span><span class="pst">${esc(g.status || '')}</span><button class="btn" data-act="resumeroom" data-c="${esc(code)}">${t('Open')}</button><button class="btn danger" data-act="forgetroom" data-c="${esc(code)}" aria-label="${t('Remove')}">&times;</button></li>`).join('');
     return `${head(t('Your games'))}<ul class="plist">${rows}</ul><p class="dim hintline">${t('Finished games stay here for your last 20.')}</p>`;
   }
 
@@ -85,7 +85,7 @@ const Auth = (() => {
     if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
   }
 
-  const actions = {
+  const acts = {
     account() { T.authMsg = ''; open(Sync.registered ? 'account' : (Sync.user && !Sync.user.isAnonymous ? 'account' : 'auth')); },
     authback() { S.stage = 'welcome'; T.authMsg = ''; T.authReason = ''; save(); renderFlow(); },
     authgoogle() { guard(async () => { await Sync.signInGoogle(); T.authMsg = ''; postSignIn(); }); },
@@ -103,11 +103,25 @@ const Auth = (() => {
       if (!Sync.registered) return;
       confirmDlg(t('Delete your account?'), t('Live rooms are handed to another player. Finished games, maps and statistics are deleted.'), () => guard(async () => { await Sync.deleteSelf(); S.stage = 'welcome'; renderFlow(); }));
     },
-    resumeroom(b) { T.pendingRoom = b.dataset.c; S.stage = 'welcome'; save(); renderFlow(); actions.joinroom(); },
+    resumeroom(b) {
+      guard(async () => {
+        const code = b.dataset.c;
+        T.pendingRoom = null; T.myGames = null;
+        const ok = await Sync.join(code, { name: S.name || t('Player') });
+        if (!ok) { S.stage = 'games'; save(); loadGames(); }
+      });
+    },
+    forgetroom(b) {
+      const code = b.dataset.c;
+      confirmDlg(t('Remove this game from your list?'), t('The room is closed for everyone if you host it. This cannot be undone.'), () => guard(async () => {
+        await Sync.forgetRoom(code); T.myGames = null; loadGames();
+      }));
+    },
     adminopen() { S.stage = 'admin'; save(); renderFlow(); }
   };
-  function postSignIn() {
+  async function postSignIn() {
     T.authMsg = '';
+    try { await Sync.awaitAuth(); } catch (_) { /* fall through */ }
     if (!Sync.registered) { open('account'); return; }
     if (T.afterAuth) { S.stage = T.afterAuth; T.afterAuth = null; save(); renderFlow(); return; }
     if (S.stage === 'lobby' || S.stage === 'game') { renderFlow(); return; }
@@ -117,6 +131,6 @@ const Auth = (() => {
     try { await fn(); }
     catch (e) { T.authMsg = msg(e); renderFlow(); }
   }
-  return { html, bar, actions, guard, loadGames };
+  return { html, bar, actions: acts, guard, loadGames };
 })();
 window.Auth = Auth;

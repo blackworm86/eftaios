@@ -15,6 +15,7 @@
   };
   let fb = null, db = null, auth = null, unsub = [], ready = null, joining = false;
   const authListeners = [];
+  let authSettlers = [];
   const setStatus = s => { Sync.status = s; Sync.h.status && Sync.h.status(s); };
   const clean = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const path = (code, p) => fb.ref(db, `rooms/${code}/${p}`);
@@ -45,6 +46,7 @@
 
   async function handleUser(u) {
     const prev = Sync.uid;
+    Sync.authSettled = false;
     Sync.user = u || null; Sync.uid = u ? u.uid : null;
     Sync.isAdmin = false; Sync.profile = null; Sync.registered = false;
     if (u) {
@@ -62,18 +64,20 @@
       const code = Sync.code, name = (Sync.profile && Sync.profile.name) || 'Player';
       joining = true; Sync.leave(true); Sync.join(code, { name }).catch(() => {}).finally(() => { joining = false; });
     }
+    Sync.authSettled = true;
+    authSettlers.splice(0).forEach(fn => { try { fn(); } catch (_) { /* noop */ } });
   }
   Sync.onAuth = fn => { authListeners.push(fn); fn(Sync.user); };
   const fbAuth = () => import(B + 'firebase-auth.js');
 
   Sync.signInGoogle = async () => {
-    await ensure(); const au = await fbAuth();
+    await ensure(); const au = await fbAuth(); Sync.authSettled = false;
     const p = new au.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
     return au.signInWithPopup(auth, p);
   };
-  Sync.signInEmail = async (email, pass) => { await ensure(); const au = await fbAuth(); return au.signInWithEmailAndPassword(auth, email, pass); };
+  Sync.signInEmail = async (email, pass) => { await ensure(); const au = await fbAuth(); Sync.authSettled = false; return au.signInWithEmailAndPassword(auth, email, pass); };
   Sync.signUpEmail = async (email, pass, name) => {
-    await ensure(); const au = await fbAuth();
+    await ensure(); const au = await fbAuth(); Sync.authSettled = false;
     const r = await au.createUserWithEmailAndPassword(auth, email, pass);
     if (name) await au.updateProfile(r.user, { displayName: name }).catch(() => {});
     return r;
@@ -87,7 +91,7 @@
   Sync.linkEmailPending = () => { try { return !!localStorage.getItem('eftaios.linkEmail'); } catch (_) { return false; } };
   Sync.isLink = () => /[?&]oobCode=/.test(location.search) && /mode=signIn/.test(location.search);
   Sync.completeLink = async email => {
-    await ensure(); const au = await fbAuth();
+    await ensure(); const au = await fbAuth(); Sync.authSettled = false;
     email = email || (() => { try { return localStorage.getItem('eftaios.linkEmail'); } catch (_) { return ''; } })();
     if (!email) throw new Error('email-required');
     const r = await au.signInWithEmailLink(auth, email, location.href);
@@ -96,6 +100,23 @@
     return r;
   };
   Sync.signOut = async () => { await ensure(); const au = await fbAuth(); await au.signOut(auth); try { localStorage.removeItem('eftaios.account'); } catch (_) { /* noop */ } };
+  /* wait until the profile and claims for the new session have been read */
+  Sync.awaitAuth = () => new Promise(res => {
+    if (Sync.authSettled) return res();
+    const t0 = setTimeout(res, 5000);
+    authSettlers.push(() => { clearTimeout(t0); res(); });
+  });
+  Sync.forgetRoom = async code => {
+    await ensure();
+    if (!Sync.uid) return;
+    try {
+      const st = await Sync.getPath(`rooms/${code}/settings`);
+      if (st && st.host === Sync.uid) await Sync.setPath(`rooms/${code}/settings`, Object.assign({}, st, { status: 'over', result: { reason: 'closed', aliensWin: false } }));
+    } catch (_) { /* already gone */ }
+    await Sync.delPath(`users/${Sync.uid}/rooms/${code}`).catch(() => {});
+    await Sync.delPath(`users/${Sync.uid}/games/${code}`).catch(() => {});
+    if (Sync.code === code) Sync.leave(true);
+  };
   Sync.deleteSelf = async () => {
     await ensure();
     const uid = Sync.uid, prof = Sync.profile;

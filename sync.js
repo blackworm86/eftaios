@@ -33,6 +33,9 @@
       auth = fireAuth(au.getAuth(a));
       db = rtdb.getDatabase(a); fb = rtdb;
       au.onAuthStateChanged(auth, u => { handleUser(u).catch(e => console.warn(e)); });
+      /* the persisted session is restored asynchronously: wait for it, or a reload would replace a
+         signed-in player with a fresh anonymous guest and lose the account */
+      try { await au.getAuth(a).authStateReady(); } catch (_) { /* older SDK */ }
       if (!auth.currentUser) await au.signInAnonymously(auth).catch(e => { Sync.authError = String(e && e.code || e); });
       Sync.authReady = true;
     })().finally(() => { ready = null; });

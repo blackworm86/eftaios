@@ -174,7 +174,8 @@
   Sync.readSeat = async code => { await ensure(); return (await fb.get(at(`rooms/${code}/seats/${Sync.uid}`))).val(); };
 
   function readProfile(uid) {
-    return fb.get(at(`users/${uid}/profile`)).then(s => s.val() || null).catch(() => null);
+    Sync.profileError = '';
+    return fb.get(at(`users/${uid}/profile`)).then(s => s.val() || null).catch(e => { Sync.profileError = String(e && (e.code || e.message) || e).slice(0, 80); return null; });
   }
   Sync.saveProfile = async ({ handle, name }) => {
     await ensure();

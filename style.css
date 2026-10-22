@@ -816,3 +816,19 @@ li.adm-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;al
   .setup-card .roomcard .btn{flex:0 0 auto;padding:8px 10px;font-size:13px}
   .authlinks .btn{font-size:13px}
 }
+/* identity row, welcome tiles and full-width menu rows */
+.idrow{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;margin:0 0 10px;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);text-align:left}
+.idrow .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.idrow .who b{font:600 15px var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.idrow .who small{color:var(--dim);font:600 12px var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.idrow .tag{flex:none;color:var(--dim);font:600 12px var(--font)}
+.idrow .go{flex:none;font-style:normal;color:var(--amber);font-size:20px;line-height:1}
+.idrow.guest .tag{color:var(--amber)}
+.menu>.mrow{width:100%}
+.joinrow+.btn,.joinrow+.hostbtn{margin-top:8px}
+.hostbtn small{display:block;font-weight:400;font-size:11px;color:var(--dim)}
+/* menu rows are full-width wherever they sit */
+.mrow{width:100%}
+.pager .prev svg{transform:rotate(180deg)}
+.idrow .go svg{display:block}
+.grow .x svg{display:block;margin:auto}

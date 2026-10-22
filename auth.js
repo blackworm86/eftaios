@@ -18,8 +18,9 @@ const Auth = (() => {
   const bar = () => {
     const u = Sync.user, p = Sync.profile;
     if (!Sync.enabled) return '';
-    if (p) return `<div class="accountbar signed"><button class="btn link" data-act="account">${esc(p.name)}<small>@${esc(p.handle)}</small></button>${Sync.isAdmin ? `<button class="btn link" data-act="adminopen">${t('Admin')}</button>` : ''}</div>`;
-    return `<div class="accountbar"><button class="btn link" data-act="account">${u && !u.isAnonymous ? t('Finish your account') : t('Sign in')}<small>${t('Keep your games')}</small></button></div>`;
+    const chev = `<i class="go" aria-hidden="true">${ico('next', 18)}</i>`;
+    if (p) return `<button class="idrow" data-act="account"><span class="who"><b>${esc(p.name)}</b><small>@${esc(p.handle)}</small></span><span class="tag">${t('Account')}</span>${chev}</button>`;
+    return `<button class="idrow guest" data-act="account"><span class="who"><b>${u && !u.isAnonymous ? t('Finish your account') : t('Playing as a guest')}</b><small>${t('Sign in to keep your games')}</small></span><span class="tag">${t('Sign in')}</span>${chev}</button>`;
   };
   const head = title => `<header class="fhead"><button class="icon-btn" data-act="authback" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${title}</h2></header>`;
 
@@ -64,13 +65,13 @@ const Auth = (() => {
   }
   function gamesHtml() {
     if (!T.myGames) return `${head(t('Your games'))}<p class="dim">${t('Loading…')}</p>`;
-    if (!T.myGames.length) return `${head(t('Your games'))}<p class="dim hintline">${t('No games yet. Host a table to start one.')}</p>`;
+    if (!T.myGames.length) return `${head(t('Your games'))}<p class="dim hintline">${t('No games yet. Host a table to start one.')}</p><button class="btn primary wide" data-act="hostsetup">${t('Host a table')}</button>`;
     const per = 5, pages = Math.max(1, Math.ceil(T.myGames.length / per));
     const page = Math.min(Math.max(T.gamesPage || 0, 0), pages - 1);
     T.gamesPage = page;
-    const rows = T.myGames.slice(page * per, page * per + per).map(([code, g]) => `<li class="grow"><span class="pname">${esc(code)}<small>${esc(g.status || '')}</small></span><button class="btn" data-act="resumeroom" data-c="${esc(code)}">${t('Open')}</button><button class="x" data-act="forgetroom" data-c="${esc(code)}" aria-label="${t('Remove')}">&times;</button></li>`).join('');
+    const rows = T.myGames.slice(page * per, page * per + per).map(([code, g]) => `<li class="grow"><span class="pname">${esc(code)}<small>${esc(g.status || '')}</small></span><button class="btn" data-act="resumeroom" data-c="${esc(code)}">${t('Open')}</button><button class="x" data-act="forgetroom" data-c="${esc(code)}" aria-label="${t('Remove')}">${ico('close', 16)}</button></li>`).join('');
     const pager = pages > 1
-      ? `<div class="pager"><button data-act="gamespage" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">&lsaquo;</button><span>${page + 1} / ${pages}</span><button data-act="gamespage" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">&rsaquo;</button></div>`
+      ? `<div class="pager"><button class="prev" data-act="gamespage" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">${ico('next', 16)}</button><span>${page + 1} / ${pages}</span><button data-act="gamespage" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">${ico('next', 16)}</button></div>`
       : '';
     return `${head(t('Your games'))}<ul class="plist">${rows}</ul>${pager}<p class="dim hintline">${t('Finished games stay here for your last 20.')}</p>`;
   }

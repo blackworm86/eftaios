@@ -34,7 +34,7 @@ const Admin = (() => {
     T.adminPage = Object.assign({}, T.adminPage, { [which]: page });
     const rows = entries.slice(page * per, page * per + per).map(row).join('');
     const pager = pages > 1
-      ? `<div class="pager"><button data-act="adminpage" data-k="${which}" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">&lsaquo;</button><span>${page + 1} / ${pages}</span><button data-act="adminpage" data-k="${which}" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">&rsaquo;</button></div>`
+      ? `<div class="pager"><button class="prev" data-act="adminpage" data-k="${which}" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">${ico('next', 16)}</button><span>${page + 1} / ${pages}</span><button data-act="adminpage" data-k="${which}" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">${ico('next', 16)}</button></div>`
       : '';
     return `<ul class="plist">${rows || `<li>${t('Nothing here yet.')}</li>`}</ul>${pager}`;
   }
@@ -53,7 +53,7 @@ const Admin = (() => {
           <button class="btn danger" data-act="adminwipe" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}">${t('Delete')}</button></div>`;
         return `<li class="adm-row"><span class="who"><b>${esc(p.name || '(no profile)')}</b><small>@${esc(p.handle || '—')} · ${nRooms(rooms)}${banned ? ' · ' + t('banned') : ''}</small></span>${actions}</li>`;
       });
-      return `${rows}<div class="row two"><button class="btn" data-act="adminreset">${t('Send a password reset')}</button><button class="btn" data-act="admincloseroom">${t('Close a room')}</button></div>`;
+      return `${rows}<div class="row two"><button class="btn" data-act="adminreset">${t('Send a password reset')}</button></div>`;
     }
     if (which === 'rooms') {
       const users = d.users || {};

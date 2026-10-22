@@ -40,7 +40,7 @@ const shot = async (p, name) => {
     await p.evaluate(() => { Sync.registered = false; Sync.profile = null; Sync.user = null; S.stage = 'welcome'; renderFlow(); });
     rows.push(['welcome-guest', tag, await shot(p, tag + '-welcome-guest')]);
     // signed-in welcome
-    await p.evaluate(() => { Sync.registered = true; Sync.profile = { handle: 'riccardo_fuffo', name: 'Fuffolomeo' }; S.name = 'Fuffolomeo'; renderFlow(); });
+    await p.evaluate(() => { Sync.registered = true; Sync.profile = { handle: 'riccardo_fuffo', name: 'Fuffolomeo' }; Sync.isAdmin = true; S.name = 'Fuffolomeo'; renderFlow(); });
     rows.push(['welcome-user', tag, await shot(p, tag + '-welcome-user')]);
     // auth
     await p.evaluate(() => { Sync.registered = false; Sync.profile = null; S.stage = 'auth'; T.authReason = ''; save(); renderFlow(); });
@@ -83,6 +83,14 @@ const shot = async (p, name) => {
     await p.click('[data-act=addlobbybot]');
     await p.waitForTimeout(300);
     rows.push(['lobby', tag, await shot(p, tag + '-lobby')]);
+    // in-game More panel with the hosting controls
+    await p.click('[data-act=ready]');
+    await p.waitForFunction(() => !document.querySelector('.startbtn').disabled, null, { timeout: 10000 });
+    await p.click('.startbtn');
+    await p.waitForSelector('#app:not([hidden])', { timeout: 15000 });
+    await p.evaluate(() => closeDlg());
+    await p.click('[data-tab=more]');
+    rows.push(['more', tag, await shot(p, tag + '-more')]);
     await ctx.close();
   }
   console.log('out', OUT);

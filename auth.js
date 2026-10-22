@@ -73,7 +73,7 @@ const Auth = (() => {
     const pager = pages > 1
       ? `<div class="pager"><button class="prev" data-act="gamespage" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">${ico('next', 16)}</button><span>${page + 1} / ${pages}</span><button data-act="gamespage" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">${ico('next', 16)}</button></div>`
       : '';
-    return `${head(t('Your games'))}<ul class="plist">${rows}</ul>${pager}<p class="dim hintline">${t('Finished games stay here for your last 20.')}</p>`;
+    return `${head(t('Your games'))}<ul class="plist glist">${rows}</ul>${pager}<p class="dim hintline">${t('Finished games stay here for your last 20.')}</p>`;
   }
 
   async function open(stage) { S.stage = stage; save(); renderFlow(); }

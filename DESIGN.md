@@ -257,7 +257,7 @@ Rounded rectangles, radius 10–14px for controls and rows, 20px for the setup c
 Equal-width options in a framed track; the selected option gets an amber tint and a 2px amber inset ring. Used for options with two or three values (rules, map style, language). An ⓘ button next to the label opens a short explanation popup.
 
 ### Welcome
-The start screen is one card: language switch, title, then an identity row (name and handle, or “playing as a guest”; the whole row opens the account), the primary action — *Host a table* for an account, the amber *Join* for a guest — the table-code row, two mode tiles, two library tiles (games, maps) and an *Admin* row for administrators. Every entry is a bordered row or tile of the same height; there are no bare text links on the start screen.
+The start screen is one card: language switch, title, then an identity row (name and handle, or “playing as a guest”; the whole row opens the account), the primary action — *Host a table* for an account, the amber *Join* for a guest — the table-code row, a 2×2 block of secondary tiles (pass and play, companion, games, maps; maps spans the row for a guest) and an *Admin* row for administrators. Every entry is a bordered row or tile of the same height; there are no bare text links on the start screen.
 
 ### Rows and lists
 Players, announcements and turn order are 1px-bordered rows on the surface colour. The current turn gets an amber border and tint; a ready player gets a green border and tint.

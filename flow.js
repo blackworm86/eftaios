@@ -89,15 +89,21 @@ function renderFlow() {
     h = `${hero()}
       ${Auth.bar()}
       ${T.pendingRoom ? `<p class="banner">${t('You are invited to table {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${Sync.registered ? '' : nameField()}
-      ${T.pendingRoom ? `<button class="btn primary big wide" data-act="joinroom">${t('Join table {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button>`
-      : `${Sync.registered ? `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>` : ''}
-        <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn${Sync.registered ? '' : ' primary'}" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
-        ${Sync.registered ? '' : `<button class="btn wide hostbtn" data-act="hostsetup">${t('Host a table')}<small>${t('Account required')}</small></button>`}
-        <div class="row two"><button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button><button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button></div>
-        ${Sync.registered
-          ? `<div class="row two"><button class="btn" data-act="accountgames">${t('Your games')}<small>${t('Resume, history')}</small></button><button class="btn" data-act="maps_">${t('Maps')}<small>${t('Browse, create, publish')}</small></button></div>`
-          : `<button class="btn wide" data-act="maps_">${t('Maps')}<small>${t('Browse, create and share')}</small></button>`}
-        ${Sync.isAdmin ? `<button class="mrow" data-act="adminopen">${t('Admin')}<small>${t('Players, rooms, maps, reports')}</small><i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}`}
+      ${T.pendingRoom
+        ? `<div class="wacts"><button class="btn primary big wide" data-act="joinroom">${t('Join table {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button></div>`
+        : `<div class="wacts">
+            ${Sync.registered ? `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>` : ''}
+            <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn${Sync.registered ? '' : ' primary'}" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
+            ${Sync.registered ? '' : `<button class="btn wide hostbtn" data-act="hostsetup">${t('Host a table')}<small>${t('Account required')}</small></button>`}
+          </div>
+          <div class="wgrid">
+            <button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button>
+            <button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button>
+            ${Sync.registered
+              ? `<button class="btn" data-act="accountgames">${t('Your games')}<small>${t('Resume, history')}</small></button><button class="btn" data-act="maps_">${t('Maps')}<small>${t('Browse, create, publish')}</small></button>`
+              : `<button class="btn span2" data-act="maps_">${t('Maps')}<small>${t('Browse, create and share')}</small></button>`}
+          </div>
+          ${Sync.isAdmin ? `<button class="mrow" data-act="adminopen">${t('Admin')}<small>${t('Players, rooms, maps, reports')}</small><i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}`}
       ${flowStatus()}`;
   }
   card.innerHTML = h;

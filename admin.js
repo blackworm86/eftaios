@@ -36,7 +36,7 @@ const Admin = (() => {
     const pager = pages > 1
       ? `<div class="pager"><button class="prev" data-act="adminpage" data-k="${which}" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">${ico('next', 16)}</button><span>${page + 1} / ${pages}</span><button data-act="adminpage" data-k="${which}" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">${ico('next', 16)}</button></div>`
       : '';
-    return `<ul class="plist">${rows || `<li>${t('Nothing here yet.')}</li>`}</ul>${pager}`;
+    return `<ul class="plist adm-list">${rows || `<li>${t('Nothing here yet.')}</li>`}</ul>${pager}`;
   }
   const nRooms = n => `${n} ${t(n === 1 ? 'room' : 'rooms')}`;
 

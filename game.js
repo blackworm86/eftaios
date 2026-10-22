@@ -12,6 +12,7 @@ const roleLabel = (role, ch) => t(role === 'alien' ? 'Alien' : 'Human') + (ch ? 
 /* ---------------- turn order ---------------- */
 function onTurn(v) {
   const prev = T.turnState; T.turnState = v;
+  if (!prev || !v || prev.n !== v.n || prev.uid !== v.uid) T.turnAt = Date.now();
   if (S.stage !== 'game' || !v) return;
   S.turn = Math.min(v.n, MAX_TURN);
   const was = prev && prev.uid === Sync.uid && prev.n === v.n;
@@ -261,7 +262,18 @@ Object.assign(actions, {
       alertHtml(t('Medic'), esc(r ? r.name + ': ' + roleLabel(r.role, r.char) : '?'));
     });
   },
-  skipturn() { confirmDlg(t('Skip {p}?', { p: pname(T.turnState.uid) }), t('Use this when a player is away. Their turn ends now.'), () => { const nx = nextTurn(); if (nx) Sync.setTurn(nx); }); }
+  skipturn() { confirmDlg(t('Skip {p}?', { p: pname(T.turnState.uid) }), t('Use this when a player is away. Their turn ends now.'), () => { const nx = nextTurn(); if (nx) Sync.setTurn(nx); }); },
+  kickturn() {
+    const u = T.turnState && T.turnState.uid, st = Sync.settings || {};
+    if (!u || u === Sync.uid || !Sync.isHolder() || !st.autoKick) return;
+    if (!T.turnAt || Date.now() - T.turnAt < st.autoKick * 60000) return;
+    const p = (Sync.players || {})[u] || {};
+    confirmDlg(t('Remove {p}?', { p: p.name || '?' }), t('They have been idle past the time set in the lobby. Their seat is out of this game.'), () => {
+      Sync.upd('players/' + u, { out: 'kicked' });
+      Sync.push({ id: uid(), turn: T.turnState.n, who: p.name || '?', kind: 'info', text: 'kicked', sector: '', at: Date.now() });
+      const nx = nextTurn(); if (nx) Sync.setTurn(nx);
+    });
+  }
 });
 /* the rules: an item card is revealed to everyone when it is played */
 const revealItem = k => toast(t('Show your {i} card to everyone, then discard it', { i: t(ITEMS[k][0]) }));

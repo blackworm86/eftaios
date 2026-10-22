@@ -1075,11 +1075,14 @@ function hdr() {
   const tb = $('#turnbar');
   if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) {
     const mine = T.turnState.uid === Sync.uid, le = typeof recentOthers === 'function' ? recentOthers(1)[0] : null, tail = le ? ' · ' + le.who + ': ' + entryText(le) : '';
-    const paused = !mine && typeof Online !== 'undefined' && Online.isBotId(T.turnState.uid) && !Sync.isHolder();
+    const bot = typeof Online !== 'undefined' && Online.isBotId(T.turnState.uid);
+    const paused = !mine && bot && !Sync.isHolder();
+    const ak = (Sync.settings && Sync.settings.autoKick) || 0;
+    const idle = !mine && !bot && ak > 0 && T.turnAt && Date.now() - T.turnAt > ak * 60000 && Sync.isHolder();
     tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : '');
     tb.innerHTML = paused
       ? `<span>${t('Bots are paused: the host is away.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`
-      : esc((mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' })) + tail);
+      : `${esc((mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' })) + tail)}${idle ? `<button class="btn" data-act="kickturn">${t('Remove idle player')}</button>` : ''}`;
   } else tb.hidden = true;
 }
 function render() {

@@ -170,6 +170,24 @@
   };
   Sync.readStats = async uid => { await ensure(); return (await fb.get(at(`users/${(uid || Sync.uid)}/stats`))).val() || {}; };
 
+  /* ---------------- maps ---------------- */
+  Sync.myMaps = async () => {
+    await ensure(); if (!Sync.uid || !Sync.registered) return {};
+    return (await fb.get(at(`users/${Sync.uid}/maps`))).val() || {};
+  };
+  Sync.saveMapOnline = async rec => {
+    if (!Sync.registered || !Sync.uid) return;
+    await Sync.setPath(`users/${Sync.uid}/maps/${rec.id}`, { name: rec.name, author: rec.author || '', rows: rec.rows_data, odd: rec.oddColumnsLower !== false, at: Date.now() });
+  };
+  Sync.deleteMapOnline = async id => { if (Sync.registered) await Sync.delPath(`users/${Sync.uid}/maps/${id}`).catch(() => {}); };
+  Sync.publishMap = async rec => {
+    await ensure();
+    if (!Sync.registered) throw new Error('account');
+    await Sync.setPath(`pubmaps/${rec.id}`, { owner: Sync.uid, name: rec.name, author: (Sync.profile && Sync.profile.handle) || '', rows: rec.rows_data, odd: rec.oddColumnsLower !== false, at: Date.now() });
+    await Sync.setPath(`users/${Sync.uid}/maps/${rec.id}/published`, rec.id).catch(() => {});
+  };
+  Sync.pubMaps = async () => { await ensure(); return (await fb.get(at('pubmaps'))).val() || {}; };
+
   /* ---------------- table ---------------- */
   Sync.newCode = () => Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random() * 32 | 0]).join('');
 

@@ -15,14 +15,17 @@ function mapManager() {
   T.maps.forEach(m => { const p = m.pack || t('My maps'); if (!packs.includes(p)) packs.push(p); });
   if (!packs.includes(t('My maps'))) packs.push(t('My maps'));
   const body = `<div class="row two mmtop"><button class="btn primary" data-act="mmnew">+ ${t('New map')}</button><button class="btn" data-act="eimport">${t('Import')}</button></div>
+    ${Sync.registered ? `<div class="row two"><button class="btn" data-act="mmpub">${t('Published maps')}</button><button class="btn" data-act="mmsync">${t('Vault')}</button></div>` : ''}
     ${packs.map(p => { const l = T.maps.filter(m => (m.pack || t('My maps')) === p); return `<h3>${esc(t(p))}</h3>${l.length ? `<div class="ggrid">${l.map(m => `<button class="gcard" data-act="mmopen" data-id="${esc(m.id)}">${mapPreview(m)}<b>${esc(m.name)}</b><small>${esc(mapInfo(m))}</small></button>`).join('')}</div>` : `<p class="dim">${t('No maps of your own yet. Create one, or copy an official map to change it.')}</p>`}`; }).join('')}`;
   mmShell(t('Maps'), body, 'mmclose');
+  mergeVault().then(changed => { if (changed && $('#mapman')) mapManager(); });
 }
 function mapDetail(id) {
   const m = T.maps.find(x => x.id === id); if (!m) return;
   const mine = isCustom(m);
   mmShell(m.name, `<div class="mmbig">${mapPreview(m)}</div>${m.description ? `<p class="mmdesc">${t(m.description)}</p>` : ''}<p class="dim mminfo">${esc(mapInfo(m))}${mine ? '' : ' · ' + t('Official map (read-only)')}</p>
     <div class="mmacts">${mine ? `<button class="btn primary" data-act="mmedit" data-id="${esc(m.id)}">${t('Edit')}</button>` : ''}
+    ${mine && Sync.registered ? `<button class="btn" data-act="mmpublish" data-id="${esc(m.id)}">${t('Publish')}</button>` : ''}
     <button class="btn ${mine ? '' : 'primary'}" data-act="mmcopy" data-id="${esc(m.id)}">${t('Make a copy to edit')}</button>
     <button class="btn" data-act="mmexport" data-id="${esc(m.id)}">${t('Export / share')}</button>
     ${mine ? `<button class="btn danger" data-act="mmdel" data-id="${esc(m.id)}">${t('Delete')}</button>` : ''}
@@ -159,7 +162,32 @@ function saveEdit() {
   if (!e.grid.some(r => r.includes('H')) || !e.grid.some(r => r.includes('A'))) return toast(t('Place the Human and Alien start sectors'));
   const id = e.id || 'custom-' + Date.now(), rec = { id, name, rows_data: e.grid.map(r => r.join('')), oddColumnsLower: odd };
   S.customMaps = (S.customMaps || []).filter(m => m.id !== id).concat(rec); MM.ed = null;
+  if (Sync.registered) Sync.saveMapOnline(rec).catch(() => toast(t('Saved on this device only.')));
   save(); loadMaps().then(() => { mapDetail(id); toast(t('Map saved')); });
+}
+
+/* ---- the online vault and the published catalogue ---- */
+async function mergeVault() {
+  if (!Sync.registered) return false;
+  let v = {}; try { v = await Sync.myMaps(); } catch (_) { return false; }
+  let changed = false;
+  for (const [id, r] of Object.entries(v)) {
+    if ((S.customMaps || []).some(c => c.id === id)) continue;
+    (S.customMaps = S.customMaps || []).push({ id, name: r.name, rows_data: r.rows, oddColumnsLower: r.odd !== false, author: r.author || '' });
+    changed = true;
+  }
+  if (changed) { save(); await loadMaps(); }
+  return changed;
+}
+function toRec(m) { return { id: m.id, name: m.name, rows_data: m.grid.map(r => r.join('')), oddColumnsLower: !!m.odd, author: m.author || '' }; }
+async function publishedMaps() {
+  let all = {}; try { all = await Sync.pubMaps(); } catch (_) { /* offline */ }
+  T.pub = all;
+  const list = Object.entries(all).filter(([, m]) => m && !m.hidden).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
+  const body = list.length
+    ? `<ul class="plist">${list.map(([id, m]) => `<li><span class="pname">${esc(m.name)}<small>${esc(m.author || '')} · ${m.rows ? m.rows.length : 0}×${m.rows && m.rows[0] ? m.rows[0].length : 0}</small></span><span class="ctl"><button class="btn" data-act="pubcopy" data-id="${esc(id)}">${t('Copy to my maps')}</button><button class="btn" data-act="pubreport" data-id="${esc(id)}" aria-label="${t('Report')}">!</button></span></li>`).join('')}</ul>`
+    : `<p class="dim">${t('No published maps yet.')}</p>`;
+  mmShell(t('Published maps'), body, 'mmlist');
 }
 
 Object.assign(actions, {
@@ -171,7 +199,7 @@ Object.assign(actions, {
   mmcopy(b) { const m = T.maps.find(x => x.id === b.dataset.id); if (m) startEdit(m.grid, m.name + ' (' + t('copy') + ')', m.odd, null); },
   mmedit(b) { const m = T.maps.find(x => x.id === b.dataset.id); if (m && isCustom(m)) startEdit(m.grid, m.name, m.odd, m.id); },
   mmexport(b) { mapExport(b.dataset.id); },
-  mmdel(b) { const id = b.dataset.id; confirmDlg(t('Delete this map?'), t('This cannot be undone.'), () => { S.customMaps = (S.customMaps || []).filter(m => m.id !== id); save(); loadMaps().then(() => { if (S.mapId === id) S.mapId = 'galilei'; mapManager(); }); }); },
+  mmdel(b) { const id = b.dataset.id; confirmDlg(t('Delete this map?'), t('This cannot be undone.'), () => { S.customMaps = (S.customMaps || []).filter(m => m.id !== id); if (Sync.registered) Sync.deleteMapOnline(id).catch(() => {}); save(); loadMaps().then(() => { if (S.mapId === id) S.mapId = 'galilei'; mapManager(); }); }); },
   mmzin() { MM.zoomBy && MM.zoomBy(1.4); },
   mmzout() { MM.zoomBy && MM.zoomBy(1 / 1.4); },
   mmzfit() { MM.fit && MM.fit(); },
@@ -180,5 +208,28 @@ Object.assign(actions, {
   mmtool(b) { MM.ed.tool = b.dataset.t; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); },
   mmcancel() { const e = MM.ed; MM.ed = null; if (e && e.id) mapDetail(e.id); else mapManager(); },
   mmsave() { saveEdit(); },
+  mmpub() { publishedMaps(); },
+  mmsync() { mergeVault().then(changed => { mapManager(); toast(changed ? t('Vault loaded') : t('Vault is up to date')); }); },
+  mmpublish(b) {
+    const m = T.maps.find(x => x.id === b.dataset.id); if (!m || !Sync.registered) return;
+    confirmDlg(t('Publish this map?'), t('Other players will be able to see it and copy it.'), async () => {
+      try { await Sync.publishMap(toRec(m)); toast(t('Map published')); mapDetail(m.id); }
+      catch (e) { toast(t('Could not publish the map')); }
+    });
+  },
+  pubcopy(b) {
+    const p = (T.pub || {})[b.dataset.id]; if (!p) return;
+    const id = String(b.dataset.id), rec = { id, name: p.name || t('Custom map'), rows_data: p.rows, oddColumnsLower: p.odd !== false, author: p.author || '' };
+    if ((S.customMaps || []).some(c => c.id === id)) { toast(t('You already have this map.')); return; }
+    S.customMaps = (S.customMaps || []).concat(rec); save();
+    if (Sync.registered) Sync.saveMapOnline(rec).catch(() => {});
+    loadMaps().then(() => { toast(t('Copied to your maps')); mapDetail(id); });
+  },
+  pubreport(b) {
+    const id = String(b.dataset.id);
+    confirmDlg(t('Report this map?'), t('The admin will review it.'), async () => {
+      try { await Sync.report('map', id, ''); toast(t('Report sent')); } catch (_) { toast(t('Could not send the report')); }
+    });
+  },
   eimport() { importDlg(); }
 });

@@ -148,8 +148,10 @@ function rulesError(e) {
 /* host: change the rules from the lobby */
 function lobbyOpts() {
   const st = Sync.settings || {};
-  dlg.innerHTML = `<h2>${t('Game options')}</h2>${seg('mode', modeOf(st.mode))}<div class="row"><button class="btn primary" id="d-no">${t('Done')}</button></div>`;
-  dlg.showModal(); $('#d-no').onclick = closeDlg;
+  dlg.innerHTML = `<h2>${t('Game options')}</h2>${seg('mode', modeOf(st.mode))}
+    <label class="field"><span>${t('Idle player timeout (minutes, 0 = off)')}</span><input id="l-auto" type="number" min="0" max="60" value="${st.autoKick || 0}"></label>
+    <div class="row"><button class="btn primary" id="d-no">${t('Done')}</button></div>`;
+  dlg.showModal(); $('#d-no').onclick = () => { const v = Math.max(0, Math.min(60, +($('#l-auto').value || 0))); closeDlg(); Sync.updateSettings({ autoKick: v }); };
 }
 
 async function beginGame() {

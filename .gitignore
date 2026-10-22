@@ -12,6 +12,10 @@ chrome-*.log
 chrome-*.err
 chrome-*.out
 
-# machine-local impeccable state (shared config.json stays committable)
-.impeccable/config.local.json
-.impeccable/hook.cache.json
+# machine-local design-hook state
+.impeccable/
+
+# per-machine agent tooling, not part of the app
+.agents/
+.codex/
+skills-lock.json

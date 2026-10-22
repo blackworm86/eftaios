@@ -26,7 +26,7 @@ const Admin = (() => {
     if (!T.admin) return `${head}${tabs}<p class="dim">${t('Loading…')}</p>`;
     if (T.admin.error) return `${head}${tabs}<p class="dim">${t('Could not load the admin data')}: ${esc(T.admin.error)}</p>`;
     const nuke = tab() === 'audit' ? `<div class="row two"><button class="btn danger" data-act="adminnuke">${t('Nuke the app')}</button></div>` : '';
-    return `${head}${tabs}${T.admin[tab()] === undefined ? '' : roster(tab())}${nuke}`;
+    return `${head}${tabs}${T.admin[tab() === 'audit' ? 'log' : tab()] === undefined ? '' : roster(tab())}${nuke}`;
   }
   /* lists are paged so the panel never scrolls: five rows per screen on a phone */
   function paged(which, entries, per, row) {

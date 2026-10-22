@@ -10,10 +10,10 @@ const Admin = (() => {
     if (!Sync.isAdmin) { T.admin = null; renderFlow(); return; }
     T.admin = null; renderFlow();
     try {
-      const [users, maps, reports, log, bans] = await Promise.all([
-        Sync.adminList('users'), Sync.adminList('pubmaps'), Sync.adminList('reports'), Sync.adminList('adminlog'), Sync.adminList('bans')
+      const [users, maps, reports, log, bans, rooms] = await Promise.all([
+        Sync.adminList('users'), Sync.adminList('pubmaps'), Sync.adminList('reports'), Sync.adminList('adminlog'), Sync.adminList('bans'), Sync.adminList('roomIndex')
       ]);
-      T.admin = { users, maps, reports, log, bans };
+      T.admin = { users, maps, reports, log, bans, rooms };
     } catch (e) { T.admin = { error: String(e && (e.code || e.message) || e).slice(0, 80) }; }
     renderFlow();
   }
@@ -22,7 +22,7 @@ const Admin = (() => {
   function html() {
     if (!Sync.isAdmin) return `<header class="fhead"><button class="icon-btn" data-act="adminclose" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${t('Admin')}</h2></header><p class="dim">${t('This account is not an administrator.')}</p>`;
     const head = `<header class="fhead"><button class="icon-btn" data-act="adminclose" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${t('Admin')}</h2></header>`;
-    const tabs = `<div class="seg" role="tablist">${[['users', 'Players'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
+    const tabs = `<div class="seg" role="tablist">${[['users', 'Players'], ['rooms', 'Rooms'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
     if (!T.admin) return `${head}${tabs}<p class="dim">${t('Loading…')}</p>`;
     if (T.admin.error) return `${head}${tabs}<p class="dim">${t('Could not load the admin data')}: ${esc(T.admin.error)}</p>`;
     return `${head}${tabs}${T.admin[tab()] === undefined ? '' : roster(tab())}`;
@@ -43,6 +43,16 @@ const Admin = (() => {
       return `<ul class="plist">${list || `<li>${t('No players yet.')}</li>`}</ul>
         <div class="row two"><button class="btn" data-act="adminreset">${t('Send a password reset')}</button><button class="btn" data-act="admincloseroom">${t('Close a room')}</button></div>`;
     }
+    if (which === 'rooms') {
+      const users = d.users || {};
+      const list = Object.entries(d.rooms || {}).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).map(([code, r]) => {
+        const host = (users[r.host] && users[r.host].profile) || {};
+        return `<li><span class="pname">${esc(code)}<small>${esc(r.map || '')} · ${r.players || 1} ${t('players')}</small></span>
+          <span class="pst">${esc(r.status || '')}${host.name ? ' · ' + esc(host.name) : ''}</span>
+          <button class="btn" data-act="adminroomclose" data-c="${esc(code)}">${t('Close')}</button></li>`;
+      }).join('');
+      return `<ul class="plist">${list || `<li>${t('No open rooms.')}</li>`}</ul>`;
+    }
     if (which === 'maps') {
       const list = Object.entries(d.maps || {}).map(([id, m]) => `<li><span class="pname">${esc(m.name)}<small>${esc(m.author || '')} · ${m.rows ? m.rows.length : 0}×${m.rows && m.rows[0] ? m.rows[0].length : 0}</small></span>
         <span class="pst">${m.hidden ? t('hidden') : t('published')}</span>
@@ -58,6 +68,13 @@ const Admin = (() => {
     const list = Object.entries(d.log || {}).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 60)
       .map(([, e]) => `<li><span class="pname">${esc(e.action)} <small>${esc(e.target || '')} ${esc(e.detail || '')}</small></span><span class="pst">${when(e.at)}</span></li>`).join('');
     return `<ul class="plist">${list || `<li>${t('Nothing logged yet.')}</li>`}</ul>`;
+  }
+
+  async function closeRoom(code) {
+    await Sync.setPath(`rooms/${code}/settings/status`, 'over');
+    await Sync.setPath(`rooms/${code}/settings/result`, { reason: 'closed', aliensWin: false });
+    await Sync.setPath(`roomIndex/${code}/status`, 'over').catch(() => {});
+    await act('close-room', code);
   }
 
   async function act(action, target, detail) {
@@ -98,12 +115,10 @@ const Admin = (() => {
       if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
       $('#ad-go').onclick = async () => {
         const code = $('#ad-code').value.trim().toUpperCase(); if (!code) return;
-        closeDlg();
-        await Sync.setPath(`rooms/${code}/settings/status`, 'over');
-        await Sync.setPath(`rooms/${code}/settings/result`, { reason: 'closed', aliensWin: false });
-        await act('close-room', code);
+        closeDlg(); await closeRoom(code);
       };
     },
+    adminroomclose(b) { closeRoom(b.dataset.c); },
     async adminmap(b) {
       await Sync.setPath(`pubmaps/${b.dataset.id}/hidden`, b.dataset.h === '1' ? null : true);
       await act(b.dataset.h === '1' ? 'restore-map' : 'hide-map', b.dataset.id);

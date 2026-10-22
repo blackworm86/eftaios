@@ -98,6 +98,20 @@
         }
       }
     },
+    "roomIndex": {
+      ".read": "auth != null && auth.token.admin === true",
+      "$code": {
+        ".write": "auth != null && (auth.token.admin === true || root.child('rooms').child($code).child('settings/host').val() === auth.uid)",
+        ".validate": "newData.hasChildren(['host', 'status', 'at'])",
+        "host": { ".validate": "newData.isString()" },
+        "status": { ".validate": "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'over'" },
+        "map": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "players": { ".validate": "newData.isNumber()" },
+        "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "at": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
     "bans": {
       ".read": "auth != null && auth.token.admin === true",
       "$uid": {

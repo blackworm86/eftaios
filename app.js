@@ -27,6 +27,8 @@ S.tab = { play: 'play', table: 'table', notes: 'table', rules: 'more', menu: 'mo
 /* older companion games kept the other players' steps as hand marks: they are declarations now */
 if (S.marks && S.marks.length) { const nm = k => String(k).replace(/^n:/, ''); S.marks.forEach((m, i) => S.log.push({ id: 'mk' + i, by: '', who: nm(m.key), turn: m.turn, kind: 'noise', sector: m.sector, text: 'noise', at: 0, mine: false })); S.marks = []; }
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); if (S.room && Sync.uid && S.stage === 'game') localStorage.setItem('eftaios.room.' + S.room + '.' + Sync.uid, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
+/* closing the tab must leave the room snapshot behind, or the table cannot be resumed */
+addEventListener('pagehide', () => { if (S.stage === 'game' && S.room) save(); });
 
 /* transient (not persisted) */
 const T = { maps: [], map: null, sel: null, pick: null, inspect: null, noteType: 'noise', noteWho: '' };
@@ -945,7 +947,7 @@ const actions = {
     const [title, body] = S.hot ? ['Close this game?', 'The pass-and-play game ends for everyone.'] : !Sync.code ? ['Start a new game?', 'Your route, notes and role will be erased.'] : host ? ['Close this game?', 'The game ends for everyone at the table. You can then host a new one.'] : ['Leave this game?', 'You leave the table. Your route and notes on this device are erased.'];
     confirmDlg(t(title), t(body), async () => {
       if (S.hot) Hot.clear();
-      if (host) await Sync.updateSettings({ status: 'over', result: { reason: 'closed' } });
+      if (host) { Sync.writeRoomIndex({ status: 'over' }); await Sync.updateSettings({ status: 'over', result: { reason: 'closed' } }); }
       Sync.leave(true); resetToWelcome(host ? 'host' : 'welcome');
     });
   },
@@ -1120,8 +1122,8 @@ const rulesHtml = () => `<div class="rules">${RULES.map(([h, li]) => `<h4>${t(h)
 const mapsHtml = () => `<div class="ggrid">${T.maps.map(m => `<button class="gcard" data-act="map" data-id="${esc(m.id)}" aria-pressed="${m.id === T.map.id}">${mapPreview(m)}<b>${esc(m.name)}</b></button>`).join('')}</div>`;
 const segRow = (label_, act, key, cur, opts) => `<div class="setrow"><span>${t(label_)}</span><div class="seg" role="radiogroup" aria-label="${t(label_)}">${opts.map(([v, l]) => `<button role="radio" data-act="${act}" data-${key}="${v}" aria-checked="${cur === v}">${l}</button>`).join('')}</div></div>`;
 function morePanel() {
-  const solo = !Sync.code && !S.hot, host = !!(Sync.code && Sync.isHost());
-  const ng = S.hot || host ? 'Close game' : Sync.code ? 'Leave game' : 'New game';
+  const solo = !Sync.code && !S.hot, host = !!(Sync.code && Sync.isHost()), online = !!Sync.code && !S.hot;
+  const ng = S.hot ? 'Close game' : 'New game';
   return `<div class="menu">
     <div class="tiles${solo ? '' : ' one'}"><button class="mrow" data-act="rules">${t('How to play')}<i aria-hidden="true">${ico('next', 18)}</i></button>
     ${solo ? `<button class="mrow" data-act="maps">${t('Map')}<i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}</div>
@@ -1130,7 +1132,9 @@ function morePanel() {
     ${segRow('Language', 'lang', 'l', LANG, [['en', 'English'], ['it', 'Italiano']])}
     ${Sync.code && Sync.isHost() ? `<button class="mrow" data-act="handover">${t('Hand over hosting')}<i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}
     </div>
-    <div class="row menuact"><button class="btn danger" data-act="newgame">${t(ng)}</button></div>`;
+    ${online
+      ? `<div class="row menuact"><button class="btn" data-act="leavetable">${t('Leave table')}</button>${host ? `<button class="btn danger" data-act="closetable">${t('Close table')}</button>` : ''}</div>`
+      : `<div class="row menuact"><button class="btn danger" data-act="newgame">${t(ng)}</button></div>`}`;
 }
 /* ---------------- boot ---------------- */
 function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); } catch (_) { /* noop */ } applyStatic(); if (S.stage === 'game' && S.role) { render(); hdr(); paintCells(); } else renderFlow(); }

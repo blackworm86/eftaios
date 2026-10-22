@@ -56,7 +56,7 @@ function optInfo(f) {
   dlg.innerHTML = `<h2>${t(lbl)}</h2><dl class="optinfo">${Object.values(set).map(v => `<dt>${t(v[0])}</dt><dd>${t(v[1])}</dd>`).join('')}</dl><div class="row"><button class="btn primary" id="d-no">OK</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
-const myName = () => (S.name || '').trim() || t('Player');
+const myName = () => (Sync.registered && Sync.profile && Sync.profile.name) || (S.name || '').trim() || t('Player');
 const readName = () => { const el = $('#flow-name'); if (el) S.name = el.value.trim(); return myName(); };
 
 function renderFlow() {
@@ -64,7 +64,7 @@ function renderFlow() {
   const st = S.stage;
   card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
   if (st === 'host') {
-    h = `${fhead(t('Host a table'))}${nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
+    h = `${fhead(t('Host a table'))}${Sync.registered ? '' : nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
       <button class="btn primary big wide" data-act="hostcreate">${t('Create table')}</button>${flowStatus()}`;
   } else if (st === 'solo') {
     h = `${fhead(t('Companion'))}<p class="dim hintline">${t('Use the app like the paper sheet: track your own route and what the other players declare. You play with the real cards.')}</p>${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
@@ -87,7 +87,7 @@ function renderFlow() {
   } else {
     h = `${hero()}
       ${Auth.bar()}
-      ${T.pendingRoom ? `<p class="banner">${t('You are invited to table {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${nameField()}
+      ${T.pendingRoom ? `<p class="banner">${t('You are invited to table {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${Sync.registered ? '' : nameField()}
       ${T.pendingRoom ? `<button class="btn primary big wide" data-act="joinroom">${t('Join table {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button>`
       : `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>
         <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
@@ -274,6 +274,24 @@ Object.assign(actions, {
   shuffleorder() { const ids = orderedIds(); for (let i = ids.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [ids[i], ids[j]] = [ids[j], ids[i]]; } Sync.updateSettings({ order: ids }); },
   startgame: startTable,
   leavelobby() { confirmDlg(t('Leave this table?'), t('You will stop receiving announcements.'), leaveToWelcome); },
+  leavetable() {
+    confirmDlg(t('Leave the table?'), t('The game keeps going and you can come back from My games.'), () => {
+      if (Sync.isHost()) {
+        const other = Object.keys(Sync.players || {}).find(u => u !== Sync.uid && !Sync.players[u].bot && !Sync.players[u].out);
+        if (other) Sync.updateSettings({ host: other });
+      }
+      Sync.releaseHost();
+      Sync.leave(true); S.room = null; S.stage = 'welcome'; T.turnState = null; save(); boot(); renderFlow();
+    });
+  },
+  closetable() {
+    if (!Sync.isHost()) return;
+    confirmDlg(t('Close the table?'), t('The game ends for everyone at the table. This cannot be undone.'), () => {
+      Sync.writeRoomIndex({ status: 'over' });
+      Sync.updateSettings({ status: 'over', result: { reason: 'closed' } });
+      Sync.leave(true); S.room = null; S.stage = 'host'; T.turnState = null; save(); boot(); renderFlow();
+    });
+  },
   solostart(b) { soloStart(b.dataset.role); },
   scanqr() { scanDlg(); }
 });
@@ -345,6 +363,7 @@ Sync.on({
   },
   joined(code) {
     S.room = code;
+    if (Sync.registered && Sync.profile) S.name = Sync.profile.name;
     if (S.stage !== 'game') {
       /* coming back to a table we already played: restore this device's saved game instead of the lobby */
       const snap = roomSnapshot(code);

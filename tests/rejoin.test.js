@@ -25,7 +25,7 @@ const { assert, setup, startTable } = require('./helpers');
   // leaving the table and opening it again from My games keeps the secret state
   const before = await G.evaluate(() => ({ pos: S.pos, char: S.char }));
   await G.click('[data-tab=more]');
-  await G.click('[data-act=newgame]');
+  await G.evaluate(()=>actions.leavetable());
   await G.click('#d-yes');
   await G.waitForSelector('[data-act=accountgames]', { timeout: 8000 });
   await G.click('[data-act=accountgames]');

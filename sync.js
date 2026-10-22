@@ -110,8 +110,11 @@
     await ensure();
     if (!Sync.uid) return;
     try {
-      const st = await Sync.getPath(`rooms/${code}/settings`);
-      if (st && st.host === Sync.uid) await Sync.setPath(`rooms/${code}/settings`, Object.assign({}, st, { status: 'over', result: { reason: 'closed', aliensWin: false } }));
+      const st = (await fb.get(at(`rooms/${code}/settings`))).val();
+      if (st && st.host === Sync.uid) {
+        await fb.update(at(`rooms/${code}/settings`), { status: 'over', result: { reason: 'closed', aliensWin: false } });
+        await fb.update(at('roomIndex/' + code), { host: Sync.uid, status: 'over', at: Date.now() }).catch(() => {});
+      }
     } catch (_) { /* already gone */ }
     await Sync.delPath(`users/${Sync.uid}/rooms/${code}`).catch(() => {});
     await Sync.delPath(`users/${Sync.uid}/games/${code}`).catch(() => {});
@@ -197,6 +200,17 @@
   };
   Sync.readStats = async uid => { await ensure(); return (await fb.get(at(`users/${(uid || Sync.uid)}/stats`))).val() || {}; };
 
+  /* a small public-to-admins index of open tables, so the admin can see and close rooms
+     without opening their secret or host data */
+  Sync.writeRoomIndex = patch => {
+    if (!Sync.code || !db) return;
+    fb.update(at('roomIndex/' + Sync.code), Object.assign({ host: Sync.uid, at: Date.now() }, patch)).catch(() => {});
+  };
+  Sync.writeIndexFor = (code, patch) => {
+    if (!code || !db) return;
+    fb.update(at('roomIndex/' + code), Object.assign({ host: Sync.uid, at: Date.now() }, patch)).catch(() => {});
+  };
+
   /* ---------------- maps ---------------- */
   Sync.myMaps = async () => {
     await ensure(); if (!Sync.uid || !Sync.registered) return {};
@@ -244,6 +258,7 @@
       await fb.set(path(code, 'settings'), Object.assign({ map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', order: [Sync.uid] }, settings.customMap ? { customMap: settings.customMap } : {}));
       await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false, guest: !Sync.registered });
       await fb.set(path(code, 'lease'), { uid: Sync.uid, at: Date.now() }).catch(() => {});
+      await fb.update(at('roomIndex/' + code), { host: Sync.uid, status: 'lobby', map: settings.map, players: 1, name: me.name, at: Date.now() }).catch(() => {});
       listen(code); Sync.h.joined && Sync.h.joined(code); Sync.indexRoom(code, 'host'); return true;
     } catch (e) { console.warn(e); Sync.lastError = String(e && (e.code || e.message) || e).slice(0, 80); setStatus(/permission/i.test(Sync.lastError) ? 'rules' : 'error'); return false; }
   };
@@ -279,7 +294,7 @@
   Sync.setMe = p => Sync.code && fb.update(path(Sync.code, 'players/' + Sync.uid), p).catch(console.warn);
   Sync.startGame = async (first, order) => {
     if (!Sync.code) return;
-    try { await fb.set(path(Sync.code, 'turn'), { n: 1, idx: 0, uid: order[0] }); await fb.update(path(Sync.code, 'settings'), { status: 'playing', first: first || '' }); } catch (e) { console.warn(e); }
+    try { await fb.set(path(Sync.code, 'turn'), { n: 1, idx: 0, uid: order[0] }); await fb.update(path(Sync.code, 'settings'), { status: 'playing', first: first || '' }); Sync.writeRoomIndex({ status: 'playing', players: order.length }); } catch (e) { console.warn(e); }
   };
   Sync.setTurn = v => Sync.code && fb.set(path(Sync.code, 'turn'), v).catch(console.warn);
   /* generic helpers, paths relative to the table */

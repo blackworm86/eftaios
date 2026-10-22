@@ -294,7 +294,7 @@ const Online = (() => {
       if (!aboard.length && humans.length) over = { aliensWin: HD.last !== 'escaped', reason: HD.last === 'escaped' ? 'escape' : 'eliminated' };
       else if (Sync.turn && Sync.turn.n > MAX_TURN) over = { aliensWin: true, reason: 'time' };
       if (changed) persist();
-      if (over) Sync.updateSettings({ status: 'over', result: Object.assign(over, { escaped: escaped.map(u => ps[u].name.slice(0, 20)) }) });
+      if (over) { Sync.updateSettings({ status: 'over', result: Object.assign(over, { escaped: escaped.map(u => ps[u].name.slice(0, 20)) }) }); Sync.writeRoomIndex({ status: 'over' }); }
     },
     maybeBotTurn, revealBots, isBotId,
     _hd: () => HD

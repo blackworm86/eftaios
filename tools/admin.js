@@ -21,11 +21,13 @@ async function main() {
     console.error('Set GOOGLE_APPLICATION_CREDENTIALS to a service-account JSON file.');
     return process.exit(1);
   }
-  let admin;
-  try { admin = require('firebase-admin'); }
-  catch (e) { console.error('Install the Admin SDK first: npm install firebase-admin --no-save'); return process.exit(1); }
-  if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.applicationDefault() });
-  const auth = admin.auth();
+  let initializeApp, getApps, applicationDefault, getAuth;
+  try {
+    ({ initializeApp, getApps, applicationDefault } = require('firebase-admin/app'));
+    ({ getAuth } = require('firebase-admin/auth'));
+  } catch (e) { console.error('Install the Admin SDK first: npm install firebase-admin --no-save'); return process.exit(1); }
+  if (!getApps().length) initializeApp({ credential: applicationDefault() });
+  const auth = getAuth();
   const user = await auth.getUserByEmail(email).catch(() => null);
   if (!user) { console.error('No account for ' + email); return process.exit(1); }
 

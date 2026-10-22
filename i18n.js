@@ -677,6 +677,8 @@ const IT = {
 "Nothing logged yet.": "Nessuna voce nel registro.",
 "This account is not an administrator.": "Questo account non è un amministratore.",
 "This account is banned.": "Questo account è bloccato.",
+"This is you": "Sei tu",
+"You cannot do that to your own account.": "Non puoi farlo al tuo account.",
 "Could not load the admin data": "Impossibile caricare i dati di amministrazione",
 "rooms": "tavoli",
 "banned": "bloccato",

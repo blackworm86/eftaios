@@ -31,12 +31,14 @@ const Admin = (() => {
     const d = T.admin;
     if (which === 'users') {
       const list = Object.entries(d.users || {}).map(([uid, u]) => {
-        const p = (u && u.profile) || {}, banned = !!(d.bans || {})[uid];
+        const p = (u && u.profile) || {}, banned = !!(d.bans || {})[uid], me = uid === Sync.uid;
         const rooms = Object.keys((u && u.rooms) || {}).length;
+        const actions = me
+          ? `<span class="pst">${t('This is you')}</span>`
+          : `<button class="btn" data-act="adminban" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}" data-b="${banned ? 1 : 0}">${banned ? t('Unban') : t('Ban')}</button>
+          <button class="btn danger" data-act="adminwipe" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}">${t('Delete data')}</button>`;
         return `<li><span class="pname">${esc(p.name || '(no profile)')}<small>@${esc(p.handle || '')} · ${uid.slice(0, 8)}…</small></span>
-          <span class="pst">${rooms} ${t('rooms')}${banned ? ' · ' + t('banned') : ''}</span>
-          <button class="btn" data-act="adminban" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}" data-b="${banned ? 1 : 0}">${banned ? t('Unban') : t('Ban')}</button>
-          <button class="btn danger" data-act="adminwipe" data-u="${esc(uid)}" data-h="${esc(p.handle || '')}">${t('Delete data')}</button></li>`;
+          <span class="pst">${rooms} ${t('rooms')}${banned ? ' · ' + t('banned') : ''}</span>${actions}</li>`;
       }).join('');
       return `<ul class="plist">${list || `<li>${t('No players yet.')}</li>`}</ul>
         <div class="row two"><button class="btn" data-act="adminreset">${t('Send a password reset')}</button><button class="btn" data-act="admincloseroom">${t('Close a room')}</button></div>`;
@@ -69,11 +71,13 @@ const Admin = (() => {
     adminrefresh() { load(); },
     async adminban(b) {
       const uid = b.dataset.u, on = b.dataset.b !== '1';
+      if (uid === Sync.uid) { toast(t('You cannot do that to your own account.')); return; }
       await Sync.setPath(`bans/${uid}`, on ? true : null);
       await act(on ? 'ban' : 'unban', uid, b.dataset.h || '');
     },
     async adminwipe(b) {
       const uid = b.dataset.u, h = b.dataset.h;
+      if (uid === Sync.uid) { toast(t('You cannot do that to your own account.')); return; }
       if (!confirm(t('Delete this player and all their data?'))) return;
       await Sync.delPath(`users/${uid}`);
       await Sync.delPath(`bans/${uid}`).catch(() => {});

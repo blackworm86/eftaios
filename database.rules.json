@@ -102,7 +102,7 @@
       ".read": "auth != null && auth.token.admin === true",
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || auth.token.admin === true)",
-        ".write": "auth != null && auth.token.admin === true",
+        ".write": "auth != null && auth.token.admin === true && auth.uid !== $uid",
         ".validate": "newData.isBoolean()"
       }
     },

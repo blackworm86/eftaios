@@ -58,7 +58,8 @@ const Admin = (() => {
     if (which === 'rooms') {
       const users = d.users || {};
       const list = Object.entries(d.rooms || {}).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
-      return paged('rooms', list, 5, ([code, r]) => {
+      const sweep = `<div class="row two"><button class="btn danger" data-act="adminsweep">${t('Delete closed and idle rooms')}</button></div>`;
+      return sweep + paged('rooms', list, 5, ([code, r]) => {
         const host = (users[r.host] && users[r.host].profile) || {};
         return `<li class="adm-row"><span class="who"><b>${esc(code)}</b><small>${esc(r.map || '')} · ${r.players || 1} ${t('players')}${host.name ? ' · ' + esc(host.name) : ''}</small></span>
           <div class="acts"><span class="pst">${esc(r.status || '')}</span><button class="btn" data-act="adminroomclose" data-c="${esc(code)}">${t('Close')}</button></div></li>`;
@@ -129,6 +130,18 @@ const Admin = (() => {
       };
     },
     adminroomclose(b) { closeRoom(b.dataset.c); },
+    async adminsweep() {
+      const cutoff = Date.now() - 7 * 86400000;
+      const old = Object.entries(T.admin.rooms || {}).filter(([, r]) => r.status === 'over' || (r.at || 0) < cutoff).map(([c]) => c);
+      if (!old.length) { toast(t('Nothing to delete.')); return; }
+      if (!confirm(t('Delete closed rooms and rooms idle for over 7 days? This cannot be undone.') + ' (' + old.length + ')')) return;
+      let n = 0;
+      for (const code of old) {
+        try { await Sync.delPath('roomIndex/' + code); await Sync.delPath('rooms/' + code); n++; } catch (e) { console.warn('sweep', code, e); }
+      }
+      toast(t('Deleted {n} rooms.', { n }));
+      await act('sweep-rooms', '', String(n));
+    },
     async adminmap(b) {
       await Sync.setPath(`pubmaps/${b.dataset.id}/hidden`, b.dataset.h === '1' ? null : true);
       await act(b.dataset.h === '1' ? 'restore-map' : 'hide-map', b.dataset.id);

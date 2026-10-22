@@ -300,6 +300,8 @@ const Online = (() => {
       if (changed) persist();
       if (over) { Sync.updateSettings({ status: 'over', result: Object.assign(over, { escaped: escaped.map(u => ps[u].name.slice(0, 20)) }) }); Sync.writeRoomIndex({ status: 'over' }); }
     },
+    /* a new game at the same table: forget the old decks, bots and pending replies */
+    reset() { HD = null; hdReady = null; botBusy = ''; revealed.clear(); done.clear(); },
     maybeBotTurn, revealBots, isBotId,
     _hd: () => HD
   };

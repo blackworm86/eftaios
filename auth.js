@@ -83,6 +83,7 @@ const Auth = (() => {
     const out = [];
     for (const [code, g] of rooms) {
       let st = null; try { st = await Sync.getPath(`rooms/${code}/settings`); } catch (_) { /* noop */ }
+      if (!st) { Sync.delPath(`users/${Sync.uid}/rooms/${code}`).catch(() => {}); continue; }   // a closed table is deleted: drop it from the list
       out.push([code, { at: g.at, role: g.role, status: st ? (st.status === 'playing' ? t('In progress') : st.status === 'over' ? t('Finished') : t('Lobby')) : t('Gone'), ok: !!st }]);
     }
     T.myGames = out; renderFlow();

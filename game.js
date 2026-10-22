@@ -408,7 +408,7 @@ function globalOverPanel() {
     <p class="dim">${t(why)}</p>${esc_.length ? `<p>${t('Humans who escaped: {n}', { n: esc_.map(esc).join(', ') })}</p>` : ''}
     ${routesNote()}
     <div class="seg revseg" role="radiogroup" aria-label="${t('Map')}"><button role="radio" data-act="revealview" data-v="real" aria-checked="${!T.showAnn}">${t('Real routes')}</button><button role="radio" data-act="revealview" data-v="ann" aria-checked="${!!T.showAnn}">${t('Announcements')}</button></div>
-    <ul class="plist rev">${rows}</ul><button class="btn big wide" data-act="savelog">${t('Save game log')}</button><button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`;
+    <ul class="plist rev">${rows}</ul><button class="btn big wide" data-act="savelog">${t('Save game log')}</button>${!S.hot && Sync.code && Sync.isHost() ? `<button class="btn primary big wide" data-act="rematch">${t('Play again')}</button><button class="btn big wide" data-act="newgame">${t('Close table')}</button>` : `<button class="btn primary big wide" data-act="newgame">${t(!S.hot && Sync.code ? 'Leave table' : 'New game')}</button>`}`;
 }
 
 const catNote = () => S.cat ? `<p class="say alert"><b>${t('Cat is ready: two noises when you draw')}</b></p>` : '';

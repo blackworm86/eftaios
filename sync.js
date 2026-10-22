@@ -80,6 +80,7 @@
     authSettlers.splice(0).forEach(fn => { try { fn(); } catch (_) { /* noop */ } });
   }
   Sync.onAuth = fn => { authListeners.push(fn); fn(Sync.user); };
+  const CLOSE_GRACE = 4000;   // lets the other devices see the close before the table disappears
   const fbAuth = () => import(B + 'firebase-auth.js');
 
   Sync.signInGoogle = async () => {
@@ -123,16 +124,25 @@
     const t0 = setTimeout(res, 5000);
     authSettlers.push(() => { clearTimeout(t0); res(); });
   });
+  /* host: tell the table it is closed, then delete it so no dead room is left behind.
+     The index goes first: its rule reads the room's host. */
+  Sync.closeRoom = async code => {
+    code = code || Sync.code;   // before any await: callers leave the table right after
+    await ensure();
+    if (!code || !Sync.uid) return;
+    const st = (await fb.get(at(`rooms/${code}/settings`))).val();
+    if (!st || st.host !== Sync.uid) return;
+    await fb.update(at(`rooms/${code}/settings`), { status: 'over', result: { reason: 'closed', aliensWin: false } });
+    setTimeout(async () => {
+      await fb.remove(at('roomIndex/' + code)).catch(() => {});
+      await fb.remove(at('rooms/' + code)).catch(() => {});
+    }, CLOSE_GRACE);
+    await Sync.delPath(`users/${Sync.uid}/rooms/${code}`).catch(() => {});
+  };
   Sync.forgetRoom = async code => {
     await ensure();
     if (!Sync.uid) return;
-    try {
-      const st = (await fb.get(at(`rooms/${code}/settings`))).val();
-      if (st && st.host === Sync.uid) {
-        await fb.update(at(`rooms/${code}/settings`), { status: 'over', result: { reason: 'closed', aliensWin: false } });
-        await fb.update(at('roomIndex/' + code), { host: Sync.uid, status: 'over', at: Date.now() }).catch(() => {});
-      }
-    } catch (_) { /* already gone */ }
+    try { await Sync.closeRoom(code); } catch (_) { /* already gone */ }
     await Sync.delPath(`users/${Sync.uid}/rooms/${code}`).catch(() => {});
     await Sync.delPath(`users/${Sync.uid}/games/${code}`).catch(() => {});
     if (Sync.code === code) Sync.leave(true);
@@ -144,7 +154,7 @@
     for (const code of Object.keys(rooms)) {
       try {
         const st = (await fb.get(at(`rooms/${code}/settings`))).val();
-        if (st && st.host === uid) await fb.update(at(`rooms/${code}/settings`), { status: 'over', result: { reason: 'closed', aliensWin: false } });
+        if (st && st.host === uid) await Sync.closeRoom(code);
       } catch (_) { /* room already gone */ }
     }
     await fb.remove(at(`users/${uid}`)).catch(() => {});
@@ -199,10 +209,11 @@
     return Object.entries(all).sort((a, b) => (b[1].at || 0) - (a[1].at || 0));
   };
   /* ---------------- history and stats ---------------- */
-  Sync.recordGame = async g => {
+  /* one record per game, keyed by table code and game number: a table hosts many games */
+  Sync.recordGame = async (key, g) => {
     if (!Sync.registered || !Sync.uid || !Sync.code) return;
     try {
-      await fb.set(at(`users/${Sync.uid}/games/${Sync.code}`), Object.assign({ at: Date.now() }, g));
+      await fb.set(at(`users/${Sync.uid}/games/${key}`), Object.assign({ at: Date.now() }, g));
       const all = (await fb.get(at(`users/${Sync.uid}/games`))).val() || {};
       const keep = Object.entries(all).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 20);
       await Promise.all(Object.keys(all).filter(k => !keep.some(([c]) => c === k)).map(k => fb.remove(at(`users/${Sync.uid}/games/${k}`))));
@@ -294,7 +305,10 @@
       if (mine && mine.out === 'kicked') { setStatus('kicked'); return false; }
       if (st.status === 'playing' && !mine) { setStatus('started'); return false; }
       if (!mine && Object.keys((await fb.get(path(code, 'players'))).val() || {}).length >= 8) { setStatus('full'); return false; }
-      if (mine) { if (me.name && me.name !== mine.name) await fb.update(path(code, 'players/' + Sync.uid), { name: me.name }); }
+      if (mine) {
+        if (me.name && me.name !== mine.name) await fb.update(path(code, 'players/' + Sync.uid), { name: me.name });
+        if (st.status === 'lobby') await Sync.resetMine(code);
+      }
       else await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false, guest: !Sync.registered });
       listen(code); Sync.h.joined && Sync.h.joined(code); Sync.indexRoom(code, st.host === Sync.uid ? 'host' : 'member'); return true;
     } catch (e) { console.warn(e); Sync.lastError = String(e && (e.code || e.message) || e).slice(0, 80); setStatus(/permission/i.test(Sync.lastError) ? 'rules' : 'error'); return false; }
@@ -316,6 +330,34 @@
   Sync.startGame = async (first, order) => {
     if (!Sync.code) return;
     try { await fb.set(path(Sync.code, 'turn'), { n: 1, idx: 0, uid: order[0] }); await fb.update(path(Sync.code, 'settings'), { status: 'playing', first: first || '' }); Sync.writeRoomIndex({ status: 'playing', players: order.length }); } catch (e) { console.warn(e); }
+  };
+  /* host: the finished game is over; take the same table, with the same players, back to its lobby.
+     Players clear their own rows and seats when they see the lobby (rules let only them do it). */
+  Sync.rematch = async () => {
+    if (!Sync.code || !Sync.isHost()) return false;
+    const ps = Sync.players || {}, n = ((Sync.settings && Sync.settings.n) || 1) + 1, gone = {};
+    const clear = { role: null, char: null, out: null, conv: null, route: null };
+    for (const [u, p] of Object.entries(ps)) {
+      if (p.bot) Object.keys(clear).forEach(k => { gone[`players/${u}/${k}`] = null; });
+      else gone[`secret/${u}`] = null;
+    }
+    for (const k of ['turn', 'log', 'hatches', 'counts', 'attacks', 'spots', 'requests', 'hostdata']) gone[k] = null;
+    try {
+      await fb.update(path(Sync.code, ''), Object.assign(gone, { 'settings/status': 'lobby', 'settings/result': null, 'settings/first': '', 'settings/n': n }));
+      Sync.writeRoomIndex({ status: 'lobby' });
+      return true;
+    } catch (e) { rulesError(e); return false; }
+  };
+  /* this player's own leftovers from the last game: the role they were dealt, their seat checkpoint */
+  Sync.resetMine = async code => {
+    code = code || Sync.code; if (!code || !Sync.uid || !db) return;
+    try {
+      const mine = (await fb.get(path(code, 'players/' + Sync.uid))).val();
+      if (mine && mine.out !== 'kicked' && (mine.role || mine.out || mine.conv || mine.route || mine.char)) {
+        await fb.update(path(code, 'players/' + Sync.uid), { role: null, char: null, out: null, conv: null, route: null, ready: false });
+      }
+      await fb.remove(path(code, 'seats/' + Sync.uid));
+    } catch (e) { console.warn('reset seat', e); }
   };
   Sync.setTurn = v => Sync.code && fb.set(path(Sync.code, 'turn'), v).catch(console.warn);
   /* generic helpers, paths relative to the table */

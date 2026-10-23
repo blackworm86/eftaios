@@ -1,9 +1,8 @@
 name: Checks
 
 on:
-  push:
-    branches: [ccr-6928b416-rtom29]
   pull_request:
+  workflow_call:
 
 jobs:
   rules:

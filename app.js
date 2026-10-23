@@ -176,7 +176,23 @@ function paintCells() {
     g.children[1].textContent = kind ? '' : id; sym.textContent = '';
     const ic = g.children[2]; if (ic.dataset.k !== kind) { ic.dataset.k = kind; ic.innerHTML = kind ? sectorIcon(kind) : ''; }
   }
-  paintOverlay();
+  paintOverlay(); paintMoveBtns();
+}
+/* confirm / deny, right next to the sector I just tapped */
+function paintMoveBtns() {
+  const st = $('#stage'); if (!st || !T.map) return;
+  let box = $('#movepick');
+  if (!box) { box = document.createElement('div'); box.id = 'movepick'; box.className = 'movepick'; box.hidden = true; st.appendChild(box); }
+  if (box.dataset.lang !== LANG) {
+    box.dataset.lang = LANG;
+    box.innerHTML = `<button class="mp no" data-act="mpno" aria-label="${t('Change')}">${ico('close', 20)}</button><button class="mp yes" data-act="mpyes" aria-label="${t('Confirm move')}">${ico('check', 22)}</button>`;
+  }
+  const p = T.sel && canMoveNow() ? parseId(T.sel) : null;
+  box.hidden = !p; if (!p) return;
+  const h = hexPos(T.map, p[0], p[1]), y = view.y + (h.y - HEX) * view.k;
+  box.classList.toggle('below', y < 64);   // no room above: put them under the sector
+  box.style.left = (view.x + h.x * view.k).toFixed(1) + 'px';
+  box.style.top = (y < 64 ? view.y + (h.y + HEX) * view.k : y).toFixed(1) + 'px';
 }
 /* ---- player markers ----
    fill = the player (you are always white), border = your guess about them:
@@ -404,7 +420,7 @@ function pathSteps(path) {
   const out = [], p = (path || []).filter(x => x && parseId(x.pos));
   for (let i = 1; i < p.length; i++) {
     const a = p[i - 1], b = p[i], jump = ['teleport', 'clone'].includes(b.note);
-    if (b.note === 'reborn') continue;   // the restart in the Alien Sector is not a move: only the marker shows
+    if (b.note === 'reborn' || b.note === 'mutated') continue;   // a restart or a mutation is not a move: only the marker shows
     out.push({ from: a.pos, to: b.pos, t0: a.turn, t: b.turn, kind: jump ? 'jump' : a.pos === b.pos ? 'stay' : 'move' });
   }
   return out;
@@ -517,13 +533,19 @@ function finalRoutes() {
   return out;
 }
 const ROLE_BORDER = { human: '#2f7dff', alien: '#ff3b30' };
+/* the role held at each step of a path: Human until the restart or the mutation, Alien from there on */
+function stepRoles(path, finalRole) {
+  const p = (path || []).filter(x => x && parseId(x.pos)), i = p.findIndex(x => x.note === 'reborn' || x.note === 'mutated');
+  return p.map((_, k) => (i >= 0 ? (k < i ? 'human' : 'alien') : finalRole));
+}
 function paintRoutes(routes, fset, hp, marks) {
   fset = Array.isArray(fset) ? fset : (fset ? [fset] : []);   // a list of picked players (a single key or null is accepted too)
   const bySector = new Map(), rpos = new Map();
   routes = routes.filter(r => !fset.length || fset.includes(r.key));   // following a player shows only their markers, each alone in its sector
   routes.forEach(r => { r.dead = killedSector(r.path, r.out); });
   routes.forEach(r => {
-    r.path.forEach(p => { if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [] }); m.get(r.key).turns.push(p.turn); });
+    const roles = stepRoles(r.path, r.role);
+    r.path.filter(p => p && parseId(p.pos)).forEach((p, i) => { if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [], role: roles[i] }); const it = m.get(r.key); it.turns.push(p.turn); it.role = roles[i]; });
   });
   bySector.forEach((m, sec) => {
     const h = hp(sec); if (!h) return;
@@ -533,7 +555,7 @@ function paintRoutes(routes, fset, hp, marks) {
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
       rpos.set(k + '|' + sec, [h.x + dx, h.y + dy, size]);
       const g = el('g', { class: 'mk pm route' + (k === 'me' ? ' mine' : '') + (dim ? ' dim' : ''), transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
-      const ty = markBody(g, k, size, { border: k === 'me' ? null : ROLE_BORDER[it.r.role] });
+      const ty = markBody(g, k, size, { border: k === 'me' ? null : ROLE_BORDER[it.role || it.r.role] });
       const tx = el('text', { fill: pal(k)[1], y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
       if (it.r.dead === sec) killedBadge(g, size);
     });
@@ -696,6 +718,7 @@ const stage = $('#stage'), mapwrap = $('#mapwrap'), stageRect = () => stage.getB
 function applyView() {
   mapwrap.style.transform = `translate(${view.x.toFixed(1)}px, ${view.y.toFixed(1)}px) scale(${view.k.toFixed(4)})`;
   svg.classList.toggle('zl', view.k > fitK * 1.7);
+  paintMoveBtns();
   mapwrap.style.willChange = 'transform'; clearTimeout(applyView.t); applyView.t = setTimeout(() => { mapwrap.style.willChange = 'auto'; }, 220);
 }
 function fit() {
@@ -887,7 +910,7 @@ function say(text, kind, sector, extra = {}) {
   /* the checkpoint goes out before the announcement, so a crash cannot leave the table ahead of the seat */
   if (S.online && Sync.code) flushSeat();
   S.log.unshift(e);
-  if (window.Sync && Sync.code && PUBLIC.includes(kind)) Sync.push({ id: e.id, by: Sync.uid, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at, n: e.n || 0, ok: e.ok ? 1 : 0 });
+  if (window.Sync && Sync.code && (PUBLIC.includes(kind) || killOf(e))) Sync.push({ id: e.id, by: Sync.uid, turn: e.turn, who: e.who, kind, sector: e.sector || '', text: e.text, at: e.at, n: e.n || 0, ok: e.ok ? 1 : 0 });
   if (S.log.length > 400) S.log.length = 400;
 }
 /* the printed icons for what a player declared on one turn, for the marker of that step (at most two):
@@ -912,9 +935,11 @@ function logIcon(e, w = 18) {
   if (e.kind === 'spot') return gico('spotlight', w);
   if (e.kind === 'item') return gico(e.text, w);
   if (e.kind === 'hatch' && e.n) return gico(e.ok ? 'pod-green' : 'pod-red', w);
-  if (e.kind === 'out' && String(e.text).startsWith('killed')) return gico('killed', w);
+  if (e.kind === 'out' && String(e.text).startsWith('killed') || killOf(e)) return gico('killed', w);
   return '';
 }
+/* an 'info' line written by the attacker when someone dies: "kill|victim|role" */
+const killOf = e => (e && e.kind === 'info' && String(e.text).startsWith('kill|')) ? String(e.text).split('|')[1] : '';
 /* announcements are rendered from structured data so each player sees them in their own language */
 function entryText(e) {
   const s = e.sector;
@@ -926,6 +951,7 @@ function entryText(e) {
   if (e.kind === 'item') return t('plays {i}', { i: t(((typeof ITEMS !== 'undefined' && ITEMS[e.text]) || [e.text])[0]) });
   if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) { const [, role, ch] = e.text.split('|'); return t('identity revealed') + ': ' + roleLabel(role, ch); }
   if (e.kind === 'reveal') return e.text === 'Invisible Alien' || e.text === 'Brute Alien' ? t('{c}: identity revealed', { c: t(e.text) }) : e.text === 'Identity' ? t('identity revealed') : t('Position revealed: {s}', { s });
+  if (killOf(e)) { const [, , role] = String(e.text).split('|'); return t('killed {p}', { p: killOf(e) }) + (role ? ' (' + t(role === 'alien' ? 'Alien' : 'Human') + ')' : ''); }
   if (e.kind === 'out') { const [why, role, ch] = String(e.text).split('|'); return t(why === 'escaped' ? 'escaped' : why === 'trapped' ? 'is trapped and out of the game' : 'was eliminated') + ' (' + t(role === 'alien' ? 'Alien' : 'Human') + (ch ? ', ' + t(ch) : '') + ')'; }
   return t(e.text);
 }
@@ -946,7 +972,9 @@ function botThinking(name, ms, cover) {
 }
 const buzz = () => { try { navigator.vibrate && navigator.vibrate(15); } catch (_) { /* noop */ } };
 function selectCell(id) { T.sel = id; refreshReach(); render(); paintCells(); }
-function refreshReach() { T.reach = S.phase === 'move' && !S.over && S.role ? reachable(T.map, S.pos, allowance(), S.role) : new Map(); }
+/* sectors I may move to: lit only while it is my turn and I have not moved yet */
+const canMoveNow = () => S.phase === 'move' && !S.over && !!S.role && (typeof myTurn !== 'function' || myTurn()) && !(typeof gameOver === 'function' && gameOver());
+function refreshReach() { T.reach = canMoveNow() ? reachable(T.map, S.pos, allowance(), S.role) : new Map(); }
 const roomUrl = () => location.origin + location.pathname + '?room=' + Sync.code;
 const actions = {
   hide() { $('#cover').hidden = false; },

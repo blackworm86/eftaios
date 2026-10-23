@@ -466,6 +466,9 @@ const legendHtml = () => {
   <p class="legend"><span><i class="lc heard"></i>${t('Heard')}</span><span><i class="lc silent"></i>${t('Silent or elsewhere')}</span><span><i class="lc bluff"></i>${t('Bluff (real below)')}</span></p>
   <p class="legend"><span>${gico('silent', 16)}${t('Silent Sector')}</span><span>${gico('silence', 16)}${t('Silence in all Sectors')}</span><span>${gico('killed', 16)}${t('Killed')}</span><span><i class="lc rh"></i>${t('Human turn')}</span><span><i class="lc ra"></i>${t('Alien turn')}</span></p>`;
 };
+const legendOpen = () => T.legendOpen !== undefined ? T.legendOpen : innerHeight >= 760;
+const legendBox = () => `<button class="legendtoggle" data-act="legend" aria-expanded="${legendOpen()}">${t('Legend')}${ico(legendOpen() ? 'up' : 'down', 14)}</button>${legendOpen() ? legendHtml() : ''}`;
+Object.assign(actions, { legend() { T.legendOpen = !legendOpen(); render(); } });
 const NEXT_SUS = { '': 'human', human: 'alien', alien: '' };
 /* the route of a player, as far as this device may know it: mine always, the others' once the game is over */
 function knownRoute(k) {
@@ -531,7 +534,7 @@ function tablePanel() {
   const secs = [['sheet', 'Sheet'], ['log', 'Log'], ['status', 'Status']];
   return `<div class="subtabs" role="tablist">${secs.map(([k, l]) => `<button role="tab" data-act="tsec" data-k="${k}" aria-selected="${sec === k}">${t(l)}</button>`).join('')}</div>
     <div class="tsecs">
-    <section class="sec sheetsec${sec === 'sheet' ? ' on' : ''}">${sheetHtml()}${legendHtml()}</section>
+    <section class="sec sheetsec${sec === 'sheet' ? ' on' : ''}">${sheetHtml()}${legendBox()}</section>
     <section class="sec log${sec === 'log' ? ' on' : ''}">${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
       ${S.log.length ? logFilterHtml() : ''}
       ${ln ? `<ul class="log">${ln}</ul>${digital() || S.hot ? '' : `<button class="btn link wide" data-act="clearlog">${t('Clear announcements')}</button>`}` : `<p class="dim">${t('No announcements yet.')}</p>`}</section>

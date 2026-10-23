@@ -221,8 +221,8 @@ function paintMoveBtns() {
 const MK_STEPS = [1, 3, 5, 7, 0];   // how many turns of other players' markers to show; 0 = all turns
 const mkN = () => S.mkN === undefined ? (S.mkAll ? 0 : 5) : S.mkN;
 const ME_COLOR = ['#f5f5f5', '#101010'];
-const PALETTE = [['#E69F00', '#1a1200'], ['#56B4E9', '#06202e'], ['#009E73', '#ffffff'], ['#F0E442', '#2a2600'],
-  ['#CC79A7', '#2b0619'], ['#A6763C', '#ffffff'], ['#A99BF0', '#14102e'], ['#2EC4B6', '#06201d']];
+const PALETTE = [['#E69F00', '#1a1200'], ['#56B4E9', '#06202e'], ['#009E73', '#00140e'], ['#F0E442', '#2a2600'],
+  ['#CC79A7', '#2b0619'], ['#A6763C', '#150d03'], ['#A99BF0', '#14102e'], ['#2EC4B6', '#06201d']];
 const BORDER = { me: '#000000', '': '#ffd23f', human: '#2f7dff', alien: '#ff3b30' };
 /* every player is a hexagon with slightly rounded corners, drawn at unit radius */
 const roundedHex = (r, k) => {
@@ -744,6 +744,7 @@ function fit() {
   const r = stageRect(); if (!r.width) return;
   fitK = Math.min(r.width / mapW, r.height / mapH) * 0.98; view.k = fitK;
   view.x = (r.width - mapW * fitK) / 2; view.y = (r.height - mapH * fitK) / 2; applyView();
+  fitView = { k: view.k, x: view.x, y: view.y }; stageSize = [r.width, r.height];
 }
 function zoomAt(f, cx, cy) {
   const k = Math.max(fitK * 0.7, Math.min(fitK * 9, view.k * f)), s = k / view.k;
@@ -918,8 +919,18 @@ const endPtr = e => {
 };
 stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);
 stage.addEventListener('wheel', e => { if (onMapUi(e)) return; e.preventDefault(); const r = stageRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
-new ResizeObserver(() => { if (T.map && !fitDone) { fit(); fitDone = true; } }).observe(stage);
-let fitDone = false;
+let fitDone = false, fitView = null, stageSize = null;
+/* the map follows its stage: refit when the view was still the fitted one, otherwise keep the same map point in the centre
+   (a phone turned sideways, a resized window, the panel folded away) */
+new ResizeObserver(() => {
+  if (!T.map) return;
+  const r = stageRect(); if (!r.width) return;
+  if (!fitDone) { fit(); fitDone = true; stageSize = [r.width, r.height]; return; }
+  if (stageSize && Math.abs(r.width - stageSize[0]) < 1 && Math.abs(r.height - stageSize[1]) < 1) return;
+  const was = stageSize || [r.width, r.height]; stageSize = [r.width, r.height];
+  const untouched = fitView && Math.abs(view.k - fitView.k) < 1e-6 && Math.abs(view.x - fitView.x) < 0.5 && Math.abs(view.y - fitView.y) < 0.5;
+  if (untouched) fit(); else { fitK = Math.min(r.width / mapW, r.height / mapH) * 0.98; view.x += (r.width - was[0]) / 2; view.y += (r.height - was[1]) / 2; applyView(); }
+}).observe(stage);
 
 /* ---------------- game logic ---------------- */
 const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36);

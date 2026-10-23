@@ -176,7 +176,7 @@ The printed board is the reference and the screen is its working copy. The Class
 The interface around the map is a quiet instrument panel. It is a tool used mid-conversation with one hand, so it is familiar, dense where needed and never decorative. One amber accent marks the one action that matters now. Faction colours (human blue, alien red) appear only where they carry meaning. Nothing glows, nothing is ornamental.
 
 **Key Characteristics:**
-- The map takes the largest area on every screen size; the panel sits beneath it on phones and beside it on wide screens.
+- The map takes the largest area on every screen size; the panel sits beneath it on phones and beside it on wide screens. The map follows its stage: when the window resizes or the phone turns, a fitted map is fitted again and a zoomed one keeps the same point at the centre.
 - One primary action per moment; long content opens in a full-screen sheet instead of scrolling the panel.
 - Solid grounded surfaces, thin borders, tint for state. No glows, gradients, thick side stripes or hard shadows.
 - One drawn icon family; no emoji or Unicode glyphs as icons.
@@ -199,7 +199,7 @@ A restrained navy neutral set with a single amber accent, plus fixed faction and
 - **Paper set** (#f4f2ec ground, #c9c9c9 Dangerous, #ffffff Secure, #555555 lines, #151515 start sectors and hatches, #9a9a9a hatching): the Classic map style.
 
 ### Player markers
-You are always **white**. Other players take a colour from a colour-blind-safe set by their seat in the turn order, so every device agrees: orange, sky, green, yellow, rose, copper, lavender, teal. Red and blue are kept for the faction guess and never used as player colours. The circle border carries the guess: **black** me, **yellow** undecided, **blue** suspected Human, **red** suspected Alien. The turn number sits inside every marker, and a thin outline ring (white around mine, dark around others) keeps markers readable on both map styles.
+You are always **white**. Other players take a colour from a colour-blind-safe set by their seat in the turn order, so every device agrees: orange, sky, green, yellow, rose, copper, lavender, teal. Red and blue are kept for the faction guess and never used as player colours. The circle border carries the guess: **black** me, **yellow** undecided, **blue** suspected Human, **red** suspected Alien. The turn number sits inside every marker, and a thin outline ring (white around mine, dark around others) keeps markers readable on both map styles. Text on a player colour is always dark ink, never white: every colour keeps at least 4.5:1.
 
 My own steps: **full** = heard (noise in the sector I reached), **faded** (dark tint, 35% fill) = silent or noise announced elsewhere, **dashed border** = a bluff, joined by a dashed line to where I really was. In **Shapes** mode (More → Markers) other players become square, triangle, diamond, pentagon, inverted triangle, hexagon, star and octagon; mine stay circles. **Follow** shades the sectors a player could have reached since last heard (2 per turn for a suspected Alien or unknown, 1 for a Human) and draws their known route as a solid line in their colour.
 
@@ -230,9 +230,9 @@ My own steps: **full** = heard (noise in the sector I reached), **faded** (dark 
 
 Phones: a top bar with turn, role, sector and a hide-screen button; the map; then a panel with its content above a three-tab bar (Play, Table, More). The panel's content never scrolls on the main play flow at 360×640. Wide screens (≥900px) and short landscape screens put the panel at 400px beside the map with the tabs above it and the content using the full height.
 
-Spacing runs on a small scale (6, 10, 14, 20px) with generous separation between groups and tighter spacing inside them. Touch targets are at least 44px; the player strip is the one place buttons drop to 36px.
+Spacing runs on a small scale (6, 10, 14, 20px) with generous separation between groups and tighter spacing inside them. Touch targets are at least 44px. Two places drop below that on purpose: the player strip (36px tall) and, on phones under 400px wide, the lobby's reorder and remove buttons (36px wide, still 44px tall). Small text links keep a 44px touch area with an invisible extension.
 
-The Table tab uses sub-tabs on phones (Announcements, Players, Pods) and shows all three together on wide screens. Long reference content (rules, map list, map gallery) opens as a full-screen sheet.
+The Table tab uses sub-tabs on phones (Announcements, Players, Pods) and shows all three together on wide screens. The sheet's legend folds behind a Legend button on screens shorter than 760px so the sheet gets the room. On phones shorter than 700px the empty "No items" box is hidden and the panel's spacing tightens so the main action stays in view. Long reference content (rules, map list, map gallery) opens as a full-screen sheet.
 
 ## Elevation & Depth
 
@@ -268,11 +268,14 @@ Sign-in, account, games and admin share the setup card: one condensed title with
 ### Pagination
 Lists that can grow past a screen (your games, admin players/rooms/maps/reports/audit) page in place: five rows and a `‹ 1 / 2 ›` control, never a scrolling panel. A gallery of maps is the one exception: it is a full-screen sheet and scrolls, as the map list has no natural page size.
 
+### Map card
+The map choice shows the preview, then the name with a chevron, then the details (players, level, pods), then the description over at most two lines. Nothing is cut mid-word.
+
 ### Announcement ("Say aloud")
 A bordered callout with a small label and a large condensed headline. Amber for normal noises, red for attacks, neutral grey for silence.
 
 ### Map controls and player strip
-Icon buttons (fit, centre on me, add note, plus zoom with a mouse) stacked at the map's right edge; a vertical strip of players on the left that focuses one player's timeline and sets the faction guess. Strip and controls turn white on the Classic map style.
+Icon buttons (fit, centre on me, add note, plus zoom with a mouse), 44px each, stacked at the map's right edge; the turns toggle shows its state with an amber tint and ring, not a second solid amber block; a vertical strip of players on the left that focuses one player's timeline and sets the faction guess. Strip and controls turn white on the Classic map style.
 
 ### Sheets and dialogs
 Short confirmations use the native dialog. Long content (rules, maps, gallery) uses a full-screen sheet with a close button. Toasts appear at the top of the map, never over the action buttons.

@@ -14,7 +14,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(!await hidden(),'the panel is open at start');
  const h0=await mapH();
  await tab('play');assert(await hidden(),'a second tap on PLAY hides the panel');
- assert(await mapH()>h0+80,'the map takes the space the panel gave up');
+ assert(await mapH()>h0+40,'the map takes the space the panel gave up');   // the panel is compact on short phones, so the gain is smaller than it was
  assert(await p.locator('.tabs').isVisible(),'the PLAY / TABLE / MORE bar stays visible');
  await tab('table');assert(!await hidden()&&await p.evaluate(()=>S.tab)==='table','a tap on TABLE while hidden reopens the panel on TABLE');
  await tab('table');assert(await hidden(),'a second tap on TABLE hides it again');

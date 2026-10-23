@@ -373,15 +373,18 @@ async function recordResult(st) {
   await Sync.recordGame(key, { result: win ? 'win' : 'loss', role: S.role, chars: S.char || '', map: S.mapId || '', players: Object.keys(Sync.players || {}).length, escaped: S.over === 'escaped' });
 }
 
+const logRec = e => ({ id: e.id, by: e.by || '', turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });
 /* rebuild a seat from the private checkpoint on the table, for a device that has no local game */
 async function serverResume(code) {
   if (T.resuming) return false;
   T.resuming = true;
   try {
-    const [seat, sec, st] = await Promise.all([
+    const [seat, sec, st, log, hatches] = await Promise.all([
       Sync.readSeat(code).catch(() => null),
       Sync.getPath(`rooms/${code}/secret/${Sync.uid}`).catch(() => null),
-      Sync.getPath(`rooms/${code}/settings`).catch(() => null)
+      Sync.getPath(`rooms/${code}/settings`).catch(() => null),
+      Sync.getPath(`rooms/${code}/log`).catch(() => null),
+      Sync.getPath(`rooms/${code}/hatches`).catch(() => null)
     ]);
     if (!st || st.status !== 'playing' || !seat || !sec || !sec.role) return false;
     const name = S.name;
@@ -392,6 +395,9 @@ async function serverResume(code) {
     if (!Array.isArray(S.path) || !S.path.length) S.path = [{ turn: 0, pos: S.pos }];
     S.items = Array.isArray(seat.items) ? seat.items : [];
     S.turn = seat.turn || 1; S.over = seat.over || null; S.seatAt = seat.at || 0;
+    /* the table's timeline and hatches: the live feed may have delivered them to the state this one replaced */
+    S.log = Object.values(log || {}).filter(e => e && e.id).map(logRec).sort((a, b) => b.at - a.at);
+    for (const n of [1, 2, 3, 4]) if (hatches && hatches[n] !== undefined) S.hatches[n] = hatches[n] ? 1 : 0;
     T.turnState = Sync.turn || null;
     save(); boot();
     if (typeof Online !== 'undefined') { Online.attach(); Online.hostCheck(); }
@@ -451,7 +457,7 @@ Sync.on({
   counts(c) { T.counts = c; if (S.stage === 'game' && S.tab === 'table') render(); },
   entry(e) {
     if (!e || !e.id || S.log.some(x => x.id === e.id)) return;
-    S.log.push({ id: e.id, by: e.by || '', turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });
+    S.log.push(logRec(e));
     S.log.sort((a, b) => b.at - a.at); save(); if (S.stage === 'game') { paintOverlay(); if (S.tab === 'table' || S.tab === 'play') render(); if (window.onPublicEntry) onPublicEntry(S.log.find(x => x.id === e.id)); }
   },
   hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.stage === 'game') afterChange(); },

@@ -85,7 +85,7 @@ textarea{font:13px var(--mono);min-height:140px}
 .hex.s{fill:var(--hex-safe)}
 .hex.x{fill:none;stroke:#0e1730;pointer-events:all}
 .hex.H{fill:#1c5d93}.hex.A{fill:#a53312}
-.hex.P{fill:#1e8a4f}
+.hex.P{fill:#1c5d93}   /* an unused pod: the blue of the Human start, so Humans see where they are heading; it turns green or red once used */
 .hex.P.closed{fill:#3a2630}
 .hex.reach{fill:#ffb41f;fill-opacity:.9}
 .hex.s.reach{fill:#ffd780}

@@ -190,7 +190,7 @@ A restrained navy neutral set with a single amber accent, plus fixed faction and
 
 ### Secondary
 - **Alien Red** (#ff4a2b) and **Human Blue** (#38a3ff): role identity, and alert announcements for red. Never decoration.
-- **Hatch Green** (#3ecf7a): escape pods and success states (ready, escaped).
+- **Hatch Green** (#3ecf7a): success states (ready, escaped). On the dark map an unused escape pod is drawn in the Human start blue (#1c5d93); it turns green when a Human escapes from it and red when it is damaged.
 
 ### Neutral
 - **Night Bg / Surface / Panel / Raised** (#070b14, #0d1424, #101a2e, #16233c): the ground, inset rows, panels, raised buttons. Each layer is a small step cooler or lighter than the one below.

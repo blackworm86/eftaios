@@ -20,6 +20,8 @@ const Auth = (() => {
     if (!Sync.enabled) return '';
     const chev = `<i class="go" aria-hidden="true">${ico('next', 18)}</i>`;
     if (p) return `<button class="idrow" data-act="account"><span class="who"><b>${esc(p.name)}</b><small>@${esc(p.handle)}</small></span><span class="tag">${t('Account')}</span>${chev}</button>`;
+    /* a signed-in account whose profile has not arrived yet is not a new account: never ask it to finish its profile */
+    if (u && !u.isAnonymous && (Sync.profileLoading || Sync.profileError)) return `<button class="idrow guest" data-act="account"><span class="who"><b>${t(Sync.profileLoading ? 'Loading your account…' : 'Your profile could not be loaded')}</b><small>${esc(u.email || '')}</small></span>${Sync.profileError ? `<span class="tag">${t('Try again')}</span>` : ''}${chev}</button>`;
     return `<button class="idrow guest" data-act="account"><span class="who"><b>${u && !u.isAnonymous ? t('Finish your account') : t('Playing as a guest')}</b><small>${t('Sign in to keep your games')}</small></span><span class="tag">${t('Sign in')}</span>${chev}</button>`;
   };
   const head = title => `<header class="fhead"><button class="icon-btn" data-act="authback" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${title}</h2></header>`;
@@ -57,7 +59,7 @@ const Auth = (() => {
         <div class="acctend"><button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>
         <button class="btn danger wide" data-act="accountdelete">${t('Delete my account')}</button></div>`
       : Sync.profileLoading ? `<p class="dim" role="status">${t('Loading…')}</p>`
-      : Sync.profileError ? `<p class="banner">${t('Your profile could not be loaded. Check your connection and try again; your account is safe.')}</p><button class="btn primary wide" data-act="accountretry">${t('Try again')}</button>
+      : Sync.profileError ? `<p class="banner">${t('Your profile could not be loaded. Check your connection and try again; your account is safe.')} <code>${esc(Sync.profileError)}</code></p><button class="btn primary wide" data-act="accountretry">${t('Try again')}</button>
         <button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>`
       : `
         <p class="dim hintline">${t('Choose a handle once: it is how the table and the statistics know you.')}</p>

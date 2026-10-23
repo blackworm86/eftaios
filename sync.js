@@ -18,7 +18,7 @@
   };
   let fb = null, db = null, auth = null, unsub = [], ready = null, joining = false;
   const authListeners = [];
-  let authSettlers = [], banUnsub = null;
+  let authSettlers = [], banUnsub = null, profUnsub = null;
   const setStatus = s => { Sync.status = s; Sync.h.status && Sync.h.status(s); };
   const clean = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const path = (code, p) => fb.ref(db, `rooms/${code}/${p}`);
@@ -60,6 +60,7 @@
   async function handleUser(u) {
     const prev = Sync.uid;
     if (banUnsub) { try { banUnsub(); } catch (_) { /* noop */ } banUnsub = null; }
+    if (profUnsub) { try { profUnsub(); } catch (_) { /* noop */ } profUnsub = null; }
     Sync.authSettled = false;
     Sync.user = u || null; Sync.uid = u ? u.uid : null;
     Sync.isAdmin = false; Sync.profile = null; Sync.registered = false;
@@ -67,6 +68,8 @@
       try { const t = await u.getIdTokenResult(); Sync.isAdmin = !!(t.claims && t.claims.admin); } catch (_) { /* token not ready */ }
       Sync.profile = await readProfileSure(u);
       if (Sync.user !== u) return;   // signed out or switched while the profile was loading
+      if (!u.isAnonymous && !(Sync.profile && Sync.profile.handle) && !Sync.profileError) Sync.profile = await restoreProfile(u) || Sync.profile;
+      watchProfile(u);
       Sync.registered = !!(Sync.profile && Sync.profile.handle);
       try { Sync.banned = !!(await fb.get(at(`bans/${u.uid}`))).val(); } catch (_) { Sync.banned = false; }
       if (Sync.banned) { Sync.authError = 'banned'; try { const au = await fbAuth(); await au.signOut(auth); } catch (_) { /* noop */ } return; }
@@ -201,14 +204,47 @@
     return p;
   }
   Sync.readProfileSure = readProfileSure;
+  /* tell the screens the account changed */
+  const notifyAuth = () => { authListeners.forEach(fn => { try { fn(Sync.user); } catch (_) { /* noop */ } }); if (Sync.h.auth) Sync.h.auth(); };
+  /* keep listening to the profile: when the connection comes up late, or the read was refused, the answer still arrives
+     and the screens update by themselves, with no reload */
+  function watchProfile(u, tries = 0) {
+    if (window.__FAKE_FB || !fb.onValue) return;
+    try {
+      profUnsub = fb.onValue(at(`users/${u.uid}/profile`), s => {
+        if (Sync.user !== u) return;
+        const p = s.val() || null, before = JSON.stringify([Sync.profile, Sync.profileError]);
+        if (!p && !u.isAnonymous && Sync.profile && Sync.profile.handle) return;   // a profile once read does not vanish mid-session
+        Sync.profile = p; Sync.profileError = ''; Sync.registered = !!(p && p.handle);
+        try { if (Sync.registered) localStorage.setItem('eftaios.account', '1'); } catch (_) { /* noop */ }
+        if (JSON.stringify([Sync.profile, Sync.profileError]) !== before) notifyAuth();
+      }, async e => {   // refused (stale token): refresh it and listen again, a little later each time
+        if (Sync.user !== u) return;
+        if (!Sync.registered) { Sync.profileError = String(e && (e.code || e.message) || e).slice(0, 80); notifyAuth(); }
+        await new Promise(r => setTimeout(r, Math.min(30000, 1000 * 2 ** tries)));
+        try { await u.getIdToken(true); } catch (_) { /* offline */ }
+        if (Sync.user === u) watchProfile(u, tries + 1);
+      });
+    } catch (_) { /* offline: the read above already reported it */ }
+  }
+  /* the profile is missing but this account still owns a handle: rebuild the profile from it instead of asking again */
+  async function restoreProfile(u) {
+    try {
+      const all = (await fb.get(at('handles'))).val() || {}, handle = Object.keys(all).find(h => all[h] === u.uid);
+      if (!handle) return null;
+      const p = { handle, name: String(u.displayName || handle).trim().slice(0, 20) || handle, created: Date.now() };
+      await fb.set(at(`users/${u.uid}/profile`), p);
+      return p;
+    } catch (_) { return null; }
+  }
+  Sync.restoreProfile = restoreProfile;
   /* the account screen's Retry: read again and tell everybody who listens */
   Sync.retryProfile = async () => {
     const u = Sync.user; if (!u) return;
     Sync.profile = await readProfileSure(u); if (Sync.user !== u) return;
     Sync.registered = !!(Sync.profile && Sync.profile.handle);
     try { if (Sync.registered) localStorage.setItem('eftaios.account', '1'); } catch (_) { /* noop */ }
-    authListeners.forEach(fn => { try { fn(Sync.user); } catch (_) { /* noop */ } });
-    if (Sync.h.auth) Sync.h.auth();
+    notifyAuth();
   };
   function readProfile(uid) {
     Sync.profileError = '';

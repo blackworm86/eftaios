@@ -11,8 +11,11 @@ let bad = 0;
 const check = (ok, label) => { console.log((ok ? 'ok   ' : 'FAIL ') + label); if (!ok) bad++; };
 
 const member = "child('players').child(auth.uid).exists()";
-check(has(room.log['.write'], member), 'only members can write the public log');
-check(has(room.hatches['.write'], member), 'only members can change hatches');
+check(has(room.log.$id['.write'], member) && has(room.log.$id['.write'], '!data.exists()'), 'only members can add to the public log, and never overwrite an entry');
+check(has(room.log['.write'], '!newData.exists()') && !has(room.log['.write'], member), 'a member cannot wipe the public log');
+check(has(room.hatches.$n['.write'], member) && !has(room.hatches['.write'], member), 'only members can flip a hatch, and none can wipe them');
+check(has(room.lease['.write'], 'now - ') && has(room.lease['.write'], '!data.exists()'), 'the lease cannot be taken from a live holder');
+check(has(rules.pubmaps.$id['.write'], "child('hidden')") && has(rules.pubmaps.$id['.write'], "bans"), 'an owner cannot change the hidden flag, and a banned player cannot publish');
 check(has(room.attacks.$id['.write'], member), 'only members can start an attack');
 check(has(room.attacks.$id.replies.$uid['.write'], member), 'only members can answer an attack');
 check(has(room.spots.$id['.write'], member), 'only members can start a Spotlight');

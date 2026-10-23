@@ -12,7 +12,7 @@ window.__FAKE_FB = async () => {
   const locked = fn => navigator.locks.request('fakefb', () => { fn(); setTimeout(fire, 0); });
   const write = (p, v) => locked(() => { const t = load(); setAt(t, p, v); saveT(t); });
   const fb = {
-    ref: (db, path) => ({ path }), query: r => r, limitToLast: () => null, serverTimestamp: () => Date.now(),
+    ref: (db, path) => ({ path }), query: r => r, limitToLast: () => null, orderByChild: () => null, serverTimestamp: () => Date.now(),
     get: async r => snap(getAt(load(), r.path)),
     set: async (r, v) => write(r.path, v),
     update: async (r, o) => locked(() => { const t = load(); for (const k in o) setAt(t, r.path + '/' + k, o[k]); saveT(t); }),

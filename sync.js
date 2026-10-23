@@ -265,7 +265,7 @@
     await Sync.setPath(`pubmaps/${rec.id}`, { owner: Sync.uid, name: rec.name, author: (Sync.profile && Sync.profile.handle) || '', rows: rec.rows_data, odd: rec.oddColumnsLower !== false, at: Date.now() });
     await Sync.setPath(`users/${Sync.uid}/maps/${rec.id}/published`, rec.id).catch(() => {});
   };
-  Sync.pubMaps = async () => { await ensure(); return (await fb.get(at('pubmaps'))).val() || {}; };
+  Sync.pubMaps = async () => { await ensure(); return (await fb.get(fb.query(at('pubmaps'), fb.orderByChild('at'), fb.limitToLast(60)))).val() || {}; };
 
   /* ---------------- table ---------------- */
   Sync.newCode = () => Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random() * 32 | 0]).join('');

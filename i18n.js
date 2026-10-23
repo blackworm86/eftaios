@@ -216,6 +216,7 @@ const IT = {
 "Update the database rules": "Aggiorna le regole del database",
 "This version of the app needs new database rules. Open the rules page, copy them and publish them in the Firebase console, then try again.": "Questa versione dell'app richiede nuove regole del database. Apri la pagina delle regole, copiale e pubblicale nella console Firebase, poi riprova.",
 "Open the rules page": "Apri la pagina delle regole",
+"Database rules": "Regole del database",
 "Bot level": "Livello del bot",
 "Easy": "Facile",
 "Normal": "Normale",

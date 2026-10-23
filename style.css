@@ -567,7 +567,7 @@ input,textarea{caret-color:var(--amber);accent-color:var(--amber)}
 .setcard{grid-template-columns:84px minmax(0,1fr) auto}
 .setcard .kv{min-width:0}.setcard .kv dt,.setcard .kv dd{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .setcard .edit{width:44px;min-height:44px;padding:0;display:grid;place-items:center}
-dialog a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
+a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none;color:inherit}
 @media (max-width:400px){
   .setcard{grid-template-columns:minmax(0,1fr) auto}
   .setcard>.prevbox,.setcard>.mapcard{flex-basis:64px}

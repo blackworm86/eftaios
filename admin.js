@@ -52,7 +52,7 @@ const Admin = (() => {
     { name: '8. Hard table, 8 players', who: 'You: random role', ask: 'Optional.', look: 'Do the Aliens bunch up? Do they avoid killing each other?', seats: [{}, ...Array(7).fill({ bot: 'hard' })] }
   ];
   function botTests() {
-    const rows = BOT_TESTS.map((x, i) => `<li class="adm-row"><span class="who"><b>${esc(x.name)}</b><small>${esc(x.who)}. ${esc(x.ask)}</small><small>Look for: ${esc(x.look)}</small></span><div class="acts"><button class="btn primary" data-act="bottest" data-i="${i}">${t('Start')}</button></div></li>`).join('');
+    const rows = BOT_TESTS.map((x, i) => `<li class="adm-row bt"><span class="who"><b>${esc(x.name)}</b><small>${esc(x.who)}. ${esc(x.ask)}</small><small>Look for: ${esc(x.look)}</small></span><div class="acts"><button class="btn primary" data-act="bottest" data-i="${i}">${t('Start')}</button></div></li>`).join('');
     return `<p class="dim">Tests 1-5 are the minimum (about 1 hour); 6-8 are optional. Bots are Ultimate, map Galilei. When a game ends, rate it and tap Send: the rating, your note and the full log are saved for the admin. Nothing to download or send by hand.</p><ul class="plist adm-list">${rows}</ul>`;
   }
   /* After a bot test: a 1-5 rating and a note, saved with the full game log under bottests/ in the database (admin-only).

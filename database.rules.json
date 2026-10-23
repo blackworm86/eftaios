@@ -211,6 +211,9 @@
           "uid": {
             ".validate": "newData.isString()"
           },
+          "dev": {
+            ".validate": "newData.isString() && newData.val().length <= 24"
+          },
           "at": {
             ".validate": "newData.isNumber()"
           }

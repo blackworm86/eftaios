@@ -10,6 +10,8 @@
   const Sync = window.Sync = {
     gen: 0, enabled: !!(window.__FAKE_FB || (cfg.apiKey && cfg.databaseURL)),
     skew: 0, now() { return Date.now() + this.skew; },
+    /* this tab or device, as opposed to the account: one account can be open in several places, and only one may run the bots */
+    dev: (() => { try { return sessionStorage.eftaiosDev || (sessionStorage.eftaiosDev = Math.random().toString(36).slice(2, 10)); } catch (_) { return Math.random().toString(36).slice(2, 10); } })(),
     code: null, uid: null, status: 'off', settings: null, players: {}, turn: null, h: {},
     user: null, profile: null, isAdmin: false, registered: false, authError: '',
     on(h) { this.h = h; }
@@ -284,7 +286,8 @@
     unsub.push(onValue(path(code, 'turn'), s => { Sync.turn = s.val(); Sync.h.turn && Sync.h.turn(Sync.turn); }));
     unsub.push(onValue(path(code, 'counts'), s => Sync.h.counts && Sync.h.counts(s.val() || {})));
     unsub.push(onValue(path(code, 'hatches'), s => Sync.h.hatches && Sync.h.hatches(s.val() || {})));
-    unsub.push(onValue(path(code, 'lease'), s => { Sync.lease = s.val() || null; Sync.h.lease && Sync.h.lease(Sync.lease); }));
+    Sync.leaseLoaded = false;   // until the table's lease arrives nobody knows who runs the bots, so nobody grabs it
+    unsub.push(onValue(path(code, 'lease'), s => { Sync.lease = s.val() || null; Sync.leaseLoaded = true; Sync.h.lease && Sync.h.lease(Sync.lease); }));
     unsub.push(onValue(at('.info/connected'), s => setStatus(s.val() ? 'online' : 'offline')));
   }
 
@@ -300,7 +303,7 @@
       await fb.set(path(code, 'created'), fb.serverTimestamp());
       await fb.set(path(code, 'settings'), Object.assign({ map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', order: [Sync.uid] }, settings.customMap ? { customMap: settings.customMap } : {}));
       await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false, guest: !Sync.registered });
-      await fb.set(path(code, 'lease'), { uid: Sync.uid, at: Sync.now() }).catch(() => {});
+      await fb.set(path(code, 'lease'), { uid: Sync.uid, dev: Sync.dev, at: Sync.now() }).catch(() => {});
       await fb.update(at('roomIndex/' + code), { host: Sync.uid, status: 'lobby', map: settings.map, players: 1, name: me.name, at: Date.now() }).catch(() => {});
       listen(code); Sync.h.joined && Sync.h.joined(code); Sync.indexRoom(code, 'host'); return true;
     } catch (e) { console.warn(e); Sync.lastError = String(e && (e.code || e.message) || e).slice(0, 80); setStatus(/permission/i.test(Sync.lastError) ? 'rules' : 'error'); return false; }
@@ -332,10 +335,10 @@
   Sync.isHost = () => !!(Sync.settings && Sync.uid && Sync.settings.host === Sync.uid);
   /* the device currently running the bots: the creator unless the lease moved */
   Sync.holder = () => (Sync.lease && Sync.lease.uid) || (Sync.settings && Sync.settings.host) || null;
-  Sync.isHolder = () => !!Sync.uid && Sync.holder() === Sync.uid;
+  Sync.isHolder = () => !!Sync.uid && Sync.leaseLoaded && Sync.holder() === Sync.uid && !(Sync.lease && Sync.lease.dev && Sync.lease.dev !== Sync.dev);
   Sync.claimHost = async () => {
     if (!Sync.code) return;
-    await fb.set(path(Sync.code, 'lease'), { uid: Sync.uid, at: Sync.now() });
+    await fb.set(path(Sync.code, 'lease'), { uid: Sync.uid, dev: Sync.dev, at: Sync.now() });
     /* if this tab goes away, drop the lease at once so the table can take over */
     try { if (fb.onDisconnect) await fb.onDisconnect(at(`rooms/${Sync.code}/lease`)).remove(); } catch (_) { /* fake or offline */ }
   };
@@ -388,7 +391,7 @@
     Sync.h.leaving && Sync.h.leaving();   // last chance to save this player's seat and journal
     unsub.forEach(f => f()); unsub = [];
     if (!quiet && Sync.code && db && Sync.settings && Sync.settings.status === 'lobby') fb.remove(path(Sync.code, 'players/' + Sync.uid)).catch(() => {});
-    Sync.code = null; Sync.settings = null; Sync.players = {}; Sync.turn = null; Sync.lease = null;
+    Sync.code = null; Sync.settings = null; Sync.players = {}; Sync.turn = null; Sync.lease = null; Sync.leaseLoaded = false;
     if (!quiet) setStatus('off');
   };
   Sync.push = e => { if (Sync.code && db) fb.set(path(Sync.code, 'log/' + e.id), Object.assign({ by: Sync.uid }, e)).catch(console.warn); };

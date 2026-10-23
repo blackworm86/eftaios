@@ -1143,7 +1143,7 @@ function hdr() {
     const bot = typeof Online !== 'undefined' && Online.isBotId(T.turnState.uid);
     const ak = (Sync.settings && Sync.settings.autoKick) || 0;
     const idle = !mine && !bot && ak > 0 && T.turnAt && Date.now() - T.turnAt > ak * 60000 && Sync.isHolder();
-    const away = !mine && !Sync.isHolder() && Sync.settings && Sync.settings.status === 'playing' && (!Sync.lease || Sync.now() - (Sync.lease.at || 0) > 45000);
+    const away = !mine && Sync.leaseLoaded && !Sync.isHolder() && Sync.settings && Sync.settings.status === 'playing' && (!Sync.lease || Sync.now() - (Sync.lease.at || 0) > 45000);
     tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : '');
     tb.innerHTML = away
       ? `<span>${t('The host is away: cards and bots are paused.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`

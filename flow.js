@@ -491,7 +491,7 @@ Sync.on({
     S.log.sort((a, b) => b.at - a.at); save(); if (S.stage === 'game') { paintOverlay(); if (S.tab === 'table' || S.tab === 'play') render(); if (window.onPublicEntry) onPublicEntry(S.log.find(x => x.id === e.id)); }
   },
   hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.stage === 'game') afterChange(); },
-  lease(l) { if (typeof Online !== 'undefined' && l && l.uid === Sync.uid) Online.hostCheck(); if (S.stage === 'game') hdr(); },
+  lease() { if (typeof Online !== 'undefined' && Sync.isHolder()) Online.hostCheck(); if (S.stage === 'game') hdr(); },
   auth() { if (['welcome', 'lobby', 'auth', 'account', 'games', 'admin'].includes(S.stage)) renderFlow(); }
 });
 

@@ -149,7 +149,7 @@ const Online = (() => {
     setTimeout(() => playBot(ts, tag).catch(e => { console.warn(e); botBusy = ''; }), 900);
   }
   async function playBot(ts, tag) {
-    if (S.stage !== 'game' || !T.map || !T.map.grid) { botBusy = ''; return; }
+    if (S.stage !== 'game' || !T.map || !T.map.grid || !Sync.isHolder()) { botBusy = ''; return; }   // the lease may have moved to another device during the pause
     const b = HD.bots[ts.uid]; if (!b) return;
     if (!b.state.over) {
       const ord = (Sync.settings && Sync.settings.order) || [];

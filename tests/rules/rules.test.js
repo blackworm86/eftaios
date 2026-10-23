@@ -149,6 +149,8 @@ const log = (text = 'hello') => ({ id: 'l' + Date.now() + Math.random(), turn: 1
     await ok('a player cannot grab the lease from a live holder', () => assertFails(lease(guest, 'PLAY01')));
     await ok('a player cannot read the hostdata (roles, decks)', () => assertFails(get(ref(guest, 'rooms/PLAY01/hostdata'))));
     await ok('a player can take over a stale lease', () => assertSucceeds(lease(guest, 'STALE1')));
+    await ok('a lease can name the device that holds it', () => assertSucceeds(set(ref(host, 'rooms/TAKEN1/lease'), { uid: 'host', dev: 'abc123', at: Date.now() })));
+    await ok('a device name above 24 characters is refused', () => assertFails(set(ref(host, 'rooms/TAKEN1/lease'), { uid: 'host', dev: 'x'.repeat(25), at: Date.now() })));
     await ok('a player can take over a table with no lease', () => assertSucceeds(lease(guest, 'NOLSE1')));
     await ok('the host can always take the lease back', () => assertSucceeds(lease(host, 'TAKEN1')));
     await ok('the holder can refresh their own lease', () => assertSucceeds(lease(host, 'PLAY01')));

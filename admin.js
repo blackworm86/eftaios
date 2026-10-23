@@ -67,9 +67,11 @@ const Admin = (() => {
     const body = JSON.stringify({ test: r.test, rating: r.rating, notes: r.notes || '', at: new Date(r.at).toISOString(), map: r.map, game: JSON.parse(r.game) });
     const res = await fetch('https://api.github.com/repos/blackworm86/eftaios/contents/' + file, { method: 'PUT', headers: { Authorization: 'Bearer ' + btToken(), Accept: 'application/vnd.github+json' },
       body: JSON.stringify({ message: `Bot test ${r.test}: ${r.rating}/5`, branch: 'main', content: btoa(unescape(encodeURIComponent(body))) }) });
-    if (res.status === 422) return 'exists';
-    if (!res.ok) throw new Error(res.status === 401 || res.status === 403 || res.status === 404 ? 'the token is missing or cannot write to this repository' : 'GitHub answered ' + res.status);
-    return 'sent';
+    if (res.ok) return 'sent';
+    const why = (await res.json().catch(() => ({}))).message || '';
+    // a 422 on a path that already holds the file means it was sent before; any other 422 is a real refusal
+    if (res.status === 422 && (await fetch('https://api.github.com/repos/blackworm86/eftaios/contents/' + file + '?ref=main', { headers: { Authorization: 'Bearer ' + btToken() } })).ok) return 'exists';
+    throw new Error('GitHub answered ' + res.status + (why ? ': ' + why : ''));
   }
   function ratePanel() {
     const x = T.botTest; if (!x || !S.hot || !Sync.isAdmin) return '';

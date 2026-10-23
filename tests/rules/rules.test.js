@@ -115,6 +115,10 @@ const log = (text = 'hello') => ({ id: 'l' + Date.now() + Math.random(), turn: 1
     await ok('a kicked player cannot rewrite their seat', () => assertFails(update(ref(kicked, 'rooms/KICK01/players/kicked'), { ready: false })));
     await ok('the host can mark a kick', () => assertSucceeds(set(ref(host, 'rooms/KICK01/kicks/another'), true)));
     await ok('the audit log accepts a new entry', () => assertSucceeds(set(ref(admin, 'adminlog/new1'), { action: 'closed', at: 2, by: 'admin1' })));
+    const bt = { test: 'x', rating: 4, game: '{}', at: 1 };
+    await ok('the admin can save a bot test record', () => assertSucceeds(set(ref(admin, 'bottests/b1'), bt)));
+    await ok('a bot test record needs a rating from 1 to 5', () => assertFails(set(ref(admin, 'bottests/b2'), Object.assign({}, bt, { rating: 9 }))));
+    await ok('a non-admin cannot save or read bot tests', () => assertFails(set(ref(adminNo, 'bottests/b3'), bt)));
     await ok('the audit log refuses an update', () => assertFails(update(ref(admin, 'adminlog/old'), { action: 'changed' })));
     await ok('the audit log refuses a delete', () => assertFails(remove(ref(admin, 'adminlog/old'))));
     await ok('a non-admin cannot read the audit log', () => assertFails(get(ref(adminNo, 'adminlog'))));

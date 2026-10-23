@@ -189,6 +189,13 @@
         }
       }
     },
+    "bottests": {
+      ".read": "auth != null && auth.token.admin === true",
+      "$id": {
+        ".write": "auth != null && auth.token.admin === true && !data.exists()",
+        ".validate": "newData.hasChildren(['test', 'rating', 'game', 'at']) && newData.child('rating').isNumber() && newData.child('rating').val() >= 1 && newData.child('rating').val() <= 5 && newData.child('game').isString() && newData.child('game').val().length < 3000000 && (!newData.child('notes').exists() || (newData.child('notes').isString() && newData.child('notes').val().length <= 2000))"
+      }
+    },
     "adminlog": {
       ".read": "auth != null && auth.token.admin === true",
       "$id": {

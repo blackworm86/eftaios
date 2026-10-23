@@ -53,7 +53,15 @@ const Admin = (() => {
   ];
   function botTests() {
     const rows = BOT_TESTS.map((x, i) => `<li class="adm-row"><span class="who"><b>${esc(x.name)}</b><small>${esc(x.who)}. ${esc(x.ask)}</small><small>Look for: ${esc(x.look)}</small></span><div class="acts"><button class="btn primary" data-act="bottest" data-i="${i}">${t('Start')}</button></div></li>`).join('');
-    return `<p class="dim">Tests 1-5 are the minimum (about 1 hour); 6-8 are optional. Bots are Ultimate, map Galilei. At the end tap Save game log and send me the file with your notes: what you saw, and a 1-5 rating for the tables.</p><ul class="plist adm-list">${rows}</ul>`;
+    return `<p class="dim">Tests 1-5 are the minimum (about 1 hour); 6-8 are optional. Bots are Ultimate, map Galilei. When a game ends, rate it and tap Send: the rating, your note and the full log are saved for the admin. Nothing to download or send by hand.</p><ul class="plist adm-list">${rows}</ul>`;
+  }
+  /* After a bot test: a 1-5 rating and a note, saved with the full game log under bottests/ in the database (admin-only).
+     `node tools/pull-bot-tests.js` copies them into tests/play-logs/. */
+  function ratePanel() {
+    const x = T.botTest; if (!x || !S.hot || !Sync.isAdmin) return '';
+    if (T.btSent) return `<p class="pst">Saved: ${esc(x.name)} · ${T.btRating}/5</p>`;
+    return `<h3>${esc(x.name)}</h3><div class="seg" role="radiogroup" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button role="radio" data-act="btrate" data-n="${n}" aria-checked="${T.btRating === n}">${n}</button>`).join('')}</div>
+      <textarea id="bt-notes" rows="4" maxlength="2000" placeholder="What did you see? What looked wrong?"></textarea><button class="btn primary big wide" data-act="btsend">Save rating and log</button>`;
   }
   /* lists are paged so the panel never scrolls: five rows per screen on a phone */
   function paged(which, entries, per, row) {
@@ -144,8 +152,17 @@ const Admin = (() => {
     adminopen() { S.stage = 'admin'; T.adminTab = 'users'; save(); load(); },
     admintab(b) { T.adminTab = b.dataset.k; renderFlow(); },
     adminpage(b) { const k = b.dataset.k; T.adminPage = Object.assign({}, T.adminPage, { [k]: Math.max(0, ((T.adminPage || {})[k] || 0) + Number(b.dataset.d)) }); renderFlow(); },
+    btrate(b) { T.btRating = +b.dataset.n; document.querySelectorAll('[data-act=btrate]').forEach(x => x.setAttribute('aria-checked', String(+x.dataset.n === T.btRating))); },
+    async btsend() {
+      const x = T.botTest; if (!x) return;
+      if (!T.btRating) return toast('Pick a rating from 1 to 5 first');
+      const rec = { test: x.name, n: x.n, rating: T.btRating, notes: (($('#bt-notes') || {}).value || '').slice(0, 2000), at: Date.now(), map: T.map && T.map.id, game: JSON.stringify(Hot.dump()) };
+      try { await Sync.setPath('bottests/' + uid(), rec); T.btSent = true; toast('Saved'); render(); }
+      catch (e) { saveMapFile('eftaios-bottest-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'), JSON.stringify(rec), 'Could not save online. The log was downloaded instead.'); }
+    },
     bottest(b) {
       const x = BOT_TESTS[+b.dataset.i]; if (!x) return;
+      T.botTest = { name: x.name, n: +b.dataset.i + 1 }; T.btRating = 0; T.btSent = false;
       Hot.start(x.seats.map((s, i) => (i ? 'Bot ' + i : 'You')), 'galilei', 'ultimate', 'auto', x.seats.map(s => s.bot || ''), x.seats);
     },
     adminclose() { S.stage = 'welcome'; save(); renderFlow(); },
@@ -226,6 +243,6 @@ const Admin = (() => {
       await act('resolve-report', b.dataset.id);
     }
   };
-  return { html, actions, load };
+  return { html, actions, load, ratePanel };
 })();
 window.Admin = Admin;

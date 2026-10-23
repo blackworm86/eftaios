@@ -24,6 +24,7 @@ check(has(room.requests.$id['.write'], member), 'only members can ask the host f
 check(has(room.players.$uid['.write'], "data.exists()") && has(room.players.$uid['.write'], "!== 'playing'"),
   'a new seat cannot be taken in a game already in progress');
 check(has(rules.adminlog.$id['.write'], '!data.exists()'), 'the audit log is append-only');
+check(has(rules.bottests['.read'], 'auth.token.admin === true') && has(rules.bottests.$id['.write'], 'auth.token.admin === true'), 'bot test records are admin-only and never overwritten');
 check(has(rules.adminlog.$id['.validate'], "newData.child('by').val() === auth.uid"), 'audit entries are attributed to their writer');
 check(has(room.seats.$uid['.read'], 'auth.uid === $uid') && has(room.seats.$uid['.write'], 'auth.uid === $uid'),
   'a seat checkpoint is readable and writable only by its owner');

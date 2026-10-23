@@ -1,0 +1,30 @@
+# Bot rework plan (agreed with the owner, 2026-10-23)
+
+## Targets
+- **Hard:** very hard. An experienced player beats it about 1 game in 4.
+- **Normal:** between Easy and Hard, and clearly better than Easy at the same table.
+- **Easy:** a beginner wins most games. Bots make visible mistakes but play by the rules.
+- **No cheating at any level.** A bot knows only what a person in its seat would know: public announcements, its own role, cards and position.
+- **Hidden factions are the core of the game.** No bot knows who its allies are. Aliens infer fellow Aliens from behaviour (2-sector moves, attacks, routes that don't fit a Human) and avoid killing them. Humans do the same. All coordination is implicit: a bot chooses what to do from what it believes the others are doing.
+- **Bluffing grows with level:** rare on Easy, sometimes on Normal, deliberate on Hard (fake routes, an Alien moving 1 sector to look Human, misleading noises).
+- **Thinking time:** up to 5 seconds per bot turn on the host's phone.
+- **Tables:** all sizes from 2 to 8 players, weighted equally.
+- **Rules:** Ultimate first, since items and the 16 character powers are the weakest part today. Basic gets the movement and deduction work.
+- **Checkpoints:** after each phase, a plain-language report with measured results, then the owner plays a few games before the next phase.
+
+## Today (from bot.js and tools/rounds/NOTES.md)
+- Bots keep a per-player position map and faction guess, built from public announcements only. They plan one turn at a time.
+- Humans use 4 of 10 items (Adrenaline, Spotlight, Attack, Sedatives), never Cat, Sensor, Teleport or Mutation. Character powers are almost unused.
+- Aliens bunch together: in 8-player hard games, more than half the turns have 4+ Aliens in one small area.
+- Hard is not reliably better than Normal at the same table. Weight tuning (rounds 5-12) has plateaued.
+
+## Phases
+0. **Measure.** Define the yardstick on paired seeds with tools/sim.js: win rate per level in mixed tables, items and powers used per game, speed of closing in on a heard noise, Alien bunching, friendly-fire kills, and time per turn.
+1. **Use everything held.** Sensible rules for all items and all 16 character powers, for both roles. This includes Aliens using their character item.
+2. **Read the whole table.** Every public event narrows positions and factions: attack results and kills, Spotlight and Sensor reveals, pods closing, eliminations, and movement speed as a faction clue. Each bot keeps a belief about who its allies are.
+3. **Plan ahead.**
+   - Humans plan 2-3 turns towards the safest reachable pod, against the sectors Aliens could reach.
+   - Aliens choose a role from what they believe the others are doing (hunt, guard a pod, intercept a noise) and cut the path instead of following it.
+   - Friendly-fire risk weighs every attack.
+4. **Real levels.** Easy uses the simple model with mistakes. Normal adds the full reading and short plans. Hard adds deeper plans and deliberate bluffs. Verified in mixed tables against the targets.
+5. **Play-test with the owner** and tune from the saved game logs.

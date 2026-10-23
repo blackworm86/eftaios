@@ -65,7 +65,8 @@
     Sync.isAdmin = false; Sync.profile = null; Sync.registered = false;
     if (u) {
       try { const t = await u.getIdTokenResult(); Sync.isAdmin = !!(t.claims && t.claims.admin); } catch (_) { /* token not ready */ }
-      Sync.profile = await readProfile(u.uid);
+      Sync.profile = await readProfileSure(u);
+      if (Sync.user !== u) return;   // signed out or switched while the profile was loading
       Sync.registered = !!(Sync.profile && Sync.profile.handle);
       try { Sync.banned = !!(await fb.get(at(`bans/${u.uid}`))).val(); } catch (_) { Sync.banned = false; }
       if (Sync.banned) { Sync.authError = 'banned'; try { const au = await fbAuth(); await au.signOut(auth); } catch (_) { /* noop */ } return; }
@@ -187,6 +188,28 @@
   Sync.saveJournal = j => (Sync.code && db) ? fb.set(path(Sync.code, 'journal/' + Sync.uid), Object.assign({ at: Sync.now() }, j)) : Promise.reject(new Error('offline'));
   Sync.readSeat = async code => { await ensure(); return (await fb.get(at(`rooms/${code}/seats/${Sync.uid}`))).val(); };
 
+  /* right after a sign-in the database connection can still carry the previous login's token, or not be connected yet,
+     and the read is refused: that is not "no profile". Retry with a fresh token before concluding anything. */
+  async function readProfileSure(u) {
+    let p = null; Sync.profileLoading = true;
+    try { for (let i = 0; i < 5; i++) {
+      p = await readProfile(u.uid);
+      if (p || !Sync.profileError || Sync.user !== u) return p;
+      await new Promise(r => setTimeout(r, 400 * 2 ** i));
+      try { await u.getIdToken(true); } catch (_) { /* offline: the next read will say */ }
+    } } finally { Sync.profileLoading = false; }
+    return p;
+  }
+  Sync.readProfileSure = readProfileSure;
+  /* the account screen's Retry: read again and tell everybody who listens */
+  Sync.retryProfile = async () => {
+    const u = Sync.user; if (!u) return;
+    Sync.profile = await readProfileSure(u); if (Sync.user !== u) return;
+    Sync.registered = !!(Sync.profile && Sync.profile.handle);
+    try { if (Sync.registered) localStorage.setItem('eftaios.account', '1'); } catch (_) { /* noop */ }
+    authListeners.forEach(fn => { try { fn(Sync.user); } catch (_) { /* noop */ } });
+    if (Sync.h.auth) Sync.h.auth();
+  };
   function readProfile(uid) {
     Sync.profileError = '';
     return fb.get(at(`users/${uid}/profile`)).then(s => s.val() || null).catch(e => { Sync.profileError = String(e && (e.code || e.message) || e).slice(0, 80); return null; });

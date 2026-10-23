@@ -218,6 +218,8 @@ const IT = {
 "Open the rules page": "Apri la pagina delle regole",
 "Database rules": "Regole del database",
 "Legend": "Legenda",
+"Try again": "Riprova",
+"Your profile could not be loaded. Check your connection and try again; your account is safe.": "Non è stato possibile caricare il tuo profilo. Controlla la connessione e riprova: il tuo account è al sicuro.",
 "Change plan": "Cambia piano",
 "Change sector": "Cambia settore",
 "Confirm {s} on the map, or tap another sector.": "Conferma {s} sulla mappa, o tocca un altro settore.",

@@ -47,3 +47,5 @@ suite runs always pass it. Raw JSON stays in `tools/rounds/` and is gitignored; 
 `--seed` sets `window.__rng` before each game. The seed is derived from the map, table and game index, so the same
 `(seed, map, table, game)` always produces the same game, independent of worker count or scheduling. Use the same seed for
 paired A/B comparisons and keep the map split fixed.
+
+`node tools/yardstick.js out.json... --out report.txt` is the Phase 0 report (per size and level, cards played, ladder, bunching, turn time).

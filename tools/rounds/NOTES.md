@@ -273,3 +273,19 @@ Next: screen the hard Alien parameters on paired seeds (3-player and 6-player ha
 anti-clustering term if the weights plateau. Do not start a full 15-dimensional search yet: map variance is larger than the effect
 we are looking for.
 
+
+## Phase 0 (docs/BOT_PLAN.md): the yardstick
+
+`node tools/yardstick.js a.json b.json --out report.txt` reads tools/sim.js outputs. sim.js now also records friendly-fire kills,
+cards played and held at the end, powers used (`kind: 'power'` log entries; none exist yet), the public noises, and the time of every bot turn.
+Baseline: 900 games (sizes 2-8 x easy/normal/hard x 18 maps x 2 seeds, plus 72 games each of 1 hard + 5 normal and 1 normal + 5 easy), seed 20261023,
+`--no-trace --workers 8`. Report: `p0-baseline.report.txt`. Re-run the same three commands after a change to compare on paired seeds.
+
+Findings on the current bots:
+- Items: 0.2-1.6 cards played per game against 3-13 still held at the end. Cat, Sensor, Teleport and Mutation are never played; Attack 0.03 per game. Powers: 0.
+- Ladder: in mixed tables hard seats win 59.7% (72 seats), normal 48.6%, easy 49.7%. Normal and easy are not separable.
+- Friendly fire: 0.25-0.50 kills per game at 8 players (hard), almost all Alien-on-Alien.
+- Closing in on a Human noise (nearest Alien, one round later): 0.1-0.4 sectors, hard no better than easy.
+- Bunching: 14.8% of turns have 4+ Aliens in a small area; 49 of 900 games have a 10+ turn run.
+- Turn time on this machine: mean 2-25 ms, worst 1.35 s (hard, 8 players). The host phone is slower, so the 5 s budget is the thing to watch from Phase 2 on.
+- Small tables (2-3 players) are very Human-favoured at every level (Human escape 58-94%).

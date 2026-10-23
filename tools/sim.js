@@ -54,6 +54,19 @@ function summarize(d, n, meta) {
   d.log.forEach((e, i) => { if (e.kind !== 'attack' || !byId[e.by]) return;
     for (let j = i - 1; j >= Math.max(0, i - 4); j--) { const o = d.log[j]; if (o.turn !== e.turn) break; if (o.kind === 'out' && String(o.text).startsWith('killed|human') && o.by !== e.by) killsBy[e.by] = (killsBy[e.by] || 0) + 1; } });
   seats.forEach(s => { s.kills = killsBy[s.id] || 0; });
+  // friendly fire: a kill whose victim is on the attacker's own side (Alien kills Alien, Human's Attack card kills Human)
+  const sideOf = s => (s.reborn ? 'alien' : s.role0);
+  let friendlyKills = 0;
+  d.log.forEach((e, i) => { if (e.kind !== 'attack' || !byId[e.by]) return;
+    for (let j = i - 1; j >= Math.max(0, i - 4); j--) { const o = d.log[j]; if (o.turn !== e.turn) break;
+      if (o.kind === 'out' && String(o.text).startsWith('killed') && o.by !== e.by && byId[o.by] && byId[o.by].role0 === byId[e.by].role0) friendlyKills++; } });
+  // items and powers: cards played (defense/clone count when they save a life), cards still held at the end, powers used
+  const itemUse = {}, itemsLeft = {};
+  d.log.forEach(e => { if (e.kind === 'item') itemUse[e.text] = (itemUse[e.text] || 0) + 1; });
+  d.seats.forEach(s => (s.items || []).forEach(k => { itemsLeft[k] = (itemsLeft[k] || 0) + 1; }));
+  const powers = d.log.filter(e => e.kind === 'power').length;
+  const turnMs = {};
+  (d.turnMs || []).forEach(([l, ms]) => { const t = turnMs[l] || (turnMs[l] = { n: 0, sum: 0, max: 0 }); t.n++; t.sum += ms; t.max = Math.max(t.max, ms); });
   const escapes = seats.filter(s => s.over === 'escaped').length;
   const res = d.result || {};
   // outs: the compact end-of-game record used by the death audit
@@ -76,7 +89,8 @@ function summarize(d, n, meta) {
   });
   return {
     n, map: d.map, mode: d.mode, players: n, turns: d.turn, winner: res.aliensWin ? 'alien' : 'human', reason: res.reason,
-    kills, attacks, alienAttacks, humanKills, escapes, seats, outs,
+    noises: d.log.filter(e => e.kind === 'noise' && e.sector).map(e => ({ by: e.by, sector: e.sector, turn: e.turn })),
+    kills, attacks, alienAttacks, humanKills, friendlyKills, itemUse, itemsLeft, powers, turnMs, escapes, seats, outs,
     audit: {
       dead, escaped, trapped, killedLog, escapedLog, trapsLog, rebornKills,
       // every death/escape/trap in the log must correspond to an end state, and vice versa.
@@ -98,7 +112,7 @@ async function open(n) {
     const ctx = await b.browser.newContext({ viewport: { width: 900, height: 800 }, locale: 'en-US', serviceWorkers: 'block' });
     await ctx.addInitScript(o => {
       const trace = !o.noTrace;
-      window.__botPace = 0; window.__trace = trace ? [] : null; window.__moves = trace ? [] : null;
+      window.__botPace = 0; window.__turnMs = []; window.__trace = trace ? [] : null; window.__moves = trace ? [] : null;
       window.__mkRng = a => { a = a >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
       if (o.skill) window.__skill = JSON.parse(o.skill);
     }, { noTrace: NO_TRACE, skill: SKILL });
@@ -107,6 +121,8 @@ async function open(n) {
     p.on('crash', () => { dead = true; console.log('page crashed'); });
     await p.goto('http://localhost:8123/');
     await p.waitForFunction(() => window.Hot && T.maps.length > 3);
+    // time every bot turn (the host's phone is slower than this machine; tools/yardstick.js says so)
+    await p.evaluate(() => { const o = Bot.turn; Bot.turn = async c => { const t = performance.now(); try { return await o(c); } finally { window.__turnMs.push([c.me.bot, performance.now() - t]); } }; });
     pages.push(p);
   }
   return { b, pages, errs, isDead: () => dead, close: () => b.close() };
@@ -159,8 +175,9 @@ async function main() {
             window.__rng = window.__mkRng(a.seed);
             if (window.__trace) window.__trace = [];
             if (window.__moves) window.__moves = [];
+            window.__turnMs = [];
             await Hot.start(a.names, a.map, a.mode, 'auto', a.bots);
-            const d = Hot.dump(); d.trace = window.__trace; d.moves = window.__moves; return d;
+            const d = Hot.dump(); d.trace = window.__trace; d.moves = window.__moves; d.turnMs = window.__turnMs; return d;
           }, { names: NAMES.slice(0, task.n), map: task.map, mode: MODE, bots: task.bots, seed: task.seed });
           if (!d || !d.result) out[i] = { map: task.map, players: task.n, level: task.lvl, seed: task.seed, error: 'no result' };
           else out[i] = summarize(d, task.n, { level: task.lvl, game: task.game, bots: task.bots, seed: task.seed, trace: d.trace, moves: d.moves });

@@ -1218,10 +1218,22 @@ function boot() {
 }
 
 /* the deployed build: version.json is stamped by the Pages workflow with the commit */
+let loadedBuild = null, updateAsked = false, updateToasted = false;
+async function readBuild() { try { const r = await fetch('version.json', { cache: 'no-store' }); return r.ok ? await r.json() : null; } catch (_) { return null; } }
 (async () => {
-  const el = document.getElementById('ver'); if (!el) return;
-  let v = {};
-  try { const r = await fetch('version.json', { cache: 'no-store' }); if (r.ok) v = await r.json(); } catch (_) { /* offline */ }
-  el.textContent = 'EFTAIOS v' + (v.version || '1.0.0') + (v.build ? ' · ' + v.build : '');
+  const v = (await readBuild()) || {}; loadedBuild = v.build || null;
+  const el = document.getElementById('ver'); if (el) el.textContent = 'EFTAIOS v' + (v.version || '1.0.0') + (v.build ? ' · ' + v.build : '');
 })();
+/* a tab or installed app left open keeps running the version it loaded: when a newer build is out, offer the reload
+   (a dialog at the start screen, one quiet toast during a game and in the lobby; game and notes are saved either way) */
+async function checkForUpdate() {
+  if (updateAsked || !loadedBuild) return;
+  const v = await readBuild(); if (!v || !v.build || v.build === loadedBuild) return;
+  if (S.stage !== 'welcome') { if (!updateToasted) { updateToasted = true; toast(t('A new version is available. Reload when you are between games.')); } return; }
+  updateAsked = true;
+  dlg.innerHTML = `<h2>${t('New version available')}</h2><p>${t('Reload to get the latest changes. Your game and notes are saved.')}</p><div class="row"><button class="btn" id="d-no">${t('Later')}</button><button class="btn primary" id="d-yes">${t('Reload')}</button></div>`;
+  dlg.showModal(); $('#d-no').onclick = closeDlg; $('#d-yes').onclick = () => location.reload();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+setInterval(checkForUpdate, 10 * 60 * 1000);
 

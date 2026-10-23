@@ -22,12 +22,38 @@ const Admin = (() => {
   function html() {
     if (!Sync.isAdmin) return `<header class="fhead"><button class="icon-btn" data-act="adminclose" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${t('Admin')}</h2></header><p class="dim">${t('This account is not an administrator.')}</p>`;
     const head = `<header class="fhead"><button class="icon-btn" data-act="adminclose" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${t('Admin')}</h2></header>`;
-    const tabs = `<div class="seg adm-tabs" role="tablist">${[['users', 'Players'], ['rooms', 'Rooms'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
+    const tabs = `<div class="seg adm-tabs" role="tablist">${[['users', 'Players'], ['rooms', 'Rooms'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit'], ['bots', 'Bot tests']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
     /* the page that always shows the rules deployed with the site, ready to copy into the Firebase console */
     const tools = `<div class="row two"><a class="btn" href="firebase-rules.html" target="_blank" rel="noopener">${t('Database rules')}</a>${tab() === 'audit' ? `<button class="btn danger" data-act="adminnuke">${t('Nuke the app')}</button>` : ''}</div>`;
+    if (tab() === 'bots') return `${head}${tabs}${botTests()}`;
     if (!T.admin) return `${head}${tabs}<p class="dim">${t('Loading…')}</p>${tools}`;
     if (T.admin.error) return `${head}${tabs}<p class="dim">${t('Could not load the admin data')}: ${esc(T.admin.error)}</p>${tools}`;
     return `${head}${tabs}${T.admin[tab() === 'audit' ? 'log' : tab()] === undefined ? '' : roster(tab())}${tools}`;
+  }
+  /* Bot tests: ready-made games for the admin to play against the bots (6 players, Ultimate, you are seat 1).
+     Seats are { role, char, items, bot }; a seat with no role is dealt at random. */
+  const H = (char, items, bot = 'hard') => ({ role: 'human', char, items, bot }), A = (char, items, bot = 'hard') => ({ role: 'alien', char, items, bot });
+  const BOT_TESTS = [
+    { name: '1. Alien powers', who: 'You: Human (Engineer)', ask: 'Play 1 game, until you escape or die.',
+      look: 'Lurking Alien attacks without leaving its sector (an attack in the sector it announced last turn). Blink Alien plays Teleport (an item in the log). Fast Alien jumps up to 3 sectors on turn 1.',
+      seats: [H('Engineer', [], ''), H('Medic', [], 'hard'), H('Soldier', [], 'hard'), A('Lurking Alien'), A('Blink Alien', ['teleport', 'teleport']), A('Fast Alien')] },
+    { name: '2. Alien items', who: 'You: Human (Psychologist, starts in the Alien sector)', ask: 'Play 1 game.',
+      look: 'Surge Alien plays Adrenaline (a player moving 2+ with an Item played). Silent Alien plays Sedatives and makes no noise. Psychic Alien makes noises even on a Silence card (nothing to see; just check nothing breaks).',
+      seats: [H('Psychologist', [], ''), H('Captain', [], 'hard'), H('Pilot', [], 'hard'), A('Surge Alien', ['adrenaline', 'adrenaline']), A('Silent Alien', ['sedatives', 'sedatives']), A('Psychic Alien')] },
+    { name: '3. Human powers', who: 'You: Alien (Silent Alien)', ask: 'Play 1 game, hunting.',
+      look: 'Medic shows who someone is (a reveal in the log naming a player and role, from turn 3). Soldier attacks like an Attack card. Executive Officer stays still one turn in a Dangerous or Secure sector.',
+      seats: [A('Silent Alien', [], ''), H('Medic', [], 'hard'), H('Soldier', [], 'hard'), H('Executive Officer', [], 'hard'), A('Brute Alien'), A('Invisible Alien')] },
+    { name: '4. Human items', who: 'You: Alien (Surge Alien)', ask: 'Play 1 game, hunting.',
+      look: 'Spotlight and Sensor reveals in the log. Cat or Pilot: two noises in one turn. Teleport: a player jumps to the Human sector. Mutation: a Human turns Alien. Co-pilot teleports and shows who she is. Captain: one Dangerous sector with no announcement.',
+      seats: [A('Surge Alien', [], ''), H('Pilot', ['sensor', 'spotlight', 'teleport'], 'hard'), H('Co-pilot', ['cat', 'mutation', 'adrenaline'], 'hard'), H('Captain', ['sedatives', 'attack', 'sensor'], 'hard'), A('Brute Alien', [], 'hard'), A('Invisible Alien', [], 'hard')] },
+    { name: '5. Hard table', who: 'You: random role', ask: 'Play 1 game and tell me how hard it felt (1-5).', look: 'Do the bots feel like players? Any silly move?', seats: [{}, ...Array(5).fill({ bot: 'hard' })] },
+    { name: '6. Normal table', who: 'You: random role', ask: 'Play 1 game and rate it 1-5.', look: 'Clearly easier than Hard, clearly harder than Easy?', seats: [{}, ...Array(5).fill({ bot: 'normal' })] },
+    { name: '7. Easy table', who: 'You: random role', ask: 'Play 1 game and rate it 1-5.', look: 'A beginner should win most games. Do the mistakes look natural?', seats: [{}, ...Array(5).fill({ bot: 'easy' })] },
+    { name: '8. Hard table, 8 players', who: 'You: random role', ask: 'Optional.', look: 'Do the Aliens bunch up? Do they avoid killing each other?', seats: [{}, ...Array(7).fill({ bot: 'hard' })] }
+  ];
+  function botTests() {
+    const rows = BOT_TESTS.map((x, i) => `<li class="adm-row"><span class="who"><b>${esc(x.name)}</b><small>${esc(x.who)}. ${esc(x.ask)}</small><small>Look for: ${esc(x.look)}</small></span><div class="acts"><button class="btn primary" data-act="bottest" data-i="${i}">${t('Start')}</button></div></li>`).join('');
+    return `<p class="dim">Tests 1-5 are the minimum (about 1 hour); 6-8 are optional. Bots are Ultimate, map Galilei. At the end tap Save game log and send me the file with your notes: what you saw, and a 1-5 rating for the tables.</p><ul class="plist adm-list">${rows}</ul>`;
   }
   /* lists are paged so the panel never scrolls: five rows per screen on a phone */
   function paged(which, entries, per, row) {
@@ -118,6 +144,10 @@ const Admin = (() => {
     adminopen() { S.stage = 'admin'; T.adminTab = 'users'; save(); load(); },
     admintab(b) { T.adminTab = b.dataset.k; renderFlow(); },
     adminpage(b) { const k = b.dataset.k; T.adminPage = Object.assign({}, T.adminPage, { [k]: Math.max(0, ((T.adminPage || {})[k] || 0) + Number(b.dataset.d)) }); renderFlow(); },
+    bottest(b) {
+      const x = BOT_TESTS[+b.dataset.i]; if (!x) return;
+      Hot.start(x.seats.map((s, i) => (i ? 'Bot ' + i : 'You')), 'galilei', 'ultimate', 'auto', x.seats.map(s => s.bot || ''), x.seats);
+    },
     adminclose() { S.stage = 'welcome'; save(); renderFlow(); },
     adminrefresh() { load(); },
     async adminban(b) {

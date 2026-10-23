@@ -157,13 +157,13 @@ const Hot = (() => {
       return o;
     },
     rebind() { if (!load()) { S.hot = false; S.stage = 'welcome'; return; } S.log = H.log; S.hatches = H.hatches; T.counts = counts(); },
-    async start(names, mapId, mode, track, bots) {
+    async start(names, mapId, mode, track, bots, setup) {   // setup (admin bot tests): per seat { role, char, items } instead of the random deal
       const deal = dealRoles(names.length), keep = S.customMaps, map = T.maps.find(m => m.id === mapId) || T.maps[0];
       H = { mode, mapId: map.id, turn: 1, cur: 0, passing: true, log: [], hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, result: null, last: '',
         decks: { sector: deckNew(SECTOR_DECK), hatch: deckNew(HATCH_DECK) }, seats: [] };
       names.forEach((name, i) => {
-        const { role, char } = deal[i], pos = startSector(map, role, char, mode);
-        H.seats.push({ id: 'h' + i, name, bot: (bots && bots[i]) || undefined, role0: role, seen: false, notices: [], state: { name, role, char, pos, path: [{ turn: 0, pos }], fed: false, adr: false, phase: 'move', res: null, over: null, items: [], undo: null, sus: {}, shapes: {}, mkN: 5, outSent: false, tab: 'play', track: track === 'manual' ? 'manual' : 'auto' } });
+        const o = setup && setup[i] && setup[i].role ? setup[i] : null, { role, char } = o || deal[i], pos = startSector(map, role, char, mode);
+        H.seats.push({ id: 'h' + i, name, bot: (bots && bots[i]) || undefined, role0: role, seen: false, notices: [], state: { name, role, char, pos, path: [{ turn: 0, pos }], fed: false, adr: false, phase: 'move', res: null, over: null, items: o && o.items ? o.items.slice() : [], undo: null, sus: {}, shapes: {}, mkN: 5, outSent: false, tab: 'play', track: track === 'manual' ? 'manual' : 'auto' } });
       });
       T.map = map; S = Object.assign(fresh(), { customMaps: keep });
       S.log = H.log; S.hatches = H.hatches;   // bots read hatches and the log before the first person's turn

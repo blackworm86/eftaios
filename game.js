@@ -428,7 +428,8 @@ function playPanel() {
   const n = allowance(), alien = S.role === 'alien';
   if (S.phase === 'move') {
     const sel = T.sel;
-    return `${catNote()}<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>
+    const seen = !sel && !!recentOthers(8).length;   // with declarations to read, they take the place of the "tap a sector" line
+    return `${catNote()}${seen ? '' : `<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>`}
       ${sel ? `<div class="row confirmrow"><button class="btn" data-act="clearsel" aria-label="${t('Change')}">${ico('close')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>` : ''}
       ${roundCard(true)}${handHtml()}${extras()}`;
   }

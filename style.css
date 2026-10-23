@@ -854,3 +854,5 @@ li.adm-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;al
 .lc.rh{background:#2f7dff}.lc.ra{background:#ff3b30}
 .roundcard.compact ul{max-height:84px;overflow-y:auto;overscroll-behavior:contain}
 .log li.kill{--c:var(--alien)}
+@media (max-height:700px){.roundcard.compact{margin:2px 0 0;padding:3px 8px}.roundcard.compact ul{max-height:22px;gap:3px;margin-top:0}.roundcard.compact small{display:none}}
+@media (max-height:700px){.confirmrow ~ .roundcard.compact{display:none}}   /* a sector is picked: the map has the buttons, the declarations wait */

@@ -162,6 +162,17 @@ const Online = (() => {
         draw(type, two) { const d = HD.decks[type]; if (type === 'hatch') return drawPod(d, two).card; const r = deckDraw(d); if (discardable(r.card)) d.disc.push(r.card); if (r.reshuffled) logGame(RESHUFFLED[type]); return r.card || ''; },
         discard(id) { HD.decks.sector.disc.push(id); },
         closeHatch(n) { S.hatches[n] = 1; Sync.setHatch(n, 1); },
+        mutated() { Sync.set('players/' + b.id, Object.assign({}, Sync.players[b.id] || {}, { conv: true, role: 'human', char: b.state.char || '' })); },
+        async sensor(target) {
+          const id = uid();
+          await Sync.set('spots/' + id, { by: b.id, sector: '-', target, at: Date.now() });
+          await waitReplies(`spots/${id}/replies`, [target], 8000);
+        },
+        async medic(target) {
+          const o = HD.bots[target], p = (Sync.players || {})[target] || {};
+          const role = o ? o.state.role : (p.conv ? 'alien' : HD.roles[target]), char = o ? (o.state.char || '') : (p.conv ? '' : HD.chars[target] || '');
+          Sync.push({ id: uid(), turn: ts.n, who: p.name || '?', by: target, kind: 'reveal', text: 'Id|' + role + '|' + char, sector: '', at: Date.now() });
+        },
         async attack(sector) {
           const id = uid(), expected = Object.keys(Sync.players || {}).filter(u => u !== b.id && !Sync.players[u].out);
           await Sync.set('attacks/' + id, { by: b.id, sector, at: Date.now() });

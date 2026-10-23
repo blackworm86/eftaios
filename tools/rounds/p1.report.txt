@@ -1,0 +1,50 @@
+EFTAIOS bot yardstick   900 games from 3 file(s)
+
+## per table (level x players), games with the same table are paired by seed across runs
+table             games  alienWin  escape  kills  friendly  items-used  held(H)  powers  closing  turn ms (mean/max)
+easy x2              36     16.7%   83.3%   0.17      0.00        0.22    1.11    1.00     0.13  2.5/132
+easy x3              36      5.6%   94.4%   0.03      0.00        0.31    0.94    0.61    -0.03  2.6/141
+easy x4              36     25.0%   70.8%   0.44      0.03        0.33    2.06    1.17     0.18  2.7/40
+easy x5              36     11.1%   87.5%   0.17      0.00        0.47    2.06    2.28     0.12  3.6/36
+easy x6              36     47.2%   60.2%   0.94      0.14        0.39    2.06    2.56     0.11  4.1/79
+easy x7              36     33.3%   68.5%   0.83      0.14        0.56    1.94    2.94     0.09  4.9/51
+easy x8              36     61.1%   54.9%   1.47      0.25        0.58    2.94    2.64     0.10  5.9/108
+hard x2              36     58.3%   41.7%   0.58      0.00        0.19    0.17    0.69     0.84  7.2/145
+hard x3              36     47.2%   52.8%   0.67      0.14        0.31    0.31    0.83     0.33  6.3/207
+hard x4              36     47.2%   48.6%   1.28      0.25        0.86    0.44    2.36     0.23  10.6/542
+hard x5              36     38.9%   50.0%   1.17      0.25        0.89    0.42    2.81     0.32  16.2/614
+hard x6              36     52.8%   36.1%   2.19      0.47        1.14    0.81    3.58     0.23  12.1/739
+hard x7              36     44.4%   48.1%   2.14      0.72        1.42    0.92    3.72     0.24  18.6/916
+hard x8              36     52.8%   36.8%   2.92      0.86        1.86    0.64    4.97     0.21  14.6/726
+mix hard,normal* x6   72     34.7%   50.9%   1.99      0.44        1.60    0.97    3.24     0.22  16.2/727
+mix normal,easy* x6   72     34.7%   63.0%   1.03      0.15        0.56    2.21    2.61     0.16  7.7/890
+normal x2            36     25.0%   75.0%   0.28      0.00        0.36    0.47    0.83     0.55  7.3/303
+normal x3            36     30.6%   69.4%   0.42      0.08        0.22    0.64    1.03     0.49  8.4/292
+normal x4            36     41.7%   51.4%   1.19      0.17        0.58    0.75    1.69     0.27  14.5/439
+normal x5            36     30.6%   63.9%   1.00      0.33        0.94    0.97    2.72     0.21  12.8/390
+normal x6            36     44.4%   51.9%   1.81      0.39        1.33    0.75    3.50     0.29  18.1/625
+normal x7            36     41.7%   43.5%   1.94      0.25        1.03    0.56    3.78     0.20  15.6/696
+normal x8            36     38.9%   47.2%   2.69      0.83        1.19    0.86    4.36     0.12  17.8/766
+
+## items played per game, by card (defense/clone = saves)
+card        played/game  held-at-end/game
+adrenaline        0.312             1.002
+attack            0.023             0.842
+cat               0.039             0.817
+clone             0.031             0.458
+defense           0.029             0.404
+mutation          0.012             0.439
+sedatives         0.114             1.191
+sensor            0.071             0.366
+spotlight         0.137             0.744
+teleport          0.011             0.402
+
+## skill ladder in mixed tables (seat side win, by level)
+hard        72 seats  41.7%
+normal     432 seats  50.7%
+easy       360 seats  50.8%
+
+## Alien bunching (4+ Aliens within one small area)
+cluster turns 14.6%   games with a 10+ turn run 53/900   death audit clean
+
+turn ms is measured on this machine; the host phone is several times slower, so the 5 s budget is met when max stays well under ~1000 ms here

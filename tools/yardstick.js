@@ -40,7 +40,7 @@ const group = (arr, f) => { const m = new Map(); arr.forEach(x => { const k = f(
 say(`EFTAIOS bot yardstick   ${games.length} games from ${files.length} file(s)`);
 say('');
 say('## per table (level x players), games with the same table are paired by seed across runs');
-say('table'.padEnd(18) + 'games  alienWin  escape  kills  friendly  items-used  items-left  powers  closing  turn ms (mean/max)');
+say('table'.padEnd(18) + 'games  alienWin  escape  kills  friendly  items-used  held(H)  powers  closing  turn ms (mean/max)');
 const tables = group(games, g => (g.level === 'mix' ? 'mix ' + (g.bots || []).join(',').replace(/(\w+)(,\1)+/g, '$1*') : g.level) + ' x' + g.players);
 [...tables.keys()].sort().forEach(k => {
   const gs = tables.get(k);
@@ -50,7 +50,7 @@ const tables = group(games, g => (g.level === 'mix' ? 'mix ' + (g.bots || []).jo
   const used = avg(gs.map(g => Object.values(g.itemUse || {}).reduce((a, x) => a + x, 0))), left = avg(gs.map(g => Object.values(g.itemsLeft || {}).reduce((a, x) => a + x, 0)));
   say(k.padEnd(18) + String(gs.length).padStart(5) + pct(avg(gs.map(g => +wins(g).alien))).padStart(10) + pct(esc / Math.max(1, hum)).padStart(8)
     + avg(gs.map(g => g.kills)).toFixed(2).padStart(7) + avg(gs.map(g => g.friendlyKills || 0)).toFixed(2).padStart(10)
-    + used.toFixed(2).padStart(12) + left.toFixed(2).padStart(12) + avg(gs.map(g => g.powers || 0)).toFixed(2).padStart(8)
+    + used.toFixed(2).padStart(12) + avg(gs.map(g => g.humanHeld || 0)).toFixed(2).padStart(8) + avg(gs.map(g => g.powers || 0)).toFixed(2).padStart(8)
     + (cl.length ? avg(cl).toFixed(2) : '-').padStart(9) + (n ? `  ${(ms.reduce((a, t) => a + t.sum, 0) / n).toFixed(1)}/${Math.max(...ms.map(t => t.max)).toFixed(0)}` : '  -'));
 });
 

@@ -64,7 +64,9 @@ function summarize(d, n, meta) {
   const itemUse = {}, itemsLeft = {};
   d.log.forEach(e => { if (e.kind === 'item') itemUse[e.text] = (itemUse[e.text] || 0) + 1; });
   d.seats.forEach(s => (s.items || []).forEach(k => { itemsLeft[k] = (itemsLeft[k] || 0) + 1; }));
-  const powers = d.log.filter(e => e.kind === 'power').length;
+  // cards a Human was still holding at the end (an Alien keeps cards only to look Human; most of them it cannot play)
+  const humanHeld = d.seats.filter(s => s.role === 'human').reduce((a, s) => a + (s.items || []).filter(k => k !== 'defense' && k !== 'clone').length, 0);
+  const powers = d.seats.reduce((a, x) => a + Object.values(x.ab || {}).reduce((b, n) => b + n, 0), 0);   // Character powers used (the bot counts each use in its seat's ab)
   const turnMs = {};
   (d.turnMs || []).forEach(([l, ms]) => { const t = turnMs[l] || (turnMs[l] = { n: 0, sum: 0, max: 0 }); t.n++; t.sum += ms; t.max = Math.max(t.max, ms); });
   const escapes = seats.filter(s => s.over === 'escaped').length;
@@ -81,7 +83,7 @@ function summarize(d, n, meta) {
   let movesAfterOut = 0, missingOut = 0, outWithoutSeat = 0, rebornKills = 0;
   seats.forEach(s => {
     const o = outBy[s.id];
-    const converted = !!(o && s.reborn && o.text.startsWith('killed'));
+    const converted = !!(o && s.reborn && o.text.startsWith('killed|human'));   // a mutated Human killed later as an Alien is a plain death
     if (converted) rebornKills++;
     if (s.over && !o) missingOut++;
     if (!s.over && o && !converted) outWithoutSeat++;
@@ -90,7 +92,7 @@ function summarize(d, n, meta) {
   return {
     n, map: d.map, mode: d.mode, players: n, turns: d.turn, winner: res.aliensWin ? 'alien' : 'human', reason: res.reason,
     noises: d.log.filter(e => e.kind === 'noise' && e.sector).map(e => ({ by: e.by, sector: e.sector, turn: e.turn })),
-    kills, attacks, alienAttacks, humanKills, friendlyKills, itemUse, itemsLeft, powers, turnMs, escapes, seats, outs,
+    kills, attacks, alienAttacks, humanKills, friendlyKills, itemUse, itemsLeft, humanHeld, powers, turnMs, escapes, seats, outs,
     audit: {
       dead, escaped, trapped, killedLog, escapedLog, trapsLog, rebornKills,
       // every death/escape/trap in the log must correspond to an end state, and vice versa.

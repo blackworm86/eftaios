@@ -738,6 +738,7 @@ const IT = {
 "Bots will run on that player’s device.": "I bot gireranno sul dispositivo di quel giocatore.",
 "You are running the bots now.": "Ora stai gestendo tu i bot.",
 "Could not take over the table.": "Impossibile rilevare il tavolo.",
+"Could not save your notes to the table. Check your connection.": "Impossibile salvare i tuoi appunti sul tavolo. Controlla la connessione.",
 "Bots are paused: the host is away.": "Bot in pausa: l'host non c'è.",
 "Take over": "Rileva",
 "Remove idle player": "Rimuovi giocatore inattivo",

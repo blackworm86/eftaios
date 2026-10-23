@@ -184,6 +184,23 @@ const log = (text = 'hello') => ({ id: 'l' + Date.now() + Math.random(), turn: 1
     await ok('the admin can restore a map', () => assertSucceeds(remove(ref(admin, 'pubmaps/vis1/hidden'))));
     await ok('the admin can delete a hidden map', () => assertSucceeds(remove(ref(admin, 'pubmaps/hid1'))));
 
+    /* the private journal (notes, drawings, suspicions) and the extra seat flags live on the table, for their owner only */
+    const jr = (extra) => Object.assign({ at: 1, notes: '[]', annos: '[]', sus: '{}', shapes: '{}' }, extra);
+    await ok('a player can save their private journal', () => assertSucceeds(set(ref(guest, 'rooms/PLAY01/journal/guest'), jr())));
+    await ok('the owner can read their journal back', () => assertSucceeds(get(ref(guest, 'rooms/PLAY01/journal/guest'))));
+    await ok('another player cannot read a journal', () => assertFails(get(ref(host, 'rooms/PLAY01/journal/guest'))));
+    await ok('the admin cannot read a journal', () => assertFails(get(ref(admin, 'rooms/PLAY01/journal/guest'))));
+    await ok('another player cannot write someone else\'s journal', () => assertFails(set(ref(host, 'rooms/PLAY01/journal/guest'), jr())));
+    await ok('a stranger to the table cannot save a journal', () => assertFails(set(ref(outsider, 'rooms/PLAY01/journal/outsider'), jr())));
+    await ok('a banned player cannot save a journal', () => assertFails(set(ref(banned, 'rooms/BAN001/journal/banned'), jr())));
+    await ok('drawings above 200 KB are refused', () => assertFails(set(ref(guest, 'rooms/PLAY01/journal/guest'), jr({ annos: 'x'.repeat(200001) }))));
+    await ok('a journal with an unknown field is refused', () => assertFails(set(ref(guest, 'rooms/PLAY01/journal/guest'), jr({ evil: 'x' }))));
+    await ok('the owner can clear their journal for the next game', () => assertSucceeds(remove(ref(guest, 'rooms/PLAY01/journal/guest'))));
+    const seat = extra => Object.assign({ pos: 'H1', turn: 1, at: 2, role: 'human', path: '[]', items: [], over: '', char: 'x', fed: false, reborn: false, adr: false, cat: false, phase: 'resolve', res: '{"stage":"done"}', outSent: false, revealed: false, routeSent: false, mkN: 5 }, extra);
+    await ok('a seat can carry the turn flags (fed, phase, result...)', () => assertSucceeds(set(ref(guest, 'rooms/PLAY01/seats/guest'), seat())));
+    await ok('a seat result above 1500 characters is refused', () => assertFails(set(ref(guest, 'rooms/PLAY01/seats/guest'), seat({ res: 'x'.repeat(1501) }))));
+    await ok('a seat with an unknown field is refused', () => assertFails(set(ref(guest, 'rooms/PLAY01/seats/guest'), seat({ evil: 1 }))));
+
     /* turn order: the player on turn may pass it on, but only one turn at a time, to someone seated */
     await ok('the player on turn cannot jump the turn counter', () => assertFails(set(ref(guest, 'rooms/PLAY01/turn'), { n: 9, idx: 1, uid: 'host' })));
     await ok('the player on turn cannot hand it to a stranger', () => assertFails(set(ref(guest, 'rooms/PLAY01/turn'), { n: 1, idx: 1, uid: 'nobody' })));

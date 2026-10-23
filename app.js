@@ -26,19 +26,38 @@ try { Object.assign(S, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch
 S.tab = { play: 'play', table: 'table', notes: 'table', rules: 'more', menu: 'more', more: 'more' }[S.tab] || 'play';
 /* older companion games kept the other players' steps as hand marks: they are declarations now */
 if (S.marks && S.marks.length) { const nm = k => String(k).replace(/^n:/, ''); S.marks.forEach((m, i) => S.log.push({ id: 'mk' + i, by: '', who: nm(m.key), turn: m.turn, kind: 'noise', sector: m.sector, text: 'noise', at: 0, mine: false })); S.marks = []; }
-const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } if (S.online && S.room) queueSeat(); };
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } if (S.online && S.room) { queueSeat(); queueJournal(); } };
 /* the same state, on the table, readable only by this account: the only resume path */
 let seatTimer = null;
 function flushSeat() {
   if (!(S.online && S.room && S.stage === 'game' && S.role && Sync.code)) return;
   S.seatAt = Date.now();
-  Sync.saveSeat({ turn: S.turn, pos: S.pos || '', path: JSON.stringify(S.path || []), items: S.items || [], over: S.over || '', char: S.char || '', role: S.role, at: S.seatAt });
+  let res = JSON.stringify(S.res || null); if (res.length > 1500) res = JSON.stringify({ stage: S.res.stage });
+  const flags = { fed: !!S.fed, reborn: !!S.reborn, adr: !!S.adr, cat: !!S.cat, outSent: !!S.outSent, revealed: !!S.revealed, routeSent: !!S.routeSent };
+  Sync.saveSeat(Object.assign({ turn: S.turn, pos: S.pos || '', path: JSON.stringify(S.path || []), items: S.items || [], over: S.over || '', char: S.char || '', role: S.role, at: S.seatAt, phase: S.phase || 'move', res }, flags, S.mkN === undefined ? {} : { mkN: S.mkN }));
 }
+/* the private journal: notes, drawings, suspicions. S.jsent holds what the table last confirmed, so a change made
+   on this device and not yet saved can be told apart from a change made on another device. */
+const journalOf = () => ({ notes: JSON.stringify(S.notes || []), annos: JSON.stringify(S.annos || []), sus: JSON.stringify(S.sus || {}), shapes: JSON.stringify(S.shapes || {}) });
+let journalTimer = null, journalWarned = false;
+async function flushJournal() {
+  if (!(S.online && S.room && S.stage === 'game' && S.role && Sync.code)) return;
+  const j = journalOf(), sent = S.jsent || {};
+  if (Object.keys(j).every(k => j[k] === sent[k])) return;
+  try {
+    await Sync.saveJournal(j);
+    S.jsent = j; try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable */ }
+    journalWarned = false;
+  } catch (e) {
+    if (!journalWarned) { journalWarned = true; toast(t('Could not save your notes to the table. Check your connection.')); }
+  }
+}
+const queueJournal = () => { clearTimeout(journalTimer); journalTimer = setTimeout(flushJournal, 1000); };
 const queueSeat = () => { clearTimeout(seatTimer); seatTimer = setTimeout(flushSeat, 300); };
 /* closing the tab writes the seat checkpoint and frees the bots for the rest of the table */
 addEventListener('pagehide', () => {
   if (S.stage === 'game' && S.room) {
-    save(); flushSeat();
+    save(); flushSeat(); flushJournal();
     try { if (window.Sync && Sync.isHolder && Sync.isHolder()) Sync.releaseHost(); } catch (_) { /* noop */ }
   }
 });

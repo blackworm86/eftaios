@@ -324,6 +324,29 @@
             "role": { ".validate": "newData.val() === 'human' || newData.val() === 'alien'" },
             "turn": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 40" },
             "at": { ".validate": "newData.isNumber()" },
+            "fed": { ".validate": "newData.isBoolean()" },
+            "reborn": { ".validate": "newData.isBoolean()" },
+            "adr": { ".validate": "newData.isBoolean()" },
+            "cat": { ".validate": "newData.isBoolean()" },
+            "outSent": { ".validate": "newData.isBoolean()" },
+            "revealed": { ".validate": "newData.isBoolean()" },
+            "routeSent": { ".validate": "newData.isBoolean()" },
+            "phase": { ".validate": "newData.isString() && newData.val().length <= 12" },
+            "res": { ".validate": "newData.isString() && newData.val().length <= 1500" },
+            "mkN": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "journal": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && root.child('bans').child(auth.uid).val() !== true && root.child('rooms').child($room).child('players').child(auth.uid).exists()",
+            ".validate": "newData.hasChildren(['at'])",
+            "at": { ".validate": "newData.isNumber()" },
+            "notes": { ".validate": "newData.isString() && newData.val().length <= 12000" },
+            "annos": { ".validate": "newData.isString() && newData.val().length <= 200000" },
+            "sus": { ".validate": "newData.isString() && newData.val().length <= 4000" },
+            "shapes": { ".validate": "newData.isString() && newData.val().length <= 2000" },
             "$other": { ".validate": false }
           }
         },

@@ -176,8 +176,15 @@
   /* the private checkpoint a player's own device writes, readable only by them */
   Sync.saveSeat = seat => {
     if (!Sync.code || !Sync.uid || !db) return;
-    fb.set(at(`rooms/${Sync.code}/seats/${Sync.uid}`), seat).catch(() => {});
+    const p = at(`rooms/${Sync.code}/seats/${Sync.uid}`);
+    /* shortcut: if the table's rules predate the turn flags, the write is refused; fall back to the core seat so the position still saves */
+    fb.set(p, seat).catch(() => {
+      const core = {}; for (const k of ['turn', 'pos', 'path', 'items', 'over', 'char', 'role', 'at']) core[k] = seat[k];
+      return fb.set(p, core).catch(() => {});
+    });
   };
+  /* the private journal (notes, drawings, suspicions): rejects on failure so the caller can retry and warn */
+  Sync.saveJournal = j => (Sync.code && db) ? fb.set(path(Sync.code, 'journal/' + Sync.uid), Object.assign({ at: Date.now() }, j)) : Promise.reject(new Error('offline'));
   Sync.readSeat = async code => { await ensure(); return (await fb.get(at(`rooms/${code}/seats/${Sync.uid}`))).val(); };
 
   function readProfile(uid) {
@@ -368,6 +375,7 @@
         await fb.update(path(code, 'players/' + Sync.uid), { role: null, char: null, out: null, conv: null, route: null, ready: false });
       }
       await fb.remove(path(code, 'seats/' + Sync.uid));
+      await fb.remove(path(code, 'journal/' + Sync.uid));
     } catch (e) { console.warn('reset seat', e); }
   };
   Sync.setTurn = v => Sync.code && fb.set(path(Sync.code, 'turn'), v).catch(console.warn);
@@ -379,6 +387,7 @@
   Sync.watch = (p, cb) => { const u = fb.onValue(path(Sync.code, p), s => cb(s.val())); unsub.push(u); return u; };
   Sync.watchChild = (p, cb) => { const u = fb.onChildAdded(fb.query(path(Sync.code, p)), s => cb(s.val(), s.key)); unsub.push(u); return u; };
   Sync.leave = function (quiet) {
+    Sync.h.leaving && Sync.h.leaving();   // last chance to save this player's seat and journal
     unsub.forEach(f => f()); unsub = [];
     if (!quiet && Sync.code && db && Sync.settings && Sync.settings.status === 'lobby') fb.remove(path(Sync.code, 'players/' + Sync.uid)).catch(() => {});
     Sync.code = null; Sync.settings = null; Sync.players = {}; Sync.turn = null; Sync.lease = null;

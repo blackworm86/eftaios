@@ -379,12 +379,13 @@ async function serverResume(code) {
   if (T.resuming) return false;
   T.resuming = true;
   try {
-    const [seat, sec, st, log, hatches] = await Promise.all([
+    const [seat, sec, st, log, hatches, jr] = await Promise.all([
       Sync.readSeat(code).catch(() => null),
       Sync.getPath(`rooms/${code}/secret/${Sync.uid}`).catch(() => null),
       Sync.getPath(`rooms/${code}/settings`).catch(() => null),
       Sync.getPath(`rooms/${code}/log`).catch(() => null),
-      Sync.getPath(`rooms/${code}/hatches`).catch(() => null)
+      Sync.getPath(`rooms/${code}/hatches`).catch(() => null),
+      Sync.getPath(`rooms/${code}/journal/${Sync.uid}`).catch(() => null)
     ]);
     if (!st || st.status !== 'playing' || !seat || !sec || !sec.role) return false;
     const name = S.name;
@@ -395,6 +396,8 @@ async function serverResume(code) {
     if (!Array.isArray(S.path) || !S.path.length) S.path = [{ turn: 0, pos: S.pos }];
     S.items = Array.isArray(seat.items) ? seat.items : [];
     S.turn = seat.turn || 1; S.over = seat.over || null; S.seatAt = seat.at || 0;
+    applySeatFlags(seat);
+    S.jsent = journalOf(); applyJournal(jr);   // a fresh state counts as synced with an empty journal, so the table's wins
     /* the table's timeline and hatches: the live feed may have delivered them to the state this one replaced */
     S.log = Object.values(log || {}).filter(e => e && e.id).map(logRec).sort((a, b) => b.at - a.at);
     for (const n of [1, 2, 3, 4]) if (hatches && hatches[n] !== undefined) S.hatches[n] = hatches[n] ? 1 : 0;
@@ -409,17 +412,44 @@ async function serverResume(code) {
 /* this device has a game already: the table's checkpoint wins if it is on a later turn */
 async function applySeatIfNewer(code) {
   try {
-    const seat = await Sync.readSeat(code);
-    if (!seat || !seat.at || Number(seat.at) <= Number(S.seatAt || 0)) return;
-    if (seat.pos) S.pos = seat.pos;
-    try { S.path = JSON.parse(seat.path || '[]'); } catch (_) { /* keep local */ }
-    if (Array.isArray(seat.items)) S.items = seat.items;
-    S.turn = seat.turn || S.turn; S.over = seat.over || S.over; S.seatAt = seat.at;
-    save(); boot();
+    const [seat, jr] = await Promise.all([Sync.readSeat(code), Sync.getPath(`rooms/${code}/journal/${Sync.uid}`).catch(() => null)]);
+    let changed = applyJournal(jr);
+    if (seat && seat.at && Number(seat.at) > Number(S.seatAt || 0)) {
+      if (seat.pos) S.pos = seat.pos;
+      try { S.path = JSON.parse(seat.path || '[]'); } catch (_) { /* keep local */ }
+      if (Array.isArray(seat.items)) S.items = seat.items;
+      S.turn = seat.turn || S.turn; S.over = seat.over || S.over; S.seatAt = seat.at;
+      applySeatFlags(seat); changed = true;
+    }
+    if (changed) { save(); boot(); }
+    queueJournal();   // anything this device changed while it was away goes to the table now
   } catch (_) { /* offline: local state stands */ }
+}
+/* the turn flags saved with the seat: Alien fed, mutated, Adrenaline or Cat played, the step of the turn */
+function applySeatFlags(seat) {
+  for (const k of ['fed', 'reborn', 'adr', 'cat', 'outSent', 'revealed', 'routeSent']) if (typeof seat[k] === 'boolean') S[k] = seat[k];
+  if (typeof seat.phase === 'string' && seat.phase) S.phase = seat.phase;
+  if (typeof seat.res === 'string') { try { S.res = JSON.parse(seat.res); } catch (_) { /* keep */ } }
+  if (typeof seat.mkN === 'number') S.mkN = seat.mkN;
+  /* a card request that was in flight when the page closed cannot be answered any more: ask again */
+  if (S.res && S.res.stage === 'wait') S.res = { stage: /^[1-4]$/.test(String(at(T.map, S.pos))) ? 'pod' : 'choose' };
+}
+/* merge the table's journal into this device: a field changed here since the last save stays and is sent later,
+   a field only the table changed (another device) is taken */
+function applyJournal(jr) {
+  if (!jr) return false;
+  const sent = S.jsent = S.jsent || {}, cur = journalOf(); let changed = false;
+  for (const k of ['notes', 'annos', 'sus', 'shapes']) {
+    if (typeof jr[k] !== 'string') continue;
+    if (jr[k] === cur[k]) { sent[k] = jr[k]; continue; }
+    if (cur[k] !== sent[k]) continue;
+    try { S[k] = JSON.parse(jr[k]); sent[k] = jr[k]; changed = true; } catch (_) { /* unreadable: keep local */ }
+  }
+  return changed;
 }
 
 Sync.on({
+  leaving() { flushSeat(); flushJournal(); },
   status(s) {
     if ((S.stage === 'lobby' || S.stage === 'game') && (s === 'no-room' || s === 'started' || s === 'closed' || s === 'full')) { toast(t(FLOW_MSG[s])); Sync.leave(true); resetToWelcome(); return; }
     if (S.stage === 'game') { if (S.tab === 'table') render(); } else renderFlow();

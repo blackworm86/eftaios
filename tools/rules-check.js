@@ -28,6 +28,7 @@ check(has(rules.adminlog.$id['.validate'], "newData.child('by').val() === auth.u
 check(has(room.seats.$uid['.read'], 'auth.uid === $uid') && has(room.seats.$uid['.write'], 'auth.uid === $uid'),
   'a seat checkpoint is readable and writable only by its owner');
 check(has(room.secret.$uid['.read'], 'auth.uid === $uid'), 'a role is readable only by its owner');
+check(has(room.journal.$uid['.read'], 'auth.uid === $uid') && has(room.journal.$uid['.write'], 'auth.uid === $uid'), 'a private journal is readable and writable only by its owner');
 check(has(rules.bans.$uid['.write'], 'auth.token.admin === true'), 'only the admin can ban');
 check(has(rules.adminlog['.read'], 'auth.token.admin === true'), 'only the admin can read the audit log');
 check(has(rules.rooms.$room.created['.write'], "child('profile/handle').exists()"), 'only a registered player can create a table');

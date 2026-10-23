@@ -86,6 +86,9 @@ const Hot = (() => {
     closeHatch(n) { H.hatches[n] = 1; },
     draw(type, two) { const d = H.decks[type]; if (type === 'hatch') return drawPod(d, two).card; const r = deckDraw(d); if (discardable(r.card)) d.disc.push(r.card); if (r.reshuffled) log({ who: t('Game'), kind: 'info', text: RESHUFFLED[type] }); return r.card || ''; },
     discard(id) { H.decks.sector.disc.push(id); },
+    mutated() { H.last = 'lost'; },
+    sensor: async id => sensorCore(id),
+    medic: async id => api.medic(id),
     attack: sector => attackCore(sector, H.cur),
     spotlight: sector => spotCore(sector, H.cur)
   });
@@ -125,6 +128,14 @@ const Hot = (() => {
     return seen;
   }
 
+  /* Sensor named by seat `by`: one player announces the exact position (an Invisible Alien shows its identity instead) */
+  function sensorCore(id) {
+    const i = H.seats.findIndex(s => s.id === id), s = H.seats[i], st = s && s.state;
+    if (!st || st.over) return { seen: [], missing: [] };
+    if (abilOf(st, H.mode) === 'Invisible Alien') { log({ by: s.id, who: s.name, kind: 'reveal', text: 'Invisible Alien' }); notify(i, t('Sensor! Your identity was revealed.')); return { seen: [{ name: s.name, ident: roleLabel(st.role, st.char) }], missing: [] }; }
+    log({ by: s.id, who: s.name, kind: 'reveal', text: 'Sensor', sector: st.pos }); notify(i, t('Sensor! Your position was revealed: {p}', { p: st.pos }));
+    return { seen: [{ name: s.name, pos: st.pos }], missing: [] };
+  }
   const api = {
     others: () => H.seats.filter((s, i) => i !== H.cur && !s.state.over).map(s => [s.id, s.name]),
     curId: () => (H ? seat().id : null),
@@ -133,7 +144,7 @@ const Hot = (() => {
     isOver: () => !!(H && H.result),
     /* everything about the game, for the saved log: every seat's real route, role, items, and the shared log */
     dump() { if (!H) return null; return { mode: H.mode, map: H.mapId, turn: H.turn, result: H.result, hatches: H.hatches, decksLeft: counts(), log: H.log,
-      seats: H.seats.map((s, i) => { const st = i === H.cur ? S : s.state; return { id: s.id, name: s.name, bot: s.bot || null, role0: s.role0, role: st.role, char: st.char || '', reborn: !!st.reborn, over: st.over || null, items: st.items, path: st.path }; }) }; },
+      seats: H.seats.map((s, i) => { const st = i === H.cur ? S : s.state; return { id: s.id, name: s.name, bot: s.bot || null, role0: s.role0, role: st.role, char: st.char || '', reborn: !!st.reborn, over: st.over || null, items: st.items, ab: st.ab, path: st.path }; }) }; },
     /* every seat's real route and final role — only once the game is over */
     routes() { if (!H || !H.result) return {}; const o = {}; H.seats.forEach((s, i) => { const st = i === H.cur ? S : s.state; o[s.id] = { path: st.path || [], role: st.role }; }); return o; },
     result: () => (H && H.result) || {},
@@ -146,13 +157,13 @@ const Hot = (() => {
       return o;
     },
     rebind() { if (!load()) { S.hot = false; S.stage = 'welcome'; return; } S.log = H.log; S.hatches = H.hatches; T.counts = counts(); },
-    async start(names, mapId, mode, track, bots) {
+    async start(names, mapId, mode, track, bots, setup) {   // setup (admin bot tests): per seat { role, char, items } instead of the random deal
       const deal = dealRoles(names.length), keep = S.customMaps, map = T.maps.find(m => m.id === mapId) || T.maps[0];
       H = { mode, mapId: map.id, turn: 1, cur: 0, passing: true, log: [], hatches: { 1: 0, 2: 0, 3: 0, 4: 0 }, result: null, last: '',
         decks: { sector: deckNew(SECTOR_DECK), hatch: deckNew(HATCH_DECK) }, seats: [] };
       names.forEach((name, i) => {
-        const { role, char } = deal[i], pos = startSector(map, role, char, mode);
-        H.seats.push({ id: 'h' + i, name, bot: (bots && bots[i]) || undefined, role0: role, seen: false, notices: [], state: { name, role, char, pos, path: [{ turn: 0, pos }], fed: false, adr: false, phase: 'move', res: null, over: null, items: [], undo: null, sus: {}, shapes: {}, mkN: 5, outSent: false, tab: 'play', track: track === 'manual' ? 'manual' : 'auto' } });
+        const o = setup && setup[i] && setup[i].role ? setup[i] : null, { role, char } = o || deal[i], pos = startSector(map, role, char, mode);
+        H.seats.push({ id: 'h' + i, name, bot: (bots && bots[i]) || undefined, role0: role, seen: false, notices: [], state: { name, role, char, pos, path: [{ turn: 0, pos }], fed: false, adr: false, phase: 'move', res: null, over: null, items: o && o.items ? o.items.slice() : [], undo: null, sus: {}, shapes: {}, mkN: 5, outSent: false, tab: 'play', track: track === 'manual' ? 'manual' : 'auto' } });
       });
       T.map = map; S = Object.assign(fresh(), { customMaps: keep });
       S.log = H.log; S.hatches = H.hatches;   // bots read hatches and the log before the first person's turn
@@ -187,13 +198,7 @@ const Hot = (() => {
     },
     async attack(sector) { seatOut(); const hits = attackCore(sector, H.cur); store(); save(); return { hits, missing: [] }; },
     /* Sensor: one player announces the exact position */
-    async sensor(id) {
-      seatOut(); const i = H.seats.findIndex(s => s.id === id), s = H.seats[i], st = s && s.state; store(); save();
-      if (!st || st.over) return { seen: [], missing: [] };
-      if (abilOf(st, H.mode) === 'Invisible Alien') { log({ by: s.id, who: s.name, kind: 'reveal', text: 'Invisible Alien' }); notify(i, t('Sensor! Your identity was revealed.')); return { seen: [{ name: s.name, ident: roleLabel(st.role, st.char) }], missing: [] }; }
-      log({ by: s.id, who: s.name, kind: 'reveal', text: 'Sensor', sector: st.pos }); notify(i, t('Sensor! Your position was revealed: {p}', { p: st.pos }));
-      return { seen: [{ name: s.name, pos: st.pos }], missing: [] };
-    },
+    async sensor(id) { seatOut(); const r = sensorCore(id); store(); save(); return r; },
     /* Medic: a player must show who they are */
     async medic(id) {
       const s = H.seats.find(x => x.id === id), st = s && s.state; if (!st) return null;

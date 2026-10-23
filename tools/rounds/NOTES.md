@@ -273,3 +273,39 @@ Next: screen the hard Alien parameters on paired seeds (3-player and 6-player ha
 anti-clustering term if the weights plateau. Do not start a full 15-dimensional search yet: map variance is larger than the effect
 we are looking for.
 
+
+## Phase 0 (docs/BOT_PLAN.md): the yardstick
+
+`node tools/yardstick.js a.json b.json --out report.txt` reads tools/sim.js outputs. sim.js now also records friendly-fire kills,
+cards played and held at the end, powers used (`kind: 'power'` log entries; none exist yet), the public noises, and the time of every bot turn.
+Baseline: 900 games (sizes 2-8 x easy/normal/hard x 18 maps x 2 seeds, plus 72 games each of 1 hard + 5 normal and 1 normal + 5 easy), seed 20261023,
+`--no-trace --workers 8`. Report: `p0-baseline.report.txt`. Re-run the same three commands after a change to compare on paired seeds.
+
+Findings on the current bots:
+- Items: 0.2-1.6 cards played per game against 3-13 still held at the end. Cat, Sensor, Teleport and Mutation are never played; Attack 0.03 per game. Powers: 0.
+- Ladder: in mixed tables hard seats win 59.7% (72 seats), normal 48.6%, easy 49.7%. Normal and easy are not separable.
+- Friendly fire: 0.25-0.50 kills per game at 8 players (hard), almost all Alien-on-Alien.
+- Closing in on a Human noise (nearest Alien, one round later): 0.1-0.4 sectors, hard no better than easy.
+- Bunching: 14.8% of turns have 4+ Aliens in a small area; 49 of 900 games have a 10+ turn run.
+- Turn time on this machine: mean 2-25 ms, worst 1.35 s (hard, 8 players). The host phone is slower, so the 5 s budget is the thing to watch from Phase 2 on.
+- Small tables (2-3 players) are very Human-favoured at every level (Human escape 58-94%).
+
+## Phase 1: use everything held (same 900 games and seed as Phase 0; report `p1.report.txt`)
+
+bot.js now plays every item and power it can: Teleport (Blink Aliens too), Cat, Sensor, Mutation, Adrenaline/Sedatives for the Surge/Silent Alien,
+and the powers of Captain, Pilot, Soldier, Executive Officer, Co-pilot, Medic, Fast, Lurking and Psychic Alien (Engineer was already used; Brute and Invisible are passive).
+Medic and Co-pilot reveals and Mutation are now read by the belief tracker. Bots count each power use in `seat.ab`; sim.js reads it.
+
+| | Phase 0 | Phase 1 |
+|---|---|---|
+| powers used per game (hard, 8 players) | 0 | 5.0 |
+| cards played per game (hard, 8 players) | 1.17 | 1.86 |
+| cards a Human still holds at the end (hard, 8 players) | n/a | 0.64 |
+| Cat / Sensor / Mutation / Teleport played per game | 0 / 0 / 0 / 0 | 0.04 / 0.07 / 0.01 / 0.01 |
+
+Most of the 3-13 "cards left" in Phase 0 were Aliens' cards, kept to look Human; Humans now end with under one unplayed card (hard).
+Easy still plays no cards on purpose (its skill `items` is false). Attack stays rare (0.02/game): Aliens are rarely believed to stand in a Human's own sector.
+Loosening the Attack/Spotlight/Sensor thresholds (atkAt 1.0, spotAt 0.35, sensorAt 0.05) changed play counts by under 0.02 per game, so the thresholds are not the limit; left as is.
+Win rates moved within noise (about 10 points at 36 games per cell), except the mixed ladder: hard seats 41.7% vs 59.7% in Phase 0 (72 seats, about +/-11): to re-check at larger size before drawing a conclusion.
+Turn time (this machine): worst 0.92 s (hard, 7 players), mean under 20 ms.
+Fixed in sim.js: a mutated Human killed later as an Alien is a plain death, not a conversion, in the death audit.

@@ -20,9 +20,9 @@ const Bot = (() => {
   const SKILL = {
     // think: seconds of visible thinking; mistake: chance to take one of the next-best moves; decoy: 0 random, 1 believable, 2 simulated;
     // allyCost: what it costs to kill a possible Alien by mistake (attacks eliminate everybody in the sector)
-    easy:   { mem: 1.0, smartBluff: false, temp: 0.5, beta: 0.2, hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.5, items: false, bluff: false, think: 1.4, mistake: 0.18, decoy: 0, allyCost: 8, humanCal: 0.6 },
-    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
-    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
+    easy:   { mem: 1.0, smartBluff: false, temp: 0.5, beta: 0.2, hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.5, items: false, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: false, think: 1.4, mistake: 0.18, decoy: 0, allyCost: 8, humanCal: 0.6 },
+    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
+    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
   };
 
   const skill = lvl => Object.assign({}, SKILL[lvl] || SKILL.normal, window.__skill && window.__skill[lvl]);   // __skill: tuning hook for benchmarks
@@ -161,7 +161,9 @@ const Bot = (() => {
               if (armed) mulA *= 0.02; else { mulH *= 0.02; if (log.some((y, j) => j > i && j < i + 8 && y.kind === 'out' && y.turn === r && String(y.text).startsWith('killed|human'))) fedFrom = r + 1; }
             }
             if (e.kind === 'hatch') { mulA *= 0.02; known = true; }
-          } else if (e.kind === 'item') { mulA *= 0.02; known = true; }         // only Humans can play items
+          } else if (e.kind === 'item' && /^mutation$/i.test(e.text)) { wA = 1; wH = 0; known = true; }   // a Human who mutates is an Alien from now on
+          else if (e.kind === 'item') { mulA *= 0.02; known = true; }         // only Humans can play items
+          else if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) { known = true; wA = e.text.split('|')[1] === 'alien' ? 1 : 0; wH = 1 - wA; }   // Medic or Co-pilot
           else if (e.kind === 'out') {
             const [why, role] = String(e.text).split('|');
             known = true;
@@ -258,8 +260,9 @@ const Bot = (() => {
     if (sk.mistake && list.length > 1 && rnd() < sk.mistake) return list[1 + Math.floor(rnd() * Math.min(2, list.length - 1))];
     return softPick(list, sk.temp);
   }
-  function humanMove(W, st, steps) {
+  function humanMove(W, st, steps, stay) {
     const g = W.g, opts = [...reachable(T.map, st.pos, steps, 'human').keys()];
+    if (stay) opts.push(st.pos);   // Executive Officer: stay still, once
     if (!opts.length) return null;
     const cost = pathCosts(W), list = [];
     // the clock: the longer the game runs, the less a detour is worth and the more a risk is worth taking
@@ -270,14 +273,14 @@ const Bot = (() => {
       if (g.isHatch(c)) return list.push({ id, cell: c, score: 1000 });
       // fear: Aliens the tracker places within two steps of this sector (not only the ones that can strike this turn)
       let near = 0; for (let j = 0; j < g.N; j++) { const v = W.alienOcc[j]; if (v > 1e-4 && g.dA[c][j] <= 2) near += v; }
-      let s = -cost[c] * hurry - W.sk.dw * calm * W.risk(c) - (W.sk.fear || 0) * near - (W.lvl === 'easy' ? 0 : 3 * W.crowd[c]) - (recent.has(id) ? W.sk.mem : 0);
+      let s = -cost[c] * hurry - W.sk.dw * calm * W.risk(c) - (W.sk.fear || 0) * near - (W.lvl === 'easy' ? 0 : 3 * W.crowd[c]) - (id === st.pos ? 2 : recent.has(id) ? W.sk.mem : 0);   // staying spends the once-only power
       if (g.sec[c]) s += 0.4 + (W.lvl === 'easy' ? 0 : 0.4);                   // Secure sectors make no noise
-      list.push({ id, cell: c, score: s });
+      list.push({ id, cell: c, score: s, stay: id === st.pos });
     });
     return choose(list, W.sk);
   }
-  function alienMove(ctx, W, st, B) {
-    const g = W.g, sk = W.sk, speed = st.fed ? 3 : 2, opts = [...reachable(T.map, st.pos, speed, 'alien').keys()];
+  function alienMove(ctx, W, st, B, extra = 0) {
+    const g = W.g, sk = W.sk, speed = (st.fed || (abilOf(st, ctx.H.mode) === 'Fast Alien' && st.path.length <= 1) ? 3 : 2) + extra, rs = Math.min(3, speed), opts = [...reachable(T.map, st.pos, speed, 'alien').keys()];
     if (!opts.length) return null;
     const next = humanNext(W), turn = ctx.H.turn, late = turn >= 14 ? 1.5 : 1, hs = W.hatches;
     const recentA = new Set(st.path.slice(-4).map(p => p.pos));
@@ -297,12 +300,12 @@ const Bot = (() => {
       if (sk.chase) { let m = 0, z = 0; for (let j = 0; j < g.N; j++) { const v = W.humanCnt[j]; if (v < 1e-4) continue; const w = sk.laneW && laneOf(j) === lane ? 1 + sk.laneW : 1; z += v * w; const d = g.dA[c][j]; if (d !== 255) m += v * w * Math.exp(-d / (sk.lam || 3)); } s += sk.chase * (z ? m / z : 0); }
       if (sk.spread) { let m = 0; for (let j = 0; j < g.N; j++) { const v = W.alienCnt[j]; if (v < 1e-4) continue; const d = g.dA[c][j]; if (d !== 255) m += v * Math.exp(-d / 2); } s -= sk.spread * m; }
       // strike range next turn: the most likely sectors where a Human will be
-      let top = 0, sum = 0; for (const j of g.reach[speed][c]) { const v = next[j]; sum += v; if (v > top) top = v; }
+      let top = 0, sum = 0; for (const j of g.reach[rs][c]) { const v = next[j]; sum += v; if (v > top) top = v; }
       s += sk.pot * (0.6 * top + 0.25 * sum);
       // camp the approaches to the hatches, weighted by where Humans are heading
       let camp = 0; hs.forEach((h, k) => {
         const ring = g.nbH[h]; if (!ring.length) return; let cov = 0;
-        ring.forEach(a => { const d = g.dA[c][a]; cov += d === 0 ? 1 : d === 1 ? 0.85 : d <= speed ? 0.5 : 0; });
+        ring.forEach(a => { const d = g.dA[c][a]; cov += d === 0 ? 1 : d === 1 ? 0.85 : d <= rs ? 0.5 : 0; });
         camp += (wH[k] + (h === mineH ? 0.6 : 0)) * cov / ring.length;
       });
       s += sk.camp * late * (wsum ? camp / wsum : 0);
@@ -311,7 +314,7 @@ const Bot = (() => {
       list.push({ id, score: s, cell: c });
     });
     const pick_ = choose(list, sk);
-    if (window.__moves && window.Hot && Hot.dump) {   // benchmark hook: every option's belief against the Humans really standing there
+    if (window.__moves && window.Hot && Hot.dump && st === ctx.me.state && !extra) {   // benchmark hook: every option's belief against the Humans really standing there
       const real = new Map(); Hot.dump().seats.forEach(x => { if (x.id === ctx.me.id || x.over || x.role !== 'human') return; const p = (x.path || []).filter(q => q.note !== 'reborn'); if (p.length) real.set(p[p.length - 1].pos, (real.get(p[p.length - 1].pos) || 0) + 1); });
       window.__moves.push({ lvl: W.lvl, turn, opts: list.map(o => ({ pred: +W.humanCnt[o.cell].toFixed(3), next: +(next[o.cell] || 0).toFixed(3), score: +o.score.toFixed(2), truth: real.get(o.id) || 0, chosen: o === pick_ ? 1 : 0 })) });
     }
@@ -372,53 +375,115 @@ const Bot = (() => {
   /* ---------- one full turn ---------- */
   async function turn(ctx) {
     const H = ctx.H, idx = ctx.idx, me = ctx.me, st = me.state, lvl = LEVELS.includes(me.bot) ? me.bot : 'normal', sk = skill(lvl);
-    const adv = H.mode !== 'basic', human = st.role === 'human', g = graph();
+    const adv = H.mode !== 'basic', ab = abilOf(st, H.mode);
+    let human = st.role === 'human';
+    const g = graph();
     const say = e => ctx.log(Object.assign({ by: me.id, who: me.name }, e));
     const useItem = id => { const i = st.items.indexOf(id); if (i < 0) return false; st.items.splice(i, 1); ctx.discard(id); say({ kind: 'item', text: id }); return true; };
+    // what this seat may play: Humans every item, an Alien only the one its Character allows
+    const may = id => st.items.includes(id) && (human ? id !== 'defense' && id !== 'clone' : !st.reborn && ALIEN_ITEM[ab] === id);
+    // a Character power: `once` ones are spent for good; every use is counted in st.ab (the benchmark reads it)
+    const spent = k => abUsed(st, k);
+    const usePower = k => { st.ab = Object.assign({}, st.ab, { [k]: (st.ab && st.ab[k] || 0) + 1 }); const p = st.path[st.path.length - 1]; if (p) p.star = 1; };
+    const canPower = k => adv && ab === k && !spent(k);
+    const useCap = adv && sk.items;
     st.adr = false;
     // a visible moment of thought before anything happens; the same length whatever the bot is about to do
     if (ctx.think) await ctx.think(sk.think * 1000 * (0.8 + rnd() * 0.4));
-    if (human && !hatchCells().length) { st.over = 'trapped'; st.outSent = true; ctx.out(idx, 'trapped'); return; }
-    const B = beliefs(H, me, lvl); let W = world(B, H, idx, lvl, st);
+    const mutate = () => { useItem('mutation'); st.role = 'alien'; st.fed = false; st.reborn = true; human = false; st.path.push({ turn: H.turn, pos: st.pos, note: 'mutated' }); if (ctx.mutated) ctx.mutated(); };
+    if (human && !hatchCells().length) { if (adv && may('mutation')) mutate(); else { st.over = 'trapped'; st.outSent = true; ctx.out(idx, 'trapped'); return; } }
+    let B = beliefs(H, me, lvl), W = world(B, H, idx, lvl, st);
     const myCell = () => g.idx.get(st.pos);
-    // before moving: Adrenaline when it gets me to a hatch, or clearly out of danger
-    if (human && adv && st.items.includes('adrenaline')) {
-      const one = humanMove(W, st, 1), two = humanMove(W, st, 2), hdHere = W.hd[myCell()];
+    const refresh = () => { B = beliefs(H, me, lvl); W = world(B, H, idx, lvl, st); };
+    const jump = to => { st.pos = to; st.path.push({ turn: H.turn, pos: to, note: 'teleport' }); };
+    // Teleport (a card, or the Co-pilot who shows who she is) when the Human sector offers a clearly better move; Blink Aliens too
+    if (useCap) {
+      const start = find(T.map, 'H'), tele = may('teleport') ? 'teleport' : human && canPower('Co-pilot') ? 'Co-pilot' : '';
+      if (tele) {
+        const mv = pos => human ? humanMove(W, { pos, path: st.path }, 1) : alienMove(ctx, W, { pos, path: st.path, fed: st.fed, char: st.char }, B), from = mv(st.pos), to = mv(start);
+        const need = tele === 'Co-pilot' ? (lvl === 'hard' ? 9 : 13) : (lvl === 'hard' ? 4 : 7);
+        if (from && to && to.score - from.score > need) {
+          if (tele === 'teleport') useItem('teleport'); else { usePower('Co-pilot'); abUse(st, 'Co-pilot'); say({ kind: 'reveal', text: 'Id|' + st.role + '|' + (st.char || '') }); }
+          jump(start);
+        }
+      }
+    }
+    // before moving: Adrenaline (or the Surge Alien) when it gets me to a hatch, or clearly out of danger
+    if (adv && may('adrenaline')) {
+      const one = human ? humanMove(W, st, 1) : alienMove(ctx, W, st, B), two = human ? humanMove(W, st, 2) : alienMove(ctx, W, st, B, 1);
       const gain = two && one ? two.score - one.score : 0;
-      if (two && (g.isHatch(two.cell) || (sk.items && gain > (lvl === 'hard' ? 4 : 7))) && !(one && g.isHatch(one.cell))) { if (useItem('adrenaline')) st.adr = true; }
+      if (two && ((human && g.isHatch(two.cell)) || (sk.items && gain > (lvl === 'hard' ? 4 : 7))) && !(one && human && g.isHatch(one.cell))) { if (useItem('adrenaline')) st.adr = true; }
     }
     // Spotlight where an Alien is most likely to be close
-    if (human && adv && sk.items && st.items.includes('spotlight') && (lvl === 'hard' || rnd() < 0.5)) {
+    if (human && useCap && st.items.includes('spotlight') && (lvl === 'hard' || rnd() < 0.5)) {
       let best = null; for (let c = 0; c < g.N; c++) { if (g.isHatch(c) || g.isStart(c)) continue; let s = W.alienOcc[c]; g.nb[c].forEach(j => { s += W.alienOcc[j]; }); if (!best || s > best.s) best = { c, s }; }
-      if (best && best.s >= 0.7) { useItem('spotlight'); await ctx.spotlight(g.ids[best.c]); W = world(beliefs(H, me, lvl), H, idx, lvl, st); }
+      if (best && best.s >= sk.spotAt) { useItem('spotlight'); await ctx.spotlight(g.ids[best.c]); refresh(); }
+    }
+    // Sensor on the player most likely to be an Alien whose whereabouts are least clear
+    if (human && useCap && ctx.sensor && st.items.includes('sensor') && (lvl === 'hard' || rnd() < 0.5)) {
+      let best = null; W.live.forEach(b => { const v = b.pA * (1 - Math.max(...b.dA)); if (!best || v > best.v) best = { b, v }; });
+      if (best && best.v >= sk.sensorAt) { useItem('sensor'); await ctx.sensor(best.b.id); refresh(); }
+    }
+    // Medic: make the most doubtful player show who they are (and show who I am)
+    if (human && useCap && ctx.medic && canPower('Medic') && H.turn >= 3 && (lvl === 'hard' || rnd() < 0.5)) {
+      let best = null; W.live.forEach(b => { const v = Math.min(b.pA, 1 - b.pA); if (!best || v > best.v) best = { b, v }; });
+      if (best && best.v >= 0.3) { abUse(st, 'Medic'); usePower('Medic'); say({ kind: 'reveal', text: 'Id|' + st.role + '|' + (st.char || '') }); await ctx.medic(best.b.id); refresh(); }
     }
     // move
-    const choice = human ? humanMove(W, st, st.adr ? 2 : 1) : alienMove(ctx, W, st, B);
-    if (choice) { st.pos = choice.id; st.path.push({ turn: H.turn, pos: choice.id }); }
+    const stayOk = human && useCap && canPower('Executive Officer') && ['.', 's'].includes(at(T.map, st.pos));
+    let choice = human ? humanMove(W, st, st.adr ? 2 : 1, stayOk) : alienMove(ctx, W, st, B, st.adr ? 1 : 0);
+    // doomed: a Human with Mutation turns Alien rather than walk into the Aliens
+    if (human && useCap && may('mutation') && choice && !g.isHatch(choice.cell) && W.risk(choice.cell) > (lvl === 'hard' ? 0.45 : 0.6)) { mutate(); refresh(); choice = alienMove(ctx, W, st, B, 0); }
+    // Lurking Alien: attack right here instead of moving when that is worth more than the attack after a move
+    let lurk = false;
+    if (!human && adv && ab === 'Lurking Alien' && choice) {
+      const here0 = alienAttackValue(ctx, W, st, myCell());
+      if (here0 >= W.sk.attackAt * 1.25 && here0 > alienAttackValue(ctx, W, st, choice.cell) + 0.5) { lurk = true; st.path.push({ turn: H.turn, pos: st.pos }); usePower('Lurking Alien'); }
+    }
+    if (choice && choice.stay) { abUse(st, 'Executive Officer'); st.path.push({ turn: H.turn, pos: st.pos, star: 1 }); usePower('Executive Officer'); }
+    else if (choice && !lurk) { st.pos = choice.id; st.path.push({ turn: H.turn, pos: choice.id }); if (!human && ab === 'Fast Alien' && st.path.length === 2 && g.dA[g.idx.get(st.path[0].pos)][choice.cell] > 2) usePower('Fast Alien'); }
     st.adr = false;
     const ty = at(T.map, st.pos), here = myCell();
     // escape hatch
     if (human && '1234'.includes(ty) && choice && hatchOpen(+ty)) {   // a pod card is drawn only on entering an open pod
-      const n = +ty;
-      if (ctx.draw('hatch', adv && st.char === 'Engineer') === 'green') { ctx.closeHatch(n); say({ kind: 'hatch', sector: st.pos, n, ok: 1 }); st.over = 'escaped'; st.outSent = true; ctx.out(idx, 'escaped'); return; }
+      const n = +ty, two = adv && st.char === 'Engineer';
+      if (two) usePower('Engineer');
+      if (ctx.draw('hatch', two) === 'green') { ctx.closeHatch(n); say({ kind: 'hatch', sector: st.pos, n, ok: 1 }); st.over = 'escaped'; st.outSent = true; ctx.out(idx, 'escaped'); return; }
       ctx.closeHatch(n); say({ kind: 'hatch', sector: st.pos, n, ok: 0 });
       return;
     }
     // Alien attack
-    const worth = !human && attackWorth(ctx, W, st, lvl);
+    const worth = !human && (lurk || attackWorth(ctx, W, st, lvl));
     if (window.__trace && !human && window.Hot && Hot.dump) {   // benchmark hook: what the tracker believed here against who really stands here
       const c0 = g.idx.get(st.pos); let truth = 0, aliens = 0;
       Hot.dump().seats.forEach(x => { if (x.id === me.id || x.over) return; const p = (x.path || []).filter(q => q.note !== 'reborn'); if (p.length && p[p.length - 1].pos === st.pos) { if (x.role === 'human') truth++; else aliens++; } });
       window.__trace.push({ lvl, turn: H.turn, pred: +W.humanCnt[c0].toFixed(3), predA: +W.alienCnt[c0].toFixed(3), truth, aliens, attack: !!worth, sec: ty !== '.' ? 1 : 0 });
     }
     if (worth) { say({ kind: 'attack', sector: st.pos }); const hits = await ctx.attack(st.pos); if (hits.some(h => h.killed && h.role === 'human') && !st.fed) st.fed = true; return; }
-    // Human with an Attack card on a likely Alien
-    if (human && adv && sk.items && st.items.includes('attack') && humanAttackValue(W, here) >= (lvl === 'hard' ? 3 : 5)) { useItem('attack'); say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return; }
+    // Human with an Attack card (or the Soldier) on a likely Alien
+    const strike = human && useCap ? (canPower('Soldier') ? 'Soldier' : st.items.includes('attack') ? 'attack' : '') : '';
+    if (strike && humanAttackValue(W, here) >= (lvl === 'hard' ? sk.atkAt : sk.atkAt + 2)) {
+      if (strike === 'attack') useItem('attack'); else { abUse(st, 'Soldier'); usePower('Soldier'); }
+      say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return;
+    }
     if (ty !== '.') { say({ kind: 'silence', text: 'secure' }); return; }  // Secure sector: declare "Silent Sector"
-    if (human && adv && sk.items && st.items.includes('sedatives') && W.risk(here) > (lvl === 'hard' ? 0.12 : 0.2)) { useItem('sedatives'); return; }
-    let card = ctx.draw('sector') || 'silence'; const item = card.startsWith('item:') && adv ? card.slice(5) : '';
+    // Sedatives (also for the Silent Alien): a Human when danger is close, an Alien when Humans are near enough to hear it
+    if (useCap && may('sedatives')) {
+      let near = 0; if (!human) { near = W.humanCnt[here]; g.reach[2][here].forEach(j => { near += W.humanCnt[j]; }); }
+      if (human ? W.risk(here) > (lvl === 'hard' ? 0.12 : 0.2) : near > 0.5) { useItem('sedatives'); return; }
+    }
+    if (human && adv && ab === 'Captain' && !spent('Captain')) { abUse(st, 'Captain'); usePower('Captain'); return; }   // no card the first time in a Dangerous sector
+    // Cat (or the Pilot): two noises, one of them a decoy, when my sector is dangerous to be heard in
+    const cat = human && useCap && W.risk(here) > (lvl === 'hard' ? 0.1 : 0.16) ? (canPower('Pilot') ? 'Pilot' : may('cat') ? 'cat' : '') : '';
+    if (cat === 'cat') useItem('cat'); else if (cat) { abUse(st, 'Pilot'); usePower('Pilot'); }
+    let card = ctx.draw('sector') || 'silence'; const item = card.startsWith('item:') && adv && !cat ? card.slice(5) : '';
     if (card.startsWith('item:')) card = 'silence';
-    if (card.startsWith('noise-self')) say({ kind: 'noise', sector: st.pos });
+    if (!human && adv && ab === 'Psychic Alien' && card === 'silence') { card = 'noise-any'; usePower('Psychic Alien'); }   // Silence counts as a noise anywhere
+    if (cat && card.startsWith('noise')) {
+      const a = card.startsWith('noise-self') ? st.pos : chooseDecoy(ctx, st, W, me, lvl); let b = chooseDecoy(ctx, st, W, me, lvl);
+      if (b === a) { const r = g.ringOf[here]; if (r.length) b = g.ids[pick(r)]; }
+      say({ kind: 'noise', sector: a }); say({ kind: 'noise', sector: b });
+    } else if (card.startsWith('noise-self')) say({ kind: 'noise', sector: st.pos });
     else if (card.startsWith('noise-any')) say({ kind: 'noise', sector: chooseDecoy(ctx, st, W, me, lvl) });
     else say({ kind: 'silence' });
     if (item) st.items.push(item);   // kept to look like a Human; only some can be used by a bot

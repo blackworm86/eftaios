@@ -39,7 +39,7 @@ assert(await A.locator('[data-act=faction]').count()===0,'no manual faction pick
 // announcement sync
 await A.click('#d-no').catch(()=>{});
 const id=await A.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));
-await A.evaluate(i=>selectCell(i),id);await A.click('[data-act=confirm]');await A.evaluate(()=>say('','noise',S.pos));
+await A.evaluate(i=>selectCell(i),id);await A.click('[data-act=mpyes]');await A.evaluate(()=>say('','noise',S.pos));
 await B.waitForFunction(()=>S.log.length>0);assert((await B.evaluate(()=>S.log[0].kind))==='noise','announcement reached guest');
 // guest reload keeps game and rejoins
 const roleB=await B.evaluate(()=>S.role);await B.reload();await B.waitForSelector('#app:not([hidden])');assert(await B.evaluate(()=>S.role)===roleB,'guest resumes after reload with the same role');

@@ -23,7 +23,7 @@ function onTurn(v) {
 function startMyTurn(silent) {
   if (S.over) { endTurn(); return; }
   S.undo = null;
-  S.phase = 'move'; S.res = null; S.adr = false; S.cat = false; T.sel = null; refreshReach();
+  S.phase = 'move'; S.res = null; S.adr = false; S.cat = false; T.sel = null; T.opt = null; refreshReach();
   if (!silent) { toast(t('Your turn!')); buzz(); }
   if (S.pos) focusOn(S.pos);
 }
@@ -83,7 +83,7 @@ const decodeRoute = s => String(s || '').split(',').map(x => { const [t_, pos, n
 function confirmMove() {
   if (!myTurn() || !T.sel || !T.reach.has(T.sel)) return;
   S.undo = { pos: S.pos, adr: S.adr };
-  S.pos = T.sel; S.path.push({ turn: S.turn, pos: S.pos }); T.sel = null; buzz();
+  S.pos = T.sel; S.path.push({ turn: S.turn, pos: S.pos }); T.sel = null; T.opt = null; buzz();
   const ty = at(T.map, S.pos);
   S.phase = 'resolve'; S.res = { stage: '1234'.includes(ty) ? 'pod' : 'choose' };
   T.itemIcon = false; S.adr = false;
@@ -97,7 +97,7 @@ function undoMove() {
   afterChange(); focusOn(S.pos); toast(t('Move undone'));
 }
 const undoBtn = () => (S.undo && S.phase === 'resolve' && S.res && ['choose', 'pod'].includes(S.res.stage)) ? `<button class="btn link wide" data-act="undo">${ico('undo', 18)} ${t('Undo move')}</button>` : '';
-function announce(res) { commit(); S.res = Object.assign({ stage: 'done' }, res); afterChange(); }
+function announce(res) { commit(); T.opt = null; S.res = Object.assign({ stage: 'done' }, res); afterChange(); }
 /* common ending of a Sector card: public announcement, then (maybe) the Item card that was drawn */
 async function finishCard(kind, sector, itemId, any) {
   const res = kind === 'silence' ? { say: t('Silence in all Sectors'), tone: 'silent', icon: 'silence', logged: say('', 'silence') }
@@ -419,6 +419,34 @@ function globalOverPanel() {
     <ul class="plist rev">${rows}</ul><button class="btn big wide" data-act="savelog">${t('Save game log')}</button>${!S.hot && Sync.code && Sync.isHost() ? `<button class="btn primary big wide" data-act="rematch">${t('Play again')}</button><button class="btn big wide" data-act="newgame">${t('Close table')}</button>` : `<button class="btn primary big wide" data-act="newgame">${t(!S.hot && Sync.code ? 'Leave table' : 'New game')}</button>`}`;
 }
 
+/* everything the player may do now that they have moved: the bar next to their sector offers it, the panel explains the chosen one */
+const nowItem = (k, danger) => ['attack', 'spotlight', 'sensor', 'mutation'].includes(k) || (danger && ['sedatives', 'cat'].includes(k));
+function turnOptions() {
+  if (!digital() || S.over || gameOver() || T.pick || (inRoom() && !myTurn()) || S.phase !== 'resolve' || !S.res || !['choose', 'pod'].includes(S.res.stage)) return null;
+  const ty = at(T.map, S.pos), danger = ty === '.', o = [];
+  if (S.res.stage === 'pod') o.push({ k: 'pod', icon: podIcon(), label: t('Draw pod card'), commit: t('Draw pod card'), text: t('You reached an Escape Pod. Draw the Escape Pod card: with a green card you escape, with a red one the pod is damaged.'), run: () => digitalHatch() });
+  else {
+    if (danger) o.push({ k: 'draw', icon: cardBack(20), label: t('Draw a card'), commit: t('Draw the card'), text: t('Draw a Dangerous Sector card and announce what it says: noise in your sector, noise in any sector, or silence. Some cards also give you an Item.'), run: () => drawSector() });
+    else o.push({ k: 'quiet', icon: gico('silent', 28), label: t('Silent Sector'), commit: t('Declare'), text: t('A Secure sector: there is no card to draw. You announce “Silent Sector”.'), run: () => actions.quiet() });
+    if (S.role === 'alien') o.push({ k: 'attack', icon: gico('claws', 28), label: t('Attack'), tone: 'danger', commit: t('Attack {s}', { s: S.pos }), text: t('Announce an attack in Sector {s}. Anyone in this sector is hit. You do not draw a card this turn.', { s: S.pos }), run: () => actions.attack() });
+    [...new Set(S.items)].filter(k => canUse(k) && nowItem(k, danger)).forEach(k => o.push({ k: 'item:' + k, icon: gico(k, 28) || cardBack(18), label: t(ITEMS[k][0]), tone: k === 'attack' ? 'danger' : '', commit: t('Use {i}', { i: t(ITEMS[k][0]) }), text: t(ITEMS[k][1]) + ' ' + t('Using it shows the card to everyone.'), run: () => useItem(k) }));
+    abilList().forEach(([a, l]) => o.push({ k: 'ab:' + a, icon: ico('next', 22), label: t(l), commit: t(l), text: t(S.char) + ': ' + t(l) + '.', run: () => actions[a]() }));
+  }
+  if (S.undo) o.unshift({ k: 'undo', icon: ico('undo', 22), label: t('Undo'), tone: 'ghost' });
+  return o;
+}
+const podIcon = () => `<svg viewBox="-55 -50 110 100" width="30" height="28" aria-hidden="true"><path d="${GI_HEX}" fill="#1e8a4f" stroke="#000" stroke-width="7"/><text y="14" text-anchor="middle" font-family="var(--font-head)" font-weight="700" font-size="44" fill="#fff">${esc(at(T.map, S.pos))}</text></svg>`;
+function optSheet(opts) {
+  const o = T.opt && opts.find(x => x.k === T.opt);
+  if (!o) return `<p class="dim hintline">${t('Pick what you do next on the map, next to your sector. Each option shows its effect before you confirm.')}</p>`;
+  return `<div class="optsheet"><div class="oi">${o.icon}</div><div><h3>${esc(o.label)}</h3><p>${esc(o.text)}</p><p class="dim">${t('Confirm on the map, or change plan.')}</p></div></div>`;
+}
+Object.assign(actions, {
+  opt(b) { T.opt = b.dataset.k; render(); paintCells(); },
+  optno() { T.opt = null; render(); paintCells(); },
+  optyes() { const o = (turnOptions() || []).find(x => x.k === T.opt); T.opt = null; if (o && o.run) o.run(); else { render(); paintCells(); } }
+});
+
 const catNote = () => S.cat ? `<p class="say alert"><b>${t('Cat is ready: two noises when you draw')}</b></p>` : '';
 function playPanel() {
   if (T.pick) return '';
@@ -430,12 +458,13 @@ function playPanel() {
     const sel = T.sel;
     const seen = !sel && !!recentOthers(8).length;   // with declarations to read, they take the place of the "tap a sector" line
     return `${catNote()}${seen ? '' : `<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>`}
-      ${sel ? `<div class="row confirmrow"><button class="btn" data-act="clearsel" aria-label="${t('Change')}">${ico('close')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>` : ''}
+      ${sel ? `<p class="dim hintline">${t('Confirm the move on the map, next to the sector.')}</p>` : ''}
       ${roundCard(true)}${handHtml()}${extras()}`;
   }
   const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };
   const head = `${catNote()}<h2>${esc(label(S.pos))}${'.sHA'.includes(ty) ? ` <span class="dim sub">${esc(typeName(ty))}</span>` : ''}</h2>`;
   if (r.stage === 'wait') return head + `<p class="dim" role="status">${t('Waiting for the host…')}</p>`;
+  const opts = turnOptions(); if (opts) return head + optSheet(opts);
   if (r.stage === 'pod') return head + (digital()
     ? `<p>${t('You reached an Escape Pod. Draw the Escape Pod card.')}</p><button class="btn primary big wide" data-act="hatchdraw">${t('Draw pod card')}</button>`
     : `<p>${t('Declare which pod you reached, then draw an Escape Pod card and reveal it.')}</p><div class="row"><button class="btn ok big" data-act="podGreen">${t('Green: escaped')}</button><button class="btn danger big" data-act="podRed">${t('Red: damaged')}</button></div>`) + undoBtn();

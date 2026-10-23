@@ -25,8 +25,8 @@ const {assert,setup,startTable,begin,current,uidOf}=require('./helpers');
   // ---- draw a sector card through the UI
   const cur=await current(pages);
   await cur.evaluate(()=>{S.pos='L09';S.phase='move';T.sel=null;refreshReach();render()});
-  const dest=await cur.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));await cur.evaluate(i=>selectCell(i),dest);await cur.click('[data-act=confirm]');
-  await cur.click('[data-act=drawcard]');
+  const dest=await cur.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));await cur.evaluate(i=>selectCell(i),dest);await cur.click('[data-act=mpyes]');
+  await cur.click('[data-act=opt][data-k=draw]');await cur.click('[data-act=optyes]');
   await cur.waitForFunction(()=>S.res&&(S.res.stage==='done'||T.pick),null,{timeout:15000});
   if(await cur.evaluate(()=>!!T.pick)){await cur.evaluate(()=>{const cb=T.pick.cb;T.pick=null;cb('K09')})}
   await cur.waitForFunction(()=>S.res&&S.res.stage==='done',null,{timeout:15000});

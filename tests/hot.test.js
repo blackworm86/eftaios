@@ -16,9 +16,9 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  const roles=await p.evaluate(()=>JSON.parse(localStorage.getItem('eftaios.hot')).seats.map(s=>s.role0));
  assert(roles.filter(r=>r==='human').length===1&&roles.length===3,'roles dealt: 1 human, 2 aliens ('+roles+')');
  // Ann moves to a dangerous sector and draws a card
- const go=async()=>{const id=await p.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));await p.evaluate(i=>selectCell(i),id);await p.click('[data-act=confirm]');return id};
+ const go=async()=>{const id=await p.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));await p.evaluate(i=>selectCell(i),id);await p.click('[data-act=mpyes]');return id};
  await p.evaluate(()=>{S.ab={Captain:1}});
- const annPos=await go();await p.click('[data-act=drawcard]');
+ const annPos=await go();await p.click('[data-act=opt][data-k=draw]');await p.click('[data-act=optyes]');
  await p.waitForFunction(()=>(S.res&&S.res.stage==='done')||T.pick);if(await p.evaluate(()=>!!T.pick))await p.evaluate(()=>{const cb=T.pick.cb;T.pick=null;cb('M10')});
  await p.waitForFunction(()=>S.res&&S.res.stage==='done');
  assert(await p.evaluate(()=>T.counts.sector.d)===76,'card drawn from the shared deck');

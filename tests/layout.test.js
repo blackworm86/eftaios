@@ -24,7 +24,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  // after confirming a move, the panel still fits
  const id=await p.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));await p.evaluate(i=>selectCell(i),id);
  assert(await p.evaluate(()=>{const e=document.querySelector('#panel-body');return e.scrollHeight<=e.clientHeight+1}),w+'px: panel fits with a destination selected');
- await p.click('[data-act=confirm]');
+ await p.locator('[data-act=mpyes]').dispatchEvent('click');   // the strip's suspicion popup is still open over the map
  assert(await p.evaluate(()=>{const e=document.querySelector('#panel-body');return e.scrollHeight<=e.clientHeight+1}),w+'px: panel fits after moving (draw card step)');
  await p.screenshot({path:SS+'/lay2-'+w+'.png'});
  await p.close();}

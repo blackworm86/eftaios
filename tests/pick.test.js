@@ -9,8 +9,10 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.evaluate(()=>setTab('table'));await p.evaluate(()=>setTab('more'));await p.evaluate(()=>setTab('play'));
  assert(await p.evaluate(()=>!!T.pick&&T.pick.locked),'the locked pick is still waiting on the Play tab');
  assert(await p.locator('.banner').filter({hasText:'Noise in any sector'}).count()===1,'the prompt is shown again');
- await p.evaluate(()=>{const id=find(T.map,'K08')||Object.keys(T.map)[0];onCell(id)});
- assert(await p.evaluate(()=>!!window.__got),'tapping a sector completes the announcement');
+ await p.evaluate(()=>onCell('K08'));
+ assert(await p.evaluate(()=>!window.__got&&T.pick&&T.pick.sel==='K08'&&!!document.querySelector('#movepick [data-act=pickyes]')),'tapping a sector only previews it, with confirm and cancel next to it');
+ await p.click('[data-act=pickyes]');
+ assert(await p.evaluate(()=>!!window.__got),'confirming completes the announcement');
  await p.evaluate(()=>{pickSector('free pick',()=>{},false)});await p.evaluate(()=>setTab('table'));
  assert(await p.evaluate(()=>T.pick===null),'an unlocked pick is still dropped when you change tab');
  console.log('errors',errs);await b.close();})();

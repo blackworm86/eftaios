@@ -187,7 +187,7 @@ function paintCells() {
     const ps = '1234'.includes(t) ? podState(+t) : '';
     if (ps) cls += ' closed ' + ps;
     if (reach.has(id)) cls += ' reach';
-    if (T.sel === id) cls += ' sel';
+    if (T.sel === id || (T.pick && T.pick.sel === id)) cls += ' sel';
     if (T.pick) cls += ' pick';
     if (T.inspect === id) cls += ' inspected';
     poly.setAttribute('class', cls);
@@ -197,21 +197,41 @@ function paintCells() {
   }
   paintOverlay(); paintMoveBtns();
 }
-/* confirm / deny, right next to the sector I just tapped */
+/* the printed Dangerous Sector card back: a notched hexagon with six marks, grey on near-black */
+const cardBack = w => { const P = (a, r) => [Math.cos(a * Math.PI / 180) * r, Math.sin(a * Math.PI / 180) * r];
+  const star = Array.from({ length: 12 }, (_, i) => P(i * 30, i % 2 ? 0.36 : 0.5).map(n => n.toFixed(3)).join(' ')).join('L');
+  const mark = a => { const c = P(a, 0.71), u = P(a + 90, 0.085), v = P(a, 0.06); return `M${c[0] + u[0]} ${c[1] + u[1]}L${c[0] + v[0]} ${c[1] + v[1]}L${c[0] - u[0]} ${c[1] - u[1]}L${c[0] - v[0]} ${c[1] - v[1]}Z`; };
+  return `<svg class="cardback" viewBox="-1 -1.45 2 2.9" width="${w}" height="${Math.round(w * 1.45)}" aria-hidden="true"><rect x="-0.95" y="-1.4" width="1.9" height="2.8" rx="0.22" fill="#231f20" stroke="#8a8a8a" stroke-width="0.09"/><path d="M${star}Z" fill="none" stroke="#bdbdbd" stroke-width="0.065"/><path d="${[30, 90, 150, 210, 270, 330].map(mark).join('')}" fill="#bdbdbd"/></svg>`; };
+/* confirm and cancel drawn like the game's icons: a coloured rounded hexagon, black rim, white symbol */
+const hexSvg = kind => `<svg viewBox="-55 -50 110 100" width="50" height="46" aria-hidden="true"><path d="${GI_HEX}" fill="${kind === 'yes' ? '#1e8a4f' : '#EE1B2D'}" stroke="#000" stroke-width="7"/>${kind === 'yes'
+  ? '<path d="M-14 1l9 9 19-20" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'
+  : '<path d="M-11 -11l22 22M11 -11l-22 22" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>'}</svg>`;
+const hexPair = (no, yes, noLabel, yesLabel) => `<div class="hexpair"><button class="hexbtn" data-act="${no}" aria-label="${esc(noLabel)}" title="${esc(noLabel)}">${hexSvg('no')}</button><button class="hexbtn" data-act="${yes}" aria-label="${esc(yesLabel)}" title="${esc(yesLabel)}">${hexSvg('yes')}</button></div>`;
+const cmdChip = (icon, text) => `<div class="cmdchip">${icon || ''}<span>${text}</span></div>`;
+/* what the map offers right now, next to the sector it acts on; the panel only explains it */
+function mapCmd() {
+  if (T.pick && T.pick.sel) return { at: T.pick.sel, key: 'pick:' + T.pick.sel, html: cmdChip(T.pick.icon, esc(T.pick.sel)) + hexPair('pickno', 'pickyes', t('Change sector'), t('Confirm')) };
+  if (T.pick) return null;
+  if (T.sel && canMoveNow()) return { at: T.sel, key: 'move', html: hexPair('mpno', 'mpyes', t('Change'), t('Confirm move')) };
+  const opts = typeof turnOptions === 'function' ? turnOptions() : null;
+  if (!opts || !opts.length) return null;
+  const o = T.opt && opts.find(x => x.k === T.opt);
+  if (o) return { at: S.pos, key: 'opt:' + o.k, html: cmdChip(o.icon, esc(o.label)) + hexPair('optno', 'optyes', t('Change plan'), o.commit) };
+  return { at: S.pos, key: 'opts:' + opts.map(x => x.k).join(','), html: `<div class="optbar" role="group" aria-label="${t('What you do next')}">${opts.map(x =>
+    `<button class="opt${x.tone ? ' ' + x.tone : ''}" data-act="${x.k === 'undo' ? 'undo' : 'opt'}" data-k="${esc(x.k)}">${x.icon}<span>${esc(x.label)}</span></button>`).join('')}</div>` };
+}
 function paintMoveBtns() {
   const st = $('#stage'); if (!st || !T.map) return;
   let box = $('#movepick');
   if (!box) { box = document.createElement('div'); box.id = 'movepick'; box.className = 'movepick'; box.hidden = true; st.appendChild(box); }
-  if (box.dataset.lang !== LANG) {
-    box.dataset.lang = LANG;
-    box.innerHTML = `<button class="mp no" data-act="mpno" aria-label="${t('Change')}">${ico('close', 20)}</button><button class="mp yes" data-act="mpyes" aria-label="${t('Confirm move')}">${ico('check', 22)}</button>`;
-  }
-  const p = T.sel && canMoveNow() ? parseId(T.sel) : null;
-  box.hidden = !p; if (!p) return;
-  const h = hexPos(T.map, p[0], p[1]), y = view.y + (h.y - HEX) * view.k;
-  box.classList.toggle('below', y < 64);   // no room above: put them under the sector
-  box.style.left = (view.x + h.x * view.k).toFixed(1) + 'px';
-  box.style.top = (y < 64 ? view.y + (h.y + HEX) * view.k : y).toFixed(1) + 'px';
+  const c = mapCmd(); box.hidden = !c; if (!c) return;
+  const key = LANG + '|' + c.key; if (box.dataset.k !== key) { box.dataset.k = key; box.innerHTML = c.html; }
+  const p = parseId(c.at), h = hexPos(T.map, p[0], p[1]), top = view.y + (h.y - HEX) * view.k;
+  const below = top < box.offsetHeight + 10;   // no room above: under the sector
+  box.classList.toggle('below', below);
+  box.style.top = (below ? view.y + (h.y + HEX) * view.k : top).toFixed(1) + 'px';
+  const half = box.offsetWidth / 2, x = view.x + h.x * view.k;   // inside the map, clear of the controls on the right
+  box.style.left = Math.max(half + 6, Math.min(st.clientWidth - 58 - half, x)).toFixed(1) + 'px';
 }
 /* ---- player markers ----
    fill = the player (you are always white), border = your guess about them:
@@ -1031,6 +1051,8 @@ const actions = {
   lang(b) { setLang(b.dataset.l); },
   mapstyle(b) { setMapStyle(b.dataset.v); b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); },
   cancelpick() { T.pick = null; paintCells(); render(); },
+  pickno() { if (T.pick) T.pick.sel = null; paintCells(); render(); },
+  pickyes() { const p = T.pick; if (!p || !p.sel) return; T.pick = null; paintCells(); p.cb(p.sel); },
   noop() { },
   sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
   pfocus(b) { pickPlayer(b.dataset.k); },
@@ -1070,7 +1092,7 @@ document.addEventListener('click', e => {
 
 function pickSector(label_, cb, locked) { T.pick = { label: label_, cb, locked: !!locked }; S.tab = 'play'; render(); paintCells(); hdr(); }
 function onCell(id) {
-  if (T.pick) { const cb = T.pick.cb; T.pick = null; paintCells(); cb(id); return; }
+  if (T.pick) { T.pick.sel = id; paintCells(); render(); return; }   // nothing is announced until the player confirms on the map
   if (T.markMode) { if (!T.markKey) toast(t('First pick the player, on the left.')); else if ((T.markKind || 'noise') === 'noise' || T.markKind === 'attack' || String(T.markKind).startsWith('item:')) markSector(id); else toast(t('That declaration has no sector. Pick Noise or Attack to mark one.')); return; }
   if (S.role && S.phase === 'move' && !S.over && T.reach.has(id)) { selectCell(id); buzz(); return; }
   T.inspect = id; paintCells();
@@ -1164,8 +1186,9 @@ function hdr() {
   } else tb.hidden = true;
 }
 function render() {
+  paintMoveBtns();   // the map's commands follow every redraw of the panel that explains them
   const p = $('#panel-body'); let h = '';
-  if (T.pick) h = `<div class="banner"><span>${esc(T.pick.label)}</span>${T.pick.locked ? '' : `<button class="btn" data-act="cancelpick">${t('Cancel')}</button>`}</div>`;
+  if (T.pick) h = `<div class="banner"><span>${esc(T.pick.sel ? t('Confirm {s} on the map, or tap another sector.', { s: T.pick.sel }) : T.pick.label)}</span>${T.pick.locked ? '' : `<button class="btn" data-act="cancelpick">${t('Cancel')}</button>`}</div>`;
   if (T.markMode && !T.pick) h = markBanner();
   if (T.markMode && !T.pick) { /* marking: banner only */ }
   else if (S.tab === 'play') h += playPanel();

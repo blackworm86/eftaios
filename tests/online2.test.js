@@ -14,14 +14,14 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   await human.evaluate(()=>{S.items=['adrenaline','teleport','sedatives'];S.pos='K09';S.phase='move';refreshReach();render()});
   await human.click('[data-act=itemdlg][data-i=adrenaline]');await human.click('dialog [data-act=useitem]');
   assert(await human.evaluate(()=>allowance())===2&&await human.evaluate(()=>S.items.length)===2,'Adrenaline: 2 sectors, card consumed');
-  await human.evaluate(()=>{const k=[...T.reach.entries()].find(([id,d])=>d===2&&at(T.map,id)==='.')[0];selectCell(k)});await human.click('[data-act=confirm]');
+  await human.evaluate(()=>{const k=[...T.reach.entries()].find(([id,d])=>d===2&&at(T.map,id)==='.')[0];selectCell(k)});await human.click('[data-act=mpyes]');
   assert(await human.evaluate(()=>S.phase)==='resolve','moved 2 sectors');
   await human.screenshot({path:S+'/o-resolve.png'});
   // ---- sedatives replace the card draw
   const before=await H.evaluate(()=>T.counts.sector.d+T.counts.sector.x);
   await human.evaluate(()=>{S.pos=[...T.reach.keys()][0]||S.pos});
   await human.evaluate(()=>{S.pos='K10';S.res={stage:'choose'};render()});
-  await human.click('[data-act=itemdlg][data-i=sedatives]');await human.click('dialog [data-act=useitem]');
+  await human.click('[data-act=opt][data-k="item:sedatives"]');await human.click('[data-act=optyes]');
   assert(await human.evaluate(()=>S.res.stage)==='done'&&await human.evaluate(()=>S.items.join())==='teleport','Sedatives: no card, card consumed');
   assert(await H.evaluate(()=>T.counts.sector.d+T.counts.sector.x)===before,'no sector card drawn with Sedatives');
   assert(await H.waitForFunction(()=>S.log.some(e=>e.kind==='item'&&e.text==='sedatives'),null,{timeout:5000}).then(()=>true,()=>false),'item use is public');   // the entry reaches the host a moment after the action
@@ -46,7 +46,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   await giveTurn(human);
   await human.evaluate(()=>{S.items=[];S.char='Captain';S.pos='B03';S.phase='move';T.sel=null;refreshReach();render()});
   await human.evaluate(()=>{window.__forceCard=null});
-  await human.evaluate(()=>selectCell('B02'));await human.click('[data-act=confirm]');await human.click('[data-act=hatchdraw]');
+  await human.evaluate(()=>selectCell('B02'));await human.click('[data-act=mpyes]');await human.click('[data-act=opt][data-k=pod]');await human.click('[data-act=optyes]');
   await human.waitForFunction(()=>S.over==='escaped'||(S.res&&S.res.stage==='done'),null,{timeout:15000});
   const esc=await human.evaluate(()=>S.over==='escaped');
   console.log('hatch card result:',esc?'green':'red');

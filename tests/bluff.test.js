@@ -5,7 +5,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  const p=await (await b.newContext({viewport:{width:390,height:800},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.message));
  await p.goto('http://localhost:8123/');await p.click('[data-act=solo]');await p.click('.role-btn.human');await p.waitForSelector('#app:not([hidden])');
  // turn 1: move and announce honestly; turn 2: move and bluff somewhere else
- const go=async()=>{const id=await p.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));await p.evaluate(i=>selectCell(i),id);await p.click('[data-act=confirm]');return id};
+ const go=async()=>{const id=await p.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));await p.evaluate(i=>selectCell(i),id);await p.click('[data-act=mpyes]');return id};
  const real1=await go();await p.click('[data-act=noiseHere]');await p.click('[data-act=next]');
  await go();await p.click('[data-act=noiseAny]');await p.evaluate(()=>{const cb=T.pick.cb;T.pick=null;cb('P12')});await p.click('[data-act=next]');
  const m=await p.evaluate(()=>[...document.querySelectorAll('#marks .pm')].map(g=>{const c=g.querySelector('[stroke]');return {cls:g.getAttribute('class'),t:g.textContent,fill:c.getAttribute('fill'),fo:c.getAttribute('fill-opacity'),dash:c.getAttribute('stroke-dasharray')}}));

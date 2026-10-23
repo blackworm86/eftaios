@@ -18,7 +18,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');
   assert(await mover.evaluate(()=>T.sel===null&&document.querySelector('#movepick').hidden),'deny clears the selection');
   await mover.evaluate(i=>selectCell(i),id);await mover.click('#movepick [data-act=mpyes]');
   assert(await mover.evaluate(i=>S.pos===i&&S.phase==='resolve',id),'confirm moves there');
-  assert(await mover.evaluate(()=>T.reach.size===0&&document.querySelector('#movepick').hidden),'no highlights and no buttons once moved');
+  assert(await mover.evaluate(()=>T.reach.size===0&&!document.querySelector('#movepick [data-act=mpyes]')),'no highlights and no move buttons once moved');
   // sheet: silence marks, role colours, tap to centre
   await mover.evaluate(()=>{S.log.unshift({id:'s1',by:myId(),who:'Me',turn:S.turn,kind:'silence',text:'secure',at:1,mine:true},{id:'s2',by:myId(),who:'Me',turn:S.turn,kind:'info',text:'kill|Zed|human',at:2,mine:true});
     S.path=[{turn:0,pos:'L06'},{turn:1,pos:'L07'},{turn:1,pos:'M10',note:'reborn'},{turn:2,pos:'M11'}];S.turn=2;S.role='alien';S.reborn=true;setTab('table');T.tableSec='sheet';render()});

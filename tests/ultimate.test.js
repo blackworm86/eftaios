@@ -30,16 +30,16 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  // pass and play: a Cat plays two noises
  await p.click('[data-act=hotsetup]');await p.click('[data-act=hotdel][data-i="3"]');await p.click('[data-act=hotstart]');await p.click('[data-act=hotgo]');await p.click('#d-no');
  await p.evaluate(()=>{S.role='human';S.char='Medic';S.items=['cat'];S.pos='K10';S.phase='resolve';S.res={stage:'choose'};render()});
- await p.click('[data-act=itemdlg][data-i=cat]');await p.click('dialog [data-act=useitem]');
+ await p.click('[data-act=opt][data-k="item:cat"]');await p.click('[data-act=optyes]');
  assert(await p.evaluate(()=>S.cat)===true,'Cat is armed before drawing');
  await p.evaluate(()=>{window.__rng=()=>0.5});
- await p.click('[data-act=drawcard]');
+ await p.click('[data-act=opt][data-k=draw]');await p.click('[data-act=optyes]');
  await p.waitForFunction(()=>T.pick||(S.res&&S.res.stage==='done'));
  for(let i=0;i<2&&await p.evaluate(()=>!!T.pick);i++)await p.evaluate(()=>{const cb=T.pick.cb;T.pick=null;cb('M10')});
  await p.waitForFunction(()=>S.res&&S.res.stage==='done');
  assert(await p.evaluate(()=>S.log.filter(e=>e.kind==='noise').length)>=2||await p.evaluate(()=>S.res.say.includes('Sectors')),'two noises announced');
  // Mutation
  await p.evaluate(()=>{S.items=['mutation'];S.phase='resolve';S.res={stage:'choose'};S.pos='K09';render()});
- await p.click('[data-act=itemdlg][data-i=mutation]');await p.click('dialog [data-act=useitem]');await p.click('#d-yes');
+ await p.click('[data-act=opt][data-k="item:mutation"]');await p.click('[data-act=optyes]');await p.click('#d-yes');
  assert(await p.evaluate(()=>S.role==='alien'&&S.pos==='K09'&&S.reborn),'Mutation: Alien in place, no abilities');
  console.log('errors',errs);await b.close();})();

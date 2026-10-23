@@ -6,23 +6,31 @@ body{margin:0;background:#070b14;color:#e8ecf5;font:16px/1.5 system-ui,sans-seri
 h1{font-size:22px}h2{font-size:15px;color:#ffb41f;text-transform:uppercase;letter-spacing:.08em;margin-top:24px}
 textarea{width:100%;height:240px;background:#0d1424;color:#e8ecf5;border:1px solid #26385a;border-radius:10px;padding:10px;font:12px ui-monospace,monospace}
 button,a.btn{display:block;width:100%;box-sizing:border-box;min-height:52px;margin:10px 0;border:0;border-radius:12px;background:#ffb41f;color:#1a1200;font:700 17px system-ui;text-align:center;line-height:52px;text-decoration:none}
-a.btn{background:#16233c;color:#e8ecf5;border:1px solid #26385a}
+a.btn,button.alt{background:#16233c;color:#e8ecf5;border:1px solid #26385a}
 ol{padding-left:20px}li{margin:6px 0}.dim{color:#8c9bb8;font-size:14px}
 </style></head><body>
 <h1>Publish the database rules</h1>
 <p class="dim">Firebase console: Realtime Database → Regole (Rules) / Rules → Pubblica (Publish).</p>
 <h2>1</h2><a class="btn" href="https://console.firebase.google.com/project/eftaios/database/eftaios-default-rtdb/rules" target="_blank" rel="noopener">Open the Rules page</a>
-<h2>2</h2><button id="copy">Copy the rules</button>
+<h2>2</h2><button id="copy">Copy the rules</button><button id="fmt" class="alt" type="button">Show readable layout</button>
 <p id="msg" class="dim" role="status"></p>
 <h2>3</h2>
-<ol><li>Tap in the editor and delete <b>everything</b>, until the editor is completely empty (check by scrolling down: no braces must be left).</li><li>Paste. The rules are one single long line: the editor must show <b>only line 1</b>.</li><li>Tap <b>Pubblica</b> (Publish).</li></ol><p class="dim">Error "Mismatched '}'" on line 2 or later means old text was left over: delete everything and paste again.</p>
+<ol><li>Tap in the editor and delete <b>everything</b>, until the editor is completely empty (check by scrolling down: no braces must be left).</li><li>Paste. <span id="lineNote">The rules are one single long line: the editor must show <b>only line 1</b>.</span></li><li>Tap <b>Pubblica</b> (Publish).</li></ol><p class="dim">Error "Mismatched '}'" on line 2 or later means old text was left over: delete everything and paste again.</p>
 <h2>Rules</h2><p id="stamp" class="dim" role="status">Loading the rules…</p><textarea id="r" readonly spellcheck="false"></textarea>
 <script>
 const r=document.getElementById('r'),m=document.getElementById('msg');
-const stamp=document.getElementById('stamp');
+const stamp=document.getElementById('stamp'),fmt=document.getElementById('fmt'),note=document.getElementById('lineNote');
+let rules=null,build='',readable=false;
+/* the same rules in two layouts: one line pastes cleanly, the indented one can be read and checked */
+function show(){
+  r.value=JSON.stringify(rules,null,readable?2:undefined);
+  fmt.textContent=readable?'Show as one line':'Show readable layout';
+  note.innerHTML=readable?'The rules fill many lines: that is fine, as long as the editor was <b>completely empty</b> before you pasted.':'The rules are one single long line: the editor must show <b>only line 1</b>.';
+  stamp.textContent='These are the rules of the site build '+build+'. The same build shows at the bottom of the app\'s start screen. '+r.value.length+' characters.';
+}
+fmt.onclick=()=>{if(rules){readable=!readable;show()}};
 Promise.all([fetch('database.rules.json',{cache:'no-store'}).then(x=>x.json()),fetch('version.json',{cache:'no-store'}).then(x=>x.json()).catch(()=>({}))]).then(([j,v])=>{
-  r.value=JSON.stringify(j);
-  stamp.textContent='These are the rules of the site build '+(v.build||'(local)')+(v.built?', deployed '+v.built:'')+'. The same build shows at the bottom of the app\'s start screen. '+r.value.length+' characters.';
+  rules=j;build=(v.build||'(local)')+(v.built?', deployed '+v.built:'');show();
 }).catch(()=>{stamp.textContent='Could not load the rules. Check your connection and reload.'});
 document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(r.value);m.textContent='Copied ✓'}catch(e){r.select();document.execCommand('copy');m.textContent='Copied ✓ (if not, select the text below and copy)'}};
 </script></body></html>

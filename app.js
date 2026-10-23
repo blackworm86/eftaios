@@ -1015,9 +1015,9 @@ function botThinking(name, ms, cover) {
   return new Promise(res => {
     const bar = $('#botthink'), stage = $('#stage'); let i = 0;
     const draw = () => { bar.innerHTML = `<span class="bt-dots" aria-hidden="true"><i></i><i></i><i></i></span><span><b>${esc(name)}</b><small>${t(BOT_LINES[Math.min(i, BOT_LINES.length - 1)])}</small></span>`; };
-    bar.className = 'botthink' + (cover ? ' cover-all' : ''); draw(); bar.hidden = false; if (stage) stage.classList.add('thinking');
+    bar.className = 'botthink' + (cover ? ' cover-all' : ''); draw(); bar.hidden = false; if (stage) stage.classList.add('thinking'); document.body.classList.add('botturn');
     const tick = setInterval(() => { i++; draw(); }, Math.max(350, ms / BOT_LINES.length));
-    setTimeout(() => { clearInterval(tick); bar.hidden = true; if (stage) stage.classList.remove('thinking'); res(); }, ms);
+    setTimeout(() => { clearInterval(tick); bar.hidden = true; if (stage) stage.classList.remove('thinking'); document.body.classList.remove('botturn'); res(); }, ms);
   });
 }
 const buzz = () => { try { navigator.vibrate && navigator.vibrate(15); } catch (_) { /* noop */ } };

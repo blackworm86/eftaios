@@ -650,6 +650,8 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
 .omark.dead:has(.gi){background:none;border:0;border-radius:0;width:20px;height:19px;right:-8px;bottom:-7px}
 .omark .gi{vertical-align:0}
 
+/* a bot is thinking: my turn is over, so the last panel is dimmed and cannot be tapped */
+body.botturn #panel-body{opacity:.3;pointer-events:none}
 /* a bot is thinking */
 .botthink{position:fixed;z-index:70;left:50%;top:calc(env(safe-area-inset-top,0px) + 74px);transform:translateX(-50%);display:flex;align-items:center;gap:12px;max-width:calc(100% - 32px);padding:10px 16px;border-radius:14px;border:1.5px solid var(--amber);background:#0d1424f2;color:var(--text);box-shadow:0 10px 30px -10px #000c}
 .botthink b{display:block;font:700 14px var(--font-head);letter-spacing:.05em;text-transform:uppercase}
@@ -813,6 +815,10 @@ li.adm-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;al
 .adm-row .who{display:flex;flex-direction:column;gap:2px;min-width:0;line-height:1.3}
 .adm-row .who b{font:600 15px var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .adm-row .who small{color:var(--dim);font:600 11px var(--mono);letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* bot tests: the whole briefing, wrapped, with the Start button under it */
+li.adm-row.bt{grid-template-columns:1fr}
+.adm-row.bt .who b,.adm-row.bt .who small{white-space:normal;overflow:visible;text-overflow:clip}
+.adm-row.bt .who small{font-size:12px;line-height:1.45;letter-spacing:0}
 .adm-row .acts{display:flex;gap:8px}
 .adm-row .acts .btn{min-height:44px;padding:0 12px;font-size:13px}
 @media (max-width:400px){.adm-tabs button{font-size:11px;letter-spacing:.02em}}

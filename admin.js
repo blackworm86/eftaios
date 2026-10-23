@@ -52,11 +52,27 @@ const Admin = (() => {
     { name: '8. Hard table, 8 players', who: 'You: random role', ask: 'Optional.', look: 'Do the Aliens bunch up? Do they avoid killing each other?', seats: [{}, ...Array(7).fill({ bot: 'hard' })] }
   ];
   function botTests() {
-    const rows = BOT_TESTS.map((x, i) => `<li class="adm-row"><span class="who"><b>${esc(x.name)}</b><small>${esc(x.who)}. ${esc(x.ask)}</small><small>Look for: ${esc(x.look)}</small></span><div class="acts"><button class="btn primary" data-act="bottest" data-i="${i}">${t('Start')}</button></div></li>`).join('');
-    return `<p class="dim">Tests 1-5 are the minimum (about 1 hour); 6-8 are optional. Bots are Ultimate, map Galilei. When a game ends, rate it and tap Send: the rating, your note and the full log are saved for the admin. Nothing to download or send by hand.</p><ul class="plist adm-list">${rows}</ul>`;
+    const rows = BOT_TESTS.map((x, i) => `<li class="adm-row bt"><span class="who"><b>${esc(x.name)}</b><small>${esc(x.who)}. ${esc(x.ask)}</small><small>Look for: ${esc(x.look)}</small></span><div class="acts"><button class="btn primary" data-act="bottest" data-i="${i}">${t('Start')}</button></div></li>`).join('');
+    return `<p class="dim">Tests 1-5 are the minimum (about 1 hour); 6-8 are optional. Bots are Ultimate, map Galilei. When a game ends, rate it and tap Send: the rating, your note and the full log are saved for the admin. Nothing to download or send by hand.</p>
+    <p class="dim">To also copy every game into the repo folder tests/play-logs/ from this phone, paste a GitHub token once (Contents: read and write on this repository only). It stays in this browser and goes only to api.github.com.</p>
+    <div class="row"><input id="bt-token" type="password" autocomplete="off" placeholder="${btToken() ? 'GitHub token saved on this device' : 'GitHub token'}"><button class="btn" data-act="bttoken">${t('Save')}</button></div>
+    <button class="btn big wide" data-act="btsync">Send saved games to the repo</button><p class="dim" id="bt-status" role="status"></p><ul class="plist adm-list">${rows}</ul>`;
   }
   /* After a bot test: a 1-5 rating and a note, saved with the full game log under bottests/ in the database (admin-only).
      `node tools/pull-bot-tests.js` copies them into tests/play-logs/. */
+  const btToken = () => { try { return localStorage.getItem('eftaios.ghtoken') || ''; } catch (_) { return ''; } };
+  /* one saved record -> tests/play-logs/ on main (GitHub contents API). 'exists' means it was sent before. */
+  async function pushToRepo(id, r) {
+    const file = `tests/play-logs/${new Date(r.at).toISOString().slice(0, 16).replace(/[:T]/g, '-')}-test${r.n || 0}-${id}.json`;
+    const body = JSON.stringify({ test: r.test, rating: r.rating, notes: r.notes || '', at: new Date(r.at).toISOString(), map: r.map, game: JSON.parse(r.game) });
+    const res = await fetch('https://api.github.com/repos/blackworm86/eftaios/contents/' + file, { method: 'PUT', headers: { Authorization: 'Bearer ' + btToken(), Accept: 'application/vnd.github+json' },
+      body: JSON.stringify({ message: `Bot test ${r.test}: ${r.rating}/5`, branch: 'main', content: btoa(unescape(encodeURIComponent(body))) }) });
+    if (res.ok) return 'sent';
+    const why = (await res.json().catch(() => ({}))).message || '';
+    // a 422 on a path that already holds the file means it was sent before; any other 422 is a real refusal
+    if (res.status === 422 && (await fetch('https://api.github.com/repos/blackworm86/eftaios/contents/' + file + '?ref=main', { headers: { Authorization: 'Bearer ' + btToken() } })).ok) return 'exists';
+    throw new Error('GitHub answered ' + res.status + (why ? ': ' + why : ''));
+  }
   function ratePanel() {
     const x = T.botTest; if (!x || !S.hot || !Sync.isAdmin) return '';
     if (T.btSent) return `<p class="pst">Saved: ${esc(x.name)} · ${T.btRating}/5</p>`;
@@ -152,12 +168,28 @@ const Admin = (() => {
     adminopen() { S.stage = 'admin'; T.adminTab = 'users'; save(); load(); },
     admintab(b) { T.adminTab = b.dataset.k; renderFlow(); },
     adminpage(b) { const k = b.dataset.k; T.adminPage = Object.assign({}, T.adminPage, { [k]: Math.max(0, ((T.adminPage || {})[k] || 0) + Number(b.dataset.d)) }); renderFlow(); },
+    bttoken() { const v = (($('#bt-token') || {}).value || '').trim(); if (!v) return; try { localStorage.setItem('eftaios.ghtoken', v); } catch (_) { /* noop */ } toast('Token saved'); renderFlow(); },
+    async btsync() {
+      const st = $('#bt-status'), say_ = m => { if (st) st.textContent = m; };
+      if (!btToken()) return say_('Paste and save a GitHub token first.');
+      say_('Reading the saved games…');
+      try {
+        const recs = Object.entries(await Sync.adminList('bottests')); let sent = 0, had = 0;
+        for (const [id, r] of recs) { say_(`Sending ${sent + had + 1} of ${recs.length}…`); (await pushToRepo(id, r)) === 'sent' ? sent++ : had++; }
+        say_(`Saved games online: ${recs.length}. Sent now: ${sent}. Already in the repo: ${had}.`);
+      } catch (e) { say_('Failed: ' + (e.message || e)); }
+    },
     btrate(b) { T.btRating = +b.dataset.n; document.querySelectorAll('[data-act=btrate]').forEach(x => x.setAttribute('aria-checked', String(+x.dataset.n === T.btRating))); },
     async btsend() {
       const x = T.botTest; if (!x) return;
       if (!T.btRating) return toast('Pick a rating from 1 to 5 first');
       const rec = { test: x.name, n: x.n, rating: T.btRating, notes: (($('#bt-notes') || {}).value || '').slice(0, 2000), at: Date.now(), map: T.map && T.map.id, game: JSON.stringify(Hot.dump()) };
-      try { await Sync.setPath('bottests/' + uid(), rec); T.btSent = true; toast('Saved'); render(); }
+      try {
+        const id = uid(); await Sync.setPath('bottests/' + id, rec); T.btSent = true;
+        let msg = 'Saved';
+        if (btToken()) { try { await pushToRepo(id, rec); msg = 'Saved and sent to the repo'; } catch (e) { msg = 'Saved online; not sent to the repo (' + (e.message || e) + ')'; } }
+        toast(msg); render();
+      }
       catch (e) { saveMapFile('eftaios-bottest-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'), JSON.stringify(rec), 'Could not save online. The log was downloaded instead.'); }
     },
     bottest(b) {

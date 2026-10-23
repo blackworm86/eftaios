@@ -8,7 +8,7 @@ const os = require('os');
 const path = require('path');
 const pw = require('playwright-core');
 
-const CHROME = process.env.PW_CHROME || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CHROME = process.env.PW_CHROME || (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : path.join(process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers', 'chromium'));
 let seq = 0;
 
 function freePort() { return 9400 + (process.pid % 500) + (seq++ % 20); }

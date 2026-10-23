@@ -18,7 +18,7 @@ function onTurn(v) {
   const was = prev && prev.uid === Sync.uid && prev.n === v.n;
   if (v.uid === Sync.uid && !was) startMyTurn();
   if (Sync.isHolder()) { Online.evaluate(); Online.maybeBotTurn(); }
-  save(); hdr(); paintCells(); if (S.tab === 'play' || S.tab === 'table') render();
+  save(); refreshReach(); hdr(); paintCells(); if (S.tab === 'play' || S.tab === 'table') render();
 }
 function startMyTurn(silent) {
   if (S.over) { endTurn(); return; }
@@ -76,8 +76,8 @@ async function publishRoute() {
   T.routeBusy = false; save(); if (T.routeErr && S.stage === 'game') render();
 }
 /* a route travels as "turn:sector,turn:sector,…" — published only once the game is over */
-const encodeRoute = path => (path || []).map(p => p.turn + ':' + p.pos + (p.note === 'reborn' ? ':r' : '')).join(',').slice(0, 1500);
-const decodeRoute = s => String(s || '').split(',').map(x => { const [t_, pos, n_] = x.split(':'); return n_ === 'r' ? { turn: +t_, pos, note: 'reborn' } : { turn: +t_, pos }; }).filter(p => p.pos && parseId(p.pos));
+const encodeRoute = path => (path || []).map(p => p.turn + ':' + p.pos + (p.note === 'reborn' ? ':r' : p.note === 'mutated' ? ':m' : '')).join(',').slice(0, 1500);
+const decodeRoute = s => String(s || '').split(',').map(x => { const [t_, pos, n_] = x.split(':'); return n_ === 'r' ? { turn: +t_, pos, note: 'reborn' } : n_ === 'm' ? { turn: +t_, pos, note: 'mutated' } : { turn: +t_, pos }; }).filter(p => p.pos && parseId(p.pos));
 
 /* ---------------- moving & announcing ---------------- */
 function confirmMove() {
@@ -182,7 +182,7 @@ function useItem(id) {
 }
 /* a Human turns into an Alien in place (Mutation) */
 function becomeAlien() {
-  S.role = 'alien'; S.fed = false; S.reborn = true; say('Mutation', 'item'); Eng().mutated && Eng().mutated();
+  S.role = 'alien'; S.fed = false; S.reborn = true; S.path.push({ turn: S.turn, pos: S.pos, note: 'mutated' }); say('Mutation', 'item'); Eng().mutated && Eng().mutated();
   S.phase = S.phase; T.sel = null; afterChange(); toast(t('You are now an Alien. Hunt the remaining Humans!'));
 }
 function alertHtml(title, html) { dlg.innerHTML = `<h2>${esc(title)}</h2><p>${html}</p><div class="row"><button class="btn primary" id="d-no">OK</button></div>`; if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg; }
@@ -198,7 +198,7 @@ async function runAttack(fromItem) {
     if (h.def) lines.push(t('{p} survived with a Defense card', { p: h.name }));
     else if (h.clone) lines.push(t('{p} survived with a Clone and restarts from the Human sector', { p: h.name }));
     else if (h.reveal) lines.push(t('{p} is immune to attacks: {r}', { p: h.name, r: roleLabel(h.role, h.char) }));
-    else { lines.push(t('{p} was killed ({r})', { p: h.name, r: roleLabel(h.role, h.char) }) + (h.conv ? ' ' + t('and restarts as an Alien') : '')); if (h.role === 'human' && S.role === 'alien') fed = true; }
+    else { lines.push(t('{p} was killed ({r})', { p: h.name, r: roleLabel(h.role, h.char) }) + (h.conv ? ' ' + t('and restarts as an Alien') : '')); if (h.role === 'human' && S.role === 'alien') fed = true; say('kill|' + String(h.name).slice(0, 20) + '|' + (h.role || ''), 'info'); }
   }
   if (!r.hits.length) lines.push(t('Nobody was in the sector'));
   r.missing.forEach(p => lines.push(t('No answer from {p}', { p })));
@@ -210,7 +210,15 @@ async function runAttack(fromItem) {
 /* ---------------- manual (physical card) actions ---------------- */
 Object.assign(actions, {
   confirm: confirmMove,
+  mpyes: confirmMove,   // the same two answers, on the map next to the sector
+  mpno() { T.sel = null; afterChange(); },
   clearsel() { T.sel = null; afterChange(); },
+  /* a log line or a sheet cell: centre the map on that sector and flash it */
+  gosector(b) {
+    const id = b.dataset.s; if (!id || !parseId(id)) return;
+    focusOn(id); T.inspect = id; paintCells();
+    clearTimeout(actions.gosector.h); actions.gosector.h = setTimeout(() => { if (T.inspect === id) { T.inspect = null; paintCells(); } }, 2500);
+  },
   noiseHere() { finishCard('noise', S.pos, '', false); },
   noiseAny() { pickSector(t('Tap the sector you announce'), id => finishCard('noise', id, '', true)); },
   silence() { finishCard('silence', null, '', false); },
@@ -288,7 +296,7 @@ function manualItem(k) {
   if (k === 'attack') { if (S.phase !== 'resolve' || S.res.stage === 'done') return toast(t('Use Attack after moving')); pub(); return actions.attack(); }
   if (k === 'cat') { if (S.phase !== 'resolve' || S.res.stage !== 'choose') return toast(t('Play the Cat before you draw a card')); pub(); return pickSector(t('Cat: tap the first sector for your noise'), a => pickSector(t('Cat: tap the second sector'), b => finishTwo(a, b), true), true); }
   if (k === 'sensor') { pub(); say('', 'info'); return toast(t('Name the player who must announce their position.')); }
-  if (k === 'mutation') { pub(); S.role = 'alien'; S.fed = false; S.reborn = true; afterChange(); return toast(t('You are now an Alien. Hunt the remaining Humans!')); }
+  if (k === 'mutation') { pub(); S.role = 'alien'; S.fed = false; S.reborn = true; S.path.push({ turn: S.turn, pos: S.pos, note: 'mutated' }); afterChange(); return toast(t('You are now an Alien. Hunt the remaining Humans!')); }
 }
 function caughtAction(k) {
   closeDlg();
@@ -422,7 +430,7 @@ function playPanel() {
     const sel = T.sel;
     return `${catNote()}<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>
       ${sel ? `<div class="row confirmrow"><button class="btn" data-act="clearsel" aria-label="${t('Change')}">${ico('close')}</button><button class="btn primary big" data-act="confirm">${t('Confirm move')}</button></div>` : ''}
-      ${handHtml()}${extras()}`;
+      ${roundCard(true)}${handHtml()}${extras()}`;
   }
   const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };
   const head = `${catNote()}<h2>${esc(label(S.pos))}${'.sHA'.includes(ty) ? ` <span class="dim sub">${esc(typeName(ty))}</span>` : ''}</h2>`;
@@ -454,27 +462,53 @@ function roomBlock() {
 const legendHtml = () => {
   const ring = (k, extra = '') => `<svg class="dot" viewBox="-10 -10 20 20" aria-hidden="true"><circle r="9.2" fill="${k === 'me' ? '#fff' : '#0b1222'}"/><circle r="7" fill="${k === 'me' ? '#f5f5f5' : '#3a465e'}" stroke="${BORDER[k]}" stroke-width="3" ${extra}/></svg>`;
   return `<p class="legend">${[['me', 'Me'], ['', 'Unknown'], ['human', 'Human'], ['alien', 'Alien']].map(([k, l]) => `<span>${ring(k)}${t(l)}</span>`).join('')}</p>
-  <p class="legend"><span><i class="lc heard"></i>${t('Heard')}</span><span><i class="lc silent"></i>${t('Silent or elsewhere')}</span><span><i class="lc bluff"></i>${t('Bluff (real below)')}</span></p>`;
+  <p class="legend"><span><i class="lc heard"></i>${t('Heard')}</span><span><i class="lc silent"></i>${t('Silent or elsewhere')}</span><span><i class="lc bluff"></i>${t('Bluff (real below)')}</span></p>
+  <p class="legend"><span>${gico('silent', 16)}${t('Silent Sector')}</span><span>${gico('silence', 16)}${t('Silence in all Sectors')}</span><span>${gico('killed', 16)}${t('Killed')}</span><span><i class="lc rh"></i>${t('Human turn')}</span><span><i class="lc ra"></i>${t('Alien turn')}</span></p>`;
 };
 const NEXT_SUS = { '': 'human', human: 'alien', alien: '' };
+/* the route of a player, as far as this device may know it: mine always, the others' once the game is over */
+function knownRoute(k) {
+  if (k === 'me') return { path: S.path, role: S.role };
+  if (!gameOver() || !k.startsWith('u:')) return null;
+  const id = k.slice(2);
+  if (S.hot) { const v = Hot.routes()[id]; return v ? { path: v.path, role: v.role } : null; }
+  const p = (Sync.players || {})[id]; return p && p.route ? { path: decodeRoute(p.route), role: p.role } : null;
+}
+/* Human or Alien on a given turn, from the step they were on (a restart or a mutation changes it for the turns after) */
+function roleAtTurn(k, n) {
+  const r = knownRoute(k); if (!r) return '';
+  const p = r.path.filter(x => x && parseId(x.pos)), roles = stepRoles(r.path, r.role);
+  let at = -1; p.forEach((x, i) => { if (x.turn <= n && x.note !== 'reborn' && x.note !== 'mutated') at = i; });
+  return at < 0 ? '' : roles[at] || '';
+}
+/* the small symbols under a sheet cell: Silence card, Silent Sector, and who this player killed on that turn */
+function turnMarks(k, n) {
+  const es = S.log.filter(e => e.turn === n && playerKey(e) === k), out = [];
+  if (es.some(e => e.kind === 'silence' && e.text === 'secure')) out.push(`<span title="${esc(t('Silent Sector'))}">${gico('silent', 13)}</span>`);
+  if (es.some(e => e.kind === 'silence' && e.text !== 'secure')) out.push(`<span title="${esc(t('Silence in all Sectors'))}">${gico('silence', 13)}</span>`);
+  es.filter(e => killOf(e)).forEach(e => out.push(`<span title="${esc(t('killed {p}', { p: killOf(e) }))}">${gico('killed', 13)}</span>`));
+  return out.length ? `<small class="ci">${out.join('')}</small>` : '';
+}
 /* the tracking sheet: one row per player, one column per turn */
 function sheetHtml() {
   const rows = [['me', t('Me')]].concat(knownPlayers()), own = ownSteps(), ps = tablePlayers();
   const turns = Array.from({ length: Math.max(1, Math.min(S.turn, MAX_TURN)) }, (_, i) => i + 1);
   const cur = S.hot ? Hot.curId() : T.turnState && T.turnState.uid;
   const cell = (k, n) => {
+    const rl = roleAtTurn(k, n), rc = rl ? ' r' + rl[0] : '';   // rh = a Human turn, ra = an Alien turn
+    const ex = turnMarks(k, n), go = sec => sec && parseId(sec) ? ` data-act="gosector" data-s="${esc(sec)}" role="button" tabindex="0"` : '';
     const ph = S.log.find(e => e.kind === 'hatch' && e.n && e.turn === n && playerKey(e) === k);   // a pod card was drawn on this turn
-    if (ph) return `<td class="c pod ${ph.ok ? 'green' : 'red'}" title="${esc(t(ph.ok ? 'Escape Pod {n}: escaped' : 'Escape Pod {n}: damaged', { n: ph.n }))}">${gico(ph.ok ? 'pod-green' : 'pod-red', 20)}<b>${esc(ph.n)}</b></td>`;
+    if (ph) return `<td class="c pod ${ph.ok ? 'green' : 'red'}${rc}"${go(ph.sector)} title="${esc(t(ph.ok ? 'Escape Pod {n}: escaped' : 'Escape Pod {n}: damaged', { n: ph.n }))}">${gico(ph.ok ? 'pod-green' : 'pod-red', 20)}<b>${esc(ph.n)}</b>${ex}</td>`;
     if (k === 'me') {
-      const step = S.path.filter(p => p.turn === n).pop(), bl = own.bluffs.find(b => b.turn === n);
-      if (!step) return '<td class="c none">–</td>';
-      if (bl) return `<td class="c bluff" title="${esc(t('Bluff (real below)'))}: ${esc(step.pos)}"><b>${esc(bl.sector)}</b><small>${esc(step.pos)}</small></td>`;
-      return `<td class="c ${own.heard.has(n) ? 'heard' : 'silent'}">${esc(step.pos)}${step.star ? '*' : ''}</td>`;
+      const steps = S.path.filter(p => p.turn === n), step = steps.filter(p => p.note !== 'reborn' && p.note !== 'mutated').pop() || steps.pop(), bl = own.bluffs.find(b => b.turn === n);
+      if (!step) return `<td class="c none">–${ex}</td>`;
+      if (bl) return `<td class="c bluff${rc}"${go(step.pos)} title="${esc(t('Bluff (real below)'))}: ${esc(step.pos)}"><b>${esc(bl.sector)}</b><small>${esc(step.pos)}</small>${ex}</td>`;
+      return `<td class="c ${own.heard.has(n) ? 'heard' : 'silent'}${rc}"${go(step.pos)}>${esc(step.pos)}${step.star ? '*' : ''}${ex}</td>`;
     }
     const v = trackOf(k).filter(x => x.turn === n);
-    if (!v.length) return '<td class="c none">–</td>';
+    if (!v.length && !ex) return '<td class="c none">–</td>';
     const [f, ink] = pal(k);
-    return `<td class="c opp${v.some(x => x.kind === 'attack') ? ' att' : ''}" style="--f:${f};--i:${ink};--b:${borderOf(k)}">${v.map(x => esc(x.sector)).join(' ')}</td>`;
+    return `<td class="c opp${v.some(x => x.kind === 'attack') ? ' att' : ''}${rc}"${go(v[0] && v[0].sector)} style="--f:${f};--i:${ink};--b:${borderOf(k)}">${v.map(x => esc(x.sector)).join(' ')}${ex}</td>`;
   };
   const body = rows.map(([k, n]) => {
     const u = k.startsWith('u:') ? k.slice(2) : k === 'me' ? myId() : null, p = u && ps[u], g = suspicion(k);
@@ -490,7 +524,7 @@ function decksHtml() {
   return `<p class="decks1">${t('Cards left')}: ${cell('sector', 'Sector cards')} · ${cell('hatch', 'Escape Pod cards')}${front ? ` · <span><b>${front}</b> ${t('face down in front of players')}</span>` : ''}</p>`;
 }
 function tablePanel() {
-  const sel = logSel(), ln = S.log.filter(e => !sel.length || sel.includes(playerKey(e))).map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k); return `<li class="${e.kind}${e.mine ? ' mine' : ''}"><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span></li>`; }).join('');
+  const sel = logSel(), ln = S.log.filter(e => !sel.length || sel.includes(playerKey(e))).map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k); return `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span></li>`; }).join('');
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
   const sec = { players: 'sheet', hatches: 'status' }[T.tableSec] || T.tableSec || 'sheet', hatchAct = digital() ? '' : 'hatch';
   const secs = [['sheet', 'Sheet'], ['log', 'Log'], ['status', 'Status']];
@@ -547,9 +581,9 @@ function recentOthers(n = 8, from = S.turn - 1) {
   return S.log.filter(e => ANN_KINDS.includes(e.kind) && playerKey(e) !== 'me' && e.turn >= from).slice(0, n);
 }
 const annLine = e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b>${logIcon(e, 18)}<span>${esc(entryText(e))}</span><i>${t('T{n}', { n: e.turn })}</i></li>`;
-function roundCard() {
+function roundCard(compact) {
   const es = recentOthers(8); if (!es.length) return '';
-  return `<div class="roundcard"><small>${t('What the others declared')}</small><ul>${es.map(annLine).join('')}</ul></div>`;
+  return `<div class="roundcard${compact ? ' compact' : ''}"><small>${t('What the others declared')}</small><ul>${es.map(annLine).join('')}</ul></div>`;
 }
 /* every Character card the table has seen so far */
 function knownChars() {

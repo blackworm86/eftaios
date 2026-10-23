@@ -27,9 +27,11 @@ const {assert,setup,startTable,begin,current,uidOf}=require('./helpers');
   // a player who is eliminated is skipped
   // an Alien is eliminated (roles are dealt at random; a dead Human could end the game)
   let dead=null;for(const p of pages){if(await p.evaluate(()=>S.role)==='alien'){dead=p;break}}
-  const deadName=await dead.evaluate(()=>S.name);
+  const deadName=await dead.evaluate(()=>Sync.uid);   // ids, not names: the fake account gives every player the same name
   await dead.evaluate(()=>{S.over='dead';afterChange()});await A.waitForFunction(()=>Object.values(Sync.players).some(p=>p.out==='killed'));
-  const seq=[];for(let k=0;k<3;k++){const p=await current(pages);seq.push(await p.evaluate(()=>S.name));const i0=await p.evaluate(()=>T.turnState.idx);await p.evaluate(()=>{S.phase='resolve';S.res={stage:'done',say:'x'};render()});await p.click('[data-act=next]');await A.waitForFunction(i=>T.turnState.idx!==i||T.turnState.n>2,i0)}
+  // the elimination shows the dead player's Character card to the table: dismiss it on every screen, as players would
+  for(const pg of pages)if(await pg.waitForSelector('dialog[open] #d-no',{timeout:5000}).then(()=>true,()=>false))await pg.click('dialog[open] #d-no');
+  const seq=[];for(let k=0;k<3;k++){const p=await current(pages);seq.push(await p.evaluate(()=>Sync.uid));const i0=await p.evaluate(()=>T.turnState.idx);await p.evaluate(()=>{S.phase='resolve';S.res={stage:'done',say:'x'};render()});await p.click('[data-act=next]');await A.waitForFunction(i=>T.turnState.idx!==i||T.turnState.n>2,i0)}
   assert(!seq.includes(deadName),'eliminated player never gets a turn (sequence '+seq.join(',')+')');
   // host can skip an absent player
   const cur2=await current(pages);const host=A;if(cur2!==A){await A.click('[data-tab=table]');await A.click('[data-act=tsec][data-k=status]');await A.click('[data-act=skipturn]');await A.click('#d-yes');await A.waitForFunction(u=>T.turnState.uid!==u,await cur2.evaluate(()=>Sync.uid));assert(true,'host can skip an absent player')}

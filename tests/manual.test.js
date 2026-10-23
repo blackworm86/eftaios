@@ -42,7 +42,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(await p.evaluate(()=>S.log.some(e=>e.who==='Zoe'&&e.sector==='O08')),'a new player can be added and recorded');
  await p.screenshot({path:SS+'/man-mark.png'});
  await p.click('.banner [data-act=markmode]');
- assert(await p.evaluate(()=>!T.markMode)&&(await p.textContent('#panel-body')).includes('highlighted'),'Done returns to the game');
+ assert(await p.evaluate(()=>!T.markMode&&!document.querySelector('.banner [data-act=markmode]')),'Done returns to the game');
  // old hand marks become declarations
  const mig=await p.evaluate(()=>{const keep=JSON.parse(JSON.stringify(S));return keep.marks.length});assert(mig===0,'no hand marks are kept');
  // notes: the sector note dialog is still used to edit an old note; the annotate bar places stamps and draws

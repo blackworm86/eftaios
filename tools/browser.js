@@ -42,6 +42,7 @@ async function launch(opts = {}) {
     ...(process.env.PW_SINGLE_PROCESS ? ['--single-process', '--in-process-gpu'] : []),
     '--user-data-dir=' + userDataDir,
     '--remote-debugging-port=' + port,
+    ...(opts.args || []),   // a test's own flags, e.g. the fake camera
     'about:blank'
   ];
   const child = spawn(CHROME, args, { stdio: 'ignore', windowsHide: true });

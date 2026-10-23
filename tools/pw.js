@@ -2,8 +2,8 @@
 /* Playwright entry point for this machine: Chrome is started over CDP by tools/browser.js. */
 const B = require('./browser');
 
-async function launch() {
-  const raw = await B.launch();
+async function launch(opts = {}) {
+  const raw = await B.launch({ args: opts.args });
   const browser = raw.browser;
   return new Proxy(browser, {
     get(target, prop) {

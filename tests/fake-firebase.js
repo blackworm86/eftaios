@@ -9,7 +9,9 @@ window.__FAKE_FB = async () => {
   const ls = [];
   const fire = () => { const t = load(); ls.forEach(l => l.check(t)); };
   window.addEventListener('storage', e => { if (e.key === KEY) fire(); });
-  const locked = fn => navigator.locks.request('fakefb', () => { fn(); setTimeout(fire, 0); });
+  /* shortcut: localStorage reaches other tabs a few ms late, so a tab taking the lock right after another's write could read the
+     old tree and undo it; holding the lock 40 ms after each write lets it arrive. Raise it if lost writes come back under heavy load. */
+  const locked = fn => navigator.locks.request('fakefb', async () => { fn(); setTimeout(fire, 0); await new Promise(r => setTimeout(r, 40)); });
   const write = (p, v) => locked(() => { const t = load(); setAt(t, p, v); saveT(t); });
   const fb = {
     ref: (db, path) => ({ path }), query: r => r, limitToLast: () => null, orderByChild: () => null, serverTimestamp: () => Date.now(),

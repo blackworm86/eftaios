@@ -24,7 +24,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   await human.click('[data-act=itemdlg][data-i=sedatives]');await human.click('dialog [data-act=useitem]');
   assert(await human.evaluate(()=>S.res.stage)==='done'&&await human.evaluate(()=>S.items.join())==='teleport','Sedatives: no card, card consumed');
   assert(await H.evaluate(()=>T.counts.sector.d+T.counts.sector.x)===before,'no sector card drawn with Sedatives');
-  assert(await H.evaluate(()=>S.log.some(e=>e.kind==='item'&&e.text==='sedatives')),'item use is public');
+  assert(await H.waitForFunction(()=>S.log.some(e=>e.kind==='item'&&e.text==='sedatives'),null,{timeout:5000}).then(()=>true,()=>false),'item use is public');   // the entry reaches the host a moment after the action
   // ---- teleport
   await human.click('[data-act=itemdlg][data-i=teleport]');await human.click('dialog [data-act=useitem]');
   assert(await human.evaluate(()=>S.pos)===await human.evaluate(()=>find(T.map,'H')),'Teleport: back to the Human sector');
@@ -36,7 +36,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const S='/tmp
   await human.waitForSelector('dialog[open]',{timeout:15000});
   const txt=await human.evaluate(()=>document.querySelector('dialog').textContent);
   assert(txt.includes('K09')&&!txt.includes('A14'),'Spotlight reveals only players in range ('+txt.slice(0,60)+')');
-  assert(await H.evaluate(()=>S.log.some(e=>e.kind==='reveal'&&e.sector==='K09')),'revealed position is public');
+  assert(await H.waitForFunction(()=>S.log.some(e=>e.kind==='reveal'&&e.sector==='K09'),null,{timeout:5000}).then(()=>true,()=>false),'revealed position is public');   // the entry reaches the host a moment after the action
   await human.evaluate(()=>closeDlg());
   // ---- no hand limit in the Ultimate rules
   await human.evaluate(()=>{S.char='Captain';S.items=['attack','attack','defense','cat'];render()});

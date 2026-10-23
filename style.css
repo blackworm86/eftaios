@@ -887,3 +887,12 @@ li.adm-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;al
   .slots{margin-top:8px}.slot{min-height:42px}
   .btn.big{min-height:46px}
 }
+
+/* account: the form is one tight group; the shortcuts, then sign out and delete, are set apart from it */
+#flow-card>.row.acctnav{margin:22px 0 0}
+#flow-card>.row.acctnav .btn{min-height:48px}
+#flow-card>.acctend{margin-top:22px;padding-top:16px;border-top:1px solid var(--line);display:grid;gap:10px}
+#flow-card>.acctend .btn{margin:0;width:100%}
+.kv dd{overflow-wrap:anywhere}
+
+#flow-card>.kv{align-items:baseline;row-gap:8px}

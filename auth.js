@@ -53,9 +53,9 @@ const Auth = (() => {
       ${p.handle ? `<dl class="kv"><dt>${t('Handle')}</dt><dd>@${esc(p.handle)}</dd><dt>${t('Email')}</dt><dd>${esc(u.email || '—')}</dd></dl>
         <label class="field"><span>${t('Display name')}</span><input id="a-name" maxlength="20" value="${esc(p.name || '')}"></label>
         <button class="btn primary wide" data-act="accountsave">${t('Save')}</button>
-        <div class="row two"><button class="btn" data-act="accountgames">${t('Your games')}</button><button class="btn" data-act="accountstats">${t('Statistics')}</button></div>
-        <button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>
-        <button class="btn danger wide" data-act="accountdelete">${t('Delete my account')}</button>`
+        <div class="row two acctnav"><button class="btn" data-act="accountgames">${t('Your games')}</button><button class="btn" data-act="accountstats">${t('Statistics')}</button></div>
+        <div class="acctend"><button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>
+        <button class="btn danger wide" data-act="accountdelete">${t('Delete my account')}</button></div>`
       : `${Sync.profileError ? `<p class="banner">${t('Your profile could not be read. The database rules may be out of date.')} <code>${esc(Sync.profileError)}</code></p>` : ''}
         <p class="dim hintline">${t('Choose a handle once: it is how the table and the statistics know you.')}</p>
         <label class="field"><span>${t('Handle')}</span><input id="a-handle" maxlength="16" autocapitalize="off" placeholder="riccardo" value="${esc(p.handle || '')}"></label>

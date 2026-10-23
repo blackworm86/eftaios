@@ -9,6 +9,7 @@
   const cfg = window.FIREBASE_CONFIG || {};
   const Sync = window.Sync = {
     gen: 0, enabled: !!(window.__FAKE_FB || (cfg.apiKey && cfg.databaseURL)),
+    skew: 0, now() { return Date.now() + this.skew; },
     code: null, uid: null, status: 'off', settings: null, players: {}, turn: null, h: {},
     user: null, profile: null, isAdmin: false, registered: false, authError: '',
     on(h) { this.h = h; }
@@ -40,6 +41,8 @@
       const a = app.initializeApp(cfg);
       auth = fireAuth(au.getAuth(a));
       db = rtdb.getDatabase(a); fb = rtdb;
+      /* the gap between this device's clock and Firebase's, so time stamps compare across devices and with the rules' `now` */
+      rtdb.onValue(rtdb.ref(db, '.info/serverTimeOffset'), s => { Sync.skew = s.val() || 0; });
       au.getRedirectResult(auth).catch(e => console.warn(e));
       au.onAuthStateChanged(auth, u => { handleUser(u).catch(e => console.warn(e)); });
       /* the persisted session is restored asynchronously: wait for it, or a reload would replace a
@@ -176,15 +179,10 @@
   /* the private checkpoint a player's own device writes, readable only by them */
   Sync.saveSeat = seat => {
     if (!Sync.code || !Sync.uid || !db) return;
-    const p = at(`rooms/${Sync.code}/seats/${Sync.uid}`);
-    /* shortcut: if the table's rules predate the turn flags, the write is refused; fall back to the core seat so the position still saves */
-    fb.set(p, seat).catch(() => {
-      const core = {}; for (const k of ['turn', 'pos', 'path', 'items', 'over', 'char', 'role', 'at']) core[k] = seat[k];
-      return fb.set(p, core).catch(() => {});
-    });
+    fb.set(at(`rooms/${Sync.code}/seats/${Sync.uid}`), seat).catch(() => {});
   };
   /* the private journal (notes, drawings, suspicions): rejects on failure so the caller can retry and warn */
-  Sync.saveJournal = j => (Sync.code && db) ? fb.set(path(Sync.code, 'journal/' + Sync.uid), Object.assign({ at: Date.now() }, j)) : Promise.reject(new Error('offline'));
+  Sync.saveJournal = j => (Sync.code && db) ? fb.set(path(Sync.code, 'journal/' + Sync.uid), Object.assign({ at: Sync.now() }, j)) : Promise.reject(new Error('offline'));
   Sync.readSeat = async code => { await ensure(); return (await fb.get(at(`rooms/${code}/seats/${Sync.uid}`))).val(); };
 
   function readProfile(uid) {
@@ -302,7 +300,7 @@
       await fb.set(path(code, 'created'), fb.serverTimestamp());
       await fb.set(path(code, 'settings'), Object.assign({ map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', order: [Sync.uid] }, settings.customMap ? { customMap: settings.customMap } : {}));
       await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false, guest: !Sync.registered });
-      await fb.set(path(code, 'lease'), { uid: Sync.uid, at: Date.now() }).catch(() => {});
+      await fb.set(path(code, 'lease'), { uid: Sync.uid, at: Sync.now() }).catch(() => {});
       await fb.update(at('roomIndex/' + code), { host: Sync.uid, status: 'lobby', map: settings.map, players: 1, name: me.name, at: Date.now() }).catch(() => {});
       listen(code); Sync.h.joined && Sync.h.joined(code); Sync.indexRoom(code, 'host'); return true;
     } catch (e) { console.warn(e); Sync.lastError = String(e && (e.code || e.message) || e).slice(0, 80); setStatus(/permission/i.test(Sync.lastError) ? 'rules' : 'error'); return false; }
@@ -337,7 +335,7 @@
   Sync.isHolder = () => !!Sync.uid && Sync.holder() === Sync.uid;
   Sync.claimHost = async () => {
     if (!Sync.code) return;
-    await fb.set(path(Sync.code, 'lease'), { uid: Sync.uid, at: Date.now() });
+    await fb.set(path(Sync.code, 'lease'), { uid: Sync.uid, at: Sync.now() });
     /* if this tab goes away, drop the lease at once so the table can take over */
     try { if (fb.onDisconnect) await fb.onDisconnect(at(`rooms/${Sync.code}/lease`)).remove(); } catch (_) { /* fake or offline */ }
   };

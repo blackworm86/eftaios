@@ -31,7 +31,7 @@ const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } cat
 let seatTimer = null;
 function flushSeat() {
   if (!(S.online && S.room && S.stage === 'game' && S.role && Sync.code)) return;
-  S.seatAt = Date.now();
+  S.seatAt = Sync.now();
   let res = JSON.stringify(S.res || null); if (res.length > 1500) res = JSON.stringify({ stage: S.res.stage });
   const flags = { fed: !!S.fed, reborn: !!S.reborn, adr: !!S.adr, cat: !!S.cat, outSent: !!S.outSent, revealed: !!S.revealed, routeSent: !!S.routeSent };
   Sync.saveSeat(Object.assign({ turn: S.turn, pos: S.pos || '', path: JSON.stringify(S.path || []), items: S.items || [], over: S.over || '', char: S.char || '', role: S.role, at: S.seatAt, phase: S.phase || 'move', res }, flags, S.mkN === undefined ? {} : { mkN: S.mkN }));
@@ -1143,7 +1143,7 @@ function hdr() {
     const bot = typeof Online !== 'undefined' && Online.isBotId(T.turnState.uid);
     const ak = (Sync.settings && Sync.settings.autoKick) || 0;
     const idle = !mine && !bot && ak > 0 && T.turnAt && Date.now() - T.turnAt > ak * 60000 && Sync.isHolder();
-    const away = !mine && !Sync.isHolder() && Sync.settings && Sync.settings.status === 'playing' && (!Sync.lease || Date.now() - (Sync.lease.at || 0) > 45000);
+    const away = !mine && !Sync.isHolder() && Sync.settings && Sync.settings.status === 'playing' && (!Sync.lease || Sync.now() - (Sync.lease.at || 0) > 45000);
     tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : '');
     tb.innerHTML = away
       ? `<span>${t('The host is away: cards and bots are paused.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`

@@ -439,7 +439,7 @@ function applySeatFlags(seat) {
 function applyJournal(jr) {
   if (!jr) return false;
   const sent = S.jsent = S.jsent || {}, cur = journalOf(); let changed = false;
-  for (const k of ['notes', 'annos', 'sus', 'shapes']) {
+  for (const k of Object.keys(cur)) {
     if (typeof jr[k] !== 'string') continue;
     if (jr[k] === cur[k]) { sent[k] = jr[k]; continue; }
     if (cur[k] !== sent[k]) continue;
@@ -449,7 +449,7 @@ function applyJournal(jr) {
 }
 
 Sync.on({
-  leaving() { flushSeat(); flushJournal(); },
+  leaving() { const st = Sync.settings; if (st && !(st.result && st.result.reason === 'closed')) { flushSeat(); flushJournal(); } },   // a closed or deleted table takes no more saves
   status(s) {
     if ((S.stage === 'lobby' || S.stage === 'game') && (s === 'no-room' || s === 'started' || s === 'closed' || s === 'full')) { toast(t(FLOW_MSG[s])); Sync.leave(true); resetToWelcome(); return; }
     if (S.stage === 'game') { if (S.tab === 'table') render(); } else renderFlow();

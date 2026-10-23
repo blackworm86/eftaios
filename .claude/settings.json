@@ -1,11 +1,26 @@
 {
-  "extraKnownMarketplaces": {
-    "impeccable": { "source": { "source": "github", "repo": "pbakaus/impeccable" } },
-    "ponytail": { "source": { "source": "github", "repo": "DietrichGebert/ponytail" } }
-  },
-  "enabledPlugins": {
-    "impeccable@impeccable": true,
-    "ponytail@ponytail": true
-  },
-  "env": { "IMPECCABLE_NO_TELEMETRY": "1" }
+  "env": { "IMPECCABLE_NO_TELEMETRY": "1" },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          { "type": "command", "command": "CLAUDE_PLUGIN_ROOT=\"${CLAUDE_PROJECT_DIR}/.claude/ponytail\" node \"${CLAUDE_PROJECT_DIR}/.claude/ponytail/hooks/ponytail-activate.js\"", "timeout": 15, "statusMessage": "Loading ponytail mode..." },
+          { "type": "command", "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" ] || \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" hook", "timeout": 5, "statusMessage": "Preparing build session" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "CLAUDE_PLUGIN_ROOT=\"${CLAUDE_PROJECT_DIR}/.claude/ponytail\" node \"${CLAUDE_PROJECT_DIR}/.claude/ponytail/hooks/ponytail-mode-tracker.js\"", "timeout": 15, "statusMessage": "Tracking ponytail mode..." } ] }
+    ],
+    "SubagentStart": [
+      { "hooks": [ { "type": "command", "command": "CLAUDE_PLUGIN_ROOT=\"${CLAUDE_PROJECT_DIR}/.claude/ponytail\" node \"${CLAUDE_PROJECT_DIR}/.claude/ponytail/hooks/ponytail-subagent.js\"", "timeout": 15 } ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit|Write", "hooks": [ { "type": "command", "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" ] || \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" hook", "timeout": 5, "statusMessage": "Checking UI changes" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" ] || \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" hook", "timeout": 30, "statusMessage": "Design deep pass" } ] }
+    ]
+  }
 }

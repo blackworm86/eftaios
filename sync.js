@@ -26,6 +26,11 @@
 
   Sync.ref = p => (db ? at(p) : null);
 
+  /* The database SDK marks "websocket failed" in storage before every connection and clears it only once the link is healthy.
+     A phone that sleeps or switches network at the wrong moment leaves the mark, and every later visit starts with long
+     polling instead; if that is blocked too the app never reaches the database, and only clearing the site data helped.
+     Start each visit with a clean mark so the websocket is tried first. */
+  try { for (const st of [localStorage, sessionStorage]) st.removeItem('firebase:previous_websocket_failure'); } catch (_) { /* storage unavailable */ }
   /* ---------------- auth ---------------- */
   function fireAuth(mod) { return mod; }
   /* a guest login is made only when something needs one (a table), never for signing in:

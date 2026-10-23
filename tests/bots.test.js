@@ -38,7 +38,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
    return {b:B.b.pA,c:B.c.pA,d:B.d.pA,keys:Object.keys(view.seats[0]).join(',')};
  });
  assert(bel.b>0.9,'an attack with no Attack card marks that player as an Alien ('+bel.b.toFixed(2)+')');
- assert(bel.c<0.1,'playing an item marks that player as a Human ('+bel.c.toFixed(2)+')');
+ assert(bel.c<0.2,'playing an item marks that player as a Human ('+bel.c.toFixed(2)+')');
  assert(bel.d>0.3&&bel.d<0.9,'with no evidence a player stays uncertain ('+bel.d.toFixed(2)+')');
  // a Mutation or a shown identity settles a player's side
  const idb=await p.evaluate(()=>{
@@ -47,6 +47,13 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
    L({by:'b',turn:2,kind:'item',text:'mutation'});L({by:'c',turn:2,kind:'reveal',text:'Id|human|Medic'});
    const B=Bot.beliefs(view,me);return {b:B.b.pA,c:B.c.pA};
  });
+ const tb=await p.evaluate(()=>{
+   const view={seats:[{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'},{id:'d',name:'D'}],turn:5,mode:'ultimate',log:[]};
+   const me={id:'a',state:{role:'human'}},L=e=>view.log.unshift(Object.assign({at:Date.now(),text:e.kind},e));
+   L({by:'b',turn:2,kind:'item',text:'teleport'});L({by:'b',turn:2,kind:'attack',sector:'L08'});   // a Blink Alien: a Teleport card, then an attack with no Attack card
+   return Bot.beliefs(view,me).b.pA;
+ });
+ assert(tb>0.8,'an Alien that teleports and then attacks is still read as an Alien ('+tb.toFixed(2)+')');
  assert(idb.b>0.9,'a player who mutates is an Alien ('+idb.b.toFixed(2)+')');
  assert(idb.c<0.1,'a shown Human identity settles that player ('+idb.c.toFixed(2)+')');
  // the bot is handed a public view of the table, never the other seats' private state

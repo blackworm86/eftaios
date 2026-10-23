@@ -162,7 +162,7 @@ const Bot = (() => {
             }
             if (e.kind === 'hatch') { mulA *= 0.02; known = true; }
           } else if (e.kind === 'item' && /^mutation$/i.test(e.text)) { wA = 1; wH = 0; known = true; }   // a Human who mutates is an Alien from now on
-          else if (e.kind === 'item') { mulA *= 0.02; known = true; }         // only Humans can play items
+          else if (e.kind === 'item') { mulA *= ['teleport', 'adrenaline', 'sedatives'].includes(e.text) ? 0.08 : 0.02; known = true; }   // Humans play items; an Alien only the one its Character allows
           else if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) { known = true; wA = e.text.split('|')[1] === 'alien' ? 1 : 0; wH = 1 - wA; }   // Medic or Co-pilot
           else if (e.kind === 'out') {
             const [why, role] = String(e.text).split('|');
@@ -403,7 +403,7 @@ const Bot = (() => {
         const mv = pos => human ? humanMove(W, { pos, path: st.path }, 1) : alienMove(ctx, W, { pos, path: st.path, fed: st.fed, char: st.char }, B), from = mv(st.pos), to = mv(start);
         const need = tele === 'Co-pilot' ? (lvl === 'hard' ? 9 : 13) : (lvl === 'hard' ? 4 : 7);
         if (from && to && to.score - from.score > need) {
-          if (tele === 'teleport') useItem('teleport'); else { usePower('Co-pilot'); abUse(st, 'Co-pilot'); say({ kind: 'reveal', text: 'Id|' + st.role + '|' + (st.char || '') }); }
+          if (tele === 'teleport') useItem('teleport'); else { usePower('Co-pilot'); say({ kind: 'reveal', text: 'Id|' + st.role + '|' + (st.char || '') }); }
           jump(start);
         }
       }
@@ -427,7 +427,7 @@ const Bot = (() => {
     // Medic: make the most doubtful player show who they are (and show who I am)
     if (human && useCap && ctx.medic && canPower('Medic') && H.turn >= 3 && (lvl === 'hard' || rnd() < 0.5)) {
       let best = null; W.live.forEach(b => { const v = Math.min(b.pA, 1 - b.pA); if (!best || v > best.v) best = { b, v }; });
-      if (best && best.v >= 0.3) { abUse(st, 'Medic'); usePower('Medic'); say({ kind: 'reveal', text: 'Id|' + st.role + '|' + (st.char || '') }); await ctx.medic(best.b.id); refresh(); }
+      if (best && best.v >= 0.3) { usePower('Medic'); say({ kind: 'reveal', text: 'Id|' + st.role + '|' + (st.char || '') }); await ctx.medic(best.b.id); refresh(); }
     }
     // move
     const stayOk = human && useCap && canPower('Executive Officer') && ['.', 's'].includes(at(T.map, st.pos));
@@ -438,9 +438,9 @@ const Bot = (() => {
     let lurk = false;
     if (!human && adv && ab === 'Lurking Alien' && choice) {
       const here0 = alienAttackValue(ctx, W, st, myCell());
-      if (here0 >= W.sk.attackAt * 1.25 && here0 > alienAttackValue(ctx, W, st, choice.cell) + 0.5) { lurk = true; st.path.push({ turn: H.turn, pos: st.pos }); usePower('Lurking Alien'); }
+      if (here0 >= W.sk.attackAt && here0 > alienAttackValue(ctx, W, st, choice.cell)) { lurk = true; st.path.push({ turn: H.turn, pos: st.pos }); usePower('Lurking Alien'); }
     }
-    if (choice && choice.stay) { abUse(st, 'Executive Officer'); st.path.push({ turn: H.turn, pos: st.pos, star: 1 }); usePower('Executive Officer'); }
+    if (choice && choice.stay) { st.path.push({ turn: H.turn, pos: st.pos, star: 1 }); usePower('Executive Officer'); }
     else if (choice && !lurk) { st.pos = choice.id; st.path.push({ turn: H.turn, pos: choice.id }); if (!human && ab === 'Fast Alien' && st.path.length === 2 && g.dA[g.idx.get(st.path[0].pos)][choice.cell] > 2) usePower('Fast Alien'); }
     st.adr = false;
     const ty = at(T.map, st.pos), here = myCell();
@@ -463,7 +463,7 @@ const Bot = (() => {
     // Human with an Attack card (or the Soldier) on a likely Alien
     const strike = human && useCap ? (canPower('Soldier') ? 'Soldier' : st.items.includes('attack') ? 'attack' : '') : '';
     if (strike && humanAttackValue(W, here) >= (lvl === 'hard' ? sk.atkAt : sk.atkAt + 2)) {
-      if (strike === 'attack') useItem('attack'); else { abUse(st, 'Soldier'); usePower('Soldier'); }
+      if (strike === 'attack') useItem('attack'); else usePower('Soldier');
       say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return;
     }
     if (ty !== '.') { say({ kind: 'silence', text: 'secure' }); return; }  // Secure sector: declare "Silent Sector"
@@ -472,10 +472,10 @@ const Bot = (() => {
       let near = 0; if (!human) { near = W.humanCnt[here]; g.reach[2][here].forEach(j => { near += W.humanCnt[j]; }); }
       if (human ? W.risk(here) > (lvl === 'hard' ? 0.12 : 0.2) : near > 0.5) { useItem('sedatives'); return; }
     }
-    if (human && adv && ab === 'Captain' && !spent('Captain')) { abUse(st, 'Captain'); usePower('Captain'); return; }   // no card the first time in a Dangerous sector
+    if (human && adv && ab === 'Captain' && !spent('Captain')) { usePower('Captain'); return; }   // no card the first time in a Dangerous sector
     // Cat (or the Pilot): two noises, one of them a decoy, when my sector is dangerous to be heard in
     const cat = human && useCap && W.risk(here) > (lvl === 'hard' ? 0.1 : 0.16) ? (canPower('Pilot') ? 'Pilot' : may('cat') ? 'cat' : '') : '';
-    if (cat === 'cat') useItem('cat'); else if (cat) { abUse(st, 'Pilot'); usePower('Pilot'); }
+    if (cat === 'cat') useItem('cat'); else if (cat) usePower('Pilot');
     let card = ctx.draw('sector') || 'silence'; const item = card.startsWith('item:') && adv && !cat ? card.slice(5) : '';
     if (card.startsWith('item:')) card = 'silence';
     if (!human && adv && ab === 'Psychic Alien' && card === 'silence') { card = 'noise-any'; usePower('Psychic Alien'); }   // Silence counts as a noise anywhere

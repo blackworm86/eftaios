@@ -20,6 +20,10 @@ saves its progress after every iteration, and can be stopped and resumed at any 
 Double-click **`run_training.bat`** and leave the window open. It uses all CPU cores but one to play games, and the GPU to learn.
 If anything crashes it restarts by itself after 30 seconds and resumes from the last saved iteration. After a reboot just start it again.
 
+* **What you will see first:** a short *imitation* phase (about 12 iterations, `imitation 5/12 ... same action as the rule-based player 55%`): the network copies simple
+  rule-based players so it starts from sensible play, then self-play begins (`it 1`, `it 2`, ...). In a test on a CPU-only machine, 100,000 imitation decisions
+  plus one self-play step already put it close to the rule-based players (Humans 42% vs 54%, Aliens 33% vs 38%); starting from nothing it was far behind
+  (12% and 21%) after twice as much play. On your GPU the learning step takes seconds instead of minutes.
 * **See how it is doing:** double-click `status.bat`. The evaluation lines compare the network with simple rule-based players:
   `as Humans the team wins 61% (rule-based Humans: 38%)`. A rising number is learning. A first useful sign usually comes after 20-50 iterations.
 * **Stop it:** double-click `stop_training.bat` (it finishes the current iteration, about a minute). Start again any time to continue.

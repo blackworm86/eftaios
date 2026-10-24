@@ -54,6 +54,7 @@ function summarize(d, n, meta) {
   d.log.forEach((e, i) => { if (e.kind !== 'attack' || !byId[e.by]) return;
     for (let j = i - 1; j >= Math.max(0, i - 4); j--) { const o = d.log[j]; if (o.turn !== e.turn) break; if (o.kind === 'out' && String(o.text).startsWith('killed|human') && o.by !== e.by) killsBy[e.by] = (killsBy[e.by] || 0) + 1; } });
   seats.forEach(s => { s.kills = killsBy[s.id] || 0; });
+  seats.forEach(s => { s.secureTurns = d.log.filter(e => e.by === s.id && e.kind === 'silence' && e.text === 'secure').length; });   // turns spent in a Secure sector (a Human can hide there)
   // friendly fire: a kill whose victim is on the attacker's own side (Alien kills Alien, Human's Attack card kills Human)
   const sideOf = s => (s.reborn ? 'alien' : s.role0);
   let friendlyKills = 0;

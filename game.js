@@ -390,7 +390,7 @@ function orderList() {
 function waitPanel() {
   const cur = T.turnState;
   return `<h2>${t('{p} is playing', { p: esc(pname(cur.uid)) })}</h2>
-    ${roundCard()}${orderList()}${handHtml()}`;
+    ${fakeCard()}${roundCard()}${orderList()}${handHtml()}`;
 }
 function overPanel() {
   const m = { escaped: ['Escaped!', 'You left the ship and win. That pod is now blocked.'], time: ['40 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Pod is blocked or damaged. You are eliminated.'] }[S.over];
@@ -573,12 +573,13 @@ function decksHtml() {
   return `<p class="decks1">${t('Cards left')}: ${cell('sector', 'Sector cards')} · ${cell('hatch', 'Escape Pod cards')}${front ? ` · <span><b>${front}</b> ${t('face down in front of players')}</span>` : ''}</p>`;
 }
 function tablePanel() {
+  SUGGEST = suggestFakes();
   const sel = logSel(), quiet = T.logEv ? ['noise', 'silence'] : T.logSil ? ['silence'] : [];
   let lastTurn = null;
   const ln = killFirst(S.log).filter(e => (!sel.length || sel.includes(playerKey(e))) && !quiet.includes(e.kind)).map(e => {
     const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k), head = e.turn !== lastTurn ? `<li class="turnh">${t('Turn {n}', { n: e.turn })}</li>` : '';
     lastTurn = e.turn;
-    return head + `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><span>${icon}<b>${esc(e.mine ? t('Me') : e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span></li>`;
+    return head + `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><span>${icon}<b>${esc(e.mine ? t('Me') : e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span>${!e.mine && ['noise', 'attack', 'silence', 'spot', 'item'].includes(e.kind) ? flagBtn(e) : ''}</li>`;
   }).join('');
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
   const sec = { players: 'sheet', hatches: 'status' }[T.tableSec] || T.tableSec || 'sheet', hatchAct = digital() ? '' : 'hatch';
@@ -641,6 +642,21 @@ function killFirst(list) {
   for (let i = 0; i + 1 < a.length; i++) if (killOf(a[i]) && a[i + 1].kind === 'out' && a[i + 1].turn === a[i].turn && String(a[i + 1].who).slice(0, 20) === killOf(a[i])) { const x = a[i]; a[i] = a[i + 1]; a[i + 1] = x; i++; }
   return a;
 }
+/* declarations the game thinks are fake: it asks, the player decides */
+const fakeItem = e => `<div class="fk"><p>${t('{p}: {d} seems fake. {why} Mark it as fake?', { p: esc(e.who), d: esc(entryText(e)), why: esc(SUGGEST.get(e.id)) })}</p><div class="row tight"><button class="btn danger" data-act="fakeyes" data-id="${esc(e.id)}">${t('Mark fake')}</button><button class="btn" data-act="fakedub" data-id="${esc(e.id)}">${t('Dubious')}</button><button class="btn" data-act="fakeno" data-id="${esc(e.id)}">${t('Keep')}</button></div></div>`;
+const fakeList = () => { SUGGEST = suggestFakes(); return [...SUGGEST.keys()].map(id => S.log.find(e => e.id === id)).filter(Boolean).sort((p, q) => q.turn - p.turn); };
+/* on the player's own turn a single line (the map keeps its room); while waiting, the newest one in full */
+function fakeCard(compact) {
+  const es = fakeList(); if (!es.length) return '';
+  if (compact) return `<button class="fakeline" data-act="fakereview">${ico('flag', 16)}<span>${t(es.length === 1 ? '1 declaration seems fake' : '{n} declarations seem fake', { n: es.length })}</span><b>${t('Review')}</b></button>`;
+  return `<div class="fakecard">${fakeItem(es[0])}</div>`;
+}
+function fakeReview() {
+  const es = fakeList().slice(0, 6);
+  dlg.innerHTML = `<h2>${t('Seems fake')}</h2>${es.length ? `<div class="fakecard">${es.map(fakeItem).join('')}</div>` : `<p class="dim">${t('Nothing to review.')}</p>`}<div class="row"><button class="btn primary" id="d-no">${t('Close')}</button></div>`;
+  if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
+}
+Object.assign(actions, { fakereview: fakeReview });
 /* the last round at a glance: each player's newest noise, silence or attack, plus every event (item, pod, reveal, death) */
 function roundLines() {
   const seen = new Set();
@@ -648,8 +664,8 @@ function roundLines() {
 }
 const annLine = e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b>${logIcon(e, 18)}<span>${esc(entryText(e))}</span><i>${t('T{n}', { n: e.turn })}</i></li>`;
 function roundCard(compact) {
-  const es = roundLines(); if (!es.length) return '';
-  return `<div class="roundcard${compact ? ' compact' : ''}"><small>${t('What the others declared')}</small><ul>${es.map(annLine).join('')}</ul></div>`;
+  const es = roundLines(), nf = compact ? fakeList().length : 0; if (!es.length && !nf) return '';
+  return `<div class="roundcard${compact ? ' compact' : ''}"><small>${t('What the others declared')}</small>${nf ? `<button class="fakechip" data-act="fakereview" aria-label="${esc(t(nf === 1 ? '1 declaration seems fake' : '{n} declarations seem fake', { n: nf }))}">${ico('flag', 14)}<b>${nf}</b></button>` : ''}<ul>${es.map(annLine).join('')}</ul></div>`;
 }
 /* every Character card the table has seen so far */
 function knownChars() {

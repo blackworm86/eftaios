@@ -9,7 +9,7 @@ const STORE = 'eftaios.v1';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 /* one icon family: 24px grid, 2px round strokes */
-const ICONS = { close: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7', up: 'M6 15l6-6 6 6', left: 'M15 5l-7 7 7 7', down: 'M6 9l6 6 6-6', next: 'M9 5l7 7-7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', pencil: 'M4 20l1-5L16 4l4 4L9 19zM14 6l4 4', turn: 'M8 5l10 7-10 7z', cross: 'M7 7l10 10M17 7L7 17', bucket: 'M5 12l7-7 7 7-6.5 6.5a2.1 2.1 0 01-3 0zM5 12h14M20 15c0 0-1.8 2.2-1.8 3.4a1.8 1.8 0 003.6 0C21.8 17.2 20 15 20 15z', picker: 'M14.5 4.5l5 5-3 3-5-5zM13 8L4.5 16.5V19.5h3L16 11', expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', hand: 'M8 13V6.5a1.5 1.5 0 013 0V11M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6.5a1.5 1.5 0 013 0V14c0 4-2 7-6 7-3 0-4.5-2-6-5l-1.5-3a1.5 1.5 0 012.5-1.5L8 14' };
+const ICONS = { close: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7', up: 'M6 15l6-6 6 6', left: 'M15 5l-7 7 7 7', flag: 'M6 21V4M6 5h12l-2.5 4L18 13H6', down: 'M6 9l6 6 6-6', next: 'M9 5l7 7-7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', pencil: 'M4 20l1-5L16 4l4 4L9 19zM14 6l4 4', turn: 'M8 5l10 7-10 7z', cross: 'M7 7l10 10M17 7L7 17', bucket: 'M5 12l7-7 7 7-6.5 6.5a2.1 2.1 0 01-3 0zM5 12h14M20 15c0 0-1.8 2.2-1.8 3.4a1.8 1.8 0 003.6 0C21.8 17.2 20 15 20 15z', picker: 'M14.5 4.5l5 5-3 3-5-5zM13 8L4.5 16.5V19.5h3L16 11', expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', hand: 'M8 13V6.5a1.5 1.5 0 013 0V11M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6.5a1.5 1.5 0 013 0V14c0 4-2 7-6 7-3 0-4.5-2-6-5l-1.5-3a1.5 1.5 0 012.5-1.5L8 14' };
 const ico = (n, s = 20) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="${n === 'turn' ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 const colL = c => String.fromCharCode(65 + c);
 const cid = (c, r) => colL(c) + String(r + 1).padStart(2, '0');
@@ -242,21 +242,32 @@ const MK_STEPS = [1, 3, 5, 7, 0];   // how many turns of other players' markers 
 const mkN = () => S.mkN === undefined ? (S.mkAll ? 0 : 5) : S.mkN;
 /* the turn slider: T.rng = [first, last] turn shown on the map and the sheet (null = the last few steps of everyone) */
 const inRng = n => !T.rng || (n >= T.rng[0] && n <= T.rng[1]);
-/* noises that cannot be where the player is: farther from their last sure position (a start sector, an attack, a pod, a restart)
-   than 3 sectors a turn. They must be "noise in any sector" cards, so they are drawn faded, or left out. */
-let DECOYS = new Set();
-function findDecoys() {
-  const out = new Set(), H = find(T.map, 'H'), A = find(T.map, 'A'), by = new Map();
-  S.log.forEach(e => { const k = playerKey(e); if (k === 'me' || !(e.sector || e.kind === 'out' || (e.kind === 'item' && ['teleport', 'clone'].includes(e.text)))) return; if (!by.has(k)) by.set(k, []); by.get(k).push(e); });
-  by.forEach(es => {
-    let anchor = null;   // null: still near one of the two start sectors
-    es.slice().sort((x, y) => x.turn - y.turn).forEach(e => {
-      if (e.kind === 'item') { anchor = { sector: H, turn: e.turn }; return; }
-      if (e.kind === 'out') { if (String(e.text).startsWith('killed|human')) anchor = { sector: A, turn: e.turn }; return; }
-      if (e.kind !== 'noise') { if (['attack', 'reveal', 'hatch'].includes(e.kind)) anchor = { sector: e.sector, turn: e.turn }; return; }
-      const from = anchor ? [[anchor.sector, e.turn - anchor.turn]] : [[H, e.turn], [A, e.turn]];
-      if (from.every(([s, dt]) => s && hexDist(T.map, s, e.sector) > 3 * dt)) out.add(e.id);
-    });
+/* Declarations that cannot be where the player is. The game only suggests: the player decides, and marks a declaration
+   fake ('f'), dubious ('d') or looked-at-and-kept ('k'). The marks live in the private journal, inside sus['~f'] (one more
+   journal field would need new database rules). */
+const fakeMap = () => (S.sus && S.sus['~f']) || {};
+const fakeState = id => fakeMap()[id] || '';
+let SUGGEST = new Map();   // declaration id -> why it seems fake (unmarked ones only)
+function suggestFakes() {
+  const out = new Map(), log = S.log.slice().reverse(), H = find(T.map, 'H'), A = find(T.map, 'A');   // oldest first
+  log.forEach((e, i) => {
+    if (e.kind !== 'noise' || !e.sector || e.mine || fakeState(e.id)) return;
+    const k = playerKey(e); if (k === 'me') return;
+    // turn 1: nobody can be farther than 3 sectors from a start sector, whatever their Character or Items
+    if (e.turn <= 1 && H && A && hexDist(T.map, H, e.sector) > 3 && hexDist(T.map, A, e.sector) > 3) return out.set(e.id, t('Too far from both start sectors on turn 1.'));
+    // an attack in that very sector, after the declaration and before the player moved again, that touched nobody
+    if (digital()) {
+      let next = log.length; for (let x = i + 1; x < log.length; x++) if (playerKey(log[x]) === k && (['noise', 'silence', 'attack', 'out'].includes(log[x].kind) || (log[x].kind === 'item' && ['teleport', 'clone'].includes(log[x].text)))) { next = x; break; }   // they have moved on, or are gone
+      for (let x = i + 1; x < next; x++) {
+        const f = log[x]; if (f.kind !== 'attack' || f.sector !== e.sector || playerKey(f) === k || f.turn - e.turn > 1) continue;   // the same round, or just before they move again
+        const hit = log.slice(x + 1, next + 1).some(g => (playerKey(g) === k && (g.kind === 'out' || g.kind === 'reveal' || (g.kind === 'item' && ['defense', 'clone'].includes(g.text)))) || killOf(g) === String(e.who).slice(0, 20));
+        if (!hit) return out.set(e.id, t('An attack in this sector right after touched nobody.'));
+      }
+    }
+    // far from a position that is certain (their attack, a pod, a revealed position)
+    let sure = null; for (let x = i - 1; x >= 0; x--) { const g = log[x]; if (playerKey(g) === k && g.sector && ['attack', 'reveal', 'hatch'].includes(g.kind) && g.turn < e.turn) { sure = g; break; } }
+    if (sure && !log.some(g => playerKey(g) === k && g.turn >= sure.turn && g.turn <= e.turn && ((g.kind === 'item' && ['teleport', 'clone'].includes(g.text)) || g.kind === 'out')) && hexDist(T.map, sure.sector, e.sector) > 3 * (e.turn - sure.turn))
+      out.set(e.id, t('Too far from where they were on turn {n} ({s}).', { n: sure.turn, s: sure.sector }));
   });
   return out;
 }
@@ -349,6 +360,36 @@ function followZone(key) {
   zone.set(last.sector, 0);
   return { last, zone, human, guess };
 }
+function setFake(id, v) {
+  const open = dlg.open && dlg.querySelector('.fakecard'); S.sus = S.sus || {}; const m = Object.assign({}, fakeMap()); if (v) m[id] = v; else delete m[id];
+  if (Object.keys(m).length) S.sus['~f'] = m; else delete S.sus['~f'];
+  save(); render(); paintOverlay(); if (open) fakeReview();   // the review dialog stays open for the next one
+}
+/* the flag on a declaration: nothing, dubious (amber), fake (red); a pulse means the game thinks it is fake */
+const flagBtn = e => { const s = fakeState(e.id), why = SUGGEST.get(e.id); return `<button class="flagbtn${s ? ' ' + s : ''}${why && !s ? ' sug' : ''}" data-act="flag" data-id="${esc(e.id)}" aria-label="${esc(t(s === 'f' ? 'Marked fake: tap to clear' : s === 'd' ? 'Marked dubious: tap to mark fake' : 'Mark as dubious or fake'))}" title="${esc(why || t('Mark as dubious or fake'))}">${ico('flag', 16)}</button>`; };
+/* drag a handle, or the bar between them (moves the whole span), or tap the track (moves the nearest handle) */
+function tlDrag(track) {
+  let mode = null, x0 = 0, r0 = null, w = 1;
+  const turnAt = x => { const max = Math.max(1, S.turn); return Math.max(1, Math.min(max, Math.round(1 + (x - track.getBoundingClientRect().left) / w * (max - 1)))); };
+  const set = (lo, hi) => { T.rng = [lo, hi]; stopPlay(); paintOverlay(); };   // the panel (the sheet) follows when the finger lifts
+  track.onpointerdown = e => {
+    const max = Math.max(1, S.turn), box = track.getBoundingClientRect(); w = box.width || 1; x0 = e.clientX; r0 = T.rng.slice();
+    const px = n => box.left + (max > 1 ? (n - 1) / (max - 1) * w : 0), t = e.target;
+    mode = t.classList.contains('lo') ? 'lo' : t.classList.contains('hi') ? 'hi' : t.classList.contains('tlfill') ? 'pan' : null;
+    if (!mode) { const n = turnAt(e.clientX), dl = Math.abs(n - r0[0]), dh = Math.abs(n - r0[1]); mode = dl < dh || (dl === dh && n < r0[0]) ? 'lo' : 'hi'; mode === 'lo' ? set(Math.min(n, r0[1]), r0[1]) : set(r0[0], Math.max(n, r0[0])); r0 = T.rng.slice(); }
+    if (r0[0] === r0[1] && (mode === 'lo' || mode === 'hi')) mode = 'both';   // two handles on one turn: the first move says which one
+    track.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation();   // the map behind must not pan
+  };
+  track.onpointermove = e => {
+    if (!mode) return; e.stopPropagation();
+    const max = Math.max(1, S.turn), d = Math.round((e.clientX - x0) / w * (max - 1));
+    if (mode === 'both') { if (Math.abs(e.clientX - x0) < 4) return; mode = e.clientX < x0 ? 'lo' : 'hi'; }
+    if (mode === 'pan') { const span = r0[1] - r0[0], lo = Math.max(1, Math.min(max - span, r0[0] + d)); set(lo, lo + span); }
+    else if (mode === 'lo') set(Math.max(1, Math.min(r0[1], r0[0] + d)), r0[1]);
+    else if (mode === 'hi') set(r0[0], Math.min(max, Math.max(r0[0], r0[1] + d)));
+  };
+  track.onpointerup = track.onpointercancel = () => { if (mode) render(); mode = null; };
+}
 function stopPlay() { clearInterval(T.tlTimer); T.tlTimer = null; }
 function tlShift(d) { const max = Math.max(1, S.turn), w = T.rng[1] - T.rng[0], lo = Math.max(1, Math.min(max - w, T.rng[0] + d)); T.rng = [lo, lo + w]; render(); paintOverlay(); }
 /* the slider bar at the foot of the map: a range of turns, with a tick for every attack, pod and death */
@@ -358,21 +399,19 @@ function renderTl() {
   const max = Math.max(1, S.turn);
   if (T.rngMax && T.rngMax < max && T.rng[1] === T.rngMax) { const d = max - T.rngMax; T.rng = [T.rng[0] + d, max]; }   // following the live turn
   T.rngMax = max; T.rng = [Math.max(1, Math.min(T.rng[0], max)), Math.max(1, Math.min(T.rng[1], max))];
-  const [lo, hi] = T.rng, pct = n => max > 1 ? (n - 1) / (max - 1) * 100 : 0, key = LANG + '|' + max + '|' + !!T.hideDecoy + '|' + !!T.tlTimer + '|' + (DECOYS.size > 0);
+  const [lo, hi] = T.rng, pct = n => max > 1 ? (n - 1) / (max - 1) * 100 : 0, key = LANG + '|' + max + '|' + !!T.hideDecoy + '|' + !!T.tlTimer + '|' + Object.values(fakeMap()).includes('f');
   const lab = lo === hi ? t('Turn {n}', { n: lo }) : t('Turns {a}–{b}', { a: lo, b: hi });
   bar.hidden = false;
   if (bar.dataset.k !== key) {
     bar.dataset.k = key;
     const tick = new Map(); S.log.forEach(e => { const c = killOf(e) || e.kind === 'out' ? 'dead' : e.kind === 'attack' ? 'atk' : e.kind === 'hatch' && e.n ? 'pod' : ''; if (c) { if (!tick.has(e.turn)) tick.set(e.turn, new Set()); tick.get(e.turn).add(c); } });
-    bar.innerHTML = `<div class="tlrow"><b class="tltxt"></b><button class="btn" data-act="tlall">${t('All')}</button><button class="btn" data-act="tlnow">${t('Now')}</button>${DECOYS.size ? `<button class="btn" data-act="tldecoy" aria-pressed="${!!T.hideDecoy}" title="${esc(t('Hide the noises that cannot be where the player is'))}">${t('Impossible')}</button>` : ''}<button class="btn" data-act="mkall" aria-label="${t('Close')}">${ico('close', 16)}</button></div>
+    bar.innerHTML = `<div class="tlrow"><b class="tltxt"></b><button class="btn" data-act="tlall">${t('All')}</button><button class="btn" data-act="tlnow">${t('Now')}</button>${Object.values(fakeMap()).includes('f') ? `<button class="btn" data-act="tldecoy" aria-pressed="${!!T.hideDecoy}" title="${esc(t('Hide the declarations you marked fake'))}">${t('Fakes')}</button>` : ''}<button class="btn" data-act="mkall" aria-label="${t('Close')}">${ico('close', 16)}</button></div>
       <div class="tlrow2"><button class="btn" data-act="tlprev" aria-label="${t('Earlier')}">${ico('left', 16)}</button><button class="btn" data-act="tlplay" aria-label="${t(T.tlTimer ? 'Stop' : 'Play the turns')}">${ico(T.tlTimer ? 'close' : 'turn', 16)}</button><button class="btn" data-act="tlnext" aria-label="${t('Later')}">${ico('next', 16)}</button>
       <div class="tltrack"><div class="tlfill"></div><div class="tlticks">${[...tick].map(([n, s]) => `<i class="${[...s].join(' ')}" style="left:${pct(n).toFixed(1)}%"></i>`).join('')}</div>
-      <input type="range" class="tl lo" min="1" max="${max}" aria-label="${t('From turn')}"><input type="range" class="tl hi" min="1" max="${max}" aria-label="${t('To turn')}"></div></div>`;
-    const los = bar.querySelector('.lo'), his = bar.querySelector('.hi');
-    const apply = who => { let a = +los.value, b = +his.value; if (a > b) { if (who === los) a = b; else b = a; } T.rng = [a, b]; paintOverlay(); render(); };
-    los.oninput = () => apply(los); his.oninput = () => apply(his);
+      <i class="tlth lo" role="slider" aria-label="${t('From turn')}"></i><i class="tlth hi" role="slider" aria-label="${t('To turn')}"></i></div></div>`;
+    tlDrag(bar.querySelector('.tltrack'));
   }
-  bar.querySelector('.lo').value = lo; bar.querySelector('.hi').value = hi;
+  const th = c => bar.querySelector('.tlth.' + c); th('lo').style.left = pct(lo) + '%'; th('hi').style.left = pct(hi) + '%'; th('lo').setAttribute('aria-valuenow', lo); th('hi').setAttribute('aria-valuenow', hi);
   bar.querySelector('.tltxt').textContent = lab;
   const f = bar.querySelector('.tlfill'); f.style.left = pct(lo) + '%'; f.style.width = Math.max(0, pct(hi) - pct(lo)) + '%';
 }
@@ -386,7 +425,7 @@ function paintOverlay() {
   renderMkBar(); followBar(); renderTl();
   if (!inPlay) return;
   if (routes) { paintRoutes(routes, fset, hp, marks); return; }
-  const own = ownSteps(); DECOYS = findDecoys();
+  const own = ownSteps(); SUGGEST = suggestFakes();
   // follow mode: shade the sectors the followed player could have reached since they were last heard
   if (focus && focus !== 'me' && zoneG) {
     const fz = followZone(focus), [col] = pal(focus);
@@ -402,8 +441,8 @@ function paintOverlay() {
     const key = e.kind === 'spot' ? 'spot' : playerKey(e);
     if (key === 'me') continue;                                   // my own steps come from my route
     const armed = e.kind === 'attack' && S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === key);
-    const decoy = DECOYS.has(e.id); if (decoy && T.hideDecoy) continue;
-    visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind, armed, decoy });
+    const st = fakeState(e.id); if (st === 'f' && T.hideDecoy) continue;
+    visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind, armed, st });
   }
   const mine = k => k === 'me' || k === 'bluff';
   // the last N known steps of every player, yours included (0 = all); following someone shows only them, from the start
@@ -416,8 +455,8 @@ function paintOverlay() {
     if (!recent(v)) continue;
     if (!bySector.has(v.sector)) bySector.set(v.sector, new Map());
     const m = bySector.get(v.sector);
-    if (!m.has(v.key)) m.set(v.key, { key: v.key, turns: [], kind: v.kind, armed: false, decoy: true });
-    const it = m.get(v.key); it.decoy = it.decoy && !!v.decoy; if (!it.turns.includes(v.turn)) it.turns.push(v.turn);
+    if (!m.has(v.key)) m.set(v.key, { key: v.key, turns: [], kind: v.kind, armed: false, allF: true, allD: true });
+    const it = m.get(v.key); it.allF = it.allF && v.st === 'f'; it.allD = it.allD && (v.st === 'f' || v.st === 'd'); if (!it.turns.includes(v.turn)) it.turns.push(v.turn);
     if (v.kind === 'attack') it.armed = !!v.armed;
     const rank = { route: 0, noise: 1, attack: 2, reveal: 3, spot: 0 };
     if (rank[v.kind] > rank[it.kind]) it.kind = v.kind;
@@ -441,7 +480,7 @@ function paintOverlay() {
       const faded = it.key === 'me' && !own.heard.has(last);
       const dim = fset.length && !(fset.includes(it.key) || (fset.includes('me') && ownM)), old = !T.rng && !fset.length && !ownM && S.turn - last >= 2;
       if (!bluff) mkPos.set((ownM ? 'me' : it.key) + '|' + sec, [h.x + dx, h.y + dy, size]);
-      const g = el('g', { class: `mk pm ${it.kind}${it.decoy ? ' decoy' : ''}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
+      const g = el('g', { class: `mk pm ${it.kind}${it.allF ? ' fake' : it.allD ? ' dubious' : ''}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
       if (it.key === 'me' && sec === S.pos) { const cls = fset.length && !fset.includes('me') ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const rg = el('g', { transform: `translate(${at_.cx} ${at_.cy})` }, me), ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c }, rg); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); }
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
@@ -516,7 +555,7 @@ function pathSteps(path) {
 function liveSteps(fset, recent) {
   const per = new Map();
   S.log.forEach(e => {
-    if (!e.sector || !['noise', 'attack', 'reveal'].includes(e.kind) || DECOYS.has(e.id)) return;
+    if (!e.sector || !['noise', 'attack', 'reveal'].includes(e.kind) || fakeState(e.id) === 'f') return;
     const k = playerKey(e); if (k === 'me') return;
     if (!per.has(k)) per.set(k, new Map());
     const m = per.get(k); if (!m.has(e.turn)) m.set(e.turn, new Set()); m.get(e.turn).add(e.sector);
@@ -1134,6 +1173,8 @@ const actions = {
   tlall() { T.rng = [1, Math.max(1, S.turn)]; render(); paintOverlay(); },
   tlnow() { T.rng = [Math.max(1, S.turn), Math.max(1, S.turn)]; render(); paintOverlay(); },
   tldecoy() { T.hideDecoy = !T.hideDecoy; paintOverlay(); },
+  flag(b) { const s = fakeState(b.dataset.id); setFake(b.dataset.id, s === 'd' ? 'f' : s === 'f' ? '' : 'd'); },
+  fakeyes(b) { setFake(b.dataset.id, 'f'); }, fakedub(b) { setFake(b.dataset.id, 'd'); }, fakeno(b) { setFake(b.dataset.id, 'k'); },
   tlplay() { if (T.tlTimer) return stopPlay(); const keep = T.rng.slice(); let n = keep[0]; T.tlTimer = setInterval(() => { T.rng = [n, n]; render(); paintOverlay(); if (++n > S.turn) { stopPlay(); T.rng = keep; render(); paintOverlay(); } }, 900); paintOverlay(); }
 };
 Object.assign(actions, annoActions);
@@ -1151,9 +1192,9 @@ function onCell(id) {
   if (S.role && S.phase === 'move' && !S.over && T.reach.has(id)) { selectCell(id); buzz(); return; }
   T.inspect = id; paintCells();
   const i = $('#inspect'), note = (S.notes || []).find(n => n.sector === id); i.hidden = false;
-  const seenHere = S.role ? S.log.filter(e => e.sector === id && ['noise', 'attack', 'spot', 'reveal', 'hatch'].includes(e.kind) && inRng(e.turn)).slice(0, 4).map(e => `<div class="ihere">${dotIcon(playerKey(e))}<b>${esc(e.mine ? t('Me') : e.who)}</b> · ${esc(t('T{n}', { n: e.turn }))} · ${esc(entryText(e))}${DECOYS.has(e.id) ? ' · ' + esc(t('impossible')) : ''}</div>`).join('') : '';
+  const seenHere = S.role ? S.log.filter(e => e.sector === id && ['noise', 'attack', 'spot', 'reveal', 'hatch'].includes(e.kind) && inRng(e.turn)).slice(0, 4).map(e => `<div class="ihere">${dotIcon(playerKey(e))}<b>${esc(e.mine ? t('Me') : e.who)}</b> · ${esc(t('T{n}', { n: e.turn }))} · ${esc(entryText(e))}${fakeState(e.id) === 'f' ? ' · ' + esc(t('marked fake')) : fakeState(e.id) === 'd' ? ' · ' + esc(t('dubious')) : SUGGEST.has(e.id) && !fakeState(e.id) ? ' · ' + esc(t('seems fake')) : ''}${e.mine || e.kind === 'hatch' ? '' : flagBtn(e)}</div>`).join('') : '';
   i.innerHTML = `<b>${'HA1234'.includes(at(T.map, id)) ? '' : id}</b>${esc(typeName(at(T.map, id)))}${note ? `<div class="inote">${stickerIco(note.icon, 18)} ${esc(note.text || '')} <button class="btn" data-act="noteedit" data-s="${id}">${t('Edit')}</button></div>` : ''}${seenHere}`;
-  clearTimeout(onCell.h); onCell.h = setTimeout(() => { T.inspect = null; i.hidden = true; paintCells(); }, note ? 6000 : 3500);
+  clearTimeout(onCell.h); onCell.h = setTimeout(() => { T.inspect = null; i.hidden = true; paintCells(); }, note || seenHere ? 7000 : 3500);
 }
 
 /* ---------------- announcements ---------------- */

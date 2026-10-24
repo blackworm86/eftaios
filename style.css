@@ -941,7 +941,7 @@ ul.log li.turnh{background:none;border:0;padding:10px 4px 2px;font:700 12px var(
 .tl::-webkit-slider-runnable-track{background:none;height:30px}.tl::-moz-range-track{background:none}
 .tl::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:28px;height:28px;margin-top:1px;border-radius:50%;background:#fff;border:3px solid var(--acc,#f5a623);box-shadow:0 1px 4px #0008}
 .tl::-moz-range-thumb{pointer-events:auto;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--acc,#f5a623)}
-.mk.decoy{opacity:.32}.mk.decoy .hex,.mk.decoy path:first-child{stroke-dasharray:3 2}
+.mk.fake{opacity:.3}.mk.fake .hex,.mk.fake path:first-child{stroke-dasharray:3 2}.mk.dubious{opacity:.62}
 .ihere{display:flex;align-items:center;gap:5px;font-size:12.5px;margin-top:4px}
 .turnlist.chips{display:flex;flex-wrap:wrap;gap:6px}.turnlist.chips li{min-height:36px;padding:3px 10px 3px 8px;gap:6px}.turnlist.chips .pname{flex:none}
 /* v16: touch targets (44px) and the tablet in portrait: the map gets the larger share */
@@ -955,3 +955,21 @@ body[data-tab=table] .panel{max-height:calc(64dvh + 54px + env(safe-area-inset-b
 .maphint{margin:8px 0;padding:10px 12px;border-radius:12px;background:#ffb41f14;border:1px solid var(--amber)}.maphint b{display:block;font:700 14px var(--font-head);margin-bottom:4px}.maphint ul{margin:0 0 8px;padding-left:18px;font-size:13.5px;color:#c4cde0;display:grid;gap:3px}
 .tlbar{padding:4px 8px 6px;gap:2px}.tlrow .btn,.tlrow2 .btn{min-height:34px;min-width:34px;padding:2px 8px;font-size:13px}
 .tlrow2{display:flex;align-items:center;gap:5px}.tlrow2 .tltrack{flex:1;margin:0 10px}
+
+/* v16.1: marking declarations fake or dubious */
+.log li{display:flex;align-items:center;gap:8px}.log li>span{flex:1;min-width:0}
+.flagbtn{flex:none;width:36px;height:36px;display:inline-grid;place-items:center;border-radius:10px;border:1px solid var(--line);background:none;color:var(--dim);padding:0}
+.flagbtn.d{color:#ffb41f;border-color:#ffb41f;background:#ffb41f1f}.flagbtn.f{color:#ff6a5f;border-color:#ff3b30;background:#ff3b3022}.flagbtn.sug{color:#ffb41f;animation:flagpulse 1.6s ease-out infinite}
+@keyframes flagpulse{0%{box-shadow:0 0 0 0 #ffb41f88}100%{box-shadow:0 0 0 8px #ffb41f00}}
+@media (prefers-reduced-motion:reduce){.flagbtn.sug{animation:none;box-shadow:0 0 0 2px #ffb41f88}}
+.ihere .flagbtn{width:36px;height:36px;margin-left:auto}
+.fakecard{margin:8px 0;display:grid;gap:8px}.fakecard .fk{padding:8px 10px;border-radius:12px;background:#ffb41f14;border:1px solid var(--amber)}.fakecard p{margin:0 0 6px;font-size:13.5px}.fakecard .btn{min-height:40px}
+.fakeline{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;margin:6px 0;padding:4px 10px;border-radius:10px;border:1px solid var(--amber);background:#ffb41f14;color:var(--text);font:600 13px var(--font)}.fakeline span{flex:1;text-align:left}.fakeline b{color:var(--amber)}
+.roundcard{position:relative}.fakechip{position:absolute;right:6px;top:2px;display:flex;align-items:center;gap:4px;min-height:32px;padding:2px 10px;border-radius:999px;border:1px solid var(--amber);background:#ffb41f22;color:var(--amber);font:700 12px var(--mono)}
+
+/* v16.2: a slider made of pointers: handles, and the bar between them drags the whole span */
+.tltrack{touch-action:none;cursor:pointer;margin:0 16px}.tltrack::before{top:13px}
+.tlfill{top:0;height:30px;background:none;cursor:grab;z-index:1}.tlfill::before{content:"";position:absolute;left:0;right:0;top:11px;height:8px;border-radius:4px;background:var(--acc,#f5a623)}
+.tlfill:active{cursor:grabbing}
+.tlth{position:absolute;top:1px;z-index:2;width:28px;height:28px;margin-left:-14px;border-radius:50%;background:#fff;border:3px solid var(--acc,#f5a623);box-shadow:0 1px 4px #0008;box-sizing:border-box;cursor:ew-resize}
+.tlth.hi{z-index:3}

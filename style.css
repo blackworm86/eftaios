@@ -1016,3 +1016,13 @@ ul.log li.turnh{padding-top:6px}
 .roundcard.compact ul{max-height:none;overflow:visible;gap:2px}.roundcard.compact li{font-size:12.5px;line-height:1.25}.roundcard.compact li .gi{width:16px;height:16px}
 @media (max-height:700px){.roundcard.compact ul{max-height:22px;overflow-y:auto}}
 .stage.classic .pb .pcd{color:#111}.stage.classic .pb .pcd i{background:#fff;border-color:#555}.stage.classic .pb .pcd,.stage.classic .pb .pa i{text-shadow:none}
+
+/* v19: QA pass */
+.flow:not([hidden]),#flow:not([hidden]){padding-bottom:max(30px,env(safe-area-inset-bottom))}   /* room for the version line, so it never sits over a control */
+.mkbar{max-height:calc(100% - 12px);overflow-y:auto;overflow-x:visible;scrollbar-width:none;padding:8px 10px 6px 8px;margin:-8px 0 0 -2px;touch-action:pan-y;overscroll-behavior:contain}
+.mkbar::-webkit-scrollbar{display:none}
+.mkbar .mkh.all[disabled]{opacity:.8}
+.pb button.psq{position:relative}.pb button.psq::after{content:"";position:absolute;inset:-6px -4px}   /* a finger-sized hit area around the small square */
+@media (pointer:coarse){.tlrow .btn,.tlrow2 .btn{min-height:40px;min-width:40px}.lfc{min-height:38px}#hd-role{min-height:40px;display:inline-flex;align-items:center}.logfilter .lfc{min-height:38px}}
+@media (max-height:700px){body[data-tab=table] .panel{max-height:calc(56dvh + 54px + env(safe-area-inset-bottom))}}
+#flow-card{margin-bottom:34px}

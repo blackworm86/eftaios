@@ -24,7 +24,7 @@ function startMyTurn(silent) {
   if (S.over) { endTurn(); return; }
   S.undo = null;
   S.phase = 'move'; S.res = null; S.adr = false; S.cat = false; T.sel = null; T.opt = null; refreshReach();
-  if (!silent) { toast(t('Your turn!')); buzz(); }
+  if (!silent) buzz();   // the orange bar already says it: no toast on top of it
   if (S.pos) focusOn(S.pos);
 }
 function nextTurn() {

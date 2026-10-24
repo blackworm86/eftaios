@@ -429,13 +429,15 @@ const Bot = (() => {
     const canPower = k => adv && ab === k && !spent(k);
     const useCap = adv && sk.items;
     st.adr = false;
-    // a visible moment of thought before anything happens; the same length whatever the bot is about to do
-    if (ctx.think) await ctx.think(sk.think * 1000 * (0.8 + rnd() * 0.4));
+    // a visible moment of thought before anything happens, the same length whatever the bot is about to do; the bot works out its turn meanwhile,
+    // so a slow device takes the longer of the two, not the sum
+    const pause = ctx.think ? ctx.think(sk.think * 1000 * (0.8 + rnd() * 0.4)) : null;
     const mutate = () => { useItem('mutation'); st.role = 'alien'; st.fed = false; st.reborn = true; human = false; st.path.push({ turn: H.turn, pos: st.pos, note: 'mutated' }); if (ctx.mutated) ctx.mutated(); };
-    if (human && !hatchCells().length) { if (adv && may('mutation')) mutate(); else { st.over = 'trapped'; st.outSent = true; ctx.out(idx, 'trapped'); return; } }
+    if (human && !hatchCells().length) { if (pause) await pause; if (adv && may('mutation')) mutate(); else { st.over = 'trapped'; st.outSent = true; ctx.out(idx, 'trapped'); return; } }
     let B = beliefs(H, me, lvl), W = world(B, H, idx, lvl, st);
     const myCell = () => g.idx.get(st.pos);
     const refresh = () => { B = beliefs(H, me, lvl); W = world(B, H, idx, lvl, st); };
+    if (pause) await pause;
     const jump = to => { st.pos = to; st.path.push({ turn: H.turn, pos: to, note: 'teleport' }); };
     // Teleport (a card, or the Co-pilot who shows who she is) when the Human sector offers a clearly better move; Blink Aliens too
     if (useCap) {

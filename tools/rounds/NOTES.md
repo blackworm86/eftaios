@@ -347,3 +347,14 @@ New in the belief tracker (bot.js, skill key `table`):
 Seat ladder (1 hard + 5 normal / 1 normal + 5 easy, all seats): Alien kills per game hard 0.65 -> 0.92, normal 0.56 -> 0.66, easy 0.16 -> 0.18; Human escape hard 57% -> 40%, normal 54% -> 43%, easy 61% -> 58%.
 Friendly fire drops only 5-30%: the other Aliens still look Human to each other, so the remaining cases need the Phase 3 planner (which also weighs every attack).
 Turn time on this machine: worst 2.0 s (normal, 8 players), mean 10-40 ms. On a phone that may break the 5 s budget; chooseDecoy (one belief run per candidate sector) is the first place to cut.
+
+## Speed (hard, 8 players, one game on a quiet machine, per bot turn)
+
+| | mean | p95 | worst |
+|---|---|---|---|
+| before | 36 ms | 152 ms | 344 ms |
+| exp() lookup + shared Alien pull sums | 28 ms | 120 ms | 293 ms |
+
+The 72 games of the hard 6- and 8-player suite give identical results before and after (same turns, winner, kills and attacks), so the bots decide the same.
+The bot also now works out its turn while the visible thinking pause runs, so a slow phone waits the longer of the two (4.2 s on Hard), not the sum.
+The belief tracker still rebuilds from the whole log each turn; an incremental version is the next step if a phone still struggles.

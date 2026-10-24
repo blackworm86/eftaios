@@ -63,6 +63,7 @@ const Bot = (() => {
 
   /* ---------- what the bot believes about everyone else (public information only) ---------- */
   const EPS = 0.004;
+  const expTable = k => Float64Array.from({ length: 256 }, (_, d) => Math.exp(-d / k)), E15 = expTable(1.5), E12 = expTable(1.2);   // exp(-d/k) for the integer distances, looked up instead of computed
   /* sim = { entry }: what the others would believe about me if I announced `entry` now (returns my tracked seat only) */
   function beliefs(H, me, lvl = 'normal', sim) {
     const g = graph(), sk = skill(lvl), N = g.N, seats = H.seats, myIdx = seats.findIndex(s => s.id === me.id);
@@ -83,13 +84,19 @@ const Bot = (() => {
       }
       return o;
     };
+    const zOf = new Map();
     // Aliens chase what they hear: the field F is high near where other players last announced themselves
     const kA = (d, speed, F) => {
       const o = new Float64Array(N), R = g.reach[speed];
+      let Z = null;
+      if (F) {   // the pull of every sector's neighbourhood does not depend on the player: worked out once per field and speed
+        let zs = zOf.get(F); if (!zs) zOf.set(F, zs = {});
+        Z = zs[speed]; if (!Z) { Z = zs[speed] = new Float64Array(N); for (let s = 0; s < N; s++) { let z = 0; const l = R[s]; for (let k = 0; k < l.length; k++) z += 1 + sk.huntW * F[l[k]]; Z[s] = z; } }
+      }
       for (let s = 0; s < N; s++) {
         if (d[s] < 1e-9) continue; const l = R[s]; if (!l.length) continue;
         if (!F) { const w = d[s] / l.length; for (let k = 0; k < l.length; k++) o[l[k]] += w; continue; }
-        let z = 0; for (let k = 0; k < l.length; k++) z += 1 + sk.huntW * F[l[k]];
+        const z = Z[s];
         for (let k = 0; k < l.length; k++) o[l[k]] += d[s] * (1 + sk.huntW * F[l[k]]) / z;
       }
       return o;
@@ -98,12 +105,12 @@ const Bot = (() => {
     const lastPub = [new Map()]; for (let r = 1; r <= H.turn + 1; r++) { const m = new Map(lastPub[r - 1]); (pubEv[r] || []).forEach(x => { if (x.cell !== undefined) m.set(x.id, x); }); lastPub.push(m); }
     // Aliens also guard the hatches: a standing pull towards the sectors around each open hatch
     const campF = new Float64Array(N);
-    hatches.forEach(h => { const ring = g.nbH[h]; for (let j = 0; j < N; j++) { let best = 0; for (const a of ring) { const d = g.dA[a][j]; if (d !== 255) best = Math.max(best, Math.exp(-d / 1.2)); } campF[j] += 0.5 * best; } });
+    hatches.forEach(h => { const ring = g.nbH[h]; for (let j = 0; j < N; j++) { let best = 0; for (const a of ring) { const d = g.dA[a][j]; if (d !== 255) best = Math.max(best, E12[d]); } campF[j] += 0.5 * best; } });
     const fieldCache = new Map();
     const field = (r, self) => {
       const key = r + '|' + self; if (fieldCache.has(key)) return fieldCache.get(key);
       const F = Float64Array.from(campF); let any = true;
-      (lastPub[r - 1] || new Map()).forEach((x, id) => { if (id === self) return; const w = Math.pow(0.8, r - 1 - x.t), d = g.dA[x.cell]; any = true; for (let j = 0; j < N; j++) if (d[j] !== 255) F[j] += w * Math.exp(-d[j] / 1.5); });
+      (lastPub[r - 1] || new Map()).forEach((x, id) => { if (id === self) return; const w = Math.pow(0.8, r - 1 - x.t), d = g.dA[x.cell]; any = true; for (let j = 0; j < N; j++) if (d[j] !== 255) F[j] += w * E15[d[j]]; });
       const out = any ? F : null; fieldCache.set(key, out); return out;
     };
     // likelihood of one announcement for each possible true sector

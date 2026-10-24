@@ -998,3 +998,21 @@ ul.log li.turnh{padding-top:6px}
 /* the compressed tile keeps the faction outline (the generic strip button style used to override it) */
 .mkbar button.pb{border:3px solid var(--b);background:#0b1222ee}.mkbar button.pb.guess{border-width:2px}.mkbar button.pb.known{border-width:4px}
 .mkbar button.pb.picked{box-shadow:0 0 0 2px var(--amber)}.mkbar button.pb.mini{width:42px;height:42px}
+
+/* v18: the Status list uses the map's pod colours */
+.hatches button,.hatches .hb{border-color:#1c5d93;background:#1c5d93;color:#fff}
+.hatches button[aria-pressed=true],.hatches .hb.closed{text-decoration:none;color:#fff}
+.hatches .hb.closed.green,.hatches button.green[aria-pressed=true]{border-color:#37a950;background:#37a950}
+.hatches .hb.closed.red,.hatches button.red[aria-pressed=true]{border-color:#ed192e;background:#ed192e}
+.hatches button[aria-pressed=true]:not(.green):not(.red){border-color:#3a2630;background:#3a2630}
+
+/* v18: items played before the move */
+.premove{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;z-index:24;display:flex;gap:8px;padding:6px;border-radius:14px;background:#0b1522ee;border:1px solid var(--amber)}
+.premove .btn{display:flex;align-items:center;gap:6px;min-height:44px;padding:4px 12px;font-size:13px}
+.premove .gi{width:26px;height:26px}
+@media (min-width:900px){.deskLog{margin-top:14px}.deskLog h3{margin:0 0 8px}}
+
+/* v18: on my turn the list shows every player's line, tighter, without an inner scroll */
+.roundcard.compact ul{max-height:none;overflow:visible;gap:2px}.roundcard.compact li{font-size:12.5px;line-height:1.25}.roundcard.compact li .gi{width:16px;height:16px}
+@media (max-height:700px){.roundcard.compact ul{max-height:22px;overflow-y:auto}}
+.stage.classic .pb .pcd{color:#111}.stage.classic .pb .pcd i{background:#fff;border-color:#555}.stage.classic .pb .pcd,.stage.classic .pb .pa i{text-shadow:none}

@@ -220,7 +220,19 @@ function mapCmd() {
   return { at: S.pos, key: 'opts:' + opts.map(x => x.k).join(','), html: `<div class="optbar" role="group" aria-label="${t('What you do next')}">${opts.map(x =>
     `<button class="opt${x.tone ? ' ' + x.tone : ''}" data-act="${x.k === 'undo' ? 'undo' : 'opt'}" data-k="${esc(x.k)}">${x.icon}<span>${esc(x.label)}</span></button>`).join('')}</div>` };
 }
+/* Adrenaline and Teleport are played before the move: at the start of the turn they sit on the map, in a row at the foot of it */
+const premoveList = () => (typeof digital === 'function' && digital() && S.role && !S.over && !gameOver() && myTurn() && S.phase === 'move' && !T.sel && !T.pick && !T.markMode && S.tab === 'play')
+  ? [...new Set(S.items)].filter(k => ['adrenaline', 'teleport'].includes(k) && canUse(k) && !(k === 'adrenaline' && S.adr) && !(k === 'teleport' && S.pos === find(T.map, 'H'))) : [];
+const premoveOn = () => !T.rng && premoveList().length > 0;
+function paintPremove() {
+  const bar = $('#premove'); if (!bar) return;
+  const list = T.rng ? [] : premoveList();
+  bar.hidden = !list.length; if (!list.length) { bar.dataset.k = ''; bar.textContent = ''; return; }
+  const key = LANG + '|' + list.join(',');
+  if (bar.dataset.k !== key) { bar.dataset.k = key; bar.innerHTML = list.map(k => `<button class="btn" data-act="itemdlg" data-i="${k}">${gico(k, 26)}<span>${t(ITEMS[k][0])}</span></button>`).join(''); }
+}
 function paintMoveBtns() {
+  paintPremove();
   const st = $('#stage'); if (!st || !T.map) return;
   let box = $('#movepick');
   if (!box) { box = document.createElement('div'); box.id = 'movepick'; box.className = 'movepick'; box.hidden = true; st.appendChild(box); }
@@ -1391,10 +1403,11 @@ function render() {
   if (T.pick) h = `<div class="banner"><span>${esc(T.pick.sel ? t('Confirm {s} on the map, or tap another sector.', { s: T.pick.sel }) : T.pick.label)}</span>${T.pick.locked ? '' : `<button class="btn" data-act="cancelpick">${t('Cancel')}</button>`}</div>`;
   if (T.markMode && !T.pick) h = markBanner();
   if (T.markMode && !T.pick) { /* marking: banner only */ }
-  else if (S.tab === 'play') h += playPanel();
+  else if (S.tab === 'play') { h += playPanel(); if (S.role && !T.pick && S.log.length && window.matchMedia('(min-width:900px)').matches) h += `<div class="deskLog"><h3>${t('Log')}</h3>${logBlock()}</div>`; }   // a desktop has the room: the history sits under the Play box
   else if (S.tab === 'table') h += tablePanel();
   else h += morePanel();
   p.innerHTML = h;
+  if (typeof gameOver === 'function' && S.role && gameOver()) renderMkBar();   // the end of the game shows every Character in the bubbles, however it was reached
   const rc = $('#room-code'); if (rc) rc.onkeydown = e => { if (e.key === 'Enter') actions.syncjoin(); };
   const sh = $('#sheet'); if (sh) sh.scrollLeft = sh.scrollWidth;   // the sheet opens on the latest turns
 }

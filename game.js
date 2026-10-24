@@ -364,11 +364,12 @@ const shownItems = k => ((cardCounts()[k] || {}).shown || []).map(id => `<span c
 const handHtml = () => {
   if (!digital()) return '';
   const ab = abilList().map(([a, l]) => `<button class="slot abil" data-act="${a}" aria-label="${esc(t(S.char))}: ${esc(t(l))}" title="${esc(t(S.char))}">${ico('next', 16)}<span>${t(l)}</span></button>`).join('');
-  const items = S.items.map(k => `<button class="slot${S.role === 'alien' ? ' off' : ''}" data-act="itemdlg" data-i="${k}"${S.role === 'alien' ? ` title="${esc(t('Only Humans can use Items'))}"` : ''}>${gico(k, 28)}<span>${t(ITEMS[k][0])}</span></button>`).join('');
+  const onMap = k => premoveOn() && ['adrenaline', 'teleport'].includes(k);   // those two are on the map at the start of the move
+  const items = S.items.filter(k => !onMap(k)).map(k => `<button class="slot${S.role === 'alien' ? ' off' : ''}" data-act="itemdlg" data-i="${k}"${S.role === 'alien' ? ` title="${esc(t('Only Humans can use Items'))}"` : ''}>${gico(k, 28)}<span>${t(ITEMS[k][0])}</span></button>`).join('');
   const sil = Math.max(0, ((cardCounts().me || {}).down || 0) - S.items.length);
   const pile = sil ? `<div class="pile" role="img" aria-label="${esc(t('{n} Silence cards face down', { n: sil }))}"><span class="c"></span>${sil > 1 ? '<span class="c"></span>' : ''}${sil > 2 ? '<span class="c"></span>' : ''}<span class="n">×${sil}</span><span class="lab">${t('Silence')}</span></div>` : '';
   if (basic()) return pile ? `<div class="slots" role="group" aria-label="${t('Your cards')}">${pile}</div>` : '';
-  return `<div class="slots" role="group" aria-label="${t('Your cards')}">${ab}${items}${pile}${items || pile || ab ? '' : `<span class="slot empty">${t('No items')}</span>`}</div>`;
+  return `<div class="slots" role="group" aria-label="${t('Your cards')}">${ab}${items}${pile}${items || pile || ab || S.items.length ? '' : `<span class="slot empty">${t('No items')}</span>`}</div>`;
 };
 function itemDlg(k) {
   const can = canUse(k) && myTurn() && !S.over && !gameOver();
@@ -474,7 +475,7 @@ function playPanel() {
     const seen = !sel && !!roundLines().length;   // with declarations to read, they take the place of the "tap a sector" line
     return `${catNote()}${seen ? '' : `<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>`}
       ${sel ? `<p class="dim hintline">${t('Confirm the move on the map, next to the sector.')}</p>` : ''}
-      ${roundCard(true)}${handHtml()}${extras()}`;
+      ${roundCard(true, !!sel)}${handHtml()}${extras()}`;
   }
   const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };
   const head = `${catNote()}<h2>${esc(label(S.pos))}${'.sHA'.includes(ty) ? ` <span class="dim sub">${esc(typeName(ty))}</span>` : ''}</h2>`;
@@ -572,7 +573,8 @@ function decksHtml() {
   const front = Object.values(cardCounts()).reduce((a, v) => a + v.down, 0);
   return `<p class="decks1">${t('Cards left')}: ${cell('sector', 'Sector cards')} · ${cell('hatch', 'Escape Pod cards')}${front ? ` · <span><b>${front}</b> ${t('face down in front of players')}</span>` : ''}</p>`;
 }
-function tablePanel() {
+/* the log: filters and the list, grouped by turn (the Table tab, and beside the Play panel on a desktop) */
+function logBlock() {
   SUGGEST = suggestFakes();
   const sel = logSel(), quiet = T.logEv ? ['noise', 'silence'] : T.logSil ? ['silence'] : [];
   let lastTurn = null;
@@ -581,6 +583,10 @@ function tablePanel() {
     lastTurn = e.turn;
     return head + `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><span>${icon}<b>${esc(e.mine ? t('Me') : e.who)}</b>${e.mine ? '' : roleTag(k)} · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span>${!e.mine && ['noise', 'attack', 'silence', 'spot', 'item'].includes(e.kind) ? flagBtn(e) : ''}</li>`;
   }).join('');
+  return `${S.log.length ? logFilterHtml() : ''}
+      ${ln ? `<ul class="log">${ln}</ul>${digital() || S.hot ? '' : `<button class="btn link wide" data-act="clearlog">${t('Clear announcements')}</button>`}` : `<p class="dim">${t('No announcements yet.')}</p>`}`;
+}
+function tablePanel() {
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
   const sec = { players: 'sheet', hatches: 'status' }[T.tableSec] || T.tableSec || 'sheet', hatchAct = digital() ? '' : 'hatch';
   const secs = [['sheet', 'Sheet'], ['log', 'Log'], ['status', 'Status']];
@@ -588,10 +594,10 @@ function tablePanel() {
     <div class="tsecs">
     <section class="sec sheetsec${sec === 'sheet' ? ' on' : ''}">${sheetHtml()}${legendBox()}</section>
     <section class="sec log${sec === 'log' ? ' on' : ''}">${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
-      ${S.log.length ? logFilterHtml() : ''}
-      ${ln ? `<ul class="log">${ln}</ul>${digital() || S.hot ? '' : `<button class="btn link wide" data-act="clearlog">${t('Clear announcements')}</button>`}` : `<p class="dim">${t('No announcements yet.')}</p>`}</section>
+      ${logBlock()}</section>
     <section class="sec status${sec === 'status' ? ' on' : ''}">${skip}<h3>${t('Escape Pods')}${hatchAct ? ` <span class="hint">${t('tap to close or reopen')}</span>` : ''}</h3>
-      <div class="hatches compact">${mapHatches().map(n => { const lbl = `${t('Escape Pod {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}`; return hatchAct ? `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${lbl}">${n}</button>` : `<span class="hb${S.hatches[n] ? ' closed' : ''}" role="img" aria-label="${lbl}">${n}</span>`; }).join('')}</div>
+      <div class="hatches compact">${mapHatches().map(n => { const lbl = `${t('Escape Pod {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}`, used = S.log.find(e => e.kind === 'hatch' && +e.n === +n), tone = S.hatches[n] ? (used && !used.ok ? ' red' : ' green') : '';   // the map's colours: blue open, green escaped, red damaged
+      return hatchAct ? `<button data-act="hatch" data-n="${n}" class="${tone.trim()}" aria-pressed="${!!S.hatches[n]}" aria-label="${lbl}">${n}</button>` : `<span class="hb${S.hatches[n] ? ' closed' : ''}${tone}" role="img" aria-label="${lbl}">${n}</span>`; }).join('')}</div>
       ${decksHtml()}${charsHtml()}${roomBlock()}</section>
     </div>`;
 }
@@ -663,9 +669,9 @@ function roundLines() {
   return killFirst(recentOthers(40)).filter(e => { if (!['noise', 'silence', 'attack'].includes(e.kind)) return true; const k = playerKey(e); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
 }
 const annLine = e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b>${logIcon(e, 18)}<span>${esc(entryText(e))}</span><i>${t('T{n}', { n: e.turn })}</i></li>`;
-function roundCard(compact) {
+function roundCard(compact, few) {
   const es = roundLines(), nf = compact ? fakeList().length : 0; if (!es.length && !nf) return '';
-  return `<div class="roundcard${compact ? ' compact' : ''}"><small>${t('What the others declared')}</small>${nf ? `<button class="fakechip" data-act="fakereview" aria-label="${esc(t(nf === 1 ? '1 declaration seems fake' : '{n} declarations seem fake', { n: nf }))}">${ico('flag', 14)}<b>${nf}</b></button>` : ''}<ul>${es.map(annLine).join('')}</ul></div>`;
+  return `<div class="roundcard${compact ? ' compact' : ''}"><small>${t('What the others declared')}</small>${nf ? `<button class="fakechip" data-act="fakereview" aria-label="${esc(t(nf === 1 ? '1 declaration seems fake' : '{n} declarations seem fake', { n: nf }))}">${ico('flag', 14)}<b>${nf}</b></button>` : ''}<ul>${(compact ? es.slice(0, few ? 3 : 9) : es).map(annLine).join('')}</ul></div>`;
 }
 /* every Character card the table has seen so far */
 function knownChars() {

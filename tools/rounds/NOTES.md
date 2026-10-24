@@ -358,3 +358,21 @@ Turn time on this machine: worst 2.0 s (normal, 8 players), mean 10-40 ms. On a 
 The 72 games of the hard 6- and 8-player suite give identical results before and after (same turns, winner, kills and attacks), so the bots decide the same.
 The bot also now works out its turn while the visible thinking pause runs, so a slow phone waits the longer of the two (4.2 s on Hard), not the sum.
 The belief tracker still rebuilds from the whole log each turn; an incremental version is the next step if a phone still struggles.
+
+## Phase 3 (part 1): Aliens divide the targets (`roleW`)
+
+Owner play-test (tests 5-8, 4 games): Hard table 2/5 "Aliens do not coordinate, they cluster, a Psychologist escaped"; Normal 3/5; Easy 4/5 ("humans behave well, Aliens erratic": as designed);
+Hard 8 players 1/5 (a Human bot shuffled between three Secure sectors for many turns; the Captain's skipped card was not shown in the timeline).
+Fixed: the Captain now declares himself in the timeline (human UI and bots, as an identity reveal); a Human not nearer to a pod for 3+ turns takes more risk (Secure-sector share 59% -> 55%, turns to escape 16.6 -> 14.5).
+
+Targets: every open pod and up to three groups of Humans expected next turn. Each Alien hands them out the way every other Alien would (best target to whoever is nearest, among itself and the players it believes are Aliens),
+then walks to its target and chases the whole Human picture at half weight. (alienTarget in bot.js.)
+
+| hard, 6 + 8 players, 144 games each | cluster turns | kills 6p / 8p | Human escape 6p / 8p | Alien win 6p / 8p | friendly kills 6p / 8p |
+|---|---|---|---|---|---|
+| roleW 0 (before) | 36.9% | 2.24 / 3.46 | 35.0 / 30.9% | 47.2 / 50.7% | 0.42 / 0.76 |
+| roleW 8 (adopted) | 23.7% | 2.38 / 3.44 | 35.2 / 30.0% | 44.4 / 45.8% | 0.54 / 0.84 |
+| roleW 15 | 21.5% | 2.36 / 3.26 | 39.6 / 36.1% | 43.8 / 44.4% | 0.64 / 0.94 |
+
+Larger weights lose kills. Normal (216 games, roleW 6): cluster turns 31.7% -> 22.5%, kills equal, Alien win 29.6/35.2% -> 39.8/41.7%.
+Friendly fire does not fall: spread-out Aliens look more like Humans to each other. The reading of allies (Phase 2) is still the limit.

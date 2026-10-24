@@ -21,8 +21,8 @@ const Bot = (() => {
     // think: seconds of visible thinking; mistake: chance to take one of the next-best moves; decoy: 0 random, 1 believable, 2 simulated;
     // allyCost: what it costs to kill a possible Alien by mistake (attacks eliminate everybody in the sector)
     easy:   { mem: 1.0, smartBluff: false, temp: 0.5, beta: 0.2, hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.5, items: false, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: false, think: 1.4, mistake: 0.18, decoy: 0, allyCost: 8, humanCal: 0.6 },
-    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  table: true, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
-    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  table: true, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
+    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  table: true, roleW: 6, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
+    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  table: true, roleW: 8, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
   };
 
   const skill = lvl => Object.assign({}, SKILL[lvl] || SKILL.normal, window.__skill && window.__skill[lvl]);   // __skill: tuning hook for benchmarks
@@ -325,6 +325,29 @@ const Bot = (() => {
     });
     return choose(list, W.sk);
   }
+  /* Who goes where: every open pod and the groups of Humans expected next turn are targets. Each Alien hands the targets out the way every other Alien
+     would (best target to whoever is nearest, among me and the players I believe are Aliens), so with no talking they spread over different targets.
+     Returns the sector I should head for, or null. */
+  function alienTarget(W, st, next, wH) {
+    const g = W.g, N = g.N, me = g.idx.get(st.pos), T = [], sm = new Float64Array(N);
+    for (let c = 0; c < N; c++) { let v = next[c]; for (const j of g.nbA[c]) v += 0.5 * next[j]; sm[c] = v; }
+    const picked = [];
+    [...Array(N).keys()].sort((a, b) => sm[b] - sm[a]).forEach(c => {
+      if (picked.length >= 3 || sm[c] < 0.05 || g.isHatch(c) || g.isStart(c) || !picked.every(p => g.dA[p][c] >= 3)) return;
+      picked.push(c); T.push({ cell: c, v: sm[c] });
+    });
+    W.hatches.forEach((h, k) => T.push({ cell: h, v: 0.5 * wH[k] }));
+    T.sort((a, b) => b.v - a.v);
+    const near = (dist, t) => { let d = 0; for (let c = 0; c < N; c++) if (dist[c] > 1e-4) d += dist[c] * Math.min(20, g.dA[t][c] === 255 ? 20 : g.dA[t][c]); return d; };
+    const allies = W.live.filter(b => b.pA >= 0.5).map(b => ({ b, used: false }));
+    for (const t of T) {
+      let mineD = Math.min(20, g.dA[t.cell][me] === 255 ? 20 : g.dA[t.cell][me]), who = null;
+      allies.forEach(a => { if (a.used) return; const d = near(a.b.dA, t.cell); if (d < mineD - 0.01) { mineD = d; who = a; } });
+      if (!who) return t.cell;
+      who.used = true;
+    }
+    return null;
+  }
   function alienMove(ctx, W, st, B, extra = 0) {
     const g = W.g, sk = W.sk, speed = (st.fed || (abilOf(st, ctx.H.mode) === 'Fast Alien' && st.path.length <= 1) ? 3 : 2) + extra, rs = Math.min(3, speed), opts = [...reachable(T.map, st.pos, speed, 'alien').keys()];
     if (!opts.length) return null;
@@ -336,14 +359,16 @@ const Bot = (() => {
     // hatches that Humans are heading for matter most
     const wH = hs.map(h => { const dh = humanDist([h]); let w = 0.15; for (let s = 0; s < g.N; s++) if (W.humanOcc[s] > 1e-4) w += W.humanOcc[s] * Math.exp(-dh[s] / 2.5); return w; });
     const mineH = hs.length ? hs[hashId(ctx.me.id) % hs.length] : -1, wsum = wH.reduce((a, b) => a + b, 0) + (mineH >= 0 ? 0.6 : 0);
+    const tgt = sk.roleW ? alienTarget(W, st, next, wH) : null, dT = tgt === null ? null : g.dA[tgt], here0 = g.idx.get(st.pos);
     const list = [];
     opts.forEach(id => {
       const c = g.idx.get(id);
       let s = Math.max(0, alienAttackValue(ctx, W, st, c) - sk.attackAt * 0.5);
+      if (dT) s += sk.roleW * (Math.min(20, dT[here0]) - Math.min(20, dT[c])) / speed;   // closer to my target
       s += (sk.here || 0) * W.humanCnt[c];   // contact now: the sector where the tracker most expects a Human
       // planner: close in on the whole picture of where Humans may be (by real walking distance, not only what one move reaches),
       // and do not end up where the other Aliens already cover
-      if (sk.chase) { let m = 0, z = 0; for (let j = 0; j < g.N; j++) { const v = W.humanCnt[j]; if (v < 1e-4) continue; const w = sk.laneW && laneOf(j) === lane ? 1 + sk.laneW : 1; z += v * w; const d = g.dA[c][j]; if (d !== 255) m += v * w * Math.exp(-d / (sk.lam || 3)); } s += sk.chase * (z ? m / z : 0); }
+      if (sk.chase) { const cw = dT ? sk.chase * (sk.chaseWithRole === undefined ? 0.5 : sk.chaseWithRole) : sk.chase; let m = 0, z = 0; for (let j = 0; j < g.N; j++) { const v = W.humanCnt[j]; if (v < 1e-4) continue; const w = sk.laneW && laneOf(j) === lane ? 1 + sk.laneW : 1; z += v * w; const d = g.dA[c][j]; if (d !== 255) m += v * w * Math.exp(-d / (sk.lam || 3)); } s += cw * (z ? m / z : 0); }
       if (sk.spread) { let m = 0; for (let j = 0; j < g.N; j++) { const v = W.alienCnt[j]; if (v < 1e-4) continue; const d = g.dA[c][j]; if (d !== 255) m += v * Math.exp(-d / 2); } s -= sk.spread * m; }
       // strike range next turn: the most likely sectors where a Human will be
       let top = 0, sum = 0; for (const j of g.reach[rs][c]) { const v = next[j]; sum += v; if (v > top) top = v; }

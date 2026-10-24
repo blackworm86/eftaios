@@ -973,3 +973,8 @@ body[data-tab=table] .panel{max-height:calc(64dvh + 54px + env(safe-area-inset-b
 .tlfill:active{cursor:grabbing}
 .tlth{position:absolute;top:1px;z-index:2;width:28px;height:28px;margin-left:-14px;border-radius:50%;background:#fff;border:3px solid var(--acc,#f5a623);box-shadow:0 1px 4px #0008;box-sizing:border-box;cursor:ew-resize}
 .tlth.hi{z-index:3}
+
+/* v16.3: faction tags next to a player's name */
+.rb{display:inline-grid;place-items:center;min-width:14px;height:14px;margin-right:3px;padding:0 3px;border-radius:7px;font:700 9px var(--mono);font-style:normal;vertical-align:1px;color:#fff}
+.rb.alien{background:#ff3b30}.rb.human{background:#2f7dff}.rb+.gi{margin-right:3px;vertical-align:-3px}
+.mkbar button.pchip .pnm .rb{height:12px;min-width:12px;font-size:8px;margin-right:2px}

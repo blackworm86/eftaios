@@ -266,7 +266,7 @@ Object.assign(actions, {
     S.pos = find(T.map, 'H'); S.path.push({ turn: S.turn, pos: S.pos, note: 'teleport', star: 1 }); T.sel = null; afterChange(); focusOn(S.pos); toast(t('Teleported to the Human sector'));
   },
   pilot() { abUse(S, 'Pilot'); S.cat = true; star(); afterChange(); toast(t('Cat played: now draw your card')); },
-  soldier() { abUse(S, 'Soldier'); star(); runAttack(true); },
+  soldier() { abUse(S, 'Soldier'); star(); say('Id|' + S.role + '|' + (S.char || ''), 'reveal'); runAttack(true); },
   medic() {
     playerPick(t('Medic: who must reveal their identity?'), async who => {
       abUse(S, 'Medic'); say('Id|' + S.role + '|' + (S.char || ''), 'reveal'); star();
@@ -385,7 +385,7 @@ const keyOfUid = u => u === Sync.uid ? 'me' : 'u:' + u;
 function orderList() {
   const ord = tableOrder(), ps = tablePlayers(), cur = S.hot ? Hot.curId() : T.turnState && T.turnState.uid;
   if (!ord.length) return '';
-  return `<ol class="turnlist${S.hot ? '' : ' chips'}">${ord.filter(u => ps[u]).map(u => { const k = u === myId() ? 'me' : 'u:' + u; return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? ico('turn', 12) : ''}</span>${dotIcon(k)}<span class="pname">${esc(ps[u].name)}${k === 'me' ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out || !S.hot ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
+  return `<ol class="turnlist${S.hot ? '' : ' chips'}">${ord.filter(u => ps[u]).map(u => { const k = u === myId() ? 'me' : 'u:' + u; return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? ico('turn', 12) : ''}</span>${dotIcon(k)}<span class="pname">${roleTag(k)}${esc(ps[u].name)}${k === 'me' ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out || !S.hot ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
 }
 function waitPanel() {
   const cur = T.turnState;
@@ -562,7 +562,7 @@ function sheetHtml() {
   const body = rows.map(([k, n]) => {
     const u = k.startsWith('u:') ? k.slice(2) : k === 'me' ? myId() : null, p = u && ps[u], g = suspicion(k);
     const guess = k === 'me' ? '' : `<button class="gb ${g || 'none'}" data-act="sus" data-k="${esc(k)}" data-v="${NEXT_SUS[g]}" aria-label="${t('Your suspicion')}: ${t(g === 'human' ? 'Suspected Human' : g === 'alien' ? 'Suspected Alien' : 'No idea')}">${g === 'human' ? t('H') : g === 'alien' ? t('A') : '?'}</button>`;
-    return `<tr class="${u && u === cur ? 'cur' : ''}${p && p.out ? ' out' : ''}"><th><span class="who"><button class="name" data-act="follow" data-k="${esc(k)}" aria-label="${t('Follow {p}', { p: esc(n) })}"><span class="dotw">${dotIcon(k)}${outMark(k)}${cardBadge(k)}</span><span>${esc(shortName(n))}</span></button>${shownItems(k)}${guess}</span></th>${turns.map(x => cell(k, x)).join('')}</tr>`;
+    return `<tr class="${u && u === cur ? 'cur' : ''}${p && p.out ? ' out' : ''}"><th><span class="who"><button class="name" data-act="follow" data-k="${esc(k)}" aria-label="${t('Follow {p}', { p: esc(n) })}"><span class="dotw">${dotIcon(k)}${outMark(k)}${cardBadge(k)}</span><span>${roleTag(k)}${esc(shortName(n))}</span></button>${shownItems(k)}${guess}</span></th>${turns.map(x => cell(k, x)).join('')}</tr>`;
   }).join('');
   return `<div class="sheet${rows.length > 5 ? ' dense' : ''}" id="sheet"><table><thead><tr><th></th>${turns.map(n => `<th>${t('T{n}', { n })}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
@@ -579,7 +579,7 @@ function tablePanel() {
   const ln = killFirst(S.log).filter(e => (!sel.length || sel.includes(playerKey(e))) && !quiet.includes(e.kind)).map(e => {
     const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k), head = e.turn !== lastTurn ? `<li class="turnh">${t('Turn {n}', { n: e.turn })}</li>` : '';
     lastTurn = e.turn;
-    return head + `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><span>${icon}<b>${esc(e.mine ? t('Me') : e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span>${!e.mine && ['noise', 'attack', 'silence', 'spot', 'item'].includes(e.kind) ? flagBtn(e) : ''}</li>`;
+    return head + `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><span>${icon}<b>${esc(e.mine ? t('Me') : e.who)}</b>${e.mine ? '' : roleTag(k)} · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span>${!e.mine && ['noise', 'attack', 'silence', 'spot', 'item'].includes(e.kind) ? flagBtn(e) : ''}</li>`;
   }).join('');
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
   const sec = { players: 'sheet', hatches: 'status' }[T.tableSec] || T.tableSec || 'sheet', hatchAct = digital() ? '' : 'hatch';

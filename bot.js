@@ -560,7 +560,7 @@ const Bot = (() => {
     // Human with an Attack card (or the Soldier) on a likely Alien
     const strike = human && useCap ? (canPower('Soldier') ? 'Soldier' : st.items.includes('attack') ? 'attack' : '') : '';
     if (strike && humanAttackValue(W, here) >= (lvl === 'hard' ? sk.atkAt : sk.atkAt + 2)) {
-      if (strike === 'attack') useItem('attack'); else usePower('Soldier');
+      if (strike === 'attack') useItem('attack'); else { usePower('Soldier'); say({ kind: 'reveal', text: 'Id|human|Soldier' }); }   // the Soldier's attack is shown like an Attack card
       say({ kind: 'attack', sector: st.pos }); await ctx.attack(st.pos); return;
     }
     if (ty !== '.') { say({ kind: 'silence', text: 'secure' }); return; }  // Secure sector: declare "Silent Sector"

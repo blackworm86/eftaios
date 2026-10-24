@@ -310,7 +310,38 @@ function colorOf(key) {
 }
 const pal = key => key === 'me' ? ME_COLOR : PALETTE[colorOf(key)];
 const shapeOf = () => HEX_MARK;
-const suspicion = key => (key !== 'me' && S.sus && S.sus[key]) || '';
+/* What the whole table knows about a player's faction and Character, from the public record only: a card that was shown,
+   an attack with no Attack card (only an Alien does that), Items only a Human uses, a pod, two noises with no Cat (the Pilot). */
+let FACTS = new Map(), FACTS_KEY = '';
+function publicFacts() {
+  const key = S.log.length + '|' + (S.log[0] && S.log[0].id) + '|' + S.mode;
+  if (key === FACTS_KEY) return FACTS; FACTS_KEY = key;
+  const out = new Map(), set = (k, role, char, why) => { const o = out.get(k) || {}; out.set(k, { role: role || o.role, char: char || o.char, why: why || o.why }); };
+  const log = S.log.slice().reverse(), same = (x, e, k) => x.turn === e.turn && playerKey(x) === k;
+  log.forEach(e => {
+    const k = playerKey(e); if (k === 'me') return;
+    const i = (e.kind === 'reveal' || e.kind === 'out') && typeof revealInfo === 'function' ? revealInfo(e) : null;
+    if (i) set(k, i.killed && i.role === 'human' ? 'alien' : i.role, i.char, 'card');
+    else if (e.kind === 'attack') {
+      const card = log.some(x => same(x, e, k) && ((x.kind === 'item' && x.text === 'attack') || (x.kind === 'reveal' && String(x.text).startsWith('Id|human'))));
+      set(k, card ? 'human' : 'alien', '', card ? 'attack card' : 'attack');
+    } else if (e.kind === 'item') {
+      if (['attack', 'cat', 'spotlight', 'sensor', 'defense', 'clone'].includes(e.text)) set(k, 'human', '', 'item');
+      else if (e.text === 'mutation') set(k, 'alien', '', 'mutation');
+    } else if (e.kind === 'hatch') set(k, 'human', '', 'pod');
+  });
+  if (S.mode === 'ultimate') { const n = new Map(); log.forEach(e => { if (e.kind === 'noise') { const k = playerKey(e); if (k !== 'me') n.set(k + '|' + e.turn, (n.get(k + '|' + e.turn) || 0) + 1); } });
+    n.forEach((c, id) => { const [k, tn] = [id.slice(0, id.lastIndexOf('|')), +id.slice(id.lastIndexOf('|') + 1)]; if (c >= 2 && !log.some(x => x.kind === 'item' && x.text === 'cat' && x.turn === tn && playerKey(x) === k)) set(k, 'human', 'Pilot', 'two noises'); }); }
+  return FACTS = out;
+}
+const factOf = k => (k === 'me' ? null : publicFacts().get(k)) || {};
+const suspicion = key => (key !== 'me' && (factOf(key).role || (S.sus && S.sus[key]))) || '';
+/* a little tag next to a player's name: A / H when the table knows the faction, with the Character when it was shown */
+function roleTag(k) {
+  const f = factOf(k); if (!f.role) return '';
+  const why = f.role === 'alien' ? t('Alien: the table has seen it') : t('Human: the table has seen it');
+  return `<i class="rb ${f.role}" title="${esc(why)}">${f.role === 'alien' ? t('A') : t('H')}</i>${f.char && typeof charIcon === 'function' ? charIcon(f.char, 13) : ''}`;
+}
 const borderOf = key => key === 'me' ? BORDER.me : BORDER[suspicion(key)] || BORDER[''];
 /* one marker body (outline + fill + border) at the origin of `g`: a rounded hexagon */
 function markBody(g, key, r, o = {}) {
@@ -810,7 +841,7 @@ function renderMkBar() {
     (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
-      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${(T.focusSet || []).includes(k)}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : /conv/.test(outMark(k)) ? 'Killed as a Human: now an Alien' : 'eliminated') : ''}" title="${esc(n)}" class="pchip${outMark(k) ? ' isout' : ''}" style="--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}"><span class="pnm">${esc(shortName(n))}</span><span class="pft"><span class="pl">${cardBadge(k)}</span><span class="pr">${outMark(k)}</span></span></button>${(T.focusSet || []).includes(k) && k !== 'me' ? sus(k) : ''}`).join('') +
+      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${(T.focusSet || []).includes(k)}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : /conv/.test(outMark(k)) ? 'Killed as a Human: now an Alien' : 'eliminated') : ''}" title="${esc(n)}" class="pchip${outMark(k) ? ' isout' : ''}" style="--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}"><span class="pnm">${roleTag(k)}${esc(shortName(n))}</span><span class="pft"><span class="pl">${cardBadge(k)}</span><span class="pr">${outMark(k)}</span></span></button>${(T.focusSet || []).includes(k) && k !== 'me' ? sus(k) : ''}`).join('') +
     (T.markMode && !Sync.code && !S.hot && ps.length < 7 ? `<button class="mkt" data-act="addplayer" aria-label="${t('Add player')}"><b>+</b></button>` : '');
 }
 /* follow one player (or only my route): grey out the rest and frame what matters */
@@ -1082,7 +1113,7 @@ const killOf = e => (e && e.kind === 'info' && String(e.text).startsWith('kill|'
 function entryText(e) {
   const s = e.sector;
   if (e.kind === 'noise') return t('Noise in Sector {s}', { s });
-  if (e.kind === 'attack') return t('Attack in Sector {s}', { s });
+  if (e.kind === 'attack') { const f = factOf(playerKey(e)), card = S.log.some(x => x.turn === e.turn && playerKey(x) === playerKey(e) && ((x.kind === 'item' && x.text === 'attack') || (x.kind === 'reveal' && String(x.text).startsWith('Id|human')))); return t('Attack in Sector {s}', { s }) + (playerKey(e) === 'me' ? '' : card ? ' · ' + t('Attack card') : ' · ' + t('Alien')); }
   if (e.kind === 'spot') return t('Spotlight on Sector {s}', { s });
   if (e.kind === 'silence') return t(e.text === 'secure' ? 'Silent Sector' : 'Silence in all Sectors');
   if (e.kind === 'hatch' && e.n) return t(e.ok ? 'Escape Pod {n}: escaped' : 'Escape Pod {n}: damaged', { n: e.n });

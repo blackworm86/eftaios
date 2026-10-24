@@ -33,6 +33,22 @@ let ok=0,bad=0;const assert=(c,m)=>{console.log((c?'ok   ':'FAIL ')+m);c?ok++:ba
  assert(await p.locator('dialog[open] .fk').count()===before-1||!await p.locator('dialog[open]').count(),'answering one removes it from the list');
  await p.evaluate(()=>closeDlg());
  await p.evaluate(()=>{paintOverlay()});
+ // what the table knows about factions and Characters, from the public record only
+ const fx=await p.evaluate(()=>{
+  S.mode='ultimate';const L=(who,turn,kind,sector,text)=>S.log.unshift({id:'f'+Math.random(),by:'',who,turn,kind,text:text||kind,sector:sector||null,at:Date.now(),mine:false});
+  L('Ann',4,'attack','K10');                                            // an attack with no Attack card: an Alien
+  L('Bob',4,'item',null,'attack');L('Bob',4,'attack','K11');            // an Attack card: a Human
+  L('Cy',4,'reveal',null,'Id|human|Captain');                            // the Captain says so
+  L('Dee',4,'noise','K12');L('Dee',4,'noise','K13');                     // two noises and no Cat: the Pilot
+  L('Eve',4,'item',null,'cat');L('Eve',4,'noise','K12');L('Eve',4,'noise','K13');   // with a Cat card: nobody in particular
+  L('Fox',4,'reveal',null,'Id|human|Soldier');L('Fox',4,'attack','K14');           // the Soldier's attack is shown like a card
+  const f=k=>factOf('n:'+k.toLowerCase());
+  return {ann:f('Ann').role,bob:f('Bob').role,cy:[f('Cy').role,f('Cy').char],dee:[f('Dee').role,f('Dee').char],eve:f('Eve').char||'',fox:f('Fox').role,txt:entryText(S.log.find(e=>e.who==='Ann')),tag:roleTag('n:ann')}});
+ assert(fx.ann==='alien'&&/Alien/.test(fx.txt),'an attack with no Attack card marks the attacker as an Alien, in the log text too ('+fx.txt+')');
+ assert(fx.bob==='human'&&fx.fox==='human','an Attack card, or the Soldier, marks a Human');
+ assert(fx.cy[0]==='human'&&fx.cy[1]==='Captain','the Captain\'s declaration shows who he is');
+ assert(fx.dee[1]==='Pilot'&&fx.eve==='','two noises with no Cat card are the Pilot; with a Cat card they prove nothing');
+ assert(/class="rb alien"/.test(fx.tag),'the player bar and log get an A / H tag next to the name');
  // the slider
  await p.evaluate(()=>{paintOverlay()});
  await p.click('#mkbar [data-act=mkall]');

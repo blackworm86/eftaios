@@ -1,0 +1,2 @@
+numpy
+# torch is installed by setup_windows.bat (with the right CUDA build for your card)

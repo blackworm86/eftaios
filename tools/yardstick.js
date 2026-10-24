@@ -63,8 +63,10 @@ cards.forEach(c => say(c.padEnd(12) + avg(games.map(g => (g.itemUse || {})[c] ||
 say('');
 say('## skill ladder in mixed tables (seat side win, by level)');
 const mixed = games.filter(g => g.level === 'mix'), by = new Map();
-mixed.forEach(g => g.seats.forEach(s => { const won = s.role0 === 'alien' ? g.winner === 'alien' : g.winner === 'human'; const b = by.get(s.bot) || { n: 0, w: 0 }; b.n++; b.w += +won; by.set(s.bot, b); }));
-by.forEach((b, l) => say(`${l.padEnd(8)} ${String(b.n).padStart(5)} seats  ${pct(b.w / b.n)}`));
+// per seat: how often a Human seat escapes, and the Humans an Alien seat kills; a table with one strong seat among weaker ones shows the skill best
+mixed.forEach(g => g.seats.forEach(s => { const won = s.role0 === 'alien' ? g.winner === 'alien' : g.winner === 'human'; const b = by.get(s.bot) || { n: 0, w: 0, h: 0, e: 0, a: 0, k: 0 }; b.n++; b.w += +won;
+  if (s.role0 === 'human') { b.h++; b.e += +(s.over === 'escaped'); } else { b.a++; b.k += s.kills || 0; } by.set(s.bot, b); }));
+by.forEach((b, l) => say(`${l.padEnd(8)} ${String(b.n).padStart(5)} seats  side win ${pct(b.w / b.n)}   Human escape ${pct(b.e / Math.max(1, b.h))} (${b.h})   Alien kills/game ${(b.k / Math.max(1, b.a)).toFixed(2)} (${b.a})`));
 if (!by.size) say('(no mixed tables in these files)');
 
 say('');

@@ -327,3 +327,23 @@ Findings (from the logs and 3 x 8 hard games):
 - Powers are used in simulation (hard, 6-8 players, uses per seat: Psychic 2.3, Captain 0.8, Fast 0.8, Medic 0.8, Pilot 0.6, Executive Officer 0.6, Soldier 0.4, Engineer 0.3, Lurking 0.14 before the threshold fix, Co-pilot 0.2),
   but Humans in the owner's games died by turn 5-6, before they could use the once-only ones.
 - Bots are too weak at hard in the owner's games: Humans won tests 1, 2 and 4. Phase 3 (planning) is where the Aliens get stronger.
+
+## Phase 2: read the whole table (same 900 games and seed; report `p2.report.txt`; Normal and Hard only, Easy unchanged)
+
+New in the belief tracker (bot.js, skill key `table`):
+- An attack that hit nobody (no death, Defense, Clone or Brute reveal logged right after it) rules every other player out of that sector at that moment, and counts as evidence for their faction.
+- A Human killed or mutated into an Alien restarts / stays where the rules put them (Alien sector / same place) instead of carrying on as a Human.
+- The number of Aliens at the table is known (start count, plus kills and mutations, minus dead Aliens): the doubts about who is an Alien are scaled to add up to it.
+- Aliens do not always open with Teleport on turn 1 (1 in 4 does).
+
+| hard | Human escape P1 | P2 | kills/game P1 | P2 | friendly kills P1 | P2 |
+|---|---|---|---|---|---|---|
+| 4 players | 48.6% | 41.7% | 1.28 | 1.39 | 0.25 | 0.14 |
+| 5 players | 50.0% | 27.8% | 1.17 | 1.69 | 0.25 | 0.22 |
+| 6 players | 36.1% | 26.9% | 2.19 | 2.31 | 0.47 | 0.42 |
+| 7 players | 48.1% | 34.3% | 2.14 | 2.39 | 0.72 | 0.56 |
+| 8 players | 36.8% | 31.3% | 2.92 | 3.19 | 0.86 | 0.78 |
+
+Seat ladder (1 hard + 5 normal / 1 normal + 5 easy, all seats): Alien kills per game hard 0.65 -> 0.92, normal 0.56 -> 0.66, easy 0.16 -> 0.18; Human escape hard 57% -> 40%, normal 54% -> 43%, easy 61% -> 58%.
+Friendly fire drops only 5-30%: the other Aliens still look Human to each other, so the remaining cases need the Phase 3 planner (which also weighs every attack).
+Turn time on this machine: worst 2.0 s (normal, 8 players), mean 10-40 ms. On a phone that may break the 5 s budget; chooseDecoy (one belief run per candidate sector) is the first place to cut.

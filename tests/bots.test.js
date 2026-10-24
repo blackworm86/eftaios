@@ -56,6 +56,24 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(tb>0.8,'an Alien that teleports and then attacks is still read as an Alien ('+tb.toFixed(2)+')');
  assert(idb.b>0.9,'a player who mutates is an Alien ('+idb.b.toFixed(2)+')');
  assert(idb.c<0.1,'a shown Human identity settles that player ('+idb.c.toFixed(2)+')');
+ // an attack that hit nobody tells that the others were not in that sector; the number of Aliens at the table is known
+ const ns=await p.evaluate(()=>{
+   const mk=(X,withAttack)=>{const view={seats:[{id:'a',name:'A'},{id:'c',name:'C'},{id:'b',name:'B'}],turn:3,mode:'ultimate',log:[]};
+     const me={id:'a',state:{role:'human'}},L=e=>view.log.unshift(Object.assign({at:Date.now(),text:e.kind},e));
+     L({by:'c',turn:2,kind:'noise',sector:'L08'});if(withAttack)L({by:'b',turn:2,kind:'attack',sector:X});   // c moved before b attacked X and was not hit: it was not in X
+     const B=Bot.beliefs(view,me,'hard');return Bot.zoneOf(B.c);};
+   const top=mk('L08',false).sort((x,y)=>y[1]-x[1])[0][0];
+   const get=z=>(z.find(q=>q[0]===top)||[0,0])[1];
+   return {top,w:get(mk(top,true)),n:get(mk(top,false))};
+ });
+ assert(ns.w<ns.n*0.6,'an attack that hit nobody rules the others out of that sector ('+ns.n.toFixed(2)+' -> '+ns.w.toFixed(2)+')');
+ const cnt=await p.evaluate(()=>{
+   const view={seats:[{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'},{id:'d',name:'D'}],turn:3,mode:'ultimate',log:[]};
+   const me={id:'a',state:{role:'human'}},L=e=>view.log.unshift(Object.assign({at:Date.now(),text:e.kind},e));
+   L({by:'b',turn:2,kind:'attack',sector:'L08'});   // b is an Alien; with 4 players there are 2 Aliens, so one of c and d is the other
+   const B=Bot.beliefs(view,me,'hard');return B.c.pA+B.d.pA;
+ });
+ assert(cnt>0.7&&cnt<1.3,'the two other players share the one remaining Alien ('+cnt.toFixed(2)+')');
  // the bot is handed a public view of the table, never the other seats' private state
  const src=await p.evaluate(()=>Bot.turn.toString());
  assert(!/H\.seats\[[^\]]*\]\.state|\.state\.pos[^=]*others/.test(src),'bot code never reads another seat\'s state');

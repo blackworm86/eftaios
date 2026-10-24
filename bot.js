@@ -21,8 +21,8 @@ const Bot = (() => {
     // think: seconds of visible thinking; mistake: chance to take one of the next-best moves; decoy: 0 random, 1 believable, 2 simulated;
     // allyCost: what it costs to kill a possible Alien by mistake (attacks eliminate everybody in the sector)
     easy:   { mem: 1.0, smartBluff: false, temp: 0.5, beta: 0.2, hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.5, items: false, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: false, think: 1.4, mistake: 0.18, decoy: 0, allyCost: 8, humanCal: 0.6 },
-    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
-    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
+    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  table: true, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
+    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  table: true, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
   };
 
   const skill = lvl => Object.assign({}, SKILL[lvl] || SKILL.normal, window.__skill && window.__skill[lvl]);   // __skill: tuning hook for benchmarks
@@ -133,6 +133,14 @@ const Bot = (() => {
       const o = new Float64Array(N); for (let k = 0; k < N; k++) { let sum = 0, c = 0; for (const j of g.nb[k]) { sum += q[j]; c++; } o[k] = 0.5 * q[k] + (c ? 0.5 * sum / c : 0); }
       return o;
     };
+    // every attack, with who was hit (they log a death, a Defense/Clone or a Brute reveal right after it): the others were not in that sector
+    const ord = Object.fromEntries(seats.map((s, i) => [s.id, i])), hits = [];
+    if (sk.table) log.forEach((e, i) => {
+      if (e.kind !== 'attack' || !e.by || !e.sector || !g.idx.has(e.sector) || g.isHatch(g.idx.get(e.sector)) || ord[e.by] === undefined) return;
+      const ex = new Set();
+      for (let j = i + 1; j < log.length && j < i + 14 && log[j].turn === e.turn; j++) { const y = log[j]; if (y.by && (y.kind === 'out' || (y.kind === 'item' && (y.text === 'defense' || y.text === 'clone')) || (y.kind === 'reveal' && y.text === 'Brute Alien'))) ex.add(y.by); }
+      hits.push({ by: e.by, r: e.turn, x: g.idx.get(e.sector), ex });
+    });
     const B = {};
     const trackSeat = (s, acted) => {
       const idx = seats.indexOf(s);
@@ -142,7 +150,17 @@ const Bot = (() => {
       const ev = {};                                                           // round -> [entries]
       (byP[s.id] || []).forEach(({ e, i }) => { (ev[e.turn] = ev[e.turn] || []).push({ e, i }); });
       let over = false, known = false;
+      // not at the sector of an attack that hit nobody like me: the picture of where I am (and what I am) shrinks there
+      const noShow = (dh, da, r, after) => hits.forEach(a => {
+        if (a.r !== r || a.by === s.id || a.ex.has(s.id) || (ord[s.id] < ord[a.by]) !== after) return;
+        wH *= Math.pow(1 - Math.min(0.98, dh[a.x]), 0.5); wA *= Math.pow(1 - Math.min(0.98, da[a.x]), 0.5);
+        dh[a.x] *= 0.02; da[a.x] *= 0.02;
+        let zh = 0, za = 0; for (let k = 0; k < N; k++) { zh += dh[k]; za += da[k]; }
+        for (let k = 0; k < N; k++) { if (zh > 0) dh[k] /= zh; if (za > 0) da[k] /= za; }
+      });
       for (let r = 1; r <= acted && !over; r++) {
+        let conv = false, mut = false;
+        noShow(cH, cA, r, false);
         const items = (ev[r] || []).filter(x => x.e.kind === 'item').map(x => x.e.text);
         // predict
         let nH = items.includes('teleport') ? kH(Object.assign(new Float64Array(N), { [startH]: 1 }), true) : kH(cH, true);
@@ -161,13 +179,13 @@ const Bot = (() => {
               if (armed) mulA *= 0.02; else { mulH *= 0.02; if (log.some((y, j) => j > i && j < i + 8 && y.kind === 'out' && y.turn === r && String(y.text).startsWith('killed|human'))) fedFrom = r + 1; }
             }
             if (e.kind === 'hatch') { mulA *= 0.02; known = true; }
-          } else if (e.kind === 'item' && /^mutation$/i.test(e.text)) { wA = 1; wH = 0; known = true; }   // a Human who mutates is an Alien from now on
+          } else if (e.kind === 'item' && /^mutation$/i.test(e.text)) { wA = 1; wH = 0; known = true; mut = true; }   // a Human who mutates is an Alien from now on
           else if (e.kind === 'item') { mulA *= ['teleport', 'adrenaline', 'sedatives'].includes(e.text) ? 0.08 : 0.02; known = true; }   // Humans play items; an Alien only the one its Character allows
           else if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) { known = true; wA = e.text.split('|')[1] === 'alien' ? 1 : 0; wH = 1 - wA; }   // Medic or Co-pilot
           else if (e.kind === 'out') {
             const [why, role] = String(e.text).split('|');
             known = true;
-            if (why === 'killed' && role === 'human') { wA = 1; wH = 0; }
+            if (why === 'killed' && role === 'human') { wA = 1; wH = 0; conv = true; }
             else { b.out = true; over = true; wA = role === 'alien' ? 1 : 0; wH = role === 'alien' ? 0 : 1; }
           }
         });
@@ -178,8 +196,11 @@ const Bot = (() => {
           if (mA > 0) for (let k = 0; k < N; k++) nA[k] = nA[k] * L[k] / mA;
           if (sk.roleFromMoves) { wH *= Math.pow(Math.max(mH, 1e-6), 0.5); wA *= Math.pow(Math.max(mA, 1e-6), 0.5); }
         }
+        noShow(nH, nA, r, true);
         wH *= mulH; wA *= mulA; const z = wH + wA; if (z > 0) { wH /= z; wA /= z; } else { wH = 1 - prior; wA = prior; }
         cH = nH; cA = nA;
+        if (mut) cA = Float64Array.from(nH);                                   // a mutation changes the faction, not the place
+        if (conv) { cA = new Float64Array(N); cA[startA] = 1; fedFrom = 1e9; }   // a killed Human restarts in the Alien sector
       }
       b.dH = cH; b.dA = cA; b.fed = fedFrom <= acted + 1; b.speed = b.fed ? 3 : 2;
       b.pA = known ? Math.min(0.995, Math.max(0.005, wA)) : Math.min(0.9, Math.max(0.22, 0.3 * prior + 0.7 * wA));   // nobody is ever sure from behaviour alone
@@ -190,6 +211,19 @@ const Bot = (() => {
     // how the others see me: the same tracker run on my own public announcements, before my move this turn
     const mine = trackSeat(seats[myIdx] || { id: me.id, name: me.name }, Math.max(0, H.turn - 1));
     { const h = kH(mine.dH, true), a = kA(mine.dA, 2, sk.hunt ? field(H.turn, me.id) : null); mine.next = h.map((x, k) => (1 - mine.pA) * x + mine.pA * a[k]); }
+    // the number of Aliens at the table is known: scale the doubts so that they add up to it
+    if (sk.table) {
+      const live = Object.values(B).filter(b => !b.out);
+      let conv = 0, mut = 0, dead = 0;
+      log.forEach(e => { if (e.kind === 'out') { const [why, role] = String(e.text).split('|'); if (why === 'killed' && role === 'human') conv++; else if (why === 'killed' && role === 'alien') dead++; } else if (e.kind === 'item' && /^mutation$/i.test(e.text)) mut++; });
+      const target = (n - Math.floor(n / 2)) + conv + mut - dead - (me.state.role === 'alien' ? 1 : 0);
+      const lg = p => Math.log(p / (1 - p)), sg = x => 1 / (1 + Math.exp(-x)), sum = l => live.reduce((a, b) => a + sg(lg(b.pA) + l), 0);
+      if (live.length && target > 0 && target < live.length) {
+        let lo = -6, hi = 6; for (let it = 0; it < 30; it++) { const m = (lo + hi) / 2; if (sum(m) < target) lo = m; else hi = m; }
+        const l = 0.7 * (lo + hi) / 2;   // not all the way: the doubts themselves are uncertain
+        live.forEach(b => { b.pA = Math.min(0.995, Math.max(0.005, sg(lg(b.pA) + l))); });
+      }
+    }
     Object.defineProperty(B, 'me', { value: mine, enumerable: false });
     return B;
   }
@@ -399,7 +433,7 @@ const Bot = (() => {
     // Teleport (a card, or the Co-pilot who shows who she is) when the Human sector offers a clearly better move; Blink Aliens too
     if (useCap) {
       const start = find(T.map, 'H'), tele = may('teleport') ? 'teleport' : human && canPower('Co-pilot') ? 'Co-pilot' : '';
-      if (tele) {
+      if (tele && (human || H.turn > 1 || rnd() < 0.25)) {   // an Alien does not always open with its Teleport
         const mv = pos => human ? humanMove(W, { pos, path: st.path }, 1) : alienMove(ctx, W, { pos, path: st.path, fed: st.fed, char: st.char }, B), from = mv(st.pos), to = mv(start);
         const need = tele === 'Co-pilot' ? (lvl === 'hard' ? 9 : 13) : (lvl === 'hard' ? 4 : 7);
         if (from && to && to.score - from.score > need) {

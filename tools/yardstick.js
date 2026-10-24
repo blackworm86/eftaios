@@ -41,7 +41,7 @@ say(`EFTAIOS bot yardstick   ${games.length} games from ${files.length} file(s)`
 say('');
 say('## per table (level x players), games with the same table are paired by seed across runs');
 say('table'.padEnd(18) + 'games  alienWin  escape  kills  friendly  items-used  held(H)  powers  closing  turn ms (mean/max)');
-const tables = group(games, g => (g.level === 'mix' ? 'mix ' + (g.bots || []).join(',').replace(/(\w+)(,\1)+/g, '$1*') : g.level) + ' x' + g.players);
+const tables = group(games, g => g.level === 'rm' ? 'H=' + (g.seats.find(x => x.role0 === 'human') || {}).bot + ' A=' + (g.seats.find(x => x.role0 === 'alien') || {}).bot + ' x' + g.players : (g.level === 'mix' ? 'mix ' + (g.bots || []).join(',').replace(/(\w+)(,\1)+/g, '$1*') : g.level) + ' x' + g.players);
 [...tables.keys()].sort().forEach(k => {
   const gs = tables.get(k);
   const esc = gs.reduce((a, g) => a + g.escapes, 0), hum = gs.reduce((a, g) => a + g.seats.filter(s => s.role0 === 'human').length, 0);

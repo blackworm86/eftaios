@@ -16,6 +16,7 @@ const PLAYERS = arg('players', '4,6').split(',').map(Number);
 const LEVELS = arg('levels', 'normal').split(',');
 const MAPS = arg('maps', '').split(',').filter(Boolean);
 const MIX = arg('mix', '');       // a mixed table, e.g. 'hard:1,easy:5': the seats play at these levels, in order
+const ROLEMIX = arg('rolemix', '');   // levels by role, e.g. 'human:easy,alien:normal' (with --players): every Human seat plays at one level, every Alien seat at the other
 const SKILL = arg('skill', '');   // JSON overrides per level, e.g. '{"hard":{"humanCal":0.6}}' (the tuning hook)
 const SEED = +arg('seed', 1);
 const WORKERS = Math.max(1, +arg('workers', 1));
@@ -146,12 +147,13 @@ async function main() {
       return { cells, nb };
     }, id);
   }
-  const tables = MIX
+  const RM = ROLEMIX ? Object.fromEntries(ROLEMIX.split(',').map(x => x.split(':'))) : null;
+  const tables = RM ? PLAYERS.map(n => ({ n, lvl: 'rm', rm: RM, bots: NAMES.slice(0, n).map(() => 'rm') })) : MIX
     ? [{ n: 0, lvl: 'mix', bots: MIX.split(',').flatMap(x => { const [l, k] = x.split(':'); return Array(+k).fill(l); }) }]
     : PLAYERS.flatMap(n => LEVELS.map(lvl => ({ n, lvl, bots: NAMES.slice(0, n).map(() => lvl) })));
   const tasks = [];
   for (const map of maps) for (const tb of tables) for (let g = 0; g < GAMES; g++) {
-    tasks.push({ map, n: tb.bots.length, lvl: tb.lvl, bots: tb.bots, game: g,
+    tasks.push({ map, n: tb.bots.length, lvl: tb.lvl, bots: tb.bots, rm: tb.rm, game: g,
       seed: (SEED + hash(map + '|' + tb.lvl + '|' + tb.bots.join(',') + '|' + g)) >>> 0 });
   }
   const out = new Array(tasks.length);
@@ -179,9 +181,11 @@ async function main() {
             if (window.__trace) window.__trace = [];
             if (window.__moves) window.__moves = [];
             window.__turnMs = [];
-            await Hot.start(a.names, a.map, a.mode, 'auto', a.bots);
+            let bots = a.bots, setup;
+            if (a.rm) { setup = dealRoles(a.names.length); bots = setup.map(d => a.rm[d.role]); }   // roles first, then each seat's level by its role
+            await Hot.start(a.names, a.map, a.mode, 'auto', bots, setup);
             const d = Hot.dump(); d.trace = window.__trace; d.moves = window.__moves; d.turnMs = window.__turnMs; return d;
-          }, { names: NAMES.slice(0, task.n), map: task.map, mode: MODE, bots: task.bots, seed: task.seed });
+          }, { names: NAMES.slice(0, task.n), map: task.map, mode: MODE, bots: task.bots, rm: task.rm, seed: task.seed });
           if (!d || !d.result) out[i] = { map: task.map, players: task.n, level: task.lvl, seed: task.seed, error: 'no result' };
           else out[i] = summarize(d, task.n, { level: task.lvl, game: task.game, bots: task.bots, seed: task.seed, trace: d.trace, moves: d.moves });
         } catch (e) {

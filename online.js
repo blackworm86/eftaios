@@ -227,7 +227,7 @@ const Online = (() => {
   }
   const api = {
     /* host only: the bots' real state, for the saved log */
-    dump() { if (!HD) return null; return { decksLeft: { sector: HD.decks.sector.draw.length, hatch: HD.decks.hatch.draw.length }, bots: Object.values(HD.bots).map(b => ({ id: b.id, name: b.name, level: b.level, role: b.state.role, char: b.state.char || '', reborn: !!b.state.reborn, over: b.state.over || null, items: b.state.items, path: b.state.path })) }; },
+    dump() { if (!HD) return null; return { decksLeft: { sector: HD.decks.sector.draw.length, hatch: HD.decks.hatch.draw.length }, bots: Object.values(HD.bots).map(b => ({ id: b.id, name: b.name, level: b.level, role: b.state.role, char: b.state.char || '', reborn: !!b.state.reborn, over: b.state.over || null, items: b.state.items, ab: b.state.ab, path: b.state.path })) }; },
     attach() {
       if (!Sync.code || gen === Sync.gen) return; gen = Sync.gen;
       Sync.watchChild(`secret/${Sync.uid}/inbox`, (v, key) => {
@@ -281,14 +281,14 @@ const Online = (() => {
     async hostStart(order, first) {
       const n = order.length;
       if (n < 2 || n > 8) return;
-      const deal = dealRoles(n);
+      const deal = dealRoles(n), bt = typeof T !== 'undefined' && T.botTest && T.botTest.ids;   // bt: admin bot tests fix the role, character and cards of each seat
       HD = { decks: { sector: deckNew(SECTOR_DECK), hatch: deckNew(HATCH_DECK) }, roles: {}, chars: {}, seenOut: {}, last: '', bots: {} };
       const map = T.maps.find(m => m.id === Sync.settings.map) || T.maps[0];
       hdReady = Promise.resolve(HD);
       for (let i = 0; i < n; i++) {
-        const { role, char } = deal[i];
+        const o = bt && bt[order[i]] && bt[order[i]].role ? bt[order[i]] : null, { role, char } = o || deal[i];
         HD.roles[order[i]] = role; HD.chars[order[i]] = char;
-        if (isBotId(order[i])) { const p = Sync.players[order[i]] || {}, pos = startSector(map, role, char, Sync.settings.mode); HD.bots[order[i]] = { id: order[i], name: p.name || 'Bot', level: p.bot || 'normal', state: { role, role0: role, char, pos, path: [{ turn: 0, pos }], items: [], fed: false, adr: false, over: null } }; }
+        if (isBotId(order[i])) { const p = Sync.players[order[i]] || {}, pos = startSector(map, role, char, Sync.settings.mode); HD.bots[order[i]] = { id: order[i], name: p.name || 'Bot', level: p.bot || 'normal', state: { role, role0: role, char, pos, path: [{ turn: 0, pos }], items: o && o.items ? o.items.slice() : [], fed: false, adr: false, over: null } }; }
         else await Sync.set('secret/' + order[i], { role, char });
       }
       await persist(); await Sync.startGame(first, order); attachHost();

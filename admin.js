@@ -73,8 +73,16 @@ const Admin = (() => {
     if (res.status === 422 && (await fetch('https://api.github.com/repos/blackworm86/eftaios/contents/' + file + '?ref=main', { headers: { Authorization: 'Bearer ' + btToken() } })).ok) return 'exists';
     throw new Error('GitHub answered ' + res.status + (why ? ': ' + why : ''));
   }
+  /* the finished game in the shape the simulator reads: seats (with real roles, cards, powers, routes), the public log and the result */
+  function gameRecord() {
+    if (S.hot) return Hot.dump();
+    const hd = (Online.dump && Online.dump()) || { bots: [] };
+    const me = { id: Sync.uid, name: S.name, bot: null, role0: S.reborn ? 'human' : S.role, role: S.role, char: S.char || '', reborn: !!S.reborn, over: S.over || null, items: S.items, ab: S.ab, path: S.path };
+    const bots = hd.bots.map(b => ({ id: b.id, name: b.name, bot: b.level, role0: b.reborn ? 'human' : b.role, role: b.role, char: b.char, reborn: b.reborn, over: b.over, items: b.items, ab: b.ab, path: b.path }));
+    return { mode: S.mode, map: T.map && T.map.id, turn: S.turn, result: Sync.settings && Sync.settings.result, hatches: S.hatches, log: S.log, seats: [me, ...bots] };
+  }
   function ratePanel() {
-    const x = T.botTest; if (!x || !S.hot || !Sync.isAdmin) return '';
+    const x = T.botTest; if (!x || !Sync.isAdmin || (x.code || '') !== (Sync.code || '')) return '';
     if (T.btSent) return `<p class="pst">Saved: ${esc(x.name)} · ${T.btRating}/5</p>`;
     return `<h3>${esc(x.name)}</h3><div class="seg" role="radiogroup" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button role="radio" data-act="btrate" data-n="${n}" aria-checked="${T.btRating === n}">${n}</button>`).join('')}</div>
       <textarea id="bt-notes" rows="4" maxlength="2000" placeholder="What did you see? What looked wrong?"></textarea><button class="btn primary big wide" data-act="btsend">Save rating and log</button>`;
@@ -183,7 +191,7 @@ const Admin = (() => {
     async btsend() {
       const x = T.botTest; if (!x) return;
       if (!T.btRating) return toast('Pick a rating from 1 to 5 first');
-      const rec = { test: x.name, n: x.n, rating: T.btRating, notes: (($('#bt-notes') || {}).value || '').slice(0, 2000), at: Date.now(), map: T.map && T.map.id, game: JSON.stringify(Hot.dump()) };
+      const rec = { test: x.name, n: x.n, rating: T.btRating, notes: (($('#bt-notes') || {}).value || '').slice(0, 2000), at: Date.now(), map: T.map && T.map.id, game: JSON.stringify(gameRecord()) };
       try {
         const id = uid(); await Sync.setPath('bottests/' + id, rec); T.btSent = true;
         let msg = 'Saved';
@@ -192,9 +200,23 @@ const Admin = (() => {
       }
       catch (e) { saveMapFile('eftaios-bottest-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'), JSON.stringify(rec), 'Could not save online. The log was downloaded instead.'); }
     },
-    bottest(b) {
+    async bottest(b) {
       const x = BOT_TESTS[+b.dataset.i]; if (!x) return;
-      T.botTest = { name: x.name, n: +b.dataset.i + 1 }; T.btRating = 0; T.btSent = false;
+      T.botTest = { name: x.name, n: +b.dataset.i + 1, ids: {} }; T.btRating = 0; T.btSent = false;
+      // an online table with the bots as lobby bots: the same screens as a normal game
+      try {
+        await Sync.ensure(); S.mapId = 'galilei'; S.mode = 'ultimate'; S.track = 'auto'; save();
+        if (!(await Sync.create({ map: 'galilei', mode: 'ultimate' }, { name: (Sync.profile && Sync.profile.name) || 'You' }))) throw new Error('no table');
+        T.botTest.code = Sync.code; T.botTest.ids[Sync.uid] = x.seats[0];
+        const order = [Sync.uid];
+        for (let i = 1; i < x.seats.length; i++) {
+          const id = 'bot_' + Math.random().toString(36).slice(2, 8);
+          await Sync.set('players/' + id, { name: 'Bot ' + i, ready: true, bot: x.seats[i].bot || 'hard' }); T.botTest.ids[id] = x.seats[i]; order.push(id);
+        }
+        await Sync.updateSettings({ order }); S.ready = true; await Sync.setMe({ ready: true });
+        for (let k = 0; k < 40 && Object.keys(Sync.players || {}).length < x.seats.length; k++) await new Promise(r => setTimeout(r, 150));
+        return startTable();
+      } catch (e) { toast('Online table failed (' + (e.message || e) + '): playing a local game instead'); }
       Hot.start(x.seats.map((s, i) => (i ? 'Bot ' + i : 'You')), 'galilei', 'ultimate', 'auto', x.seats.map(s => s.bot || ''), x.seats);
     },
     adminclose() { S.stage = 'welcome'; save(); renderFlow(); },

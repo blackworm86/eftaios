@@ -1014,3 +1014,6 @@ ul.log li.turnh{padding-top:6px}
 .followbar{left:6px}
 .mkbar{pointer-events:none}.mkbar>*{pointer-events:auto}   /* the gaps of the strip leave the map tappable */
 .pb .pa .omark{position:static;width:18px;height:18px;display:grid;place-items:center}.pb .pa .omark .gi{width:18px;height:18px}
+/* the compressed tile keeps the faction outline (the generic strip button style used to override it) */
+.mkbar button.pb{border:3px solid var(--b);background:#0b1222ee}.mkbar button.pb.guess{border-width:2px}.mkbar button.pb.known{border-width:4px}
+.mkbar button.pb.picked{box-shadow:0 0 0 2px var(--amber)}.mkbar button.pb.mini{width:42px;height:42px}

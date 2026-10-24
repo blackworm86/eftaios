@@ -120,7 +120,7 @@ function finishTwo(a, b) {
 async function drawSector() {
   commit();
   if (myAbil() === 'Captain' && !abUsed(S, 'Captain')) {   // the Captain skips the card the first time
-    abUse(S, 'Captain'); star();
+    abUse(S, 'Captain'); star(); say('Id|' + S.role + '|' + (S.char || ''), 'reveal');   // the Captain says so: the table sees who he is
     return announce({ say: t('Nothing to announce'), sub: t('Captain: no card the first time.'), tone: 'silent', icon: 'sedatives' });
   }
   S.res = { stage: 'wait' }; afterChange();

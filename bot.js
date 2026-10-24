@@ -307,7 +307,12 @@ const Bot = (() => {
     if (!opts.length) return null;
     const cost = pathCosts(W), list = [];
     // the clock: the longer the game runs, the less a detour is worth and the more a risk is worth taking
-    const hurry = W.lvl === 'easy' ? 1 : 1 + Math.max(0, W.turn - 6) * 0.08, calm = W.lvl === 'easy' ? 1 : Math.max(0.35, (42 - W.turn) / 36);
+    let hurry = W.lvl === 'easy' ? 1 : 1 + Math.max(0, W.turn - 6) * 0.08, calm = W.lvl === 'easy' ? 1 : Math.max(0.35, (42 - W.turn) / 36);
+    // not nearer to a pod for several turns (shuffling between Secure sectors): waiting does not win, so take more risk
+    if (W.lvl !== 'easy') {
+      let best = 99, since = 0; st.path.forEach(p => { const v = W.hd[g.idx.get(p.pos)]; if (v === undefined) return; if (v < best) { best = v; since = 0; } else since++; });
+      const stall = Math.min(6, Math.max(0, since - 2)); hurry *= 1 + 0.2 * stall; calm = Math.max(0.2, calm * (1 - 0.1 * stall));
+    }
     const recent = new Set(st.path.slice(-5).map(p => p.pos));   // humans do not return to where they were
     opts.forEach(id => {
       const c = g.idx.get(id);
@@ -515,7 +520,7 @@ const Bot = (() => {
       let near = 0; if (!human) { near = W.humanCnt[here]; g.reach[2][here].forEach(j => { near += W.humanCnt[j]; }); }
       if (human ? W.risk(here) > (lvl === 'hard' ? 0.12 : 0.2) : near > 0.5) { useItem('sedatives'); return; }
     }
-    if (human && adv && ab === 'Captain' && !spent('Captain')) { usePower('Captain'); return; }   // no card the first time in a Dangerous sector
+    if (human && adv && ab === 'Captain' && !spent('Captain')) { usePower('Captain'); say({ kind: 'reveal', text: 'Id|human|Captain' }); return; }   // no card the first time in a Dangerous sector
     // Cat (or the Pilot): two noises, one of them a decoy, when my sector is dangerous to be heard in
     const cat = human && useCap && W.risk(here) > (lvl === 'hard' ? 0.1 : 0.16) ? (canPower('Pilot') ? 'Pilot' : may('cat') ? 'cat' : '') : '';
     if (cat === 'cat') useItem('cat'); else if (cat) usePower('Pilot');

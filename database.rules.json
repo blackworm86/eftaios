@@ -189,6 +189,20 @@
         }
       }
     },
+    "gameRecords": {
+      ".read": "auth != null && auth.token.admin === true",
+      "$id": {
+        ".write": "auth != null && root.child('bans').child(auth.uid).val() !== true && !data.exists() && $id.matches(/^[A-Za-z0-9_]{6,40}$/)",
+        ".validate": "newData.hasChildren(['v', 'at', 'n', 'game'])",
+        "v": { ".validate": "newData.isNumber()" },
+        "at": { ".validate": "newData.isNumber()" },
+        "n": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8" },
+        "build": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "mode": { ".validate": "newData.isString() && newData.val().length <= 12" },
+        "game": { ".validate": "newData.isString() && newData.val().length < 600000" },
+        "$other": { ".validate": false }
+      }
+    },
     "bottests": {
       ".read": "auth != null && auth.token.admin === true",
       "$id": {
@@ -311,6 +325,9 @@
               ".validate": "newData.val() === 'easy' || newData.val() === 'normal' || newData.val() === 'hard'"
             },
             "guest": {
+              ".validate": "newData.isBoolean()"
+            },
+            "share": {
               ".validate": "newData.isBoolean()"
             },
             "route": {

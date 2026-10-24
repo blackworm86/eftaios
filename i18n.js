@@ -1,6 +1,11 @@
 'use strict';
 /* Minimal i18n: English strings are the keys; Italian lives in IT. t('Text {x}', {x: 1}) */
 const IT = {
+"Share anonymous results": "Condividi risultati anonimi",
+"On": "Sì",
+"Off": "No",
+"The anonymous result of this game is shared to improve the bots. You can turn this off in More.": "Il risultato anonimo di questa partita viene condiviso per migliorare i bot. Puoi disattivarlo in Altro.",
+"Sharing results is off: this game is not recorded.": "La condivisione dei risultati è disattivata: questa partita non viene registrata.",
 "identity revealed": "identità rivelata",
 "{c}: identity revealed": "{c}: identità rivelata",
 "You drew an Item card": "Hai pescato una carta Oggetto",

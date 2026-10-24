@@ -463,6 +463,8 @@
 
   /* ---------------- admin ---------------- */
   Sync.adminList = async node => { await ensure(); return (await fb.get(at(node))).val() || {}; };
+  /* a finished game, anonymous: one new record per game (database rules: write once, admin reads) */
+  Sync.record = async rec => { await ensure(); const id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); return fb.set(at('gameRecords/' + id), rec); };
   Sync.setPath = async (p, v) => { await ensure(); return fb.set(at(p), v); };
   Sync.delPath = async p => { await ensure(); return fb.remove(at(p)); };
   Sync.adminLog = (action, target, detail) => { if (!db) return; fb.push(at('adminlog'), { action, target: target || '', detail: detail || '', by: Sync.uid, at: Date.now() }).catch(() => {}); };

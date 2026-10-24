@@ -420,7 +420,7 @@ function globalOverPanel() {
   return `<h2>${t('Game over')}</h2>
     ${sayBox(r.aliensWin ? t('The Aliens win!') : t('The Humans win!'), r.aliensWin ? 'alert' : '', 'Result')}
     <p class="dim">${t(why)}</p>${esc_.length ? `<p>${t('Humans who escaped: {n}', { n: esc_.map(esc).join(', ') })}</p>` : ''}
-    ${routesNote()}${window.Admin && Admin.ratePanel ? Admin.ratePanel() : ''}
+    ${routesNote()}${(Records.maybeSend(), Records.note())}${window.Admin && Admin.ratePanel ? Admin.ratePanel() : ''}
     <div class="seg revseg" role="radiogroup" aria-label="${t('Map')}"><button role="radio" data-act="revealview" data-v="real" aria-checked="${!T.showAnn}">${t('Real routes')}</button><button role="radio" data-act="revealview" data-v="ann" aria-checked="${!!T.showAnn}">${t('Announcements')}</button></div>
     <ul class="plist rev">${rows}</ul><button class="btn big wide" data-act="savelog">${t('Save game log')}</button>${!S.hot && Sync.code && Sync.isHost() ? `<button class="btn primary big wide" data-act="rematch">${t('Play again')}</button><button class="btn big wide" data-act="newgame">${t('Close table')}</button>` : `<button class="btn primary big wide" data-act="newgame">${t(!S.hot && Sync.code ? 'Leave table' : 'New game')}</button>`}`;
 }

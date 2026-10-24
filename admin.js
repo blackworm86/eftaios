@@ -56,31 +56,24 @@ const Admin = (() => {
     return `<p class="dim">Tests 1-5 are the minimum (about 1 hour); 6-8 are optional. Bots are Ultimate, map Galilei. When a game ends, rate it and tap Send: the rating, your note and the full log are saved for the admin. Nothing to download or send by hand.</p>
     <p class="dim">To also copy every game into the repo folder tests/play-logs/ from this phone, paste a GitHub token once (Contents: read and write on this repository only). It stays in this browser and goes only to api.github.com.</p>
     <div class="row"><input id="bt-token" type="password" autocomplete="off" placeholder="${btToken() ? 'GitHub token saved on this device' : 'GitHub token'}"><button class="btn" data-act="bttoken">${t('Save')}</button></div>
-    <button class="btn big wide" data-act="btsync">Send saved games to the repo</button><p class="dim" id="bt-status" role="status"></p><ul class="plist adm-list">${rows}</ul>`;
+    <button class="btn big wide" data-act="btsync">Send saved games to the repo</button><button class="btn big wide" data-act="btrecords">Send players' game records to the repo</button><p class="dim" id="bt-status" role="status"></p><ul class="plist adm-list">${rows}</ul>`;
   }
   /* After a bot test: a 1-5 rating and a note, saved with the full game log under bottests/ in the database (admin-only).
      `node tools/pull-bot-tests.js` copies them into tests/play-logs/. */
   const btToken = () => { try { return localStorage.getItem('eftaios.ghtoken') || ''; } catch (_) { return ''; } };
   /* one saved record -> tests/play-logs/ on main (GitHub contents API). 'exists' means it was sent before. */
-  async function pushToRepo(id, r) {
-    const file = `tests/play-logs/${new Date(r.at).toISOString().slice(0, 16).replace(/[:T]/g, '-')}-test${r.n || 0}-${id}.json`;
-    const body = JSON.stringify({ test: r.test, rating: r.rating, notes: r.notes || '', at: new Date(r.at).toISOString(), map: r.map, game: JSON.parse(r.game) });
-    const res = await fetch('https://api.github.com/repos/blackworm86/eftaios/contents/' + file, { method: 'PUT', headers: { Authorization: 'Bearer ' + btToken(), Accept: 'application/vnd.github+json' },
-      body: JSON.stringify({ message: `Bot test ${r.test}: ${r.rating}/5`, branch: 'main', content: btoa(unescape(encodeURIComponent(body))) }) });
+  async function putFile(file, text) {
+    const url = 'https://api.github.com/repos/blackworm86/eftaios/contents/' + file;
+    const res = await fetch(url, { method: 'PUT', headers: { Authorization: 'Bearer ' + btToken(), Accept: 'application/vnd.github+json' },
+      body: JSON.stringify({ message: 'Add ' + file.split('/').pop(), branch: 'main', content: btoa(unescape(encodeURIComponent(text))) }) });
     if (res.ok) return 'sent';
     const why = (await res.json().catch(() => ({}))).message || '';
     // a 422 on a path that already holds the file means it was sent before; any other 422 is a real refusal
-    if (res.status === 422 && (await fetch('https://api.github.com/repos/blackworm86/eftaios/contents/' + file + '?ref=main', { headers: { Authorization: 'Bearer ' + btToken() } })).ok) return 'exists';
+    if (res.status === 422 && (await fetch(url + '?ref=main', { headers: { Authorization: 'Bearer ' + btToken() } })).ok) return 'exists';
     throw new Error('GitHub answered ' + res.status + (why ? ': ' + why : ''));
   }
-  /* the finished game in the shape the simulator reads: seats (with real roles, cards, powers, routes), the public log and the result */
-  function gameRecord() {
-    if (S.hot) return Hot.dump();
-    const hd = (Online.dump && Online.dump()) || { bots: [] };
-    const me = { id: Sync.uid, name: S.name, bot: null, role0: S.reborn ? 'human' : S.role, role: S.role, char: S.char || '', reborn: !!S.reborn, over: S.over || null, items: S.items, ab: S.ab, path: S.path };
-    const bots = hd.bots.map(b => ({ id: b.id, name: b.name, bot: b.level, role0: b.reborn ? 'human' : b.role, role: b.role, char: b.char, reborn: b.reborn, over: b.over, items: b.items, ab: b.ab, path: b.path }));
-    return { mode: S.mode, map: T.map && T.map.id, turn: S.turn, result: Sync.settings && Sync.settings.result, hatches: S.hatches, log: S.log, seats: [me, ...bots] };
-  }
+  const pushToRepo = (id, r) => putFile(`tests/play-logs/${new Date(r.at).toISOString().slice(0, 16).replace(/[:T]/g, '-')}-test${r.n || 0}-${id}.json`,
+    JSON.stringify({ test: r.test, rating: r.rating, notes: r.notes || '', at: new Date(r.at).toISOString(), map: r.map, game: JSON.parse(r.game) }));
   function ratePanel() {
     const x = T.botTest; if (!x || !Sync.isAdmin || (x.code || '') !== (Sync.code || '')) return '';
     if (T.btSent) return `<p class="pst">Saved: ${esc(x.name)} · ${T.btRating}/5</p>`;
@@ -187,11 +180,25 @@ const Admin = (() => {
         say_(`Saved games online: ${recs.length}. Sent now: ${sent}. Already in the repo: ${had}.`);
       } catch (e) { say_('Failed: ' + (e.message || e)); }
     },
+    /* the anonymous records of players' games (Records) -> one file of everything newer than the last export, in data/game-records/ */
+    async btrecords() {
+      const st = $('#bt-status'), say_ = m => { if (st) st.textContent = m; };
+      if (!btToken()) return say_('Paste and save a GitHub token first.');
+      try {
+        say_('Reading the game records…');
+        const since = +(localStorage.getItem('eftaios.recExported') || 0), all = Object.entries(await Sync.adminList('gameRecords')), fresh = all.filter(([, r]) => r.at > since);
+        if (!fresh.length) return say_(`Game records online: ${all.length}. Nothing new since the last export.`);
+        const at = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+        await putFile(`data/game-records/${at}-${fresh.length}.json`, JSON.stringify(fresh.map(([id, r]) => ({ id, v: r.v, at: r.at, build: r.build || '', mode: r.mode || '', n: r.n, game: JSON.parse(r.game) }))));
+        localStorage.setItem('eftaios.recExported', String(Math.max(...fresh.map(([, r]) => r.at))));
+        say_(`Game records online: ${all.length}. Sent now: ${fresh.length}.`);
+      } catch (e) { say_('Failed: ' + (e.message || e)); }
+    },
     btrate(b) { T.btRating = +b.dataset.n; document.querySelectorAll('[data-act=btrate]').forEach(x => x.setAttribute('aria-checked', String(+x.dataset.n === T.btRating))); },
     async btsend() {
       const x = T.botTest; if (!x) return;
       if (!T.btRating) return toast('Pick a rating from 1 to 5 first');
-      const rec = { test: x.name, n: x.n, rating: T.btRating, notes: (($('#bt-notes') || {}).value || '').slice(0, 2000), at: Date.now(), map: T.map && T.map.id, game: JSON.stringify(gameRecord()) };
+      const rec = { test: x.name, n: x.n, rating: T.btRating, notes: (($('#bt-notes') || {}).value || '').slice(0, 2000), at: Date.now(), map: T.map && T.map.id, game: JSON.stringify(Records.snapshot()) };
       try {
         const id = uid(); await Sync.setPath('bottests/' + id, rec); T.btSent = true;
         let msg = 'Saved';

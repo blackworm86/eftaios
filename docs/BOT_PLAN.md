@@ -30,7 +30,7 @@
 5. **Play-test with the owner** and tune from the saved game logs.
 
 ## Decisions since the plan was agreed
-- **Game records (owner, 2026-10-24):** store anonymous results of finished games from players, with a notice and an opt-out switch in settings (default on), so the bots can be tuned over time from real games. Names stripped, admin-only read, records tagged with the bot code version. To build after the speed work.
+- **Game records (owner, 2026-10-24):** store anonymous results of finished games from players, with a notice and an opt-out switch in settings (default on), so the bots can be tuned over time from real games. Names stripped, admin-only read, records tagged with the bot code version. Built (records.js): on by default, switch in More and on the start screen, notice on the game-over screen; records are one write each, read only by the admin; opted-out humans are left out of online tables. Admin > Bot tests > "Send players' game records to the repo" writes them to data/game-records/.
 - **Alien Teleport:** an Alien does not always open with its Teleport on turn 1 (1 in 4 does). Done.
 - **Work happens on `main` only; no new branches.**
 - **Speed:** the 5 s bot turn limit must hold on the host's phone; desktop worst case measured 2 s in Phase 2, which is too close.

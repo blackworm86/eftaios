@@ -1323,6 +1323,7 @@ function morePanel() {
     ${solo ? `<div class="setrow"><span>${t('Turn')}</span><div class="stepper"><button class="btn" data-act="turnminus" aria-label="${t('Previous turn')}">−</button><b>${S.turn}<small>/${MAX_TURN}</small></b><button class="btn" data-act="turnplus" aria-label="${t('Next turn')}">+</button></div></div>` : ''}
     ${segRow('Map style', 'mapstyle', 'v', MAP_STYLE, [['dark', t('Dark')], ['classic', t('Classic')]])}
     ${segRow('Language', 'lang', 'l', LANG, [['en', 'English'], ['it', 'Italiano']])}
+    ${segRow('Share anonymous results', 'share', 'v', Records.on() ? 'on' : 'off', [['on', t('On')], ['off', t('Off')]])}
     ${Sync.code && Sync.isHost() ? `<button class="mrow" data-act="handover">${t('Hand over hosting')}<i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}
     </div>
     ${online

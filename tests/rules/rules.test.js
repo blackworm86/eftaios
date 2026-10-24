@@ -118,6 +118,11 @@ const log = (text = 'hello') => ({ id: 'l' + Date.now() + Math.random(), turn: 1
     const bt = { test: 'x', rating: 4, game: '{}', at: 1 };
     await ok('the admin can save a bot test record', () => assertSucceeds(set(ref(admin, 'bottests/b1'), bt)));
     await ok('a bot test record needs a rating from 1 to 5', () => assertFails(set(ref(admin, 'bottests/b2'), Object.assign({}, bt, { rating: 9 }))));
+    const gr = { v: 1, at: 1, n: 4, game: '{}' };
+    await ok('any signed-in player can add a game record', () => assertSucceeds(set(ref(adminNo, 'gameRecords/rec12345'), gr)));
+    await ok('a game record is never overwritten', () => assertFails(set(ref(adminNo, 'gameRecords/rec12345'), gr)));
+    await ok('a game record needs 2 to 8 players', () => assertFails(set(ref(adminNo, 'gameRecords/rec22222'), Object.assign({}, gr, { n: 12 }))));
+    await ok('only the admin can read game records', () => assertFails(get(ref(adminNo, 'gameRecords/rec12345'))));
     await ok('a non-admin cannot save or read bot tests', () => assertFails(set(ref(adminNo, 'bottests/b3'), bt)));
     await ok('the audit log refuses an update', () => assertFails(update(ref(admin, 'adminlog/old'), { action: 'changed' })));
     await ok('the audit log refuses a delete', () => assertFails(remove(ref(admin, 'adminlog/old'))));

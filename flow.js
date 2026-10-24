@@ -263,7 +263,12 @@ Object.assign(actions, {
     const ok = await Sync.join(code, { name });
     if (!ok) renderFlow();
   },
-  ready() { S.ready = !S.ready; Sync.setMe({ ready: S.ready, share: Records.on() }); save(); renderFlow(); },
+  ready() {
+    S.ready = !S.ready; const p = { ready: S.ready };
+    // the records switch is a newer field: with database rules published before it existed, the write is refused, and ready must still go through
+    Sync.setMeP(Object.assign({ share: Records.on() }, p)).catch(() => Sync.setMeP(p).catch(e => rulesError(e)));
+    save(); renderFlow();
+  },
   share(b) { Records.set(b.dataset.v === 'on'); if (S.stage === 'game' && S.role) render(); else renderFlow(); },
   makehost(b) {
     if (!isHost()) return;

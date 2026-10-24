@@ -981,3 +981,36 @@ body[data-tab=table] .panel{max-height:calc(64dvh + 54px + env(safe-area-inset-b
 /* v16.4: the log filters are one scrolling row, so the list starts right under them even on a small or landscape phone */
 .logfilter{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 0 4px;padding-bottom:2px}.logfilter::-webkit-scrollbar{display:none}.lfc{flex:none}
 ul.log li.turnh{padding-top:6px}
+/* v17: player bubbles. Outline = faction (thick + lock: known to all, thin: your guess, yellow: no idea); the square shows ? or
+   the Character; last action and cards follow. The square guesses (full view only), the rest picks the player for the map. */
+.mkbar{width:auto;align-items:flex-start;overflow:visible}
+.mkbar .mkhead{display:flex;gap:4px;flex:none;align-items:stretch}
+.mkbar .mkhead .mkt{width:auto;min-width:46px;flex:none;height:36px;min-height:36px}
+.mkbar .mkh{flex:none;width:auto;min-width:36px;height:36px;min-height:36px;padding:0 8px;flex-direction:row;gap:5px;border-radius:10px;font:700 11px var(--font);background:#0a1120e6;color:var(--text);border:1.5px solid var(--line)}
+.mkbar .mkh.all:not([disabled]){border-color:var(--amber);color:var(--amber);background:#ffb41f22}.mkbar .mkh[disabled]{opacity:.5}
+.pb{position:relative;flex:none;display:flex;align-items:center;width:98px;height:36px;box-sizing:border-box;border-radius:10px;border:3px solid var(--b);background:#0b1222ee;padding:0 0 0 2px}
+.pb.guess{border-width:2px}.pb.known{border-width:4px}
+.pb.picked{width:146px;box-shadow:0 0 0 2px var(--amber)}.pb.off{opacity:.55}.pb.isout:not(.picked){opacity:.6}
+.pb .psq{flex:none;width:26px;height:26px;border-radius:7px;background:var(--c);color:var(--t);display:grid;place-items:center;font:800 13px var(--font);border:0;padding:0;min-height:0}
+.pb button.psq{cursor:pointer}
+.pb .pbody{flex:1;min-width:0;height:100%;display:flex;flex-direction:row;align-items:center;gap:4px;padding:0 7px 0 5px;background:none;border:0;color:var(--text);min-height:0;border-radius:8px;width:auto}
+.pb .pnm{font:700 11.5px var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56px;flex:0 1 auto}
+.pb .psp{flex:1}
+.pb .pa{display:flex;align-items:flex-end;gap:1px;flex:none}.pb .pa .gi{width:18px;height:18px}.pb .pa i{font:700 8px var(--mono);font-style:normal;color:var(--dim)}
+.pb .pcd{display:flex;align-items:center;gap:3px;flex:none;font:700 11px var(--mono);color:#fff;height:18px}.pb .pcd i{width:11px;height:16px;box-sizing:border-box;border-radius:2px;background:#231f20;border:1.5px solid #9a9a9a}
+.pb .plk{position:absolute;left:-8px;bottom:-8px;width:18px;height:18px;border-radius:50%;background:var(--b);display:grid;place-items:center;box-shadow:0 0 0 2px #0b1222;pointer-events:none}
+.pb .ptick{position:absolute;right:-8px;top:-8px;width:18px;height:18px;border-radius:50%;background:var(--amber);color:#111;display:grid;place-items:center;box-shadow:0 0 0 2px #0b1222;pointer-events:none}
+.mkbar button.pb.mini{width:40px;height:40px;min-height:0;flex:none;padding:0;justify-content:center;align-items:center;flex-direction:row;gap:0;border-radius:10px;overflow:visible}
+.mkbar.compact{gap:9px}
+.pb.mini .psq{width:30px;height:30px}
+.pb.mini .pcd{position:absolute;right:-8px;top:-8px;min-width:18px;height:18px;padding:0 3px;box-sizing:border-box;border-radius:5px;background:#231f20;border:1.5px solid #9a9a9a;justify-content:center;font-size:10px}.pb.mini .pcd i{display:none}
+.pb.mini .pa{position:absolute;right:-8px;bottom:-8px}.pb.mini .pa i{display:none}
+.pb.mini .ptick{right:auto;left:-8px;top:-8px}
+.guesspop{position:absolute;z-index:40;display:flex;gap:6px;padding:6px;border-radius:14px;background:#0b1222f4;border:1px solid var(--line);box-shadow:0 6px 18px #000a}
+.guesspop button{min-width:62px;min-height:48px;border-radius:10px;border:2px solid var(--line);background:#141d31;color:#fff;font:700 12px var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.guesspop button i{width:12px;height:12px;border-radius:50%;border:3px solid #ffd23f}.guesspop .h i{border-color:#2f7dff}.guesspop .a i{border-color:#ff3b30}
+.guesspop button[aria-pressed=true]{border-color:var(--amber);background:#ffb41f22}
+.stage.classic .pb{background:#ffffffe6;color:#111}.stage.classic .pb .pbody{color:#111}.stage.classic .pb .pa i{color:#555}
+.followbar{left:6px}
+.mkbar{pointer-events:none}.mkbar>*{pointer-events:auto}   /* the gaps of the strip leave the map tappable */
+.pb .pa .omark{position:static;width:18px;height:18px;display:grid;place-items:center}.pb .pa .omark .gi{width:18px;height:18px}

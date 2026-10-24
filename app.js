@@ -9,7 +9,7 @@ const STORE = 'eftaios.v1';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 /* one icon family: 24px grid, 2px round strokes */
-const ICONS = { close: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7', up: 'M6 15l6-6 6 6', left: 'M15 5l-7 7 7 7', flag: 'M6 21V4M6 5h12l-2.5 4L18 13H6', down: 'M6 9l6 6 6-6', next: 'M9 5l7 7-7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', pencil: 'M4 20l1-5L16 4l4 4L9 19zM14 6l4 4', turn: 'M8 5l10 7-10 7z', cross: 'M7 7l10 10M17 7L7 17', bucket: 'M5 12l7-7 7 7-6.5 6.5a2.1 2.1 0 01-3 0zM5 12h14M20 15c0 0-1.8 2.2-1.8 3.4a1.8 1.8 0 003.6 0C21.8 17.2 20 15 20 15z', picker: 'M14.5 4.5l5 5-3 3-5-5zM13 8L4.5 16.5V19.5h3L16 11', expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', hand: 'M8 13V6.5a1.5 1.5 0 013 0V11M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6.5a1.5 1.5 0 013 0V14c0 4-2 7-6 7-3 0-4.5-2-6-5l-1.5-3a1.5 1.5 0 012.5-1.5L8 14' };
+const ICONS = { close: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7', up: 'M6 15l6-6 6 6', left: 'M15 5l-7 7 7 7', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z', collapsel: 'M5 5v14M19 12H9M13 8l-4 4 4 4', expandr: 'M19 5v14M5 12h10M11 8l4 4-4 4', flag: 'M6 21V4M6 5h12l-2.5 4L18 13H6', down: 'M6 9l6 6 6-6', next: 'M9 5l7 7-7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', pencil: 'M4 20l1-5L16 4l4 4L9 19zM14 6l4 4', turn: 'M8 5l10 7-10 7z', cross: 'M7 7l10 10M17 7L7 17', bucket: 'M5 12l7-7 7 7-6.5 6.5a2.1 2.1 0 01-3 0zM5 12h14M20 15c0 0-1.8 2.2-1.8 3.4a1.8 1.8 0 003.6 0C21.8 17.2 20 15 20 15z', picker: 'M14.5 4.5l5 5-3 3-5-5zM13 8L4.5 16.5V19.5h3L16 11', expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', hand: 'M8 13V6.5a1.5 1.5 0 013 0V11M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6.5a1.5 1.5 0 013 0V14c0 4-2 7-6 7-3 0-4.5-2-6-5l-1.5-3a1.5 1.5 0 012.5-1.5L8 14' };
 const ico = (n, s = 20) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="${n === 'turn' ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 const colL = c => String.fromCharCode(65 + c);
 const cid = (c, r) => colL(c) + String(r + 1).padStart(2, '0');
@@ -727,7 +727,8 @@ function outMark(k) {
   return o === 'escaped' ? `<i class="omark esc" title="${t('escaped')}">${ico('check', 12)}</i>` : `<i class="omark dead" title="${t(o === 'trapped' ? 'trapped' : 'eliminated')}">${o === 'trapped' ? ico('cross', 12) : gico('killed', 16)}</i>`;
 }
 /* banner under the top bar while following a player */
-function followBar() {
+function followBar() { followBar0(); const bar = $('#followbar'), mk = $('#mkbar'); if (bar && mk) mk.style.top = bar.hidden ? '' : (bar.offsetTop + bar.offsetHeight + 6) + 'px'; }   // the strip starts under the banner
+function followBar0() {
   const bar = $('#followbar'); if (!bar) return;
   const picked = T.focusSet || [];
   if (picked.length > 1 && S.role) {
@@ -830,19 +831,73 @@ function noteDlg(sec) {
   const del = $('#d-del'); if (del) del.onclick = () => { S.notes = S.notes.filter(x => x.sector !== sec); save(); paintNotes(); closeDlg(); };
   $('#d-yes').onclick = () => { S.notes = (S.notes || []).filter(x => x.sector !== sec); S.notes.push({ sector: sec, icon: T.noteIcon, text: $('#note-txt').value.trim().slice(0, 120) }); save(); paintNotes(); closeDlg(); };
 }
+/* a Character's own symbol, without the printed hexagon, fitted to a square: drawn in the player's colour square */
+const GLYPH_BOX = new Map();
+function charGlyph(ch, size = 18) {
+  const n = CHAR_ICON[ch], art = n && GI_ART[n]; if (!art) return '';
+  const head = art.slice(0, art.indexOf('>') + 1), paths = (art.match(/<path[^>]*>/g) || []).filter(x => !/#231f20/.test(x) && !(/fill="none"/.test(x) && x.length > 600)).map(x => x.replace(/#44aae4|#ed1570/g, 'currentColor')).join('');
+  if (!GLYPH_BOX.has(n)) {   // measured once: every symbol gets the same margin, none is cut
+    let vb = '-30 -28 60 56';
+    try {
+      const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('style', 'position:absolute;width:0;height:0;visibility:hidden'); s.innerHTML = head + paths + '</g>'; document.body.appendChild(s);
+      const g = s.firstElementChild, b = g.getBBox(), m = g.transform.baseVal.consolidate().matrix, w = b.width * m.a, h = b.height * m.d, sz = Math.max(w, h) * 1.14, cx = b.x * m.a + m.e + w / 2, cy = b.y * m.d + m.f + h / 2; s.remove();
+      if (sz > 0) vb = [cx - sz / 2, cy - sz / 2, sz, sz].map(v => v.toFixed(2)).join(' ');
+    } catch (_) { /* no layout yet: the default box */ }
+    GLYPH_BOX.set(n, vb);
+  }
+  return `<svg class="glyph" viewBox="${GLYPH_BOX.get(n)}" width="${size}" height="${size}" aria-hidden="true">${head}${paths}</g></svg>`;
+}
+/* the last thing a player did, as the game's icon, and the turn */
+function lastAct(k) {
+  const e = S.log.find(x => playerKey(x) === k && ['noise', 'silence', 'attack', 'spot', 'item', 'hatch', 'reveal', 'out'].includes(x.kind)); if (!e) return '';
+  const ic = e.kind === 'out' ? gico(String(e.text).startsWith('escaped') ? 'pod-green' : 'killed', 18) : logIcon(e, 18);
+  return ic ? `<span class="pa" title="${esc(entryText(e))}">${ic}<i>${esc(e.turn)}</i></span>` : '';
+}
+const LOCK = '<svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2" fill="#fff"/><path d="M8 10V7a4 4 0 018 0v3" fill="none" stroke="#fff" stroke-width="3"/></svg>';
+const pCompact = () => { if (T.pcompact === undefined) { try { T.pcompact = localStorage.getItem('eftaios.pcompact') === '1'; } catch (_) { T.pcompact = false; } } return T.pcompact; };
+/* one player in the strip: outline = faction (thick + lock: everybody knows it; thin: your guess), the square shows ? or the
+   Character, then the last action and the cards. Tapping the square guesses the faction (full view only), the rest picks the player for the map. */
+function playerBubble(k, n) {
+  const f = factOf(k), known = k !== 'me' && !!f.role, guess = !known && k !== 'me' && !!(S.sus && S.sus[k]), picked = (T.focusSet || []).includes(k), any = (T.focusSet || []).length;
+  const ch = k === 'me' ? (S.reborn ? '' : S.char) : f.char, sq = ch && CHAR_ICON[ch] ? charGlyph(ch, pCompact() ? 20 : 18) : k === 'me' ? '' : '?';
+  const cn = digital() ? (cardCounts()[k] || {}).down || 0 : null, out = outMark(k), act = out && !/conv/.test(out) ? `<span class="pa">${out}</span>` : lastAct(k);   // out of the game: that is the status
+  const cls = `pb${known ? ' known' : guess ? ' guess' : ''}${picked ? ' picked' : any ? ' off' : ''}${out ? ' isout' : ''}`, st = `--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}`;
+  const label = esc(n) + (out ? ' · ' + t(/esc/.test(out) ? 'escaped' : /conv/.test(out) ? 'Killed as a Human: now an Alien' : 'eliminated') : '');
+  const lock = known ? `<span class="plk" title="${esc(t(f.role === 'alien' ? 'Alien: the table has seen it' : 'Human: the table has seen it'))}">${LOCK}</span>` : '', tick = picked ? `<span class="ptick">${ico('check', 11)}</span>` : '';
+  const cards = cn === null ? '' : `<span class="pcd" title="${esc(t('{n} cards face down', { n: cn }))}"><i></i>${cn}</span>`;
+  if (pCompact()) return `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${picked}" aria-label="${label}" title="${esc(n)}" class="${cls} mini" style="${st}"><span class="psq">${sq}</span>${lock}${cards}${act}${tick}</button>`;
+  const sqEl = known || k === 'me' ? `<span class="psq">${sq}</span>` : `<button class="psq" data-act="pguess" data-k="${esc(k)}" aria-label="${esc(t('Your suspicion'))}: ${esc(n)}">${sq}</button>`;
+  return `<div class="${cls}" style="${st}">${sqEl}<button class="pbody" data-act="pfocus" data-k="${esc(k)}" aria-pressed="${picked}" aria-label="${label}" title="${esc(n)}">${picked ? `<span class="pnm">${esc(shortName(n))}</span>` : ''}${act}<span class="psp"></span>${cards}</button>${lock}${tick}</div>`;
+}
+/* the faction guess: three big buttons beside the bubble */
+function guessPop(k, from) {
+  closeGuess(); const st = $('#stage'); if (!st || !from) return;
+  const r = from.getBoundingClientRect(), s = st.getBoundingClientRect(), g = suspicion(k), d = document.createElement('div');
+  d.id = 'guesspop'; d.className = 'guesspop'; d.setAttribute('role', 'group'); d.setAttribute('aria-label', t('Your suspicion'));
+  d.innerHTML = [['', '?', 'u'], ['human', t('Human'), 'h'], ['alien', t('Alien'), 'a']].map(([v, l, c]) => `<button data-act="sus" data-k="${esc(k)}" data-v="${v}" class="${c}" aria-pressed="${g === v}"><i></i>${l}</button>`).join('');
+  st.appendChild(d);
+  const left = r.right - s.left + 10, top = Math.max(4, Math.min(st.clientHeight - d.offsetHeight - 4, r.top - s.top + r.height / 2 - d.offsetHeight / 2));
+  d.style.left = Math.min(left, st.clientWidth - d.offsetWidth - 4) + 'px'; d.style.top = top + 'px';
+  setTimeout(() => document.addEventListener('pointerdown', closeGuessOut, true), 0);
+}
+function closeGuessOut(e) { if (!e.target.closest('#guesspop')) closeGuess(); }
+function closeGuess() { const d = $('#guesspop'); if (d) d.remove(); document.removeEventListener('pointerdown', closeGuessOut, true); }
 function renderMkBar() {
   const bar = $('#mkbar'); if (!bar) return;
   const ps = S.role ? knownPlayers() : [];
   const manual = S.track === 'manual';
   if (!ps.length && !manual) { bar.hidden = true; return; }
-  bar.hidden = false;
-  const sus = k => `<div class="msus" role="group" aria-label="${t('Your suspicion')}">${[['', '?'], ['human', t('H')], ['alien', t('A')]].map(([v, l]) => `<button data-act="sus" data-k="${esc(k)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(k) === v}">${l}</button>`).join('')}</div>`;
-  bar.innerHTML = `<button class="mkt" data-act="mkall" aria-pressed="${!!T.rng}" aria-label="${t('Turn slider')}"><b>${T.rng ? (T.rng[0] === T.rng[1] ? 'T' + T.rng[0] : T.rng[0] + '–' + T.rng[1]) : mkN() || t('All')}</b><span>${T.rng ? t('turns') : mkN() === 1 ? t('turn') : t('turns')}</span></button>` +
-    (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
-    (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
-      ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
-      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${(T.focusSet || []).includes(k)}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : /conv/.test(outMark(k)) ? 'Killed as a Human: now an Alien' : 'eliminated') : ''}" title="${esc(n)}" class="pchip${outMark(k) ? ' isout' : ''}" style="--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}"><span class="pnm">${roleTag(k)}${esc(shortName(n))}</span><span class="pft"><span class="pl">${cardBadge(k)}</span><span class="pr">${outMark(k)}</span></span></button>${(T.focusSet || []).includes(k) && k !== 'me' ? sus(k) : ''}`).join('') +
-    (T.markMode && !Sync.code && !S.hot && ps.length < 7 ? `<button class="mkt" data-act="addplayer" aria-label="${t('Add player')}"><b>+</b></button>` : '');
+  bar.hidden = false; bar.classList.toggle('compact', !T.markMode && pCompact()); bar.classList.toggle('marking', !!T.markMode);
+  const turns = `<button class="mkt" data-act="mkall" aria-pressed="${!!T.rng}" aria-label="${t('Turn slider')}"><b>${T.rng ? (T.rng[0] === T.rng[1] ? 'T' + T.rng[0] : T.rng[0] + '–' + T.rng[1]) : mkN() || t('All')}</b><span>${T.rng ? t('turns') : mkN() === 1 ? t('turn') : t('turns')}</span></button>`;
+  const mark = manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '';
+  if (T.markMode) {
+    bar.innerHTML = turns + mark + ps.map(([k, n]) => `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`).join('') +
+      (!Sync.code && !S.hot && ps.length < 7 ? `<button class="mkt" data-act="addplayer" aria-label="${t('Add player')}"><b>+</b></button>` : '');
+    return;
+  }
+  const any = (T.focusSet || []).length;
+  const head = `<div class="mkhead">${turns}${mark}<button class="mkh all" data-act="pshowall" aria-pressed="${!any}" ${any ? '' : 'disabled'} aria-label="${t('Show all')}">${ico('eye', 15)}${pCompact() ? '' : `<span>${t('Show all')}</span>`}</button><button class="mkh" data-act="pcompact" aria-pressed="${pCompact()}" aria-label="${t(pCompact() ? 'Expand the players' : 'Compress the players')}">${ico(pCompact() ? 'expandr' : 'collapsel', 15)}</button></div>`;
+  bar.innerHTML = head + [['me', t('Me')]].concat(ps).map(([k, n]) => playerBubble(k, n)).join('');
 }
 /* follow one player (or only my route): grey out the rest and frame what matters */
 function follow(k) { followSet(k ? [k] : []); }
@@ -1173,8 +1228,11 @@ const actions = {
   pickno() { if (T.pick) T.pick.sel = null; paintCells(); render(); },
   pickyes() { const p = T.pick; if (!p || !p.sel) return; T.pick = null; paintCells(); p.cb(p.sel); },
   noop() { },
-  sus(b) { const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
-  pfocus(b) { pickPlayer(b.dataset.k); },
+  sus(b) { closeGuess(); const k = b.dataset.k, v = b.dataset.v; S.sus = S.sus || {}; if (v) S.sus[k] = v; else delete S.sus[k]; save(); render(); paintOverlay(); },
+  pfocus(b) { closeGuess(); pickPlayer(b.dataset.k); },
+  pguess(b) { const open = $('#guesspop'); if (open && open.querySelector(`[data-k="${CSS.escape(b.dataset.k)}"]`)) return closeGuess(); guessPop(b.dataset.k, b.closest('.pb')); },
+  pshowall() { closeGuess(); followSet([]); },
+  pcompact() { T.pcompact = !pCompact(); try { localStorage.setItem('eftaios.pcompact', T.pcompact ? '1' : '0'); } catch (_) { /* per device only */ } closeGuess(); paintOverlay(); },
   unfollow() { follow(null); },
   follow(b) { setTab('play'); follow(b.dataset.k); },
   markmode() { T.markMode = !T.markMode; T.markTurn = S.turn; T.markKind = 'noise'; T.markStack = []; T.focus = null; T.focusSet = []; if (T.markMode && !T.markKey) { const ps = knownPlayers(); if (ps.length === 1) T.markKey = ps[0][0]; } render(); paintOverlay(); },

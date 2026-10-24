@@ -1034,3 +1034,6 @@ ul.log li.turnh{padding-top:6px}
 .pb.mini .pa{position:absolute;right:1px;bottom:1px;left:auto;top:auto}
 .pb.mini .pa .gi{width:15px;height:15px}
 .pb.mini .ptick{left:1px;top:1px;right:auto;bottom:auto;width:14px;height:14px}.pb.mini .ptick svg{width:9px;height:9px}
+/* v20: the full bubbles sit as close as the compact tiles */
+.mkbar:not(.compact){gap:3px}
+.pb:not(.mini) .psq{width:28px;height:28px}

@@ -76,9 +76,9 @@ def update(net, opt, data, boards, ids, device, cfg, ent_coef):
             loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
             opt.step()
-            stats["pol"] += float(pol)
-            stats["val"] += float(val)
-            stats["ent"] += float(ent)
+            stats["pol"] += float(pol.detach())
+            stats["val"] += float(val.detach())
+            stats["ent"] += float(ent.detach())
             stats["n"] += 1
     n = max(1, stats["n"])
     return {k: stats[k] / n for k in ("pol", "val", "ent")}

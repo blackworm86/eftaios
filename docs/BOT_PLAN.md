@@ -28,3 +28,9 @@
    - Friendly-fire risk weighs every attack.
 4. **Real levels.** Easy uses the simple model with mistakes. Normal adds the full reading and short plans. Hard adds deeper plans and deliberate bluffs. Verified in mixed tables against the targets.
 5. **Play-test with the owner** and tune from the saved game logs.
+
+## Decisions since the plan was agreed
+- **Game records (owner, 2026-10-24):** store anonymous results of finished games from players, with a notice and an opt-out switch in settings (default on), so the bots can be tuned over time from real games. Names stripped, admin-only read, records tagged with the bot code version. To build after the speed work.
+- **Alien Teleport:** an Alien does not always open with its Teleport on turn 1 (1 in 4 does). Done.
+- **Work happens on `main` only; no new branches.**
+- **Speed:** the 5 s bot turn limit must hold on the host's phone; desktop worst case measured 2 s in Phase 2, which is too close.

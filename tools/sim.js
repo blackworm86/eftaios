@@ -37,7 +37,7 @@ function summarize(d, n, meta) {
       if (i >= 2 && path[i].pos === path[i - 2].pos && path[i].pos !== path[i - 1].pos) abab++;   // A-B-A back and forth
     }
     return {
-      id: s.id, bot: s.bot, role0: s.role0, role: s.role, over: s.over, reborn: s.reborn, steps: path.length - 1,
+      id: s.id, bot: s.bot, role0: s.role0, role: s.role, char: s.char, ab: s.ab, over: s.over, reborn: s.reborn, steps: path.length - 1,
       changeRate: moves ? changes / moves : 0, cycleRate: moves ? abab / moves : 0, maxStay,
       // per-turn positions of the real route; used by tools/cluster.js for the Alien-clustering check
       route: POSITIONS ? path.map(p => ({ t: p.turn, pos: p.pos })) : undefined

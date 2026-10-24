@@ -309,3 +309,21 @@ Loosening the Attack/Spotlight/Sensor thresholds (atkAt 1.0, spotAt 0.35, sensor
 Win rates moved within noise (about 10 points at 36 games per cell), except the mixed ladder: hard seats 41.7% vs 59.7% in Phase 0 (72 seats, about +/-11): to re-check at larger size before drawing a conclusion.
 Turn time (this machine): worst 0.92 s (hard, 7 players), mean under 20 ms.
 Fixed in sim.js: a mutated Human killed later as an Alien is a plain death, not a conversion, in the death audit.
+
+## Phase 1 play-test (owner, 4 games, tests/play-logs/)
+
+| test | seat | rating | what the owner saw |
+|---|---|---|---|
+| 1 Alien powers | Human | 3 | Blink Alien killed by the Fast Alien on turn 3; Lurking never used its power; Aliens attack early and show themselves; Humans won |
+| 2 Alien items | Human | 2 | very low challenge (Humans escaped on turn 31); Silent Alien killed Surge Alien on turn 3 |
+| 3 Human powers | Alien | 1 | Soldier never attacked, Executive Officer never stayed, Medic revealed another Human; Aliens won |
+| 4 Human items | Alien | 3 | Spotlight and Sensor used; Co-pilot kept cat, mutation, cat, clone, sedatives and escaped |
+
+Findings (from the logs and 3 x 8 hard games):
+- Two of the three friendly kills came on turn 3 right after an Alien attacked: another Alien walked into the attacked sector and attacked.
+  The tracker still read the first Alien as a Human (an Alien's Character item counted as proof of a Human, cancelling its attack). Fixed: such items are weak evidence.
+- That is not the whole cause: in 321 hard attacks, 25 (8%) hit a sector with an Alien in it, and in those the tracker expected a Human there (0.25-1.1) and an Alien only 0-0.15.
+  Aliens look Human to each other, so avoiding friendly fire needs the Phase 2 work (inferring allies from behaviour).
+- Powers are used in simulation (hard, 6-8 players, uses per seat: Psychic 2.3, Captain 0.8, Fast 0.8, Medic 0.8, Pilot 0.6, Executive Officer 0.6, Soldier 0.4, Engineer 0.3, Lurking 0.14 before the threshold fix, Co-pilot 0.2),
+  but Humans in the owner's games died by turn 5-6, before they could use the once-only ones.
+- Bots are too weak at hard in the owner's games: Humans won tests 1, 2 and 4. Phase 3 (planning) is where the Aliens get stronger.

@@ -409,7 +409,7 @@
   Sync.releaseHost = () => { if (Sync.code && Sync.isHolder()) fb.remove(path(Sync.code, 'lease')).catch(() => {}); };
   Sync.updateSettings = p => Sync.code && fb.update(path(Sync.code, 'settings'), p).catch(e => { rulesError(e); });
   Sync.setMeP = p => fb.update(path(Sync.code, 'players/' + Sync.uid), p);
-  Sync.setMe = p => Sync.code && fb.update(path(Sync.code, 'players/' + Sync.uid), p).catch(console.warn);
+  Sync.setMe = p => Sync.code && fb.update(path(Sync.code, 'players/' + Sync.uid), p).catch(e => { console.warn(e); if (window.rulesError) window.rulesError(e); });   // a refused field: tell the player the published rules are old
   Sync.startGame = async (first, order) => {
     if (!Sync.code) return;
     try { await fb.set(path(Sync.code, 'turn'), { n: 1, idx: 0, uid: order[0] }); await fb.update(path(Sync.code, 'settings'), { status: 'playing', first: first || '' }); Sync.writeRoomIndex({ status: 'playing', players: order.length }); } catch (e) { console.warn(e); }

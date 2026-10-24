@@ -39,5 +39,18 @@ check(has(room.players.$uid['.write'], "child('kicks')"), 'a kicked player canno
 check(has(room.kicks.$uid['.write'], "settings/host") && has(room.kicks.$uid['.write'], "lease/uid"), 'only the table can kick a player');
 check(has(room.players.$uid['.write'], "val() !== true"), 'a banned player cannot write a seat');
 
+// every field the client writes on a seat must be in the rules, or the write is refused once the rules are published by hand (the "ready" bug)
+{
+  const seat = Object.keys(room.players.$uid).filter(k => !k.startsWith('.') && k !== '$other');
+  const wrote = new Set();
+  for (const f of fs.readdirSync(path.join(__dirname, '..')).filter(n => n.endsWith('.js'))) {
+    const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+    for (const m of src.matchAll(/(?:setMeP?|upd\('players\/' \+ [^,]+)\(?\s*,?\s*\{([^{}]*)\}/g)) for (const k of m[1].matchAll(/(?:^|,)\s*(\w+)\s*:/g)) wrote.add(k[1]);
+    for (const m of src.matchAll(/Sync\.setMeP?\(\{([^{}]*)\}/g)) for (const k of m[1].matchAll(/(?:^|,)\s*(\w+)\s*:/g)) wrote.add(k[1]);
+  }
+  const missing = [...wrote].filter(k => !seat.includes(k));
+  check(wrote.size > 5 && !missing.length, 'every seat field the app writes is in the rules (' + [...wrote].join(',') + (missing.length ? ', missing: ' + missing.join(', ') : '') + ')');
+}
+
 console.log(bad ? `\n${bad} rule invariant(s) broken` : '\nall rule invariants hold');
 process.exitCode = bad ? 1 : 0;

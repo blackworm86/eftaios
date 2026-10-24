@@ -248,7 +248,13 @@ const inRng = n => !T.rng || (n >= T.rng[0] && n <= T.rng[1]);
 const fakeMap = () => (S.sus && S.sus['~f']) || {};
 const fakeState = id => fakeMap()[id] || '';
 let SUGGEST = new Map();   // declaration id -> why it seems fake (unmarked ones only)
-function suggestFakes() {
+let SUG_KEY = '', SUG_VAL = new Map();
+function suggestFakes() {   // the same answer until the log or a mark changes: it is asked for on every redraw
+  const key = S.log.length + '|' + (S.log[0] && S.log[0].id) + '|' + (typeof digital === 'function' && digital()) + '|' + JSON.stringify(fakeMap());
+  if (key !== SUG_KEY) { SUG_VAL = suggestFakes0(); SUG_KEY = key; }
+  return SUG_VAL;
+}
+function suggestFakes0() {
   const out = new Map(), log = S.log.slice().reverse(), H = find(T.map, 'H'), A = find(T.map, 'A');   // oldest first
   log.forEach((e, i) => {
     if (e.kind !== 'noise' || !e.sector || e.mine || fakeState(e.id)) return;
@@ -314,7 +320,7 @@ const shapeOf = () => HEX_MARK;
    an attack with no Attack card (only an Alien does that), Items only a Human uses, a pod, two noises with no Cat (the Pilot). */
 let FACTS = new Map(), FACTS_KEY = '';
 function publicFacts() {
-  const key = S.log.length + '|' + (S.log[0] && S.log[0].id) + '|' + S.mode;
+  const key = S.log.length + '|' + (S.log[0] && S.log[0].id) + '|' + S.mode + '|' + (typeof digital === 'function' && digital());
   if (key === FACTS_KEY) return FACTS; FACTS_KEY = key;
   const out = new Map(), set = (k, role, char, why) => { const o = out.get(k) || {}; out.set(k, { role: role || o.role, char: char || o.char, why: why || o.why }); };
   const log = S.log.slice().reverse(), same = (x, e, k) => x.turn === e.turn && playerKey(x) === k;
@@ -323,6 +329,7 @@ function publicFacts() {
     const i = (e.kind === 'reveal' || e.kind === 'out') && typeof revealInfo === 'function' ? revealInfo(e) : null;
     if (i) set(k, i.killed && i.role === 'human' ? 'alien' : i.role, i.char, 'card');
     else if (e.kind === 'attack') {
+      if (typeof digital === 'function' && !digital()) return;   // companion mode: declarations are typed in by hand, so a Soldier's attack is not told apart
       const card = log.some(x => same(x, e, k) && ((x.kind === 'item' && x.text === 'attack') || (x.kind === 'reveal' && String(x.text).startsWith('Id|human'))));
       set(k, card ? 'human' : 'alien', '', card ? 'attack card' : 'attack');
     } else if (e.kind === 'item') {
@@ -399,6 +406,9 @@ function followZone(key) {
 }
 function setFake(id, v) {
   const open = dlg.open && dlg.querySelector('.fakecard'); S.sus = S.sus || {}; const m = Object.assign({}, fakeMap()); if (v) m[id] = v; else delete m[id];
+  // the journal field holds 4000 characters: marks of lines that are gone go first, then the oldest, so a save is never refused
+  const ids = new Set(S.log.map(e => e.id)); Object.keys(m).forEach(k => { if (!ids.has(k)) delete m[k]; });
+  Object.keys(m).slice(0, Math.max(0, Object.keys(m).length - 120)).forEach(k => delete m[k]);
   if (Object.keys(m).length) S.sus['~f'] = m; else delete S.sus['~f'];
   save(); render(); paintOverlay(); if (open) fakeReview();   // the review dialog stays open for the next one
 }
@@ -1174,7 +1184,7 @@ const killOf = e => (e && e.kind === 'info' && String(e.text).startsWith('kill|'
 function entryText(e) {
   const s = e.sector;
   if (e.kind === 'noise') return t('Noise in Sector {s}', { s });
-  if (e.kind === 'attack') { const f = factOf(playerKey(e)), card = S.log.some(x => x.turn === e.turn && playerKey(x) === playerKey(e) && ((x.kind === 'item' && x.text === 'attack') || (x.kind === 'reveal' && String(x.text).startsWith('Id|human')))); return t('Attack in Sector {s}', { s }) + (playerKey(e) === 'me' ? '' : card ? ' · ' + t('Attack card') : ' · ' + t('Alien')); }
+  if (e.kind === 'attack') { if (typeof digital === 'function' && !digital()) return t('Attack in Sector {s}', { s }); const card = S.log.some(x => x.turn === e.turn && playerKey(x) === playerKey(e) && ((x.kind === 'item' && x.text === 'attack') || (x.kind === 'reveal' && String(x.text).startsWith('Id|human')))); return t('Attack in Sector {s}', { s }) + (playerKey(e) === 'me' ? '' : card ? ' · ' + t('Attack card') : ' · ' + t('Alien')); }
   if (e.kind === 'spot') return t('Spotlight on Sector {s}', { s });
   if (e.kind === 'silence') return t(e.text === 'secure' ? 'Silent Sector' : 'Silence in all Sectors');
   if (e.kind === 'hatch' && e.n) return t(e.ok ? 'Escape Pod {n}: escaped' : 'Escape Pod {n}: damaged', { n: e.n });

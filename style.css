@@ -962,7 +962,7 @@ body[data-tab=table] .panel{max-height:calc(64dvh + 54px + env(safe-area-inset-b
 /* v16.4: the log filters are one scrolling row, so the list starts right under them even on a small or landscape phone */
 .logfilter{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 0 4px;padding-bottom:2px}.logfilter::-webkit-scrollbar{display:none}.lfc{flex:none}
 ul.log li.turnh{padding-top:6px}
-/* v17: player bubbles. Outline = faction (thick + lock: known to all, thin: your guess, yellow: no idea); the square shows ? or
+/* v17: player bubbles. Outline = faction (thick: known to all, thin: your guess, yellow: no idea); the square shows ? or
    the Character; last action and cards follow. The square guesses (full view only), the rest picks the player for the map. */
 .mkbar{width:auto;align-items:flex-start;overflow:visible}
 .mkbar .mkhead{display:flex;gap:4px;flex:none;align-items:stretch}
@@ -979,7 +979,6 @@ ul.log li.turnh{padding-top:6px}
 .pb .psp{flex:1}
 .pb .pa{display:flex;align-items:flex-end;gap:1px;flex:none}.pb .pa .gi{width:18px;height:18px}.pb .pa i{font:700 8px var(--mono);font-style:normal;color:var(--dim)}
 .pb .pcd{display:flex;align-items:center;gap:3px;flex:none;font:700 11px var(--mono);color:#fff;height:18px}.pb .pcd i{width:11px;height:16px;box-sizing:border-box;border-radius:2px;background:#231f20;border:1.5px solid #9a9a9a}
-.pb .plk{position:absolute;left:-8px;bottom:-8px;width:18px;height:18px;border-radius:50%;background:var(--b);display:grid;place-items:center;box-shadow:0 0 0 2px #0b1222;pointer-events:none}
 .pb .ptick{position:absolute;right:-8px;top:-8px;width:18px;height:18px;border-radius:50%;background:var(--amber);color:#111;display:grid;place-items:center;box-shadow:0 0 0 2px #0b1222;pointer-events:none}
 .mkbar button.pb.mini{width:40px;height:40px;min-height:0;flex:none;padding:0;justify-content:center;align-items:center;flex-direction:row;gap:0;border-radius:10px;overflow:visible}
 .mkbar.compact{gap:9px}
@@ -1026,3 +1025,12 @@ ul.log li.turnh{padding-top:6px}
 @media (pointer:coarse){.tlrow .btn,.tlrow2 .btn{min-height:40px;min-width:40px}.lfc{min-height:38px}#hd-role{min-height:40px;display:inline-flex;align-items:center}.logfilter .lfc{min-height:38px}}
 @media (max-height:700px){body[data-tab=table] .panel{max-height:calc(56dvh + 54px + env(safe-area-inset-bottom))}}
 #flow-card{margin-bottom:34px}
+
+/* v20: compact strip as a tight column. The square is centred in the tile; cards sit top-right and the last action bottom-right, inside it */
+.mkbar.compact{gap:3px}
+.mkbar button.pb.mini{width:46px;height:46px;margin:0;display:grid;place-items:center;padding:0;overflow:hidden}   /* margin:0 undoes the generic .mini rule */
+.pb.mini .psq{width:28px;height:28px;grid-area:1/1;margin:0}
+.pb.mini .pcd{position:absolute;right:1px;top:1px;min-width:14px;height:14px;padding:0 2px;border-radius:5px;font-size:10px;line-height:11px}
+.pb.mini .pa{position:absolute;right:1px;bottom:1px;left:auto;top:auto}
+.pb.mini .pa .gi{width:15px;height:15px}
+.pb.mini .ptick{left:1px;top:1px;right:auto;bottom:auto;width:14px;height:14px}.pb.mini .ptick svg{width:9px;height:9px}

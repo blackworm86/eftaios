@@ -880,21 +880,20 @@ function lastAct(k) {
   const ic = e.kind === 'out' ? gico(String(e.text).startsWith('escaped') ? 'pod-green' : 'killed', 18) : logIcon(e, 18);
   return ic ? `<span class="pa" title="${esc(entryText(e))}">${ic}<i>${esc(e.turn)}</i></span>` : '';
 }
-const LOCK = '<svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2" fill="#fff"/><path d="M8 10V7a4 4 0 018 0v3" fill="none" stroke="#fff" stroke-width="3"/></svg>';
 const pCompact = () => { if (T.pcompact === undefined) { try { T.pcompact = localStorage.getItem('eftaios.pcompact') === '1'; } catch (_) { T.pcompact = false; } } return T.pcompact; };
-/* one player in the strip: outline = faction (thick + lock: everybody knows it; thin: your guess), the square shows ? or the
+/* one player in the strip: outline = faction (thick: everybody knows it; thin: your guess), the square shows ? or the
    Character, then the last action and the cards. Tapping the square guesses the faction (full view only), the rest picks the player for the map. */
 function playerBubble(k, n) {
   const f = factOf(k), known = k !== 'me' && !!f.role, guess = !known && k !== 'me' && !!(S.sus && S.sus[k]), picked = (T.focusSet || []).includes(k), any = (T.focusSet || []).length;
   const ch = k === 'me' ? (S.reborn ? '' : S.char) : f.char, sq = ch && CHAR_ICON[ch] ? charGlyph(ch, pCompact() ? 20 : 18) : k === 'me' ? '' : '?';
   const cn = digital() ? (cardCounts()[k] || {}).down || 0 : null, out = outMark(k), act = out && !/conv/.test(out) ? `<span class="pa">${out}</span>` : lastAct(k);   // out of the game: that is the status
   const cls = `pb${known ? ' known' : guess ? ' guess' : ''}${picked ? ' picked' : any ? ' off' : ''}${out ? ' isout' : ''}`, st = `--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}`;
-  const label = esc(n) + (out ? ' · ' + t(/esc/.test(out) ? 'escaped' : /conv/.test(out) ? 'Killed as a Human: now an Alien' : 'eliminated') : '');
-  const lock = known ? `<span class="plk" title="${esc(t(f.role === 'alien' ? 'Alien: the table has seen it' : 'Human: the table has seen it'))}">${LOCK}</span>` : '', tick = picked ? `<span class="ptick">${ico('check', 11)}</span>` : '';
+  const why = known ? ' · ' + t(f.role === 'alien' ? 'Alien: the table has seen it' : 'Human: the table has seen it') : '', label = esc(n) + esc(why) + (out ? ' · ' + t(/esc/.test(out) ? 'escaped' : /conv/.test(out) ? 'Killed as a Human: now an Alien' : 'eliminated') : '');
+  const tick = picked ? `<span class="ptick">${ico('check', 11)}</span>` : '';
   const cards = cn === null ? '' : `<span class="pcd" title="${esc(t('{n} cards face down', { n: cn }))}"><i></i>${cn}</span>`;
-  if (pCompact()) return `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${picked}" aria-label="${label}" title="${esc(n)}" class="${cls} mini" style="${st}"><span class="psq">${sq}</span>${lock}${cards}${act}${tick}</button>`;
+  if (pCompact()) return `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${picked}" aria-label="${label}" title="${esc(n)}" class="${cls} mini" style="${st}"><span class="psq">${sq}</span>${cards}${act}${tick}</button>`;
   const sqEl = known || k === 'me' ? `<span class="psq">${sq}</span>` : `<button class="psq" data-act="pguess" data-k="${esc(k)}" aria-label="${esc(t('Your suspicion'))}: ${esc(n)}">${sq}</button>`;
-  return `<div class="${cls}" style="${st}">${sqEl}<button class="pbody" data-act="pfocus" data-k="${esc(k)}" aria-pressed="${picked}" aria-label="${label}" title="${esc(n)}">${picked ? `<span class="pnm">${esc(shortName(n))}</span>` : ''}${act}<span class="psp"></span>${cards}</button>${lock}${tick}</div>`;
+  return `<div class="${cls}" style="${st}">${sqEl}<button class="pbody" data-act="pfocus" data-k="${esc(k)}" aria-pressed="${picked}" aria-label="${label}" title="${esc(n)}">${picked ? `<span class="pnm">${esc(shortName(n))}</span>` : ''}${act}<span class="psp"></span>${cards}</button>${tick}</div>`;
 }
 /* the faction guess: three big buttons beside the bubble */
 function guessPop(k, from) {

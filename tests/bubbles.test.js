@@ -15,7 +15,7 @@ const {assert,setup,startTable,begin,uidOf}=require('./helpers');
   assert(await H.locator(`#mkbar .pb.guess`).count()===1,'a guess has the thin outline');
   // known: an attack with no Attack card in an online game
   await H.evaluate(u=>{S.log.unshift({id:'atk1',by:u,who:'P1',turn:S.turn,kind:'attack',text:'attack',sector:'K10',mine:false,at:Date.now()});paintOverlay()},uA);
-  assert(await H.locator('#mkbar .pb.known .plk').count()===1&&await H.locator(`#mkbar [data-act=pguess][data-k="${kA}"]`).count()===0,'a known faction has the thick outline and the lock, and cannot be guessed');
+  assert(await H.locator('#mkbar .pb.known').count()===1&&await H.locator('#mkbar .plk').count()===0&&await H.locator(`#mkbar [data-act=pguess][data-k="${kA}"]`).count()===0,'a known faction has the thick outline (no lock) and cannot be guessed');
   assert(await H.evaluate(u=>/Alien/.test(entryText(S.log[0])),uA),'the attack line says Alien');
   // companion mode: a hand-typed attack proves nothing
   const comp=await H.evaluate(u=>{S.online=false;const r=factOf('u:'+u).role||'';S.online=true;return r},uA);

@@ -364,9 +364,10 @@ function renderTl() {
   if (bar.dataset.k !== key) {
     bar.dataset.k = key;
     const tick = new Map(); S.log.forEach(e => { const c = killOf(e) || e.kind === 'out' ? 'dead' : e.kind === 'attack' ? 'atk' : e.kind === 'hatch' && e.n ? 'pod' : ''; if (c) { if (!tick.has(e.turn)) tick.set(e.turn, new Set()); tick.get(e.turn).add(c); } });
-    bar.innerHTML = `<div class="tlrow"><button class="btn" data-act="tlprev" aria-label="${t('Earlier')}">${ico('left', 18)}</button><button class="btn" data-act="tlplay" aria-label="${t(T.tlTimer ? 'Stop' : 'Play the turns')}">${ico(T.tlTimer ? 'close' : 'turn', 18)}</button><button class="btn" data-act="tlnext" aria-label="${t('Later')}">${ico('next', 18)}</button><b class="tltxt"></b><button class="btn" data-act="tlall">${t('All')}</button><button class="btn" data-act="tlnow">${t('Now')}</button>${DECOYS.size ? '' : '<span hidden></span>'}${DECOYS.size ? `<button class="btn" data-act="tldecoy" aria-pressed="${!!T.hideDecoy}" title="${esc(t('Noises that cannot be where the player is'))}">${t('Hide impossible')}</button>` : ''}<button class="btn" data-act="mkall" aria-label="${t('Close')}">${ico('close', 18)}</button></div>
+    bar.innerHTML = `<div class="tlrow"><b class="tltxt"></b><button class="btn" data-act="tlall">${t('All')}</button><button class="btn" data-act="tlnow">${t('Now')}</button>${DECOYS.size ? `<button class="btn" data-act="tldecoy" aria-pressed="${!!T.hideDecoy}" title="${esc(t('Noises that cannot be where the player is'))}">${t('Hide impossible')}</button>` : ''}<button class="btn" data-act="mkall" aria-label="${t('Close')}">${ico('close', 16)}</button></div>
+      <div class="tlrow2"><button class="btn" data-act="tlprev" aria-label="${t('Earlier')}">${ico('left', 16)}</button><button class="btn" data-act="tlplay" aria-label="${t(T.tlTimer ? 'Stop' : 'Play the turns')}">${ico(T.tlTimer ? 'close' : 'turn', 16)}</button><button class="btn" data-act="tlnext" aria-label="${t('Later')}">${ico('next', 16)}</button>
       <div class="tltrack"><div class="tlfill"></div><div class="tlticks">${[...tick].map(([n, s]) => `<i class="${[...s].join(' ')}" style="left:${pct(n).toFixed(1)}%"></i>`).join('')}</div>
-      <input type="range" class="tl lo" min="1" max="${max}" aria-label="${t('From turn')}"><input type="range" class="tl hi" min="1" max="${max}" aria-label="${t('To turn')}"></div>`;
+      <input type="range" class="tl lo" min="1" max="${max}" aria-label="${t('From turn')}"><input type="range" class="tl hi" min="1" max="${max}" aria-label="${t('To turn')}"></div></div>`;
     const los = bar.querySelector('.lo'), his = bar.querySelector('.hi');
     const apply = who => { let a = +los.value, b = +his.value; if (a > b) { if (who === los) a = b; else b = a; } T.rng = [a, b]; paintOverlay(); render(); };
     los.oninput = () => apply(los); his.oninput = () => apply(his);
@@ -650,8 +651,9 @@ function paintRoutes(routes, fset, hp, marks) {
 }
 /* eliminated / escaped badge on a player's icon in the strip and the sheet */
 function outMark(k) {
-  const o = k === 'me' ? ({ dead: 'killed', escaped: 'escaped', trapped: 'trapped' })[S.over] || (S.reborn ? 'killed' : '') : k.startsWith('u:') ? (tablePlayers()[k.slice(2)] || {}).out || ((tablePlayers()[k.slice(2)] || {}).conv ? 'killed' : '') : null;
+  const o = k === 'me' ? ({ dead: 'killed', escaped: 'escaped', trapped: 'trapped' })[S.over] || (S.reborn ? 'conv' : '') : k.startsWith('u:') ? (tablePlayers()[k.slice(2)] || {}).out || ((tablePlayers()[k.slice(2)] || {}).conv ? 'conv' : '') : null;
   if (!o) return '';
+  if (o === 'conv') return `<i class="omark conv" title="${t('Killed as a Human: now an Alien')}">${gico('claws', 16)}</i>`;   // still playing, so no cross
   return o === 'escaped' ? `<i class="omark esc" title="${t('escaped')}">${ico('check', 12)}</i>` : `<i class="omark dead" title="${t(o === 'trapped' ? 'trapped' : 'eliminated')}">${o === 'trapped' ? ico('cross', 12) : gico('killed', 16)}</i>`;
 }
 /* banner under the top bar while following a player */
@@ -769,7 +771,7 @@ function renderMkBar() {
     (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
-      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${(T.focusSet || []).includes(k)}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : 'eliminated') : ''}" title="${esc(n)}" class="pchip${outMark(k) ? ' isout' : ''}" style="--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}"><span class="pnm">${esc(shortName(n))}</span><span class="pft"><span class="pl">${cardBadge(k)}</span><span class="pr">${outMark(k)}</span></span></button>${(T.focusSet || []).includes(k) && k !== 'me' ? sus(k) : ''}`).join('') +
+      : `<button data-act="pfocus" data-k="${esc(k)}" aria-pressed="${(T.focusSet || []).includes(k)}" aria-label="${esc(n)}${outMark(k) ? ' · ' + t(/esc/.test(outMark(k)) ? 'escaped' : /conv/.test(outMark(k)) ? 'Killed as a Human: now an Alien' : 'eliminated') : ''}" title="${esc(n)}" class="pchip${outMark(k) ? ' isout' : ''}" style="--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}"><span class="pnm">${esc(shortName(n))}</span><span class="pft"><span class="pl">${cardBadge(k)}</span><span class="pr">${outMark(k)}</span></span></button>${(T.focusSet || []).includes(k) && k !== 'me' ? sus(k) : ''}`).join('') +
     (T.markMode && !Sync.code && !S.hot && ps.length < 7 ? `<button class="mkt" data-act="addplayer" aria-label="${t('Add player')}"><b>+</b></button>` : '');
 }
 /* follow one player (or only my route): grey out the rest and frame what matters */
@@ -1222,7 +1224,7 @@ function hdr() {
   { const rb = document.querySelector('[data-act=routes]'); if (rb) rb.setAttribute('aria-pressed', !!S.routesOn); }
   $('#hd-turn').textContent = S.turn; $('#hd-pos').textContent = S.pos ? ('HA'.includes(at(T.map, S.pos)) ? t('Start') : label(S.pos)) : '—';
   const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.innerHTML = gico(roleIcon(), 20) + '<span>' + (S.role === 'alien' ? (S.fed ? t('Alien') + ' · ' + t('Fed') : t('Alien')) : t('Human')) + '</span>'; r.dataset.act = 'roledlg'; r.setAttribute('role', 'button'); r.tabIndex = 0; r.setAttribute('aria-label', t('Who am I?'));
-  document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab));
+  document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab)); document.body.dataset.tab = S.tab;
   const tb = $('#turnbar');
   if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) {
     const mine = T.turnState.uid === Sync.uid, tail = '';   // what the others declared is in the Play box and the log, not repeated here

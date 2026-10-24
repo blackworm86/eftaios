@@ -4,12 +4,11 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
 (async()=>{const b=await chromium.launch();const errs=[];
  const p=await (await b.newContext({viewport:{width:390,height:780},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.message));
  await p.goto('http://localhost:8123/');await p.click('[data-act=hotsetup]');await p.click('[data-act=hotdel][data-i="3"]');await p.click('[data-act=hotstart]');await p.click('[data-act=hotgo]');await p.click('#d-no');
- // the turn-count button cycles 1, 3, 5, 7, all
- const lab=()=>p.evaluate(()=>document.querySelector('#mkbar [data-act=mkall] b').textContent);
- const seq=[await lab()];for(let i=0;i<5;i++){await p.click('#mkbar [data-act=mkall]');seq.push(await lab())}
- assert(seq.join()==='5,7,All,1,3,5','the turns button cycles 1, 3, 5, 7, all ('+seq+')');
+ // the turns button opens the turn slider, and closes it again
+ await p.click('#mkbar [data-act=mkall]');assert(await p.locator('#tlbar:not([hidden]) .tl').count()===2,'the turns button opens a slider with two handles');
+ await p.click('#tlbar [data-act=mkall]');assert(await p.locator('#tlbar:not([hidden])').count()===0,'the slider closes again');
  // another player's declaration: banner, and a revealed Character with its power
- await p.evaluate(()=>{S.mode='ultimate';S.turn=4;const L=(who,by,turn,kind,text,sector)=>S.log.unshift({id:Math.random()+'',by,who,turn,kind,text,sector:sector||null,at:Date.now(),mine:false,remote:true});
+ await p.evaluate(()=>{S.mode='ultimate';S.turn=4;S.tab='table';const L=(who,by,turn,kind,text,sector)=>S.log.unshift({id:Math.random()+'',by,who,turn,kind,text,sector:sector||null,at:Date.now(),mine:false,remote:true});
   window.__L=L;L('Ben','b1',4,'noise','noise','K10');onPublicEntry(S.log[0]);});
  assert(await p.locator('#annbar .ann').count()===1&&/Ben/.test(await p.textContent('#annbar')),'a declaration shows as a banner over the map');
  await p.evaluate(()=>{window.__L('Cal','c1',4,'reveal','Id|human|Medic');onPublicEntry(S.log[0])});

@@ -945,5 +945,13 @@ ul.log li.turnh{background:none;border:0;padding:10px 4px 2px;font:700 12px var(
 .ihere{display:flex;align-items:center;gap:5px;font-size:12.5px;margin-top:4px}
 .turnlist.chips{display:flex;flex-wrap:wrap;gap:6px}.turnlist.chips li{min-height:36px;padding:3px 10px 3px 8px;gap:6px}.turnlist.chips .pname{flex:none}
 /* v16: touch targets (44px) and the tablet in portrait: the map gets the larger share */
-.sus button{width:44px;min-height:44px}.msus button{min-height:40px}
+.sus button{width:44px;min-height:44px}
 @media (min-width:700px) and (max-width:899px) and (orientation:portrait){.panel{max-height:calc(36dvh + 54px + env(safe-area-inset-bottom))}}
+body[data-tab=table] .panel{max-height:calc(64dvh + 54px + env(safe-area-inset-bottom))}   /* the sheet and the log get room on a phone */
+@media (min-width:900px){body[data-tab=table] .panel{max-height:none}}
+.legend .lc.fade{background:#fff;opacity:.3;border:1px dashed #333}.legend .cdn{position:static;display:inline-grid;place-items:center;min-width:15px;height:15px;border-radius:8px;background:#0b1222;border:1px solid #fff;color:#fff;font:700 9px var(--mono);font-style:normal}
+.omark.conv{display:inline-grid;place-items:center}
+.slot.off{opacity:.45;filter:grayscale(.6)}
+.maphint{margin:8px 0;padding:10px 12px;border-radius:12px;background:#ffb41f14;border:1px solid var(--amber)}.maphint b{display:block;font:700 14px var(--font-head);margin-bottom:4px}.maphint ul{margin:0 0 8px;padding-left:18px;font-size:13.5px;color:#c4cde0;display:grid;gap:3px}
+.tlbar{padding:4px 8px 6px;gap:2px}.tlrow .btn,.tlrow2 .btn{min-height:34px;min-width:34px;padding:2px 8px;font-size:13px}
+.tlrow2{display:flex;align-items:center;gap:5px}.tlrow2 .tltrack{flex:1;margin:0 10px}

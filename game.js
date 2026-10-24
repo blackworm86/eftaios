@@ -364,7 +364,7 @@ const shownItems = k => ((cardCounts()[k] || {}).shown || []).map(id => `<span c
 const handHtml = () => {
   if (!digital()) return '';
   const ab = abilList().map(([a, l]) => `<button class="slot abil" data-act="${a}" aria-label="${esc(t(S.char))}: ${esc(t(l))}" title="${esc(t(S.char))}">${ico('next', 16)}<span>${t(l)}</span></button>`).join('');
-  const items = S.items.map(k => `<button class="slot" data-act="itemdlg" data-i="${k}">${gico(k, 28)}<span>${t(ITEMS[k][0])}</span></button>`).join('');
+  const items = S.items.map(k => `<button class="slot${S.role === 'alien' ? ' off' : ''}" data-act="itemdlg" data-i="${k}"${S.role === 'alien' ? ` title="${esc(t('Only Humans can use Items'))}"` : ''}>${gico(k, 28)}<span>${t(ITEMS[k][0])}</span></button>`).join('');
   const sil = Math.max(0, ((cardCounts().me || {}).down || 0) - S.items.length);
   const pile = sil ? `<div class="pile" role="img" aria-label="${esc(t('{n} Silence cards face down', { n: sil }))}"><span class="c"></span>${sil > 1 ? '<span class="c"></span>' : ''}${sil > 2 ? '<span class="c"></span>' : ''}<span class="n">×${sil}</span><span class="lab">${t('Silence')}</span></div>` : '';
   if (basic()) return pile ? `<div class="slots" role="group" aria-label="${t('Your cards')}">${pile}</div>` : '';
@@ -456,6 +456,13 @@ Object.assign(actions, {
 });
 
 const catNote = () => S.cat ? `<p class="say alert"><b>${t('Cat is ready: two noises when you draw')}</b></p>` : '';
+/* shown once, in the role dialog of a new player's first game: how to read the map */
+const hintSeen = () => { try { return !!localStorage.getItem('eftaios.hint.map'); } catch (_) { return true; } };
+function mapHint() {
+  if (hintSeen()) return '';
+  try { localStorage.setItem('eftaios.hint.map', '1'); } catch (_) {}
+  return `<div class="maphint"><b>${t('How to read the map')}</b><ul><li>${t('Numbered markers are the other players: the number is the turn they were heard.')}</li><li>${t('Arrows show how they moved: tap the routes button on the map.')}</li><li>${t('The turns button (top left) opens a slider to look at earlier turns. Tap a sector to see what was declared there. Pinch to zoom.')}</li></ul></div>`;
+}
 function playPanel() {
   if (T.pick) return '';
   if (gameOver()) return globalOverPanel();
@@ -501,7 +508,8 @@ const legendHtml = () => {
   const ring = (k, extra = '') => `<svg class="dot" viewBox="-10 -10 20 20" aria-hidden="true"><circle r="9.2" fill="${k === 'me' ? '#fff' : '#0b1222'}"/><circle r="7" fill="${k === 'me' ? '#f5f5f5' : '#3a465e'}" stroke="${BORDER[k]}" stroke-width="3" ${extra}/></svg>`;
   return `<p class="legend">${[['me', 'Me'], ['', 'Unknown'], ['human', 'Human'], ['alien', 'Alien']].map(([k, l]) => `<span>${ring(k)}${t(l)}</span>`).join('')}</p>
   <p class="legend"><span><i class="lc heard"></i>${t('Heard')}</span><span><i class="lc silent"></i>${t('Silent or elsewhere')}</span><span><i class="lc bluff"></i>${t('Bluff (real below)')}</span></p>
-  <p class="legend"><span>${gico('silent', 16)}${t('Silent Sector')}</span><span>${gico('silence', 16)}${t('Silence in all Sectors')}</span><span>${gico('killed', 16)}${t('Killed')}</span><span><i class="lc rh"></i>${t('Human turn')}</span><span><i class="lc ra"></i>${t('Alien turn')}</span></p>`;
+  <p class="legend"><span>${gico('silent', 16)}${t('Silent Sector')}</span><span>${gico('silence', 16)}${t('Silence in all Sectors')}</span><span>${gico('killed', 16)}${t('Killed')}</span><span><i class="lc rh"></i>${t('Human turn')}</span><span><i class="lc ra"></i>${t('Alien turn')}</span></p>
+  <p class="legend"><span><i class="cdn">2</i>${t('Cards face down')}</span><span>${gico('claws', 16)}${t('Killed as a Human: now an Alien')}</span><span>${ico('check', 14)}${t('escaped')}</span><span><b>7</b>${t('Number in a marker: the turn')}</span><span><i class="lc fade"></i>${t('Faded: cannot be real')}</span></p>`;
 };
 const legendOpen = () => !!T.legendOpen;   // closed until asked for: the sheet and the log come first
 const legendBox = () => `<button class="legendtoggle" data-act="legend" aria-expanded="${legendOpen()}">${t('Legend')}${ico(legendOpen() ? 'up' : 'down', 14)}</button>${legendOpen() ? legendHtml() : ''}`;
@@ -567,7 +575,7 @@ function decksHtml() {
 function tablePanel() {
   const sel = logSel(), quiet = T.logEv ? ['noise', 'silence'] : T.logSil ? ['silence'] : [];
   let lastTurn = null;
-  const ln = S.log.filter(e => (!sel.length || sel.includes(playerKey(e))) && !quiet.includes(e.kind)).map(e => {
+  const ln = killFirst(S.log).filter(e => (!sel.length || sel.includes(playerKey(e))) && !quiet.includes(e.kind)).map(e => {
     const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k), head = e.turn !== lastTurn ? `<li class="turnh">${t('Turn {n}', { n: e.turn })}</li>` : '';
     lastTurn = e.turn;
     return head + `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><span>${icon}<b>${esc(e.mine ? t('Me') : e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span></li>`;
@@ -581,9 +589,9 @@ function tablePanel() {
     <section class="sec log${sec === 'log' ? ' on' : ''}">${digital() ? '' : `<button class="btn wide" data-act="addann">+ ${t('Record an announcement')}</button>`}
       ${S.log.length ? logFilterHtml() : ''}
       ${ln ? `<ul class="log">${ln}</ul>${digital() || S.hot ? '' : `<button class="btn link wide" data-act="clearlog">${t('Clear announcements')}</button>`}` : `<p class="dim">${t('No announcements yet.')}</p>`}</section>
-    <section class="sec status${sec === 'status' ? ' on' : ''}">${roomBlock()}${skip}<h3>${t('Escape Pods')}${hatchAct ? ` <span class="hint">${t('tap to close or reopen')}</span>` : ''}</h3>
+    <section class="sec status${sec === 'status' ? ' on' : ''}">${skip}<h3>${t('Escape Pods')}${hatchAct ? ` <span class="hint">${t('tap to close or reopen')}</span>` : ''}</h3>
       <div class="hatches compact">${mapHatches().map(n => { const lbl = `${t('Escape Pod {n}', { n })}: ${S.hatches[n] ? t('Closed') : t('Open')}`; return hatchAct ? `<button data-act="hatch" data-n="${n}" aria-pressed="${!!S.hatches[n]}" aria-label="${lbl}">${n}</button>` : `<span class="hb${S.hatches[n] ? ' closed' : ''}" role="img" aria-label="${lbl}">${n}</span>`; }).join('')}</div>
-      ${decksHtml()}${charsHtml()}</section>
+      ${decksHtml()}${charsHtml()}${roomBlock()}</section>
     </div>`;
 }
 
@@ -627,10 +635,16 @@ function onPublicEntry(e) {
 function recentOthers(n = 8, from = S.turn - 1) {
   return S.log.filter(e => ANN_KINDS.includes(e.kind) && playerKey(e) !== 'me' && e.turn >= from).slice(0, n);
 }
+/* the victim's 'was eliminated' line can arrive before the attacker's 'killed X' line: show the cause first, as it happened */
+function killFirst(list) {
+  const a = list.slice();
+  for (let i = 0; i + 1 < a.length; i++) if (killOf(a[i]) && a[i + 1].kind === 'out' && a[i + 1].turn === a[i].turn && String(a[i + 1].who).slice(0, 20) === killOf(a[i])) { const x = a[i]; a[i] = a[i + 1]; a[i + 1] = x; i++; }
+  return a;
+}
 /* the last round at a glance: each player's newest noise, silence or attack, plus every event (item, pod, reveal, death) */
 function roundLines() {
   const seen = new Set();
-  return recentOthers(40).filter(e => { if (!['noise', 'silence', 'attack'].includes(e.kind)) return true; const k = playerKey(e); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
+  return killFirst(recentOthers(40)).filter(e => { if (!['noise', 'silence', 'attack'].includes(e.kind)) return true; const k = playerKey(e); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
 }
 const annLine = e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b>${logIcon(e, 18)}<span>${esc(entryText(e))}</span><i>${t('T{n}', { n: e.turn })}</i></li>`;
 function roundCard(compact) {
@@ -652,7 +666,7 @@ function charsHtml() {
 const logSel = () => T.logSel || [];
 function logFilterHtml() {
   const ps = [['me', t('Me')]].concat(knownPlayers()), sel = logSel();
-  return `<div class="logfilter" role="group" aria-label="${t('Show players')}"><button class="lfc kindf" data-act="logk" data-k="sil" aria-pressed="${!!T.logSil && !T.logEv}">${t('Hide silences')}</button><button class="lfc kindf" data-act="logk" data-k="ev" aria-pressed="${!!T.logEv}">${t('Only events')}</button><button class="lfc" data-act="logf" data-k="" aria-pressed="${!sel.length}">${t('All')}</button>${ps.map(([k, n]) => `<button class="lfc" data-act="logf" data-k="${esc(k)}" aria-pressed="${sel.includes(k)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`).join('')}</div>`;
+  return `<div class="logfilter" role="group" aria-label="${t('Show players')}"><button class="lfc" data-act="logf" data-k="" aria-pressed="${!sel.length}">${t('All')}</button>${ps.map(([k, n]) => `<button class="lfc" data-act="logf" data-k="${esc(k)}" aria-pressed="${sel.includes(k)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`).join('')}<button class="lfc kindf" data-act="logk" data-k="sil" aria-pressed="${!!T.logSil && !T.logEv}">${t('Hide silences')}</button><button class="lfc kindf" data-act="logk" data-k="ev" aria-pressed="${!!T.logEv}">${t('Only events')}</button></div>`;
 }
 Object.assign(actions, { logk(b) { if (b.dataset.k === 'ev') { T.logEv = !T.logEv; T.logSil = false; } else { T.logSil = !T.logSil; T.logEv = false; } render(); }, logf(b) { const k = b.dataset.k; if (!k) T.logSel = []; else { const s = logSel().slice(), i = s.indexOf(k); if (i >= 0) s.splice(i, 1); else s.push(k); T.logSel = s; } render(); } });
 window.onPublicEntry = onPublicEntry;
@@ -675,6 +689,6 @@ function roleHtml() {
     ${ab && digital() ? `<p><b>${t('Ability')}:</b> ${t(ABILITIES[ab] || '')}</p>` : (basic() ? `<p class="dim">${t('Basic game: no Character abilities.')}</p>` : '')}
     <ul class="rolehelp">${ROLE_HELP[r].map(x => `<li>${t(x)}</li>`).join('')}</ul>`;
 }
-function roleDlg() { dlg.innerHTML = roleHtml() + `<div class="row"><button class="btn primary" id="d-no">OK</button></div>`; if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg; }
+function roleDlg() { dlg.innerHTML = roleHtml() + (S.stage === 'game' && !S.hot ? mapHint() : '') + `<div class="row"><button class="btn primary" id="d-no">OK</button></div>`; if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg; }
 Object.assign(actions, { roledlg: roleDlg });
 window.roleHtml = roleHtml;

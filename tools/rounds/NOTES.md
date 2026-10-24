@@ -376,3 +376,17 @@ then walks to its target and chases the whole Human picture at half weight. (ali
 
 Larger weights lose kills. Normal (216 games, roleW 6): cluster turns 31.7% -> 22.5%, kills equal, Alien win 29.6/35.2% -> 39.8/41.7%.
 Friendly fire does not fall: spread-out Aliens look more like Humans to each other. The reading of allies (Phase 2) is still the limit.
+
+## Phase 3 (part 2): Humans plan ahead (`plan`) and the whole suite (report `p3.report.txt`)
+
+Humans now cost every step of a walk to a pod with the danger of the sector at that step: the Aliens' pictures are spread over what they can reach, one move at a time (3 moves on Hard, 2 on Normal), instead of using today's danger for the whole walk. Easy does not plan.
+Measured in mixed tables with the same seeds (288 games each, the hard seat as a Human): plan 0 58.6% escape, plan 3 65.5%, plan 5 63.4% -> Hard 3. Normal seat among Easy: 74.8% -> 76.3% at plan 2.
+
+Whole suite (900 games, same seeds as Phases 0-2):
+| | P0 | P1 | P2 | P3 |
+|---|---|---|---|---|
+| cluster turns (4+ Aliens close together) | 14.8% | 14.6% | 15.9% | 9.8% |
+| games with a 10+ turn bunch | 49 | 53 | 43 | 13 |
+| Hard seat in a mixed table: Alien kills/game | 0.65 | 0.65 | 0.92 | 1.24 |
+| Normal seat in a mixed table: Human escape | 53.5% | 53.5% | 42.7% | 47.9% |
+Friendly kills per game at 6 players (hard) 0.42 - 0.47 - 0.42 - 0.42: not moving. Turn time (this machine) mean 15-40 ms, worst 2.0 s (normal, 2-seat sample under 8 parallel workers).

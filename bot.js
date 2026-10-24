@@ -21,8 +21,8 @@ const Bot = (() => {
     // think: seconds of visible thinking; mistake: chance to take one of the next-best moves; decoy: 0 random, 1 believable, 2 simulated;
     // allyCost: what it costs to kill a possible Alien by mistake (attacks eliminate everybody in the sector)
     easy:   { mem: 1.0, smartBluff: false, temp: 0.5, beta: 0.2, hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.5, items: false, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: false, think: 1.4, mistake: 0.18, decoy: 0, allyCost: 8, humanCal: 0.6 },
-    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  table: true, plan: 0, roleW: 6, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
-    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  table: true, plan: 0, roleW: 8, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
+    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  table: true, plan: 2, roleW: 6, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
+    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  table: true, plan: 3, roleW: 8, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
   };
 
   const skill = lvl => Object.assign({}, SKILL[lvl] || SKILL.normal, window.__skill && window.__skill[lvl]);   // __skill: tuning hook for benchmarks

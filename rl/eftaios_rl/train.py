@@ -138,7 +138,14 @@ def main(argv=None):
         cfg["workers"] = min(cfg["workers"], 2)
     json.dump(cfg, open(cfg_path, "w"), indent=1)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
+    if torch.cuda.is_available():
+        try:  # a real calculation: some builds report a GPU they have no kernels for
+            x = torch.ones(8, 8, device="cuda")
+            float((x @ x).sum())
+            device = torch.device("cuda")
+        except Exception as e:
+            log(run_dir, "The GPU cannot run this PyTorch build (%s). Training on the CPU instead; run setup_windows.bat again after updating, or send me this line." % str(e).splitlines()[0])
     torch.manual_seed(int(time.time()) % 100000)
     ids = maps_mod.official_ids()
     boards = BoardCache(device)

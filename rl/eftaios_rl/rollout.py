@@ -121,6 +121,36 @@ def collect(job):
     return out, stats
 
 
+def collect_bc(job):
+    """job = (cfg, target_decisions, seed). Rule-based players play every seat; every decision is kept (observation, action taken, final result),
+    to teach the network the rule-based style before self-play starts."""
+    cfg, target, seed = job
+    rng = random.Random(seed)
+    ids = maps_mod.official_ids()
+    rows = {k: [] for k in ("dyn", "glob", "priv", "phase", "me", "mask", "map", "action", "ret")}
+    done = 0
+    while done < target:
+        n = rng.choice(cfg["players"])
+        mid = rng.choice(ids)
+        env = env_mod.Env(mid, n, seed=rng.getrandbits(32))
+        scr = [scripted.Scripted(rng.getrandbits(32)) for _ in range(n)]
+        steps = []
+        while not env.done:
+            seat, ob = env.decision()
+            a = scr[seat].act(env)
+            env.act(a)
+            steps.append((seat, ob, a))
+        fr = env.final_rewards()
+        for seat, ob, a in steps:
+            m = np.zeros(N_CELLS, bool)
+            m[:len(ob["mask"])] = ob["mask"]
+            for k, v in (("dyn", ob["dyn"]), ("glob", ob["glob"]), ("priv", ob["priv"]), ("phase", ob["phase"]), ("me", ob["me"]), ("mask", m),
+                         ("map", ids.index(mid)), ("action", a), ("ret", fr[seat])):
+                rows[k].append(v)
+        done += len(steps)
+    return {k: (np.stack(v) if k in ("dyn", "glob", "priv", "mask") else np.asarray(v)) for k, v in rows.items()}
+
+
 def evaluate(job):
     """job = (cfg, weights, n_games, seed). The learner plays one side against rule-based players on the other, and the same games are
     played by rule-based players only. Returns {key: [games, wins]} for keys human, alien, base_human, base_alien ('wins' = that side won)."""

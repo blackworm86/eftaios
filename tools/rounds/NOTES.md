@@ -390,3 +390,28 @@ Whole suite (900 games, same seeds as Phases 0-2):
 | Hard seat in a mixed table: Alien kills/game | 0.65 | 0.65 | 0.92 | 1.24 |
 | Normal seat in a mixed table: Human escape | 53.5% | 53.5% | 42.7% | 47.9% |
 Friendly kills per game at 6 players (hard) 0.42 - 0.47 - 0.42 - 0.42: not moving. Turn time (this machine) mean 15-40 ms, worst 2.0 s (normal, 2-seat sample under 8 parallel workers).
+
+## Phase 4: the three levels (6 players, 144 games per cell, levels by role: `--rolemix human:X,alien:Y`; report `p4-matrix-final.report.txt`)
+
+Mixed tables with one seat of a level could not separate Human strength from Alien strength (a lone Normal seat's result depended on who the others were). Levels by role can.
+
+Before (Easy mistake rate 0.18), Human escape %:
+| Humans \ Aliens | easy | normal | hard |
+|---|---|---|---|
+| easy | 62.7 | 46.1 | 33.6 |
+| normal | 65.3 | 45.8 | 33.8 |
+| hard | 60.9 | 44.0 | 35.0 |
+The Human level made no difference at all; the Alien level did (63 / 46 / 34).
+Sweeps on Hard Humans (danger weights dw 45, lw 5, plan 5, pod choice, drift beta 1.2, all together): 43.5-45.4% against Normal Aliens, baseline 44.0%. Humans are limited by what they can know, not by their settings.
+A deliberately dumb Human (no fear, 90% mistakes) escapes 7.4%, so the test does see Human quality; Normal and Hard Humans are simply at the ceiling.
+Easy mistake rate (share of moves that take a next-best move): 0.3 -> 44.9%, 0.45 -> 34.5%, 0.6 -> 22.7% Human escape against Normal Aliens; Easy Aliens' strength unchanged (66-72%). Chosen: 0.5.
+
+After (Easy mistake rate 0.5), Human escape % / Alien win %:
+| Humans \ Aliens | easy | normal | hard |
+|---|---|---|---|
+| easy | 41.7 / 69.4 | 32.4 / 68.1 | 26.4 / 62.5 |
+| normal | 65.7 / 34.0 | 45.8 / 39.6 | 33.8 / 45.8 |
+| hard | 66.7 / 28.5 | 44.0 / 39.6 | 35.0 / 46.5 |
+- Aliens: easy 66% escape, normal 46%, hard 34% against Normal Humans (gaps 20 and 12 points). Hard meets the target "Humans escape 35% or less".
+- Humans: Easy 32% against Normal Aliens, Normal 46%, Hard 44%: Easy is clearly weaker, Normal and Hard Humans are the same (nothing left to gain by tuning).
+- Hard Aliens win 46.5% against Hard Humans in bot-only games; the target "Aliens win 55% or more" is not met, and "an experienced player beats Hard 1 game in 4" cannot be measured without people.

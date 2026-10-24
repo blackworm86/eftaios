@@ -108,6 +108,7 @@ function renderFlow() {
       ${flowStatus()}`;
   }
   card.innerHTML = h;
+  if (ver && !ver.hidden) { const fl = $('#flow'); ver.hidden = fl.scrollHeight > fl.clientHeight + 1; }   // a page that scrolls would slide its last controls under the fixed version line
   const fm = $('#f-map');
   const upd = () => {
     if (fm && $('#f-map-prev')) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-name').textContent = m ? m.name : ''; $('#f-map-desc').textContent = m ? mapInfo(m) : ''; $('#f-map-text').textContent = m && m.description ? t(m.description) : ''; }

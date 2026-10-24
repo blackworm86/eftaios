@@ -334,7 +334,13 @@ function publicFacts() {
     n.forEach((c, id) => { const [k, tn] = [id.slice(0, id.lastIndexOf('|')), +id.slice(id.lastIndexOf('|') + 1)]; if (c >= 2 && !log.some(x => x.kind === 'item' && x.text === 'cat' && x.turn === tn && playerKey(x) === k)) set(k, 'human', 'Pilot', 'two noises'); }); }
   return FACTS = out;
 }
-const factOf = k => (k === 'me' ? null : publicFacts().get(k)) || {};
+/* when the game is over every Character is shown, so the bubbles, the log and the sheet show them all */
+function endFacts(k) {
+  if (!k.startsWith('u:') || typeof gameOver !== 'function' || !gameOver()) return null;
+  const p = tablePlayers()[k.slice(2)]; if (!p || !p.role) return null;
+  return { role: p.conv ? 'alien' : p.role, char: p.char || '', why: 'end' };
+}
+const factOf = k => { if (k === 'me') return {}; const f = publicFacts().get(k) || {}, e = endFacts(k); return e ? Object.assign({}, f, e) : f; };
 const suspicion = key => (key !== 'me' && (factOf(key).role || (S.sus && S.sus[key]))) || '';
 /* a little tag next to a player's name: A / H when the table knows the faction, with the Character when it was shown */
 function roleTag(k) {

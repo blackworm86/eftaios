@@ -21,8 +21,8 @@ const Bot = (() => {
     // think: seconds of visible thinking; mistake: chance to take one of the next-best moves; decoy: 0 random, 1 believable, 2 simulated;
     // allyCost: what it costs to kill a possible Alien by mistake (attacks eliminate everybody in the sector)
     easy:   { mem: 1.0, smartBluff: false, temp: 0.5, beta: 0.2, hunt: false, huntW: 0, roleFromMoves: false, lw: 0.6, dw: 8,  camp: 6,  pot: 4.5, attackAt: 3.5, items: false, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: false, think: 1.4, mistake: 0.18, decoy: 0, allyCost: 8, humanCal: 0.6 },
-    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  table: true, roleW: 6, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
-    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  table: true, roleW: 8, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
+    normal: { chase: 12, lam: 4, spread: 1, mem: 2.5, smartBluff: true, temp: 0.25, beta: 0.45, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 2,   dw: 18, camp: 10, pot: 6,   attackAt: 2.2, items: true,  table: true, plan: 0, roleW: 6, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 2.6, mistake: 0.06, decoy: 1, allyCost: 10, humanCal: 0.45 },
+    hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  table: true, plan: 0, roleW: 8, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
   };
 
   const skill = lvl => Object.assign({}, SKILL[lvl] || SKILL.normal, window.__skill && window.__skill[lvl]);   // __skill: tuning hook for benchmarks
@@ -258,7 +258,18 @@ const Bot = (() => {
     // other Humans standing in the same sector are killed by the same attack
     const crowd = new Float64Array(N); live.forEach(b => { const p = 1 - b.pA; if (p > 0.05) for (let k = 0; k < N; k++) crowd[k] += p * b.dH[k]; });
     const T1 = new Float64Array(N); for (let c = 0; c < N; c++) T1[c] = risk(c);
-    return { g, sk, B, live, humanOcc, alienOcc, humanCnt, alienCnt, strike, hatches, hd, risk, T1, crowd, seatIdx, lvl, turn: H.turn };
+    // looking ahead: the danger in each sector after the Aliens have moved 1, 2, ... sk.plan more times (spread over what they can reach)
+    const Rs = [T1];
+    if (sk.plan) {
+      let cur = live.map(b => b.dA);
+      for (let m = 1; m <= sk.plan; m++) {
+        cur = cur.map((d, i) => { const R = g.reach[live[i].speed], o = new Float64Array(N); for (let s = 0; s < N; s++) { if (d[s] < 1e-9) continue; const l = R[s]; if (!l.length) continue; const w = d[s] / l.length; for (let k = 0; k < l.length; k++) o[l[k]] += w; } return o; });
+        const Rm = new Float64Array(N);
+        for (let c = 0; c < N; c++) { let miss = 1; live.forEach((b, i) => { let sx = 0; for (const j of g.reach[b.speed][c]) sx += cur[i][j]; miss *= 1 - Math.min(0.95, sx * b.pA * leak(c)); }); Rm[c] = 1 - miss; }
+        Rs.push(Rm);
+      }
+    }
+    return { g, sk, B, live, humanOcc, alienOcc, humanCnt, alienCnt, strike, hatches, hd, risk, T1, Rs, crowd, seatIdx, lvl, turn: H.turn };
   }
   /* cheapest way to a hatch from every sector, each step costing 1 plus the danger of the sector */
   function pathCosts(W) {
@@ -274,7 +285,20 @@ const Bot = (() => {
         const c = cost[u] + 1 + W.sk.lw * (W.T1[j] + guard); if (c < cost[j]) cost[j] = c;
       }
     }
-    return cost;
+    if (W.Rs.length < 2) return cost;
+    // plan: the same walk with the danger changing step by step (the Aliens close in), worked back from the steady-state cost
+    const H = W.Rs.length - 1, guard = new Float64Array(N); for (let j = 0; j < N; j++) if (W.hatches.some(h => g.nb[h].includes(j))) guard[j] = 0.05;
+    let V = cost;
+    for (let t = H; t >= 1; t--) {
+      const o = new Float64Array(N).fill(1e6);
+      for (let j = 0; j < N; j++) {
+        if (g.isHatch(j)) { o[j] = V[j]; continue; } if (g.isStart(j)) continue;
+        let best = 1e6; for (const u of g.nbH[j]) if (V[u] < best) best = V[u]; for (const u of g.hatchNb[j]) if (V[u] < best) best = V[u];
+        o[j] = 1 + W.sk.lw * (W.Rs[t - 1][j] + guard[j]) + best;
+      }
+      V = o;
+    }
+    return V;
   }
   /* where Humans will be after one more move (for hunting) */
   function humanNext(W) {

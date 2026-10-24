@@ -238,7 +238,6 @@ function paintMoveBtns() {
    black = me, yellow = not decided, blue = suspected Human, red = suspected Alien.
    My own steps: full = heard (noise in the sector I reached), faded = silent or noise elsewhere,
    dashed border = a bluff, joined to where I really was by a dashed line. */
-const MK_STEPS = [1, 3, 5, 7, 0];   // how many turns of other players' markers to show; 0 = all turns
 const mkN = () => S.mkN === undefined ? (S.mkAll ? 0 : 5) : S.mkN;
 /* the turn slider: T.rng = [first, last] turn shown on the map and the sheet (null = the last few steps of everyone) */
 const inRng = n => !T.rng || (n >= T.rng[0] && n <= T.rng[1]);
@@ -320,7 +319,7 @@ const shapeOf = () => HEX_MARK;
    an attack with no Attack card (only an Alien does that), Items only a Human uses, a pod, two noises with no Cat (the Pilot). */
 let FACTS = new Map(), FACTS_KEY = '';
 function publicFacts() {
-  const key = S.log.length + '|' + (S.log[0] && S.log[0].id) + '|' + S.mode + '|' + (typeof digital === 'function' && digital());
+  const key = S.log.length + '|' + (S.log[0] && S.log[0].id) + '|' + S.mode + '|' + (typeof digital === 'function' && digital()) + '|' + Object.keys(tablePlayers()).length;   // players arriving change who a line belongs to
   if (key === FACTS_KEY) return FACTS; FACTS_KEY = key;
   const out = new Map(), set = (k, role, char, why) => { const o = out.get(k) || {}; out.set(k, { role: role || o.role, char: char || o.char, why: why || o.why }); };
   const log = S.log.slice().reverse(), same = (x, e, k) => x.turn === e.turn && playerKey(x) === k;

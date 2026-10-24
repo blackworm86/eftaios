@@ -296,9 +296,6 @@ html,body{height:100vh;height:100dvh}
 .mkbar button>span:not(.dotw){max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mkbar button{overflow:visible}
 .mkbar .mkt b{font:700 16px var(--mono);color:var(--amber)}.mkbar .mkt span{font-size:11px;color:var(--dim)}
-.msus{display:flex;gap:2px;flex:none}
-.msus button{flex:1 1 0;min-height:26px;padding:0;border-radius:10px;font:700 11px var(--mono);border:1px solid var(--line);background:#0a1120dd;color:var(--dim)}
-.msus button.none[aria-pressed=true]{background:#ffd23f;color:#1a1200}.msus button.human[aria-pressed=true]{background:#2f7dff;color:#fff}.msus button.alien[aria-pressed=true]{background:#ff3b30;color:#fff}
 .inspect{left:76px}
 
 /* ---- v11: item slots, no-scroll panel ---- */
@@ -480,7 +477,7 @@ html,body{height:100vh;height:100dvh}
 .tabs button{font-size:13px}
 /* readable minimums and touch size */
 .mkbar .mkt span,.roomrow small,.hatches button small,.say small,.gcard small{font-size:11px}
-.mkbar button{min-height:36px}.msus button{min-height:32px}
+.mkbar button{min-height:36px}
 /* parts of the browser that carry no design by default */
 ::selection{background:#ffb41f;color:#1a1200}
 input,textarea{caret-color:var(--amber);accent-color:var(--amber)}
@@ -762,17 +759,6 @@ dialog .charcard{justify-content:center;margin:10px 0}
 
 /* player chips on the left (and top) bar: one fixed size for every chip; the face-down count is always on the left
    of the footer row and the status icon always on the right, so the two slots never move */
-.mkbar button.pchip{background:var(--c);color:var(--t);border:3px solid var(--b);width:100%;height:36px;min-height:0;box-sizing:border-box;flex:0 0 auto;flex-direction:column;justify-content:space-between;align-items:stretch;gap:0;padding:2px 3px 2px;border-radius:10px;font:700 11px var(--font);line-height:1.1;overflow:visible}
-.mkbar button.pchip[aria-pressed=true]{background:var(--c);border-color:var(--b);outline:2px solid var(--amber);outline-offset:2px}
-.mkbar button.pchip .pnm{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
-.mkbar button.pchip .pft{display:flex;justify-content:space-between;align-items:center;width:100%;height:13px;gap:2px}
-.mkbar button.pchip .pl,.mkbar button.pchip .pr{flex:0 0 15px;width:15px;height:14px;display:flex;align-items:center;justify-content:center}
-.mkbar button.pchip .pr{justify-content:center}
-.mkbar button.pchip .cdn,.mkbar button.pchip .omark{position:static;transform:none;margin:0}
-.mkbar button.pchip .cdn{min-width:15px;height:14px;font-size:9px;line-height:12px;padding:0 2px;background:#0b1222;border-color:#fff;color:#fff}
-.mkbar button.pchip .omark{width:14px;height:14px}
-.mkbar button.pchip .omark.dead:has(.gi){position:static;right:auto;bottom:auto;width:15px;height:15px}
-.mkbar button.pchip.isout{opacity:.75}
 
 
 /* ---------- v15: start screen rhythm, account, games, admin ---------- */
@@ -937,10 +923,6 @@ ul.log li.turnh{background:none;border:0;padding:10px 4px 2px;font:700 12px var(
 .tltrack{position:relative;height:30px;margin:0 8px}.tltrack::before{content:"";position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:#ffffff26}
 .tlfill{position:absolute;top:13px;height:4px;border-radius:2px;background:var(--acc,#f5a623)}
 .tlticks i{position:absolute;top:19px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#7fe3ff}.tlticks i.atk{background:#ff3b30}.tlticks i.pod{background:#2fb36b}.tlticks i.dead{background:#fff;box-shadow:0 0 0 1.5px #000}
-.tl{position:absolute;left:-8px;width:calc(100% + 16px);top:0;height:30px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
-.tl::-webkit-slider-runnable-track{background:none;height:30px}.tl::-moz-range-track{background:none}
-.tl::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:28px;height:28px;margin-top:1px;border-radius:50%;background:#fff;border:3px solid var(--acc,#f5a623);box-shadow:0 1px 4px #0008}
-.tl::-moz-range-thumb{pointer-events:auto;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--acc,#f5a623)}
 .mk.fake{opacity:.3}.mk.fake .hex,.mk.fake path:first-child{stroke-dasharray:3 2}.mk.dubious{opacity:.62}
 .ihere{display:flex;align-items:center;gap:5px;font-size:12.5px;margin-top:4px}
 .turnlist.chips{display:flex;flex-wrap:wrap;gap:6px}.turnlist.chips li{min-height:36px;padding:3px 10px 3px 8px;gap:6px}.turnlist.chips .pname{flex:none}
@@ -977,7 +959,6 @@ body[data-tab=table] .panel{max-height:calc(64dvh + 54px + env(safe-area-inset-b
 /* v16.3: faction tags next to a player's name */
 .rb{display:inline-grid;place-items:center;min-width:14px;height:14px;margin-right:3px;padding:0 3px;border-radius:7px;font:700 9px var(--mono);font-style:normal;vertical-align:1px;color:#fff}
 .rb.alien{background:#ff3b30}.rb.human{background:#2f7dff}.rb+.gi{margin-right:3px;vertical-align:-3px}
-.mkbar button.pchip .pnm .rb{height:12px;min-width:12px;font-size:8px;margin-right:2px}
 /* v16.4: the log filters are one scrolling row, so the list starts right under them even on a small or landscape phone */
 .logfilter{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 0 4px;padding-bottom:2px}.logfilter::-webkit-scrollbar{display:none}.lfc{flex:none}
 ul.log li.turnh{padding-top:6px}

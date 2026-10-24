@@ -1,6 +1,13 @@
 'use strict';
 /* Minimal i18n: English strings are the keys; Italian lives in IT. t('Text {x}', {x: 1}) */
 const IT = {
+"Showing {n} players": "Mostro {n} giocatori",
+"The host is away: cards and bots are paused.": "L'host è assente: carte e bot sono in pausa.",
+"In progress": "In corso",
+"Finished": "Finita",
+"Lobby": "Sala d'attesa",
+"Gone": "Chiusa",
+"Leave the table?": "Lasciare il tavolo?",
 "Share anonymous results": "Condividi risultati anonimi",
 "On": "Sì",
 "Off": "No",

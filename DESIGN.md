@@ -64,6 +64,18 @@ colors:
   player-teal: "#2EC4B6"
   player-me-ink: "#101010"
   zone-shade: "#0b1222"
+  pod-damaged: "#ed192e"
+  pod-escaped: "#37a950"
+  ink-on-green: "#04210f"
+  paper-accent-text: "#7a4b00"
+  paper-accent-wash: "#fff1d0"
+  paper-ink-soft: "#333333"
+  paper-danger: "#dd3333"
+  paper-danger-ink: "#aa1111"
+  ink-faint: "#7080a3"
+  ink-mid: "#9aa8c6"
+  card-edge: "#7f96d1"
+  card-pile-edge: "#34466f"
   sheet-empty: "#3c4f75"
 typography:
   display:
@@ -121,6 +133,8 @@ typography:
     fontSize: "7px"
     fontWeight: 700
 rounded:
+  hair: "2px"
+  bar: "4px"
   xs: "6px"
   sm: "10px"
   md: "12px"

@@ -206,7 +206,7 @@ const cardBack = w => { const P = (a, r) => [Math.cos(a * Math.PI / 180) * r, Ma
 const hexSvg = kind => `<svg viewBox="-55 -50 110 100" width="50" height="46" aria-hidden="true"><path d="${GI_HEX}" fill="${kind === 'yes' ? '#1e8a4f' : '#EE1B2D'}" stroke="#000" stroke-width="7"/>${kind === 'yes'
   ? '<path d="M-14 1l9 9 19-20" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'
   : '<path d="M-11 -11l22 22M11 -11l-22 22" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>'}</svg>`;
-const hexPair = (no, yes, noLabel, yesLabel) => `<div class="hexpair"><button class="hexbtn" data-act="${no}" aria-label="${esc(noLabel)}" title="${esc(noLabel)}">${hexSvg('no')}</button><button class="hexbtn" data-act="${yes}" aria-label="${esc(yesLabel)}" title="${esc(yesLabel)}">${hexSvg('yes')}</button></div>`;
+const hexPair = (no, yes, noLabel, yesLabel) => `<div class="hexpair">${no ? `<button class="hexbtn" data-act="${no}" aria-label="${esc(noLabel)}" title="${esc(noLabel)}">${hexSvg('no')}</button>` : ''}<button class="hexbtn" data-act="${yes}" aria-label="${esc(yesLabel)}" title="${esc(yesLabel)}">${hexSvg('yes')}</button></div>`;
 const cmdChip = (icon, text) => `<div class="cmdchip">${icon || ''}<span>${text}</span></div>`;
 /* what the map offers right now, next to the sector it acts on; the panel only explains it */
 function mapCmd() {
@@ -215,8 +215,8 @@ function mapCmd() {
   if (T.sel && canMoveNow()) return { at: T.sel, key: 'move', html: hexPair('mpno', 'mpyes', t('Change'), t('Confirm move')) };
   const opts = typeof turnOptions === 'function' ? turnOptions() : null;
   if (!opts || !opts.length) return null;
-  const o = T.opt && opts.find(x => x.k === T.opt);
-  if (o) return { at: S.pos, key: 'opt:' + o.k, html: cmdChip(o.icon, esc(o.label)) + hexPair('optno', 'optyes', t('Change plan'), o.commit) };
+  const o = curOpt(opts), sole = o && !T.opt;   // a lone option is already chosen: cross = undo the move, if allowed
+  if (o) return { at: S.pos, key: 'opt:' + o.k + (sole ? ':1' : ''), html: cmdChip(o.icon, esc(o.label)) + (sole ? hexPair(S.undo ? 'undo' : '', 'optyes', t('Undo'), o.commit) : hexPair('optno', 'optyes', t('Change plan'), o.commit)) };
   return { at: S.pos, key: 'opts:' + opts.map(x => x.k).join(','), html: `<div class="optbar" role="group" aria-label="${t('What you do next')}">${opts.map(x =>
     `<button class="opt${x.tone ? ' ' + x.tone : ''}" data-act="${x.k === 'undo' ? 'undo' : 'opt'}" data-k="${esc(x.k)}">${x.icon}<span>${esc(x.label)}</span></button>`).join('')}</div>` };
 }
@@ -1001,8 +1001,8 @@ function entryText(e) {
   if (e.kind === 'item') return t('plays {i}', { i: t(((typeof ITEMS !== 'undefined' && ITEMS[e.text]) || [e.text])[0]) });
   if (e.kind === 'reveal' && String(e.text).startsWith('Id|')) { const [, role, ch] = e.text.split('|'); return t('identity revealed') + ': ' + roleLabel(role, ch); }
   if (e.kind === 'reveal') return e.text === 'Invisible Alien' || e.text === 'Brute Alien' ? t('{c}: identity revealed', { c: t(e.text) }) : e.text === 'Identity' ? t('identity revealed') : t('Position revealed: {s}', { s });
-  if (killOf(e)) { const [, , role] = String(e.text).split('|'); return t('killed {p}', { p: killOf(e) }) + (role ? ' (' + t(role === 'alien' ? 'Alien' : 'Human') + ')' : ''); }
-  if (e.kind === 'out') { const [why, role, ch] = String(e.text).split('|'); return t(why === 'escaped' ? 'escaped' : why === 'trapped' ? 'is trapped and out of the game' : 'was eliminated') + ' (' + t(role === 'alien' ? 'Alien' : 'Human') + (ch ? ', ' + t(ch) : '') + ')'; }
+  if (killOf(e)) { const [, , role] = String(e.text).split('|'); return t('killed {p}', { p: killOf(e) }) + (role ? ' (' + t(role === 'alien' ? 'Alien' : 'Human') + ')' : '') + (s ? ' ' + t('in Sector {s}', { s }) : ''); }
+  if (e.kind === 'out') { const [why, role, ch] = String(e.text).split('|'); return t(why === 'escaped' ? 'escaped' : why === 'trapped' ? 'is trapped and out of the game' : 'was eliminated') + ' (' + t(role === 'alien' ? 'Alien' : 'Human') + (ch ? ', ' + t(ch) : '') + ')' + (why === 'killed' && role === 'human' ? ' · ' + t('restarts as an Alien') : ''); }
   return t(e.text);
 }
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 2600); }
@@ -1172,7 +1172,7 @@ function hdr() {
   document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab));
   const tb = $('#turnbar');
   if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) {
-    const mine = T.turnState.uid === Sync.uid, le = typeof recentOthers === 'function' ? recentOthers(1)[0] : null, tail = le ? ' · ' + le.who + ': ' + entryText(le) : '';
+    const mine = T.turnState.uid === Sync.uid, tail = '';   // what the others declared is in the Play box and the log, not repeated here
     const bot = typeof Online !== 'undefined' && Online.isBotId(T.turnState.uid);
     const ak = (Sync.settings && Sync.settings.autoKick) || 0;
     const idle = !mine && !bot && ak > 0 && T.turnAt && Date.now() - T.turnAt > ak * 60000 && Sync.isHolder();

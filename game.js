@@ -97,12 +97,18 @@ function undoMove() {
   afterChange(); focusOn(S.pos); toast(t('Move undone'));
 }
 const undoBtn = () => (S.undo && S.phase === 'resolve' && S.res && ['choose', 'pod'].includes(S.res.stage)) ? `<button class="btn link wide" data-act="undo">${ico('undo', 18)} ${t('Undo move')}</button>` : '';
-function announce(res) { commit(); T.opt = null; S.res = Object.assign({ stage: 'done' }, res); afterChange(); }
+/* a turn that tells its player nothing private (a noise, a silence, a quiet sector) ends with the declaration, online */
+function announce(res) {
+  commit(); T.opt = null; S.res = Object.assign({ stage: 'done' }, res);
+  if (res.auto && inRoom() && digital()) { toast(res.say); endTurn(); return; }
+  afterChange();
+}
 /* common ending of a Sector card: public announcement, then (maybe) the Item card that was drawn */
 async function finishCard(kind, sector, itemId, any) {
   const res = kind === 'silence' ? { say: t('Silence in all Sectors'), tone: 'silent', icon: 'silence', logged: say('', 'silence') }
     : { say: t('Noise in Sector {s}', { s: sector }), tone: 'alert', icon: any ? 'noise-any' : 'noise-here', logged: say('', 'noise', sector) };
   if (itemId) { const m = digital() ? giveItem(itemId) : { text: t('You drew an Item card') }; res.extra = m.text; res.extraIcon = m.icon; }
+  if (!itemId) res.auto = true;
   announce(res);
 }
 /* two noises at once (Cat card or the Pilot): both are announced */
@@ -198,7 +204,7 @@ async function runAttack(fromItem) {
     if (h.def) lines.push(t('{p} survived with a Defense card', { p: h.name }));
     else if (h.clone) lines.push(t('{p} survived with a Clone and restarts from the Human sector', { p: h.name }));
     else if (h.reveal) lines.push(t('{p} is immune to attacks: {r}', { p: h.name, r: roleLabel(h.role, h.char) }));
-    else { lines.push(t('{p} was killed ({r})', { p: h.name, r: roleLabel(h.role, h.char) }) + (h.conv ? ' ' + t('and restarts as an Alien') : '')); if (h.role === 'human' && S.role === 'alien') fed = true; say('kill|' + String(h.name).slice(0, 20) + '|' + (h.role || ''), 'info'); }
+    else { lines.push(t('{p} was killed ({r})', { p: h.name, r: roleLabel(h.role, h.char) }) + (h.conv ? ' ' + t('and restarts as an Alien') : '')); if (h.role === 'human' && S.role === 'alien') fed = true; say('kill|' + String(h.name).slice(0, 20) + '|' + (h.role || ''), 'info', S.pos); }
   }
   if (!r.hits.length) lines.push(t('Nobody was in the sector'));
   r.missing.forEach(p => lines.push(t('No answer from {p}', { p })));
@@ -222,7 +228,7 @@ Object.assign(actions, {
   noiseHere() { finishCard('noise', S.pos, '', false); },
   noiseAny() { pickSector(t('Tap the sector you announce'), id => finishCard('noise', id, '', true)); },
   silence() { finishCard('silence', null, '', false); },
-  quiet() { announce({ say: t('Silent Sector'), tone: 'silent', logged: say('secure', 'silence') }); },   // a Secure sector: public, but different from a Silence card
+  quiet() { announce({ say: t('Silent Sector'), tone: 'silent', auto: true, logged: say('secure', 'silence') }); },   // a Secure sector: public, but different from a Silence card
   drawcard() { drawSector(); },
   hatchdraw() { digitalHatch(); },
   savelog() { saveGameLog(); },
@@ -436,15 +442,17 @@ function turnOptions() {
   return o;
 }
 const podIcon = () => `<svg viewBox="-55 -50 110 100" width="30" height="28" aria-hidden="true"><path d="${GI_HEX}" fill="#1e8a4f" stroke="#000" stroke-width="7"/><text y="14" text-anchor="middle" font-family="var(--font-head)" font-weight="700" font-size="44" fill="#fff">${esc(at(T.map, S.pos))}</text></svg>`;
+/* the option in play: the one the player tapped, or the only one there is */
+const curOpt = opts => { const real = opts.filter(x => x.k !== 'undo'); return (T.opt && opts.find(x => x.k === T.opt)) || (real.length === 1 ? real[0] : null); };
 function optSheet(opts) {
-  const o = T.opt && opts.find(x => x.k === T.opt);
+  const o = curOpt(opts);
   if (!o) return `<p class="dim hintline">${t('Pick what you do next on the map, next to your sector. Each option shows its effect before you confirm.')}</p>`;
   return `<div class="optsheet"><div class="oi">${o.icon}</div><div><h3>${esc(o.label)}</h3><p>${esc(o.text)}</p><p class="dim">${t('Confirm on the map, or change plan.')}</p></div></div>`;
 }
 Object.assign(actions, {
   opt(b) { T.opt = b.dataset.k; render(); paintCells(); },
   optno() { T.opt = null; render(); paintCells(); },
-  optyes() { const o = (turnOptions() || []).find(x => x.k === T.opt); T.opt = null; if (o && o.run) o.run(); else { render(); paintCells(); } }
+  optyes() { const o = curOpt(turnOptions() || []); T.opt = null; if (o && o.run) o.run(); else { render(); paintCells(); } }
 });
 
 const catNote = () => S.cat ? `<p class="say alert"><b>${t('Cat is ready: two noises when you draw')}</b></p>` : '';
@@ -456,7 +464,7 @@ function playPanel() {
   const n = allowance(), alien = S.role === 'alien';
   if (S.phase === 'move') {
     const sel = T.sel;
-    const seen = !sel && !!recentOthers(8).length;   // with declarations to read, they take the place of the "tap a sector" line
+    const seen = !sel && !!roundLines().length;   // with declarations to read, they take the place of the "tap a sector" line
     return `${catNote()}${seen ? '' : `<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>`}
       ${sel ? `<p class="dim hintline">${t('Confirm the move on the map, next to the sector.')}</p>` : ''}
       ${roundCard(true)}${handHtml()}${extras()}`;
@@ -557,7 +565,13 @@ function decksHtml() {
   return `<p class="decks1">${t('Cards left')}: ${cell('sector', 'Sector cards')} · ${cell('hatch', 'Escape Pod cards')}${front ? ` · <span><b>${front}</b> ${t('face down in front of players')}</span>` : ''}</p>`;
 }
 function tablePanel() {
-  const sel = logSel(), ln = S.log.filter(e => !sel.length || sel.includes(playerKey(e))).map(e => { const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k); return `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><time>${t('T{n}', { n: e.turn })}</time><span>${icon}<b>${esc(e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span></li>`; }).join('');
+  const sel = logSel(), quiet = T.logEv ? ['noise', 'silence'] : T.logSil ? ['silence'] : [];
+  let lastTurn = null;
+  const ln = S.log.filter(e => (!sel.length || sel.includes(playerKey(e))) && !quiet.includes(e.kind)).map(e => {
+    const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k), head = e.turn !== lastTurn ? `<li class="turnh">${t('Turn {n}', { n: e.turn })}</li>` : '';
+    lastTurn = e.turn;
+    return head + `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><span>${icon}<b>${esc(e.mine ? t('Me') : e.who)}</b> · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span></li>`;
+  }).join('');
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
   const sec = { players: 'sheet', hatches: 'status' }[T.tableSec] || T.tableSec || 'sheet', hatchAct = digital() ? '' : 'hatch';
   const secs = [['sheet', 'Sheet'], ['log', 'Log'], ['status', 'Status']];
@@ -597,7 +611,7 @@ function showReveal(e, i) {
 dlg.addEventListener('close', () => { const n = (T.revQ || []).shift(); if (n) setTimeout(n, 150); });
 /* a short banner over the map for what another player has just declared */
 function showBanner(e) {
-  const bar = $('#annbar'); if (!bar) return;
+  const bar = $('#annbar'); if (!bar || S.tab === 'play') return;   // on the Play tab the same line is already in the box
   const k = playerKey(e), d = document.createElement('div'); d.className = 'ann ' + e.kind;
   d.innerHTML = `${dotIcon(k)}<span><b>${esc(e.who)}</b> ${logIcon(e, 20)}<em>${esc(entryText(e))}</em></span>`;
   bar.appendChild(d); while (bar.children.length > 3) bar.firstChild.remove();
@@ -613,9 +627,14 @@ function onPublicEntry(e) {
 function recentOthers(n = 8, from = S.turn - 1) {
   return S.log.filter(e => ANN_KINDS.includes(e.kind) && playerKey(e) !== 'me' && e.turn >= from).slice(0, n);
 }
+/* the last round at a glance: each player's newest noise, silence or attack, plus every event (item, pod, reveal, death) */
+function roundLines() {
+  const seen = new Set();
+  return recentOthers(40).filter(e => { if (!['noise', 'silence', 'attack'].includes(e.kind)) return true; const k = playerKey(e); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
+}
 const annLine = e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b>${logIcon(e, 18)}<span>${esc(entryText(e))}</span><i>${t('T{n}', { n: e.turn })}</i></li>`;
 function roundCard(compact) {
-  const es = recentOthers(8); if (!es.length) return '';
+  const es = roundLines(); if (!es.length) return '';
   return `<div class="roundcard${compact ? ' compact' : ''}"><small>${t('What the others declared')}</small><ul>${es.map(annLine).join('')}</ul></div>`;
 }
 /* every Character card the table has seen so far */
@@ -633,9 +652,9 @@ function charsHtml() {
 const logSel = () => T.logSel || [];
 function logFilterHtml() {
   const ps = [['me', t('Me')]].concat(knownPlayers()), sel = logSel();
-  return `<div class="logfilter" role="group" aria-label="${t('Show players')}"><button class="lfc" data-act="logf" data-k="" aria-pressed="${!sel.length}">${t('All')}</button>${ps.map(([k, n]) => `<button class="lfc" data-act="logf" data-k="${esc(k)}" aria-pressed="${sel.includes(k)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`).join('')}</div>`;
+  return `<div class="logfilter" role="group" aria-label="${t('Show players')}"><button class="lfc kindf" data-act="logk" data-k="sil" aria-pressed="${!!T.logSil && !T.logEv}">${t('Hide silences')}</button><button class="lfc kindf" data-act="logk" data-k="ev" aria-pressed="${!!T.logEv}">${t('Only events')}</button><button class="lfc" data-act="logf" data-k="" aria-pressed="${!sel.length}">${t('All')}</button>${ps.map(([k, n]) => `<button class="lfc" data-act="logf" data-k="${esc(k)}" aria-pressed="${sel.includes(k)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`).join('')}</div>`;
 }
-Object.assign(actions, { logf(b) { const k = b.dataset.k; if (!k) T.logSel = []; else { const s = logSel().slice(), i = s.indexOf(k); if (i >= 0) s.splice(i, 1); else s.push(k); T.logSel = s; } render(); } });
+Object.assign(actions, { logk(b) { if (b.dataset.k === 'ev') { T.logEv = !T.logEv; T.logSil = false; } else { T.logSil = !T.logSil; T.logEv = false; } render(); }, logf(b) { const k = b.dataset.k; if (!k) T.logSel = []; else { const s = logSel().slice(), i = s.indexOf(k); if (i >= 0) s.splice(i, 1); else s.push(k); T.logSel = s; } render(); } });
 window.onPublicEntry = onPublicEntry;
 
 /* ---------------- who am I: Character icon, role and what it can do ---------------- */

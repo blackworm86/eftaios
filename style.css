@@ -859,7 +859,7 @@ li.adm-row.bt{grid-template-columns:1fr}
 .sheet .c .ci{display:flex;justify-content:center;align-items:center;gap:2px;font-size:0;line-height:0;margin-top:1px}
 .sheet .c.rh{border-bottom:5px solid #2f7dff}.sheet .c.ra{border-bottom:5px solid #ff3b30}
 .lc.rh{background:#2f7dff}.lc.ra{background:#ff3b30}
-.roundcard.compact ul{max-height:84px;overflow-y:auto;overscroll-behavior:contain}
+.roundcard.compact ul{max-height:132px;overflow-y:auto;overscroll-behavior:contain}
 .log li.kill{--c:var(--alien)}
 @media (max-height:700px){.roundcard.compact{margin:2px 0 0;padding:3px 8px}.roundcard.compact ul{max-height:22px;gap:3px;margin-top:0}.roundcard.compact small{display:none}}
 @media (max-height:700px){.confirmrow ~ .roundcard.compact{display:none}}   /* a sector is picked: the map has the buttons, the declarations wait */
@@ -924,3 +924,8 @@ li.adm-row.bt{grid-template-columns:1fr}
 .stage.classic .optbar,.stage.classic .cmdchip{background:#fffffff2;border-color:#9aa;color:#111}
 .stage.classic .opt{background:#fff;border-color:#9aa;color:#111}.stage.classic .opt.ghost{background:none;border-color:transparent;color:#555}.stage.classic .opt.danger{border-color:#d33;color:#a11}
 
+
+/* v16: log grouped by turn, kind filters */
+ul.log li.turnh{background:none;border:0;padding:10px 4px 2px;font:700 12px var(--font-head);letter-spacing:.08em;text-transform:uppercase;color:var(--acc,#f5a623)}
+.logfilter .kindf{border-style:dashed}
+.log li{grid-template-columns:1fr}

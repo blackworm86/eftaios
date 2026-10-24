@@ -27,9 +27,9 @@ const {assert,setup,startTable,begin,current,uidOf}=require('./helpers');
   await cur.evaluate(()=>{S.pos='L09';S.phase='move';T.sel=null;refreshReach();render()});
   const dest=await cur.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));await cur.evaluate(i=>selectCell(i),dest);await cur.click('[data-act=mpyes]');
   await cur.click('[data-act=opt][data-k=draw]');await cur.click('[data-act=optyes]');
-  await cur.waitForFunction(()=>S.res&&(S.res.stage==='done'||T.pick),null,{timeout:15000});
+  await cur.waitForFunction(()=>T.pick||S.log.some(e=>e.mine&&['noise','silence'].includes(e.kind)),null,{timeout:15000});
   if(await cur.evaluate(()=>!!T.pick)){await cur.evaluate(()=>{const cb=T.pick.cb;T.pick=null;cb('K09')})}
-  await cur.waitForFunction(()=>S.res&&S.res.stage==='done',null,{timeout:15000});
+  await cur.waitForFunction(()=>S.log.some(e=>e.mine&&['noise','silence'].includes(e.kind)),null,{timeout:15000});   // a plain noise ends the turn by itself
   assert(await cur.evaluate(()=>S.log.some(e=>['noise','silence'].includes(e.kind)))||await cur.evaluate(()=>S.ab&&S.ab.Captain),'card result announced automatically');
   // ---- attack & defense
   const idx=roles.indexOf('human'),human=pages[idx],aliens=pages.filter((_,i)=>roles[i]==='alien');

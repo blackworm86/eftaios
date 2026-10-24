@@ -221,7 +221,8 @@ Object.assign(actions, {
   lobbyopts() { lobbyOpts(); },
   addlobbybot() {
     const ps = Sync.players || {}; if (Object.keys(ps).length >= 8) return;
-    const n = Object.values(ps).filter(p => p.bot).length + 1, id = 'bot_' + Math.random().toString(36).slice(2, 8);
+    const used = new Set(Object.values(ps).map(p => p.name)); let n = 1; while (used.has(t('Bot {n}', { n }))) n++;
+    const id = 'bot_' + Math.random().toString(36).slice(2, 8);
     Sync.set('players/' + id, { name: t('Bot {n}', { n }), ready: true, bot: 'normal' }).catch(rulesError);
   },
   delbot(b) { Sync.del('players/' + b.dataset.u).catch(() => {}); },

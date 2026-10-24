@@ -158,7 +158,7 @@ const Online = (() => {
         H: view, me: { id: b.id, name: b.name, bot: b.level, state: b.state }, idx: ord.indexOf(b.id),
         think: ms => botThinking(b.name, ms, false),
         log: e => botPush(b, e),
-        out: (i, why) => botOut(b.id, why, b.state),
+        out: (i, why) => { botOut(b.id, why, b.state); if (why === 'escaped') botPush(b, { kind: 'out', text: 'escaped|' + (b.state.role0 || b.state.role) + '|' + (b.state.char || '') }); },
         draw(type, two) { const d = HD.decks[type]; if (type === 'hatch') return drawPod(d, two).card; const r = deckDraw(d); if (discardable(r.card)) d.disc.push(r.card); if (r.reshuffled) logGame(RESHUFFLED[type]); return r.card || ''; },
         discard(id) { HD.decks.sector.disc.push(id); },
         closeHatch(n) { S.hatches[n] = 1; Sync.setHatch(n, 1); },
@@ -177,10 +177,12 @@ const Online = (() => {
           const id = uid(), expected = Object.keys(Sync.players || {}).filter(u => u !== b.id && !Sync.players[u].out);
           await Sync.set('attacks/' + id, { by: b.id, sector, at: Date.now() });
           const replies = await waitReplies(`attacks/${id}/replies`, expected, 8000);
+          expected.forEach(u => { const r = replies[u]; if (r && r.in && !r.def && !r.clone && !r.reveal) botPush(b, { kind: 'info', text: 'kill|' + String(pname(u)).slice(0, 20) + '|' + (r.role || ''), sector }); });
           return expected.map(u => replies[u]).filter(r => r && r.in);
         },
         async spotlight(sector) {
           const id = uid(), expected = Object.keys(Sync.players || {}).filter(u => !Sync.players[u].out);
+          botPush(b, { kind: 'spot', sector, text: 'spot' });
           await Sync.set('spots/' + id, { by: b.id, sector, at: Date.now() });
           await waitReplies(`spots/${id}/replies`, expected, 8000);
         }

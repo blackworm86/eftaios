@@ -15,15 +15,8 @@ call .venv\Scripts\activate.bat
 python -m pip install --upgrade pip || exit /b 1
 python -m pip install -r requirements.txt || exit /b 1
 
-rem PyTorch: the CUDA build when an NVIDIA GPU is present, the CPU build otherwise
-where nvidia-smi >nul 2>nul
-if errorlevel 1 (
-  echo No NVIDIA GPU found: installing the CPU build of PyTorch ^(training will be slow^).
-  python -m pip install torch --index-url https://download.pytorch.org/whl/cpu || exit /b 1
-) else (
-  echo NVIDIA GPU found: installing PyTorch with CUDA 12.4.
-  python -m pip install torch --index-url https://download.pytorch.org/whl/cu124 || exit /b 1
-)
+rem PyTorch: the CUDA build that works on this PC (tries the newest first), the CPU build otherwise
+python install_torch.py || exit /b 1
 python -c "import torch; print('PyTorch', torch.__version__, '| CUDA available:', torch.cuda.is_available(), '| GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none')"
 
 echo.

@@ -1024,7 +1024,6 @@ ul.log li.turnh{padding-top:6px}
 .pb button.psq{position:relative}.pb button.psq::after{content:"";position:absolute;inset:-6px -4px}   /* a finger-sized hit area around the small square */
 @media (pointer:coarse){.tlrow .btn,.tlrow2 .btn{min-height:40px;min-width:40px}.lfc{min-height:38px}#hd-role{min-height:40px;display:inline-flex;align-items:center}.logfilter .lfc{min-height:38px}}
 @media (max-height:700px){body[data-tab=table] .panel{max-height:calc(56dvh + 54px + env(safe-area-inset-bottom))}}
-#flow-card{margin-bottom:34px}
 
 /* v20: compact strip as a tight column. The square is centred in the tile; cards sit top-right and the last action bottom-right, inside it */
 .mkbar.compact{gap:3px}

@@ -385,7 +385,7 @@ const keyOfUid = u => u === Sync.uid ? 'me' : 'u:' + u;
 function orderList() {
   const ord = tableOrder(), ps = tablePlayers(), cur = S.hot ? Hot.curId() : T.turnState && T.turnState.uid;
   if (!ord.length) return '';
-  return `<ol class="turnlist">${ord.filter(u => ps[u]).map(u => { const k = u === myId() ? 'me' : 'u:' + u; return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? ico('turn', 12) : ''}</span>${dotIcon(k)}<span class="pname">${esc(ps[u].name)}${k === 'me' ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
+  return `<ol class="turnlist${S.hot ? '' : ' chips'}">${ord.filter(u => ps[u]).map(u => { const k = u === myId() ? 'me' : 'u:' + u; return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? ico('turn', 12) : ''}</span>${dotIcon(k)}<span class="pname">${esc(ps[u].name)}${k === 'me' ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out || !S.hot ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
 }
 function waitPanel() {
   const cur = T.turnState;
@@ -503,7 +503,7 @@ const legendHtml = () => {
   <p class="legend"><span><i class="lc heard"></i>${t('Heard')}</span><span><i class="lc silent"></i>${t('Silent or elsewhere')}</span><span><i class="lc bluff"></i>${t('Bluff (real below)')}</span></p>
   <p class="legend"><span>${gico('silent', 16)}${t('Silent Sector')}</span><span>${gico('silence', 16)}${t('Silence in all Sectors')}</span><span>${gico('killed', 16)}${t('Killed')}</span><span><i class="lc rh"></i>${t('Human turn')}</span><span><i class="lc ra"></i>${t('Alien turn')}</span></p>`;
 };
-const legendOpen = () => T.legendOpen !== undefined ? T.legendOpen : innerHeight >= 760;
+const legendOpen = () => !!T.legendOpen;   // closed until asked for: the sheet and the log come first
 const legendBox = () => `<button class="legendtoggle" data-act="legend" aria-expanded="${legendOpen()}">${t('Legend')}${ico(legendOpen() ? 'up' : 'down', 14)}</button>${legendOpen() ? legendHtml() : ''}`;
 Object.assign(actions, { legend() { T.legendOpen = !legendOpen(); render(); } });
 const NEXT_SUS = { '': 'human', human: 'alien', alien: '' };
@@ -533,7 +533,7 @@ function turnMarks(k, n) {
 /* the tracking sheet: one row per player, one column per turn */
 function sheetHtml() {
   const rows = [['me', t('Me')]].concat(knownPlayers()), own = ownSteps(), ps = tablePlayers();
-  const turns = Array.from({ length: Math.max(1, Math.min(S.turn, MAX_TURN)) }, (_, i) => i + 1);
+  const turns = Array.from({ length: Math.max(1, Math.min(S.turn, MAX_TURN)) }, (_, i) => i + 1).filter(inRng);
   const cur = S.hot ? Hot.curId() : T.turnState && T.turnState.uid;
   const cell = (k, n) => {
     const rl = roleAtTurn(k, n), rc = rl ? ' r' + rl[0] : '';   // rh = a Human turn, ra = an Alien turn

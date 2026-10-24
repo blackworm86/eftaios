@@ -929,3 +929,21 @@ li.adm-row.bt{grid-template-columns:1fr}
 ul.log li.turnh{background:none;border:0;padding:10px 4px 2px;font:700 12px var(--font-head);letter-spacing:.08em;text-transform:uppercase;color:var(--acc,#f5a623)}
 .logfilter .kindf{border-style:dashed}
 .log li{grid-template-columns:1fr}
+
+/* v16: turn slider on the map */
+.tlbar{position:absolute;left:8px;right:60px;bottom:8px;z-index:25;background:#0b1522ee;border:1px solid var(--line);border-radius:14px;padding:6px 8px 8px;display:grid;gap:6px;backdrop-filter:blur(4px)}
+.tlrow{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.tlrow .btn{min-height:36px;min-width:36px;padding:4px 9px;font-size:13px}.tlrow .btn[aria-pressed=true]{background:var(--acc,#f5a623);color:#111}
+.tltxt{flex:1;min-width:80px;font:700 13px var(--font-head);color:var(--fg)}
+.tltrack{position:relative;height:30px;margin:0 8px}.tltrack::before{content:"";position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:#ffffff26}
+.tlfill{position:absolute;top:13px;height:4px;border-radius:2px;background:var(--acc,#f5a623)}
+.tlticks i{position:absolute;top:19px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#7fe3ff}.tlticks i.atk{background:#ff3b30}.tlticks i.pod{background:#2fb36b}.tlticks i.dead{background:#fff;box-shadow:0 0 0 1.5px #000}
+.tl{position:absolute;left:-8px;width:calc(100% + 16px);top:0;height:30px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
+.tl::-webkit-slider-runnable-track{background:none;height:30px}.tl::-moz-range-track{background:none}
+.tl::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:28px;height:28px;margin-top:1px;border-radius:50%;background:#fff;border:3px solid var(--acc,#f5a623);box-shadow:0 1px 4px #0008}
+.tl::-moz-range-thumb{pointer-events:auto;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--acc,#f5a623)}
+.mk.decoy{opacity:.32}.mk.decoy .hex,.mk.decoy path:first-child{stroke-dasharray:3 2}
+.ihere{display:flex;align-items:center;gap:5px;font-size:12.5px;margin-top:4px}
+.turnlist.chips{display:flex;flex-wrap:wrap;gap:6px}.turnlist.chips li{min-height:36px;padding:3px 10px 3px 8px;gap:6px}.turnlist.chips .pname{flex:none}
+/* v16: touch targets (44px) and the tablet in portrait: the map gets the larger share */
+.sus button{width:44px;min-height:44px}.msus button{min-height:40px}
+@media (min-width:700px) and (max-width:899px) and (orientation:portrait){.panel{max-height:calc(36dvh + 54px + env(safe-area-inset-bottom))}}

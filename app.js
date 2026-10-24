@@ -9,7 +9,7 @@ const STORE = 'eftaios.v1';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 /* one icon family: 24px grid, 2px round strokes */
-const ICONS = { close: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7', up: 'M6 15l6-6 6 6', down: 'M6 9l6 6 6-6', next: 'M9 5l7 7-7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', pencil: 'M4 20l1-5L16 4l4 4L9 19zM14 6l4 4', turn: 'M8 5l10 7-10 7z', cross: 'M7 7l10 10M17 7L7 17', bucket: 'M5 12l7-7 7 7-6.5 6.5a2.1 2.1 0 01-3 0zM5 12h14M20 15c0 0-1.8 2.2-1.8 3.4a1.8 1.8 0 003.6 0C21.8 17.2 20 15 20 15z', picker: 'M14.5 4.5l5 5-3 3-5-5zM13 8L4.5 16.5V19.5h3L16 11', expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', hand: 'M8 13V6.5a1.5 1.5 0 013 0V11M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6.5a1.5 1.5 0 013 0V14c0 4-2 7-6 7-3 0-4.5-2-6-5l-1.5-3a1.5 1.5 0 012.5-1.5L8 14' };
+const ICONS = { close: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7', up: 'M6 15l6-6 6 6', left: 'M15 5l-7 7 7 7', down: 'M6 9l6 6 6-6', next: 'M9 5l7 7-7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', pencil: 'M4 20l1-5L16 4l4 4L9 19zM14 6l4 4', turn: 'M8 5l10 7-10 7z', cross: 'M7 7l10 10M17 7L7 17', bucket: 'M5 12l7-7 7 7-6.5 6.5a2.1 2.1 0 01-3 0zM5 12h14M20 15c0 0-1.8 2.2-1.8 3.4a1.8 1.8 0 003.6 0C21.8 17.2 20 15 20 15z', picker: 'M14.5 4.5l5 5-3 3-5-5zM13 8L4.5 16.5V19.5h3L16 11', expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', hand: 'M8 13V6.5a1.5 1.5 0 013 0V11M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6.5a1.5 1.5 0 013 0V14c0 4-2 7-6 7-3 0-4.5-2-6-5l-1.5-3a1.5 1.5 0 012.5-1.5L8 14' };
 const ico = (n, s = 20) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="${n === 'turn' ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 const colL = c => String.fromCharCode(65 + c);
 const cid = (c, r) => colL(c) + String(r + 1).padStart(2, '0');
@@ -240,6 +240,26 @@ function paintMoveBtns() {
    dashed border = a bluff, joined to where I really was by a dashed line. */
 const MK_STEPS = [1, 3, 5, 7, 0];   // how many turns of other players' markers to show; 0 = all turns
 const mkN = () => S.mkN === undefined ? (S.mkAll ? 0 : 5) : S.mkN;
+/* the turn slider: T.rng = [first, last] turn shown on the map and the sheet (null = the last few steps of everyone) */
+const inRng = n => !T.rng || (n >= T.rng[0] && n <= T.rng[1]);
+/* noises that cannot be where the player is: farther from their last sure position (a start sector, an attack, a pod, a restart)
+   than 3 sectors a turn. They must be "noise in any sector" cards, so they are drawn faded, or left out. */
+let DECOYS = new Set();
+function findDecoys() {
+  const out = new Set(), H = find(T.map, 'H'), A = find(T.map, 'A'), by = new Map();
+  S.log.forEach(e => { const k = playerKey(e); if (k === 'me' || !(e.sector || e.kind === 'out' || (e.kind === 'item' && ['teleport', 'clone'].includes(e.text)))) return; if (!by.has(k)) by.set(k, []); by.get(k).push(e); });
+  by.forEach(es => {
+    let anchor = null;   // null: still near one of the two start sectors
+    es.slice().sort((x, y) => x.turn - y.turn).forEach(e => {
+      if (e.kind === 'item') { anchor = { sector: H, turn: e.turn }; return; }
+      if (e.kind === 'out') { if (String(e.text).startsWith('killed|human')) anchor = { sector: A, turn: e.turn }; return; }
+      if (e.kind !== 'noise') { if (['attack', 'reveal', 'hatch'].includes(e.kind)) anchor = { sector: e.sector, turn: e.turn }; return; }
+      const from = anchor ? [[anchor.sector, e.turn - anchor.turn]] : [[H, e.turn], [A, e.turn]];
+      if (from.every(([s, dt]) => s && hexDist(T.map, s, e.sector) > 3 * dt)) out.add(e.id);
+    });
+  });
+  return out;
+}
 const ME_COLOR = ['#f5f5f5', '#101010'];
 const PALETTE = [['#E69F00', '#1a1200'], ['#56B4E9', '#06202e'], ['#009E73', '#00140e'], ['#F0E442', '#2a2600'],
   ['#CC79A7', '#2b0619'], ['#A6763C', '#150d03'], ['#A99BF0', '#14102e'], ['#2EC4B6', '#06201d']];
@@ -329,6 +349,32 @@ function followZone(key) {
   zone.set(last.sector, 0);
   return { last, zone, human, guess };
 }
+function stopPlay() { clearInterval(T.tlTimer); T.tlTimer = null; }
+function tlShift(d) { const max = Math.max(1, S.turn), w = T.rng[1] - T.rng[0], lo = Math.max(1, Math.min(max - w, T.rng[0] + d)); T.rng = [lo, lo + w]; render(); paintOverlay(); }
+/* the slider bar at the foot of the map: a range of turns, with a tick for every attack, pod and death */
+function renderTl() {
+  const bar = $('#tlbar'); if (!bar) return;
+  if (!T.rng || !S.role || !T.map) { bar.hidden = true; bar.dataset.k = ''; return; }
+  const max = Math.max(1, S.turn);
+  if (T.rngMax && T.rngMax < max && T.rng[1] === T.rngMax) { const d = max - T.rngMax; T.rng = [T.rng[0] + d, max]; }   // following the live turn
+  T.rngMax = max; T.rng = [Math.max(1, Math.min(T.rng[0], max)), Math.max(1, Math.min(T.rng[1], max))];
+  const [lo, hi] = T.rng, pct = n => max > 1 ? (n - 1) / (max - 1) * 100 : 0, key = LANG + '|' + max + '|' + !!T.hideDecoy + '|' + !!T.tlTimer + '|' + (DECOYS.size > 0);
+  const lab = lo === hi ? t('Turn {n}', { n: lo }) : t('Turns {a}–{b}', { a: lo, b: hi });
+  bar.hidden = false;
+  if (bar.dataset.k !== key) {
+    bar.dataset.k = key;
+    const tick = new Map(); S.log.forEach(e => { const c = killOf(e) || e.kind === 'out' ? 'dead' : e.kind === 'attack' ? 'atk' : e.kind === 'hatch' && e.n ? 'pod' : ''; if (c) { if (!tick.has(e.turn)) tick.set(e.turn, new Set()); tick.get(e.turn).add(c); } });
+    bar.innerHTML = `<div class="tlrow"><button class="btn" data-act="tlprev" aria-label="${t('Earlier')}">${ico('left', 18)}</button><button class="btn" data-act="tlplay" aria-label="${t(T.tlTimer ? 'Stop' : 'Play the turns')}">${ico(T.tlTimer ? 'close' : 'turn', 18)}</button><button class="btn" data-act="tlnext" aria-label="${t('Later')}">${ico('next', 18)}</button><b class="tltxt"></b><button class="btn" data-act="tlall">${t('All')}</button><button class="btn" data-act="tlnow">${t('Now')}</button>${DECOYS.size ? '' : '<span hidden></span>'}${DECOYS.size ? `<button class="btn" data-act="tldecoy" aria-pressed="${!!T.hideDecoy}" title="${esc(t('Noises that cannot be where the player is'))}">${t('Hide impossible')}</button>` : ''}<button class="btn" data-act="mkall" aria-label="${t('Close')}">${ico('close', 18)}</button></div>
+      <div class="tltrack"><div class="tlfill"></div><div class="tlticks">${[...tick].map(([n, s]) => `<i class="${[...s].join(' ')}" style="left:${pct(n).toFixed(1)}%"></i>`).join('')}</div>
+      <input type="range" class="tl lo" min="1" max="${max}" aria-label="${t('From turn')}"><input type="range" class="tl hi" min="1" max="${max}" aria-label="${t('To turn')}"></div>`;
+    const los = bar.querySelector('.lo'), his = bar.querySelector('.hi');
+    const apply = who => { let a = +los.value, b = +his.value; if (a > b) { if (who === los) a = b; else b = a; } T.rng = [a, b]; paintOverlay(); render(); };
+    los.oninput = () => apply(los); his.oninput = () => apply(his);
+  }
+  bar.querySelector('.lo').value = lo; bar.querySelector('.hi').value = hi;
+  bar.querySelector('.tltxt').textContent = lab;
+  const f = bar.querySelector('.tlfill'); f.style.left = pct(lo) + '%'; f.style.width = Math.max(0, pct(hi) - pct(lo)) + '%';
+}
 function paintOverlay() {
   const map = T.map, inPlay = S.role;
   const marks = $('#marks'), me = $('#me'), zoneG = $('#zone');
@@ -336,10 +382,10 @@ function paintOverlay() {
   const focus = T.focus || null, fset = T.focusSet || [];   // fset: every player picked on the bar (one = focus)
   const hp = sec => { const q = parseId(sec); return q ? hexPos(map, q[0], q[1]) : null; };
   const routes = inPlay ? finalRoutes() : null;
-  renderMkBar(); followBar();
+  renderMkBar(); followBar(); renderTl();
   if (!inPlay) return;
   if (routes) { paintRoutes(routes, fset, hp, marks); return; }
-  const own = ownSteps();
+  const own = ownSteps(); DECOYS = findDecoys();
   // follow mode: shade the sectors the followed player could have reached since they were last heard
   if (focus && focus !== 'me' && zoneG) {
     const fz = followZone(focus), [col] = pal(focus);
@@ -355,21 +401,22 @@ function paintOverlay() {
     const key = e.kind === 'spot' ? 'spot' : playerKey(e);
     if (key === 'me') continue;                                   // my own steps come from my route
     const armed = e.kind === 'attack' && S.log.some(x => x.kind === 'item' && x.text === 'attack' && x.turn === e.turn && playerKey(x) === key);
-    visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind, armed });
+    const decoy = DECOYS.has(e.id); if (decoy && T.hideDecoy) continue;
+    visits.push({ key, sector: e.sector, turn: e.turn, kind: e.kind, armed, decoy });
   }
   const mine = k => k === 'me' || k === 'bluff';
   // the last N known steps of every player, yours included (0 = all); following someone shows only them, from the start
   const N = mkN(), winTurns = new Map();
   new Set(visits.map(v => v.key)).forEach(k => { if (k === 'bluff' || k === 'spot') return; const ts = [...new Set(visits.filter(v => v.key === k).map(v => v.turn))].sort((x, y) => y - x); winTurns.set(k, new Set(N ? ts.slice(0, N) : ts)); });
-  const recent = v => fset.length ? (fset.includes(v.key) || (fset.includes('me') && v.key === 'bluff')) : v.key === 'bluff' ? (winTurns.get('me') || new Set()).has(v.turn) : v.key === 'spot' ? (!N || S.turn - v.turn < N) : (winTurns.get(v.key) || new Set()).has(v.turn);
+  const recent = v => T.rng ? inRng(v.turn) && (!fset.length || fset.includes(v.key) || (fset.includes('me') && v.key === 'bluff')) : fset.length ? (fset.includes(v.key) || (fset.includes('me') && v.key === 'bluff')) : v.key === 'bluff' ? (winTurns.get('me') || new Set()).has(v.turn) : v.key === 'spot' ? (!N || S.turn - v.turn < N) : (winTurns.get(v.key) || new Set()).has(v.turn);
   // group: sector -> player -> turns
   const bySector = new Map();
   for (const v of visits) {
     if (!recent(v)) continue;
     if (!bySector.has(v.sector)) bySector.set(v.sector, new Map());
     const m = bySector.get(v.sector);
-    if (!m.has(v.key)) m.set(v.key, { key: v.key, turns: [], kind: v.kind, armed: false });
-    const it = m.get(v.key); if (!it.turns.includes(v.turn)) it.turns.push(v.turn);
+    if (!m.has(v.key)) m.set(v.key, { key: v.key, turns: [], kind: v.kind, armed: false, decoy: true });
+    const it = m.get(v.key); it.decoy = it.decoy && !!v.decoy; if (!it.turns.includes(v.turn)) it.turns.push(v.turn);
     if (v.kind === 'attack') it.armed = !!v.armed;
     const rank = { route: 0, noise: 1, attack: 2, reveal: 3, spot: 0 };
     if (rank[v.kind] > rank[it.kind]) it.kind = v.kind;
@@ -391,9 +438,9 @@ function paintOverlay() {
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
       const ownM = mine(it.key), ck = ownM ? 'me' : it.key, ink = pal(ck)[1], bluff = it.key === 'bluff';
       const faded = it.key === 'me' && !own.heard.has(last);
-      const dim = fset.length && !(fset.includes(it.key) || (fset.includes('me') && ownM)), old = !fset.length && !ownM && S.turn - last >= 2;
+      const dim = fset.length && !(fset.includes(it.key) || (fset.includes('me') && ownM)), old = !T.rng && !fset.length && !ownM && S.turn - last >= 2;
       if (!bluff) mkPos.set((ownM ? 'me' : it.key) + '|' + sec, [h.x + dx, h.y + dy, size]);
-      const g = el('g', { class: `mk pm ${it.kind}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
+      const g = el('g', { class: `mk pm ${it.kind}${it.decoy ? ' decoy' : ''}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
       if (it.key === 'me' && sec === S.pos) { const cls = fset.length && !fset.includes('me') ? ' dim' : '', at_ = { cx: (h.x + dx).toFixed(1), cy: (h.y + dy).toFixed(1) }; const rg = el('g', { transform: `translate(${at_.cx} ${at_.cy})` }, me), ringAt = (rr, c) => el('path', { d: roundedHex(rr, rr * 0.27), class: c }, rg); ringAt((size + 3) * 1.12, 'me-ring pulse' + cls); }
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
@@ -405,7 +452,7 @@ function paintOverlay() {
       });
     });
   });
-  if (S.routesOn) drawRouteArrows(liveSteps(fset, recent), mkPos, marks);
+  if (S.routesOn) drawRouteArrows(liveSteps(fset, recent), mkPos, marks, !!T.rng);
 }
 /* ---------------- routing overlay ----------------
    Colored arrows join each player's known steps, from their marker in one sector to their marker in the next.
@@ -468,7 +515,7 @@ function pathSteps(path) {
 function liveSteps(fset, recent) {
   const per = new Map();
   S.log.forEach(e => {
-    if (!e.sector || !['noise', 'attack', 'reveal'].includes(e.kind)) return;
+    if (!e.sector || !['noise', 'attack', 'reveal'].includes(e.kind) || DECOYS.has(e.id)) return;
     const k = playerKey(e); if (k === 'me') return;
     if (!per.has(k)) per.set(k, new Map());
     const m = per.get(k); if (!m.has(e.turn)) m.set(e.turn, new Set()); m.get(e.turn).add(e.sector);
@@ -718,7 +765,7 @@ function renderMkBar() {
   if (!ps.length && !manual) { bar.hidden = true; return; }
   bar.hidden = false;
   const sus = k => `<div class="msus" role="group" aria-label="${t('Your suspicion')}">${[['', '?'], ['human', t('H')], ['alien', t('A')]].map(([v, l]) => `<button data-act="sus" data-k="${esc(k)}" data-v="${v}" class="${v || 'none'}" aria-pressed="${suspicion(k) === v}">${l}</button>`).join('')}</div>`;
-  bar.innerHTML = `<button class="mkt" data-act="mkall" aria-pressed="${!mkN() || mkN() > 1}" aria-label="${mkN() ? t('Last {n} turns', { n: mkN() }) : t('All turns')}. ${t('Tap to change')}"><b>${mkN() || t('All')}</b><span>${mkN() === 1 ? t('turn') : t('turns')}</span></button>` +
+  bar.innerHTML = `<button class="mkt" data-act="mkall" aria-pressed="${!!T.rng}" aria-label="${t('Turn slider')}"><b>${T.rng ? (T.rng[0] === T.rng[1] ? 'T' + T.rng[0] : T.rng[0] + '–' + T.rng[1]) : mkN() || t('All')}</b><span>${T.rng ? t('turns') : mkN() === 1 ? t('turn') : t('turns')}</span></button>` +
     (manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '') +
     (T.markMode ? ps : [['me', t('Me')]].concat(ps)).map(([k, n]) => T.markMode
       ? `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`
@@ -1080,7 +1127,12 @@ const actions = {
   ovclose() { const o = $('#overlay'); if (o) o.remove(); },
   revealview(b) { T.showAnn = b.dataset.v === 'ann'; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); paintOverlay(); },
   routes() { S.routesOn = !S.routesOn; save(); paintOverlay(); const b = document.querySelector('[data-act=routes]'); if (b) b.setAttribute('aria-pressed', !!S.routesOn); toast(t(S.routesOn ? 'Routes shown' : 'Routes hidden')); },
-  mkall() { const i = MK_STEPS.indexOf(mkN()); S.mkN = MK_STEPS[(i + 1) % MK_STEPS.length]; save(); render(); paintOverlay(); }
+  mkall() { T.rng = T.rng ? null : [Math.max(1, S.turn - 4), Math.max(1, S.turn)]; T.rngMax = S.turn; stopPlay(); render(); paintOverlay(); },
+  tlprev() { tlShift(-1); }, tlnext() { tlShift(1); },
+  tlall() { T.rng = [1, Math.max(1, S.turn)]; render(); paintOverlay(); },
+  tlnow() { T.rng = [Math.max(1, S.turn), Math.max(1, S.turn)]; render(); paintOverlay(); },
+  tldecoy() { T.hideDecoy = !T.hideDecoy; paintOverlay(); },
+  tlplay() { if (T.tlTimer) return stopPlay(); const keep = T.rng.slice(); let n = keep[0]; T.tlTimer = setInterval(() => { T.rng = [n, n]; render(); paintOverlay(); if (++n > S.turn) { stopPlay(); T.rng = keep; render(); paintOverlay(); } }, 900); paintOverlay(); }
 };
 Object.assign(actions, annoActions);
 function copyText(s, msg) { (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast(msg), () => toast(s)); }
@@ -1097,7 +1149,8 @@ function onCell(id) {
   if (S.role && S.phase === 'move' && !S.over && T.reach.has(id)) { selectCell(id); buzz(); return; }
   T.inspect = id; paintCells();
   const i = $('#inspect'), note = (S.notes || []).find(n => n.sector === id); i.hidden = false;
-  i.innerHTML = `<b>${'HA1234'.includes(at(T.map, id)) ? '' : id}</b>${esc(typeName(at(T.map, id)))}${note ? `<div class="inote">${stickerIco(note.icon, 18)} ${esc(note.text || '')} <button class="btn" data-act="noteedit" data-s="${id}">${t('Edit')}</button></div>` : ''}`;
+  const seenHere = S.role ? S.log.filter(e => e.sector === id && ['noise', 'attack', 'spot', 'reveal', 'hatch'].includes(e.kind) && inRng(e.turn)).slice(0, 4).map(e => `<div class="ihere">${dotIcon(playerKey(e))}<b>${esc(e.mine ? t('Me') : e.who)}</b> · ${esc(t('T{n}', { n: e.turn }))} · ${esc(entryText(e))}${DECOYS.has(e.id) ? ' · ' + esc(t('impossible')) : ''}</div>`).join('') : '';
+  i.innerHTML = `<b>${'HA1234'.includes(at(T.map, id)) ? '' : id}</b>${esc(typeName(at(T.map, id)))}${note ? `<div class="inote">${stickerIco(note.icon, 18)} ${esc(note.text || '')} <button class="btn" data-act="noteedit" data-s="${id}">${t('Edit')}</button></div>` : ''}${seenHere}`;
   clearTimeout(onCell.h); onCell.h = setTimeout(() => { T.inspect = null; i.hidden = true; paintCells(); }, note ? 6000 : 3500);
 }
 

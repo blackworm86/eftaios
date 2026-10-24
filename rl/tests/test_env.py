@@ -54,7 +54,27 @@ def test_scripted_games_finish_and_balance():
     assert wins["alien"] > 3 and wins["human"] > 3  # neither side always wins
 
 
+def test_progress_reward_is_zero_sum_on_a_round_trip():
+    e = env_mod.Env("galilei", 4, seed=7, roles=["human", "alien", "human", "alien"])
+    for s in e.g.seats:
+        s.char = ""
+    seat = 0
+    assert e.seat == seat
+    start = e.g.seats[0].pos
+    moves = e.g.legal_moves()
+    d0 = e.pod_distance(start)
+    nearer = [m for m in moves if e.pod_distance(m) < d0]
+    farther = [m for m in moves if e.pod_distance(m) > d0]
+    assert nearer or farther
+    if nearer:
+        assert abs(e.act(nearer[0]) - env_mod.REWARD["progress"] * (d0 - e.pod_distance(nearer[0]))) < 1e-9
+    else:
+        assert e.act(farther[0]) < 0
+
+
 if __name__ == "__main__":
+    test_progress_reward_is_zero_sum_on_a_round_trip()
+    print("ok progress")
     test_observation_shapes_and_privacy()
     print("ok privacy")
     test_scripted_games_finish_and_balance()

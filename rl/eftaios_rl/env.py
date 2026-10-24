@@ -18,7 +18,7 @@ AGES = 8     # turns of announcement history kept as heat maps
 PHASES = {"move": 0, "attack": 1, "decoy": 2}
 KIND_IDX = {"noise": 0, "attack": 1, "silence-secure": 2, "silence": 3}
 
-REWARD = {"escape": 0.5, "kill": 0.2, "friendly": -0.3, "win": 1.0}
+REWARD = {"escape": 0.5, "kill": 0.2, "friendly": -0.3, "win": 1.0, "progress": 0.05}  # progress: per step a Human gets nearer to an open pod (and minus per step further)
 
 
 def static_channels(board):
@@ -35,7 +35,7 @@ class Env:
         self.n = n
         self.board = self.g.board
         self._log_seen = 0
-        self.rewards = [0.0] * n  # shaped rewards earned since the last read, per seat
+        self._pod_dist_cache = {}
 
     # ---------------------------------------------------------------- state
     @property
@@ -66,6 +66,7 @@ class Env:
         g = self.g
         me = g.cur
         before_log = len(g.log)
+        d0 = self.pod_distance(g.seats[me].pos) if (g.phase == "move" and g.seats[me].role == "human") else None
         if g.phase == "move":
             g.step_move(int(action))
         elif g.phase == "attack":
@@ -73,6 +74,8 @@ class Env:
         else:
             g.step_decoy(int(action))
         r = 0.0
+        if d0 is not None and g.seats[me].over is None:  # a step nearer to a pod is rewarded, a step away is not (it adds up to nothing over a round trip)
+            r += REWARD["progress"] * (d0 - self.pod_distance(g.seats[me].pos))
         for e in g.log[before_log:]:
             if e["kind"] == "out" and e["text"].startswith("killed|human") and e["seat"] != me and g.seats[me].role == "alien":
                 r += REWARD["kill"]
@@ -81,6 +84,24 @@ class Env:
             elif e["kind"] == "out" and e["text"].startswith("escaped") and e["seat"] == me:
                 r += REWARD["escape"]
         return r
+
+    def pod_distance(self, cell):
+        """Steps a Human needs from `cell` to the nearest open pod (walls, start sectors and other pods are not walked through)."""
+        key = frozenset(self.g.open_pods)
+        d = self._pod_dist_cache.get(key)
+        if d is None:
+            b = self.board
+            d = np.full(b.n, 40, np.int32)
+            q = [b.pod_cell[n] for n in key]
+            for c in q:
+                d[c] = 0
+            for c in q:
+                for nb in b.neighbors[c]:
+                    if d[nb] == 40 and b.kind[nb] not in "xHA1234":
+                        d[nb] = d[c] + 1
+                        q.append(nb)
+            self._pod_dist_cache[key] = d
+        return int(d[cell])
 
     def final_rewards(self):
         """Terminal reward per seat: +1 for the side the seat ends on if it won, -1 otherwise."""

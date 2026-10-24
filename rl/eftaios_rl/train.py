@@ -25,7 +25,7 @@ DEFAULT = dict(
     hid=64, layers=4, players=[3, 4, 5, 6, 7, 8], gamma=0.99, lam=0.95,
     workers=0,                # 0 = number of CPU cores - 1
     decisions_per_iter=24000, epochs=3, minibatch=256, lr=3e-4, clip=0.2, vf=0.5, ent=0.01, ent_end=0.003, ent_iters=400,
-    bc_iters=12, bc_epochs=2, bc_lr=1e-3, lr_after_bc=1e-4, p_scripted=0.20, p_pool=0.25, pool_every=10, pool_size=8, eval_every=10, eval_games=24, max_iters=0,
+    bc_iters=12, bc_epochs=2, bc_lr=1e-3, lr_after_bc=1e-4, p_scripted=0.35, p_pool=0.25, pool_every=10, pool_size=8, eval_every=10, eval_games=240, max_iters=0,
 )
 
 

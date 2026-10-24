@@ -1199,7 +1199,7 @@ const actions = {
   ovclose() { const o = $('#overlay'); if (o) o.remove(); },
   revealview(b) { T.showAnn = b.dataset.v === 'ann'; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); paintOverlay(); },
   routes() { S.routesOn = !S.routesOn; save(); paintOverlay(); const b = document.querySelector('[data-act=routes]'); if (b) b.setAttribute('aria-pressed', !!S.routesOn); toast(t(S.routesOn ? 'Routes shown' : 'Routes hidden')); },
-  mkall() { T.rng = T.rng ? null : [Math.max(1, S.turn - 4), Math.max(1, S.turn)]; T.rngMax = S.turn; stopPlay(); render(); paintOverlay(); },
+  mkall() { T.rng = T.rng ? null : [1, Math.max(1, S.turn)]; T.rngMax = S.turn; stopPlay(); render(); paintOverlay(); },
   tlprev() { tlShift(-1); }, tlnext() { tlShift(1); },
   tlall() { T.rng = [1, Math.max(1, S.turn)]; render(); paintOverlay(); },
   tlnow() { T.rng = [Math.max(1, S.turn), Math.max(1, S.turn)]; render(); paintOverlay(); },

@@ -52,17 +52,17 @@ let ok=0,bad=0;const assert=(c,m)=>{console.log((c?'ok   ':'FAIL ')+m);c?ok++:ba
  // the slider
  await p.evaluate(()=>{paintOverlay()});
  await p.click('#mkbar [data-act=mkall]');
- assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[2,6]','the slider opens on the last five turns');
+ assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[1,6]','the slider opens on all the turns');
  const box=await p.evaluate(()=>{const r=document.querySelector('#tlbar .tltrack').getBoundingClientRect();return {x:r.x,w:r.width,y:r.y+15}});
  const px=n=>box.x+(n-1)/5*box.w;   // 6 turns
  const drag=async(x1,x2)=>{await p.mouse.move(x1,box.y);await p.mouse.down();await p.mouse.move((x1+x2)/2,box.y);await p.mouse.move(x2,box.y);await p.mouse.up()};
  await drag(px(6),px(3));
- assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[2,3]','dragging the right handle sets the last turn shown ('+await p.evaluate(()=>JSON.stringify(T.rng))+')');
- await drag(px(2),px(1));assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[1,3]','dragging the left handle sets the first turn');
- await drag((px(1)+px(3))/2,(px(1)+px(3))/2+box.w/5);assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[2,4]','dragging the bar between the handles moves the whole span');
+ assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[1,3]','dragging the right handle sets the last turn shown ('+await p.evaluate(()=>JSON.stringify(T.rng))+')');
+ await drag(px(1),px(2));assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[2,3]','dragging the left handle sets the first turn');
+ await drag((px(2)+px(3))/2,(px(2)+px(3))/2+box.w/5);assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[3,4]','dragging the bar between the handles moves the whole span');
  await p.mouse.click(px(6)-3,box.y);assert(await p.evaluate(()=>T.rng[1])===6,'tapping the track moves the nearest handle');
  await p.evaluate(()=>{T.rng=[2,3];render();paintOverlay()});
- await p.evaluate(()=>{setTab('table');T.tableSec='sheet';render()});
+ await p.evaluate(()=>{T.rng=[2,3];setTab('table');T.tableSec='sheet';render()});
  assert(await p.locator('.sheet thead th').count()===3,'the sheet shows only the turns in the range ('+await p.locator('.sheet thead th').count()+')');
  await p.click('#tlbar [data-act=tlnow]');assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[6,6]','Now jumps to the current turn');
  await p.click('#tlbar [data-act=mkall]');assert(await p.evaluate(()=>T.rng)===null,'closing the slider shows the default view again');

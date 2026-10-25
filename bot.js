@@ -11,7 +11,7 @@
    hatches and Spotlights. An announcement that a Human could not have made counts as evidence of an Alien, one that
    fits a Human heading for a hatch as evidence of a Human. All decisions are made from these maps. */
 const Bot = (() => {
-  const LEVELS = ['easy', 'normal', 'hard'];
+  const LEVELS = ['easy', 'normal', 'hard', 'nn'];   // nn: the trained network (nn.js) moves, attacks and names decoys; the cards and powers stay with the Hard rules
   const rnd = () => deckRnd();
   const pick = a => a[Math.floor(rnd() * a.length)];
   const PUBLIC_POS = ['noise', 'attack', 'reveal', 'hatch'];
@@ -25,6 +25,7 @@ const Bot = (() => {
     hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  table: true, plan: 3, roleW: 8, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
   };
 
+  SKILL.nn = SKILL.hard;
   const skill = lvl => Object.assign({}, SKILL[lvl] || SKILL.normal, window.__skill && window.__skill[lvl]);   // __skill: tuning hook for benchmarks
 
   /* ---------- the board as a graph (cached per map) ---------- */
@@ -526,9 +527,14 @@ const Bot = (() => {
       let best = null; W.live.forEach(b => { const v = Math.min(b.pA, 1 - b.pA); if (!best || v > best.v) best = { b, v }; });
       if (best && best.v >= 0.3) { usePower('Medic'); say({ kind: 'reveal', text: 'Id|' + st.role + '|' + (st.char || '') }); await ctx.medic(best.b.id); refresh(); }
     }
+    // the trained network, when this seat is one (null answers fall back to the rules)
+    const useNN = lvl === 'nn' && (NN.ready() || await NN.load());
+    const nnRole = () => (human ? 'human' : 'alien');
+    const decoy = () => (useNN && NN.decoy(H, idx, st, nnRole(), 1)) || chooseDecoy(ctx, st, W, me, lvl);
     // move
     const stayOk = human && useCap && canPower('Executive Officer') && ['.', 's'].includes(at(T.map, st.pos));
     let choice = human ? humanMove(W, st, st.adr ? 2 : 1, stayOk) : alienMove(ctx, W, st, B, st.adr ? 1 : 0);
+    if (useNN) { const id = NN.move(H, idx, st, nnRole(), 1); if (id) choice = { id, cell: g.idx.get(id), score: 0 }; }
     // doomed: a Human with Mutation turns Alien rather than walk into the Aliens
     if (human && useCap && may('mutation') && choice && !g.isHatch(choice.cell) && W.risk(choice.cell) > (lvl === 'hard' ? 0.45 : 0.6)) { mutate(); refresh(); choice = alienMove(ctx, W, st, B, 0); }
     // Lurking Alien: attack right here instead of moving when that is worth more than the attack after a move
@@ -550,7 +556,8 @@ const Bot = (() => {
       return;
     }
     // Alien attack
-    const worth = !human && (lurk || attackWorth(ctx, W, st, lvl));
+    const nnAttack = useNN && !human && !lurk ? NN.attack(H, idx, st, 'alien', 1) : null;
+    const worth = !human && (lurk || (nnAttack !== null ? nnAttack : attackWorth(ctx, W, st, lvl)));
     if (window.__trace && !human && window.Hot && Hot.dump) {   // benchmark hook: what the tracker believed here against who really stands here
       const c0 = g.idx.get(st.pos); let truth = 0, aliens = 0;
       Hot.dump().seats.forEach(x => { if (x.id === me.id || x.over) return; const p = (x.path || []).filter(q => q.note !== 'reborn'); if (p.length && p[p.length - 1].pos === st.pos) { if (x.role === 'human') truth++; else aliens++; } });
@@ -577,11 +584,11 @@ const Bot = (() => {
     if (card.startsWith('item:')) card = 'silence';
     if (!human && adv && ab === 'Psychic Alien' && card === 'silence') { card = 'noise-any'; usePower('Psychic Alien'); }   // Silence counts as a noise anywhere
     if (cat && card.startsWith('noise')) {
-      const a = card.startsWith('noise-self') ? st.pos : chooseDecoy(ctx, st, W, me, lvl); let b = chooseDecoy(ctx, st, W, me, lvl);
+      const a = card.startsWith('noise-self') ? st.pos : decoy(); let b = decoy();
       if (b === a) { const r = g.ringOf[here]; if (r.length) b = g.ids[pick(r)]; }
       say({ kind: 'noise', sector: a }); say({ kind: 'noise', sector: b });
     } else if (card.startsWith('noise-self')) say({ kind: 'noise', sector: st.pos });
-    else if (card.startsWith('noise-any')) say({ kind: 'noise', sector: chooseDecoy(ctx, st, W, me, lvl) });
+    else if (card.startsWith('noise-any')) say({ kind: 'noise', sector: decoy() });
     else say({ kind: 'silence' });
     if (item) st.items.push(item);   // kept to look like a Human; only some can be used by a bot
   }

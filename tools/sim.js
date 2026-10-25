@@ -127,6 +127,7 @@ async function open(n) {
     await p.waitForFunction(() => window.Hot && T.maps.length > 3);
     // time every bot turn (the host's phone is slower than this machine; tools/yardstick.js says so)
     await p.evaluate(() => { const o = Bot.turn; Bot.turn = async c => { const t = performance.now(); try { return await o(c); } finally { window.__turnMs.push([c.me.bot, performance.now() - t]); } }; });
+    if ([LEVELS.join(), MIX, ROLEMIX].join(',').includes('nn') && !(await p.evaluate(() => NN.load()))) throw new Error('level nn needs nn/net.json (export it with rl/export_network.bat and copy it to nn/net.json)');
     pages.push(p);
   }
   return { b, pages, errs, isDead: () => dead, close: () => b.close() };

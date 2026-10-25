@@ -322,7 +322,7 @@
               ".validate": "newData.isString() && newData.val().length <= 40"
             },
             "bot": {
-              ".validate": "newData.val() === 'easy' || newData.val() === 'normal' || newData.val() === 'hard'"
+              ".validate": "newData.val() === 'easy' || newData.val() === 'normal' || newData.val() === 'hard' || newData.val() === 'nn'"
             },
             "guest": {
               ".validate": "newData.isBoolean()"

@@ -731,7 +731,7 @@ function paintRoutes(routes, fset, hp, marks) {
   routes.forEach(r => { r.dead = killedSector(r.path, r.out); });
   routes.forEach(r => {
     const roles = stepRoles(r.path, r.role);
-    r.path.filter(p => p && parseId(p.pos)).forEach((p, i) => { if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [], role: roles[i] }); const it = m.get(r.key); it.turns.push(p.turn); it.role = roles[i]; });
+    r.path.filter(p => p && parseId(p.pos)).forEach((p, i) => { if (T.rng && !inRng(p.turn)) return; if (!bySector.has(p.pos)) bySector.set(p.pos, new Map()); const m = bySector.get(p.pos); if (!m.has(r.key)) m.set(r.key, { r, turns: [], role: roles[i] }); const it = m.get(r.key); it.turns.push(p.turn); it.role = roles[i]; });
   });
   bySector.forEach((m, sec) => {
     const h = hp(sec); if (!h) return;
@@ -744,6 +744,10 @@ function paintRoutes(routes, fset, hp, marks) {
       const ty = markBody(g, k, size, { border: k === 'me' ? null : ROLE_BORDER[it.role || it.r.role] });
       const tx = el('text', { fill: pal(k)[1], y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
       if (it.r.dead === sec) killedBadge(g, size);
+      stepIcons(k, turns[0], sec).forEach((n, j) => {   // what they declared on that step, as in the live view
+        const w = size * 1.9, bx = size * 0.9, by = j ? size * 0.9 : -size * 0.9;
+        el('use', { href: '#gi-' + n, x: (bx - w / 2).toFixed(1), y: (by - w * 0.46).toFixed(1), width: w.toFixed(1), height: (w * 0.92).toFixed(1) }, g);
+      });
     });
   });
   if (S.routesOn) drawRouteArrows(routes.map(r => ({ key: r.key, steps: pathSteps(r.path) })), rpos, marks, true);

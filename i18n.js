@@ -763,6 +763,8 @@ const IT = {
 "By Character": "Per Personaggio",
 "By map": "Per mappa",
 "Turns per game": "Turni per partita",
+"No games against people yet.": "Ancora nessuna partita contro persone.",
+"with bots": "con bot",
 "Games as Human": "Partite da Umano",
 "Games as Alien": "Partite da Alieno",
 "Best win streak": "Miglior serie di vittorie",

@@ -311,13 +311,13 @@
     try {
       await fb.set(at(`users/${Sync.uid}/games/${key}`), Object.assign({ at: Date.now() }, g));
       const all = (await fb.get(at(`users/${Sync.uid}/games`))).val() || {};
-      const keep = Object.entries(all).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 20);
+      const keep = Object.entries(all).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 50);
       await Promise.all(Object.keys(all).filter(k => !keep.some(([c]) => c === k)).map(k => fb.remove(at(`users/${Sync.uid}/games/${k}`))));
       await fb.runTransaction(at(`users/${Sync.uid}/stats`), cur => {
         const s = cur.val() || {};
         const add = (k, n) => { if (n) s[k] = (s[k] || 0) + n; };
         add('games', 1); add('wins', g.result === 'win' ? 1 : 0); add('losses', g.result === 'loss' ? 1 : 0);
-        add('escapes', g.escaped ? 1 : 0); add('kills', g.kills || 0); add('humans', g.role === 'human' ? 1 : 0); add('aliens', g.role === 'alien' ? 1 : 0);
+        add('escapes', g.escaped ? 1 : 0); add('kills', g.kills || 0); add('winsHuman', g.result === 'win' && g.role === 'human' ? 1 : 0); add('winsAlien', g.result === 'win' && g.role === 'alien' ? 1 : 0); add('humans', g.role === 'human' ? 1 : 0); add('aliens', g.role === 'alien' ? 1 : 0);
         if (g.result === 'win') { s.streak = (s.streak || 0) + 1; s.bestStreak = Math.max(s.bestStreak || 0, s.streak); }
         else { s.streak = 0; }
         s.last = Date.now();

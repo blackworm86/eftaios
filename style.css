@@ -1084,3 +1084,10 @@ ul.log li.last::before{content:"";position:absolute;left:0;top:7px;bottom:7px;wi
 ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-color:#7fe3ff}
 .sheet .c[data-act]{text-decoration-style:dotted}
 .sheet .who .mb{margin:0 4px 0 0}
+
+/* statistics screen */
+.stgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin:4px 0 14px}
+.stc{border:1px solid var(--line);background:var(--bg2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.stc b{font:700 24px var(--mono)}.stc span{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.sth{margin:6px 0 8px;font:700 13px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.ststrip{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:12px}.ststrip i{width:10px;height:18px;border-radius:3px;background:var(--line)}.ststrip i.w{background:#3ecf7a}.ststrip i.l{background:#ff3b30}

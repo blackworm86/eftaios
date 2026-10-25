@@ -82,7 +82,7 @@ function renderFlow() {
       ${T.hotBots.some(Boolean) && T.hotBots.every(Boolean) ? `<p class="dim hintline">${t('At least one seat must be a person.')}</p>` : ''}
       ${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
       <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>`;
-  } else if (st === 'auth' || st === 'account' || st === 'games' || st === 'admin') {
+  } else if (st === 'auth' || st === 'account' || st === 'games' || st === 'stats' || st === 'admin') {
     h = (st === 'admin' && window.Admin) ? Admin.html() : Auth.html();
   } else if (st === 'lobby') {
     h = lobbyHtml();
@@ -502,7 +502,7 @@ Sync.on({
   },
   hatches(h) { for (const n of [1, 2, 3, 4]) if (h[n] !== undefined) S.hatches[n] = h[n] ? 1 : 0; if (S.stage === 'game') afterChange(); },
   lease() { if (typeof Online !== 'undefined' && Sync.isHolder()) Online.hostCheck(); if (S.stage === 'game') hdr(); },
-  auth() { if (['welcome', 'lobby', 'auth', 'account', 'games', 'admin'].includes(S.stage)) renderFlow(); }
+  auth() { if (['welcome', 'lobby', 'auth', 'account', 'games', 'stats', 'admin'].includes(S.stage)) renderFlow(); }
 });
 
 { const q = new URLSearchParams(location.search).get('room'); if (q) { const c = q.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); if (S.stage === 'game') { try { history.replaceState(null, '', location.pathname); } catch (_) { /* noop */ } } else T.pendingRoom = c; } }

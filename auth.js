@@ -29,6 +29,7 @@ const Auth = (() => {
   function html() {
     if (S.stage === 'account') return accountHtml();
     if (S.stage === 'games') return gamesHtml();
+    if (S.stage === 'stats') return statsHtml();
     return signInHtml();
   }
   function signInHtml() {
@@ -94,17 +95,29 @@ const Auth = (() => {
     }
     T.myGames = out; renderFlow();
   }
-  async function stats() {
-    const s = await Sync.readStats();
-    const row = (k, l) => `<dt>${l}</dt><dd>${s[k] || 0}</dd>`;
-    dlg.innerHTML = `<h2>${t('Statistics')}</h2><dl class="kv">${row('games', t('Games'))}${row('wins', t('Wins'))}${row('losses', t('Losses'))}${row('escapes', t('Escapes'))}${row('kills', t('Kills'))}${row('humans', t('Games as Human'))}${row('aliens', t('Games as Alien'))}${row('bestStreak', t('Best win streak'))}</dl><div class="row"><button class="btn primary" id="d-no">${t('Close')}</button></div>`;
-    if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
+  /* the statistics screen: totals kept forever, plus the last games (result, role, Character, map) */
+  async function loadStats() {
+    if (T.statsLoading) return; T.statsLoading = true;
+    try { const [s, g] = await Promise.all([Sync.readStats(), Sync.getPath(`users/${Sync.uid}/games`)]); T.stats = { s: s || {}, games: Object.values(g || {}).sort((x, y) => (y.at || 0) - (x.at || 0)) }; }
+    catch (_) { T.stats = { s: {}, games: [] }; }
+    T.statsLoading = false; renderFlow();
+  }
+  function statsHtml() {
+    if (!T.stats) { loadStats(); return `${head(t('Statistics'))}<p class="dim">${t('Loading…')}</p>`; }
+    const { s, games } = T.stats, pc = (n, d) => d ? Math.round(n / d * 100) + '%' : '–';
+    const card = (l, v) => `<div class="stc"><b>${v}</b><span>${l}</span></div>`;
+    const hum = s.humans || 0, ali = s.aliens || 0;
+    if (!(s.games > 0)) return `${head(t('Statistics'))}<p class="dim hintline">${t('No finished games yet. Play a game while signed in and it is counted here.')}</p>`;
+    const strip = games.slice(0, 50).reverse().map(g => `<i class="${g.result === 'win' ? 'w' : 'l'}" title="${esc(g.result === 'win' ? t('Win') : t('Loss'))}"></i>`).join('');
+    const rows = games.slice(0, 50).map(g => `<li class="grow"><span class="pname">${esc(g.result === 'win' ? t('Win') : t('Loss'))} · ${esc(t(g.role === 'alien' ? 'Alien' : 'Human'))}${g.escaped ? ' · ' + esc(t('escaped')) : ''}<small>${esc([g.chars, g.map, g.at ? new Date(g.at).toLocaleDateString(LANG === 'it' ? 'it-IT' : undefined) : ''].filter(Boolean).join(' · '))}</small></span></li>`).join('');
+    return `${head(t('Statistics'))}<div class="stgrid">${card(t('Games'), s.games)}${card(t('Win rate'), pc(s.wins || 0, s.games))}${card(t('As Human'), pc(s.winsHuman || 0, hum))}${card(t('As Alien'), pc(s.winsAlien || 0, ali))}${card(t('Escape rate'), pc(s.escapes || 0, hum))}${card(t('Current streak'), s.streak || 0)}${card(t('Best win streak'), s.bestStreak || 0)}</div>
+      <h3 class="sth">${t('Last games')}</h3><div class="ststrip" aria-hidden="true">${strip}</div><ul class="plist glist">${rows}</ul>`;
   }
 
   const acts = {
     async accountretry() { T.authMsg = ''; await Sync.retryProfile(); renderFlow(); },
     account() { T.authMsg = ''; open(Sync.registered ? 'account' : (Sync.user && !Sync.user.isAnonymous ? 'account' : 'auth')); },
-    authback() { S.stage = 'welcome'; T.authMsg = ''; T.authReason = ''; save(); renderFlow(); },
+    authback() { S.stage = S.stage === 'stats' ? 'account' : 'welcome'; T.authMsg = ''; T.authReason = ''; save(); renderFlow(); },
     authgoogle() { guard(async () => { await Sync.signInGoogle(); T.authMsg = ''; postSignIn(); }); },
     authsignin() { guard(async () => { const email = $('#a-email').value.trim(), pass = $('#a-pass').value; await Sync.signInEmail(email, pass); postSignIn(); }); },
     authsignup() { guard(async () => { const email = $('#a-email').value.trim(), pass = $('#a-pass').value; await Sync.signUpEmail(email, pass, S.name); postSignIn(); }); },
@@ -115,7 +128,7 @@ const Auth = (() => {
     accountsave() { guard(async () => { await Sync.renameMe($('#a-name').value); T.authMsg = t('Saved.'); renderFlow(); }); },
     accountgames() { S.stage = 'games'; T.gamesPage = 0; save(); loadGames(); },
     gamespage(b) { T.gamesPage = Math.max(0, (T.gamesPage || 0) + Number(b.dataset.d)); renderFlow(); },
-    accountstats() { guard(stats); },
+    accountstats() { S.stage = 'stats'; T.stats = null; save(); renderFlow(); },
     accountsignout() { guard(async () => { await Sync.signOut(); S.stage = 'welcome'; T.authMsg = ''; save(); renderFlow(); }); },
     accountdelete() {
       if (!Sync.registered) return;

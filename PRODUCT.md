@@ -27,7 +27,7 @@ Played in the evening around a table with the physical box. Phones are held in o
 
 ## Capabilities and Constraints
 - Lobby: the host creates a table with options (rules: Basic or Ultimate, idle-player timeout), shares a code, QR or link, the host starts and roles and cards are dealt digitally. Maximum 8 players. Registered players keep a list of their last 20 tables, in progress or finished.
-- Accounts: a guest is an anonymous session; signing in upgrades it in place, so rooms and maps are kept. Each account reserves a unique handle and keeps running totals (games, wins, escapes, kills, win streak) plus the last 20 finished games. Guest games are not recorded.
+- Accounts: a guest is an anonymous session; signing in upgrades it in place, so rooms and maps are kept. Each account reserves a unique handle and keeps running totals (games, wins, escapes, kills, win streak) plus the last 50 finished games. Guest games are not recorded.
 - Hosting: the host device runs the bots. A lease records which device is doing it; any player may take over when the host is away, and the host can hand the role to another player. After a reload the runner re-arms itself instead of dying with the tab. Bots pause when nobody holds the lease.
 - Admin: one account carries the admin claim and reaches a panel for players (ban, unban, delete data, send a reset), rooms (force close), maps (hide, delete) and reports. The admin sees metadata, logs and finished games, never a live game's roles or positions. Every admin action is appended to an audit log.
 - Idle players: the lobby sets a timeout; past it the table may remove an idle player's seat.

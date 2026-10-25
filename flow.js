@@ -4,7 +4,8 @@ const MODES = { basic: ['Basic', 'First game: no Items and no Character abilitie
 const modeOf = m => (m === 'basic' ? 'basic' : 'ultimate');
 const VIS = { private: ['Private', 'Only people with the code or the QR code can join.'], friends: ['Friends', 'Your friends get an invitation as soon as the game is created.'], public: ['Public', 'Listed in the Online lobby for anyone to join.'] };
 const MAXP = Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map(n => [String(n), [String(n), 'The game is full at ' + n + ' players.']]));
-const OPTS = { mode: ['Rules', MODES], vis: ['Who can join', VIS], max: ['Players', MAXP] };
+const FILL = { '': ['Off', 'Only the people who joined play.'], easy: ['Easy', 'Empty seats are filled with Easy bots when the game starts.'], normal: ['Normal', 'Empty seats are filled with Normal bots when the game starts.'], hard: ['Hard', 'Empty seats are filled with Hard bots when the game starts.'] };
+const OPTS = { mode: ['Rules', MODES], vis: ['Who can join', VIS], max: ['Players', MAXP], fill: ['Fill empty seats with bots', FILL] };
 /* online tables can use any map, your own included: the host sends a custom map's rows along with the table settings */
 const tableMaps = () => T.maps.filter(m => !m.shared);
 const encMap = m => { const s = JSON.stringify({ n: m.name, o: m.odd ? 1 : 0, c: m.cols, r: m.grid.map(r => r.join('')).join('') }); return s.length <= 700 ? s : null; };
@@ -69,7 +70,7 @@ function renderFlow() {
   const ver = document.getElementById('ver'); if (ver) ver.hidden = st !== 'welcome';
   card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
   if (st === 'host') {
-    h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${seg('vis', ['public', 'friends'].includes(S.vis) ? S.vis : 'private')}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}${seg('max', String(S.max || 8))}
+    h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${seg('vis', ['public', 'friends'].includes(S.vis) ? S.vis : 'private')}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}${seg('max', String(S.max || 8))}${seg('fill', S.fill || '')}
       <button class="btn primary big wide" data-act="hostcreate">${t('Create game')}</button>${flowStatus()}`;
   } else if (st === 'solo') {
     h = `${fhead(t('Companion'))}<p class="dim hintline">${t('Use the app like the paper sheet: track your own route and what the other players declare. You play with the real cards.')}</p>${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
@@ -175,12 +176,12 @@ function browseHtml() {
 function lobbyHtml() {
   const st = Sync.settings || {}, host = isHost(), players = orderedPlayers();
   const map = tableMapOf(st);
-  const nReady = players.filter(([, p]) => p.ready || p.bot).length, allReady = players.length >= 2 && nReady === players.length;
+  const nReady = players.filter(([, p]) => p.ready || p.bot).length, allReady = (players.length >= 2 || !!st.fill) && nReady === players.length;
   const rows = players.map(([id, p], i) => `<li class="${p.ready ? 'ok' : ''}"><span class="num">${i + 1}</span><span class="pname">${esc(p.name)}${id === Sync.uid ? ` <em>${t('(you)')}</em>` : ''}${st.host === id ? ` <em class="hostt">${t('Host')}</em>` : ''}</span>${host && !p.bot && id !== Sync.uid ? `<button class="mini-link" data-act="makehost" data-u="${esc(id)}">${t('Make host')}</button>` : ''}
     <span class="ctl"><span class="pst">${p.bot ? (host ? `<select data-botlvl="${esc(id)}" aria-label="${t('Bot level')}">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${p.bot === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>` : t(BOTSEL.find(x => x[0] === p.bot)[1])) : p.ready ? ico('check', 14) + ' ' + t('Ready') : ''}</span>
     ${host && p.bot ? `<button class="x" data-act="delbot" data-u="${esc(id)}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}
     ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>${ico('up')}</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>${ico('down')}</button></span>` : ''}</span></li>`).join('');
-  const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[modeOf(st.mode)][0])}</dd><dt>${t('Who can join')}</dt><dd>${t(st.pub ? 'Public' : 'Private')} · ${st.max || 8} ${t('Players')}</dd></dl>`;
+  const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[modeOf(st.mode)][0])}</dd><dt>${t('Who can join')}</dt><dd>${t(st.pub ? 'Public' : 'Private')} · ${st.max || 8} ${t('Players')}</dd>${st.fill ? `<dt>${t('Bots')}</dt><dd>${t('Fill to {n} players', { n: st.max || 8 })} · ${t(FILL[st.fill][0])}</dd>` : ''}</dl>`;
   return `${fhead(t('Game'), 'leavelobby')}
     <div class="steps"><b class="on">1 · ${t('Gathering')}</b><b>2 · ${t('Playing')}</b><b>3 · ${t('Result')}</b></div>
     <div class="roomcard"><div><small>${t('Game code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
@@ -188,7 +189,7 @@ function lobbyHtml() {
     ${host && Sync.registered ? `<button class="btn wide" data-act="invitefriend">${t('Invite a friend')}</button>` : ''}
     <div class="setcard">${host ? `<input type="hidden" id="f-map" value="${esc(map.id)}"><button type="button" class="mapcard mini" data-act="mapgallery" aria-label="${t('Map')}: ${esc(map.name)}. ${t('Tap to choose another map')}"><span class="prevbox">${mapPreview(map)}</span></button>` : `<span class="prevbox">${mapPreview(map)}</span>`}
       ${kv}${host ? `<button class="btn edit" data-act="lobbyopts" aria-label="${t('Game options')}">${ico('pencil', 20)}</button>` : ''}</div>
-    <h3>${t('Turn order')} ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>${players.length < 8 ? `<button class="mini-link" data-act="addlobbybot">+ ${t('Add bot')}</button>` : ''}` : ''}</h3>
+    <h3>${t('Turn order')} ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>${players.length < (st.max || 8) ? `<button class="mini-link" data-act="addlobbybot">+ ${t('Add bot')}</button>` : ''}` : ''}</h3>
     <ul class="plist">${rows}</ul>
     <p class="dim hintline lobbyhint">${t('Roles and cards are dealt when the game starts.')}</p>
     <div class="row lobbyact"><button class="btn big ${S.ready ? 'ok' : host ? '' : 'primary'}" data-act="ready">${S.ready ? ico('check') + ' ' + t('Ready') : t("I'm ready")}</button>
@@ -259,9 +260,20 @@ function reorder(uid, delta) {
   if (i < 0 || j < 0 || j >= ids.length) return;
   [ids[i], ids[j]] = [ids[j], ids[i]]; Sync.updateSettings({ order: ids });
 }
-function startTable() {
-  const ps = orderedPlayers(); if (ps.length < 2 || !ps.every(([, p]) => p.ready)) return;
+/* the host starts: with "fill empty seats" on, bots take every free seat up to the number of players first */
+async function startTable() {
+  const st = Sync.settings || {}, fill = st.fill, ps = orderedPlayers(); if ((ps.length < 2 && !fill) || !ps.every(([, p]) => p.ready)) return;
   const order = ps.map(([u]) => u), first = ps[0][1].name;
+  if (fill) {
+    const used = new Set(ps.map(([, p]) => p.name)); let n = 1;
+    while (order.length < (st.max || 8)) {
+      while (used.has(t('Bot {n}', { n }))) n++;
+      const id = 'bot_' + Math.random().toString(36).slice(2, 8), name = t('Bot {n}', { n }); used.add(name); order.push(id);
+      await Sync.set('players/' + id, { name, ready: true, bot: fill }).catch(rulesError);
+    }
+    if (order.length < 2) return;
+    for (let i = 0; i < 40 && !order.every(u => (Sync.players || {})[u]); i++) await new Promise(r => setTimeout(r, 50));   // the seats arrive from the database
+  }
   Online.hostStart(order, first);
 }
 
@@ -270,7 +282,7 @@ Object.assign(actions, {
   optinfo(b) { const open = dlg.open && dlg.querySelector('.seg'); optInfo(b.dataset.f); if (open) $('#d-no').onclick = lobbyOpts; },
   lobbyopts() { lobbyOpts(); },
   addlobbybot() {
-    const ps = Sync.players || {}; if (Object.keys(ps).length >= 8) return;
+    const ps = Sync.players || {}; if (Object.keys(ps).length >= ((Sync.settings || {}).max || 8)) return;
     const used = new Set(Object.values(ps).map(p => p.name)); let n = 1; while (used.has(t('Bot {n}', { n }))) n++;
     const id = 'bot_' + Math.random().toString(36).slice(2, 8);
     Sync.set('players/' + id, { name: t('Bot {n}', { n }), ready: true, bot: 'normal' }).catch(rulesError);
@@ -304,8 +316,8 @@ Object.assign(actions, {
     if (!Sync.registered) { T.afterAuth = 'host'; S.stage = 'auth'; T.authReason = t('Create an account to create a game.'); save(); renderFlow(); return; }
     const m = T.maps.find(x => x.id === S.mapId), patch = mapPatch(m);
     if (isCustomMap(m) && !patch.customMap) { toast(t('This map is too large for an online game.')); return; }
-    S.vis = ['public', 'friends'].includes(($('#f-vis') || {}).value) ? $('#f-vis').value : 'private'; S.max = +($('#f-max') || {}).value || 8;
-    const ok = await Sync.create({ map: S.mapId, mode: S.mode, customMap: patch.customMap, pub: S.vis === 'public', max: S.max }, { name });
+    S.vis = ['public', 'friends'].includes(($('#f-vis') || {}).value) ? $('#f-vis').value : 'private'; S.max = +($('#f-max') || {}).value || 8; S.fill = ($('#f-fill') || {}).value || '';
+    const ok = await Sync.create({ map: S.mapId, mode: S.mode, customMap: patch.customMap, pub: S.vis === 'public', max: S.max, fill: S.fill }, { name });
     if (!ok) renderFlow(); else if (S.vis === 'friends') inviteAllFriends();
   },
   /* Quick match: join the open public game that is closest to full; with none open, start a public one and wait */

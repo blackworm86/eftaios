@@ -1102,3 +1102,5 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 .steps{display:flex;gap:6px;margin:0 0 12px}.steps b{flex:1;text-align:center;font:700 11px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);border-bottom:3px solid var(--line);padding-bottom:6px}.steps b.on{color:var(--amber);border-color:var(--amber)}.steps b.ok{color:var(--pod);border-color:var(--pod)}
 /* a short phone: the home screen fits without scrolling */
 @media (max-height:700px){.setup-card.home h1{margin-bottom:12px}.setup-card.home .wacts{gap:8px;margin-bottom:10px}.setup-card.home .wgrid{gap:8px;margin-bottom:10px}.wgrid .btn{min-height:56px;padding:6px 10px}}
+@media (max-height:700px){#f-map-text{display:none}.setup-card .field{margin-bottom:10px}}
+@media (max-height:700px){.setup-card .mapcard .mapprev{max-height:70px}}

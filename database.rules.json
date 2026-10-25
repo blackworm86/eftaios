@@ -340,6 +340,9 @@
           "max": {
             ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8"
           },
+          "fill": {
+            ".validate": "newData.val() === '' || newData.val() === 'easy' || newData.val() === 'normal' || newData.val() === 'hard'"
+          },
           "order": {
             "$i": {
               ".validate": "newData.isString() && newData.val().length <= 40"

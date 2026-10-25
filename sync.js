@@ -446,7 +446,7 @@
       for (let i = 0; i < 6 && !code; i++) { const c = Sync.newCode(); if (!(await fb.get(path(c, 'created'))).exists()) code = c; }
       if (!code) { setStatus('error'); return false; }
       await fb.set(path(code, 'created'), fb.serverTimestamp());
-      await fb.set(path(code, 'settings'), Object.assign({ map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', order: [Sync.uid], max: settings.max || 8, pub: !!settings.pub }, settings.customMap ? { customMap: settings.customMap } : {}));
+      await fb.set(path(code, 'settings'), Object.assign({ map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', order: [Sync.uid], max: settings.max || 8, pub: !!settings.pub, fill: settings.fill || '' }, settings.customMap ? { customMap: settings.customMap } : {}));
       await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false, guest: !Sync.registered });
       await fb.set(path(code, 'lease'), { uid: Sync.uid, dev: Sync.dev, at: Sync.now() }).catch(() => {});
       await fb.update(at('roomIndex/' + code), { host: Sync.uid, status: 'lobby', map: settings.map, players: 1, name: me.name, at: Date.now() }).catch(() => {});

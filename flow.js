@@ -2,7 +2,7 @@
 /* Pre-game flow: welcome -> (host setup | join) -> lobby -> game.  Solo play skips the table. */
 const MODES = { basic: ['Basic', 'First game: no Items and no Character abilities. Item cards count as Silence.'], ultimate: ['Ultimate', 'The complete rules: Items, Character abilities and Escape Pod cards.'] };
 const modeOf = m => (m === 'basic' ? 'basic' : 'ultimate');
-const VIS = { private: ['Private', 'Only people with the code or the QR code can join.'], public: ['Public', 'Listed in the Online lobby for anyone to join.'] };
+const VIS = { private: ['Private', 'Only people with the code or the QR code can join.'], friends: ['Friends', 'Your friends get an invitation as soon as the game is created.'], public: ['Public', 'Listed in the Online lobby for anyone to join.'] };
 const MAXP = Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map(n => [String(n), [String(n), 'The game is full at ' + n + ' players.']]));
 const OPTS = { mode: ['Rules', MODES], vis: ['Who can join', VIS], max: ['Players', MAXP] };
 /* online tables can use any map, your own included: the host sends a custom map's rows along with the table settings */
@@ -69,7 +69,7 @@ function renderFlow() {
   const ver = document.getElementById('ver'); if (ver) ver.hidden = st !== 'welcome';
   card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
   if (st === 'host') {
-    h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${seg('vis', S.vis === 'public' ? 'public' : 'private')}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}${seg('max', String(S.max || 8))}
+    h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${seg('vis', ['public', 'friends'].includes(S.vis) ? S.vis : 'private')}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}${seg('max', String(S.max || 8))}
       <button class="btn primary big wide" data-act="hostcreate">${t('Create game')}</button>${flowStatus()}`;
   } else if (st === 'solo') {
     h = `${fhead(t('Companion'))}<p class="dim hintline">${t('Use the app like the paper sheet: track your own route and what the other players declare. You play with the real cards.')}</p>${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
@@ -153,6 +153,10 @@ function friendsHtml() {
     <div class="inline joinrow"><input id="friend-handle" type="text" maxlength="17" autocapitalize="off" autocomplete="off" placeholder="${t('Friend handle')}" aria-label="${t('Friend handle')}"><button class="btn primary" data-act="friendadd">${t('Add')}</button></div>
     ${T.friendMsg ? `<p class="dim hintline" role="status">${t(T.friendMsg)}</p>` : ''}${body}`;
 }
+/* a game made for friends: every friend gets the invitation at once */
+async function inviteAllFriends() {
+  try { const L = await Sync.friends(), map = tableMapOf(Sync.settings || {}).name; await Promise.all(L.friends.filter(f => f.mutual).map(f => Sync.invite(f.uid, Sync.code, map).then(() => { (T.invited = T.invited || {})[f.uid] = 1; }))); } catch (_) { /* invitations are a courtesy */ }
+}
 /* host, in the game page: pick friends to invite */
 async function inviteDlg() {
   const L = await Sync.friends(), ok = L.friends.filter(f => f.mutual), sent = T.invited || (T.invited = {});
@@ -166,7 +170,7 @@ function browseHtml() {
   const rows = (list || []).map(([code, g]) => `<li class="grow"><span class="pname">${esc(mapName(g.map))}<small>${esc(g.name || '')} · ${t(MODES[modeOf(g.mode)][0])} · ${g.n}/${g.max}</small></span><button class="btn primary" data-act="joinpub" data-c="${esc(code)}">${t('Join')}</button></li>`).join('');
   return `${fhead(t('Online lobby'))}${Sync.registered ? '' : nameField()}
     ${list === undefined || T.pubLoading ? `<p class="dim">${t('Loading…')}</p>` : list.length ? `<ul class="plist glist">${rows}</ul>` : `<p class="dim hintline">${t('No open games right now. Create one and make it Public.')}</p>`}
-    <div class="row two"><button class="btn" data-act="browse">${t('Refresh')}</button><button class="btn primary" data-act="hostsetup">${t('Create a game')}</button></div>${flowStatus()}`;
+    <button class="btn primary big wide" data-act="quickmatch">${t('Quick match')}<small>${t('Join the fullest open game')}</small></button><div class="row two"><button class="btn" data-act="browse">${t('Refresh')}</button><button class="btn" data-act="hostsetup">${t('Create a game')}</button></div>${flowStatus()}`;
 }
 function lobbyHtml() {
   const st = Sync.settings || {}, host = isHost(), players = orderedPlayers();
@@ -300,9 +304,20 @@ Object.assign(actions, {
     if (!Sync.registered) { T.afterAuth = 'host'; S.stage = 'auth'; T.authReason = t('Create an account to create a game.'); save(); renderFlow(); return; }
     const m = T.maps.find(x => x.id === S.mapId), patch = mapPatch(m);
     if (isCustomMap(m) && !patch.customMap) { toast(t('This map is too large for an online game.')); return; }
-    S.vis = ($('#f-vis') || {}).value === 'public' ? 'public' : 'private'; S.max = +($('#f-max') || {}).value || 8;
+    S.vis = ['public', 'friends'].includes(($('#f-vis') || {}).value) ? $('#f-vis').value : 'private'; S.max = +($('#f-max') || {}).value || 8;
     const ok = await Sync.create({ map: S.mapId, mode: S.mode, customMap: patch.customMap, pub: S.vis === 'public', max: S.max }, { name });
-    if (!ok) renderFlow();
+    if (!ok) renderFlow(); else if (S.vis === 'friends') inviteAllFriends();
+  },
+  /* Quick match: join the open public game that is closest to full; with none open, start a public one and wait */
+  async quickmatch() {
+    const name = readName(); let list = [];
+    try { list = await Sync.browse(); } catch (_) { /* offline */ }
+    list.sort((a, b) => (a[1].max - a[1].n) - (b[1].max - b[1].n) || b[1].n - a[1].n);   // fewest free seats first
+    if (list.length) { const ok = await Sync.join(list[0][0], { name }); if (!ok) { T.pubList = undefined; renderFlow(); } return; }
+    if (!Sync.registered) { toast(t('No open games right now. Sign in to start one.')); return; }
+    S.mapId = S.mapId || 'galilei'; S.mode = S.mode || 'ultimate'; S.track = 'auto';
+    const ok = await Sync.create({ map: S.mapId, mode: S.mode, pub: true, max: 8 }, { name });
+    if (ok) toast(t('Nobody is waiting, so you started a public game. Others can join from the Online lobby.')); else renderFlow();
   },
   friends() { S.stage = 'friends'; T.friendList = undefined; T.friendMsg = ''; renderFlow(); },
   async friendadd() { const r = await Sync.addFriend(($('#friend-handle') || {}).value); T.friendMsg = FRIEND_MSG[r] || ''; T.friendList = undefined; renderFlow(); },

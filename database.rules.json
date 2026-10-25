@@ -91,6 +91,18 @@
             "players": {
               ".validate": "newData.isNumber()"
             },
+            "escaped": {
+              ".validate": "newData.isBoolean()"
+            },
+            "bots": {
+              ".validate": "newData.isBoolean()"
+            },
+            "kills": {
+              ".validate": "newData.isNumber()"
+            },
+            "turns": {
+              ".validate": "newData.isNumber()"
+            },
             "$other": {
               ".validate": false
             }

@@ -314,11 +314,16 @@
       const keep = Object.entries(all).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 50);
       await Promise.all(Object.keys(all).filter(k => !keep.some(([c]) => c === k)).map(k => fb.remove(at(`users/${Sync.uid}/games/${k}`))));
       await fb.runTransaction(at(`users/${Sync.uid}/stats`), cur => {
-        const s = cur.val() || {};
-        const add = (k, n) => { if (n) s[k] = (s[k] || 0) + n; };
-        add('games', 1); add('wins', g.result === 'win' ? 1 : 0); add('losses', g.result === 'loss' ? 1 : 0);
-        add('escapes', g.escaped ? 1 : 0); add('kills', g.kills || 0); add('winsHuman', g.result === 'win' && g.role === 'human' ? 1 : 0); add('winsAlien', g.result === 'win' && g.role === 'alien' ? 1 : 0); add('humans', g.role === 'human' ? 1 : 0); add('aliens', g.role === 'alien' ? 1 : 0);
-        if (g.result === 'win') { s.streak = (s.streak || 0) + 1; s.bestStreak = Math.max(s.bestStreak || 0, s.streak); }
+        const s = cur.val() || {}, win = g.result === 'win', add = (k, n) => { if (n) s[k] = (s[k] || 0) + n; };
+        const key = v => String(v || '?').replace(/[.$#\[\]\/]/g, '_').slice(0, 40);   // a database key cannot hold . $ # [ ] /
+        if (g.bots) { add('botGames', 1); add('botWins', win ? 1 : 0); return s; }   // games with a bot at the table are counted apart
+        add('games', 1); add('wins', win ? 1 : 0); add('losses', win ? 0 : 1);
+        add('escapes', g.escaped ? 1 : 0); add('kills', g.kills || 0); add('turns', g.turns || 0);
+        add('winsHuman', win && g.role === 'human' ? 1 : 0); add('winsAlien', win && g.role === 'alien' ? 1 : 0);
+        add('humans', g.role === 'human' ? 1 : 0); add('aliens', g.role === 'alien' ? 1 : 0);
+        if (g.chars) { add('c_' + key(g.chars), 1); add('cw_' + key(g.chars), win ? 1 : 0); }
+        if (g.map) { add('m_' + key(g.map), 1); add('mw_' + key(g.map), win ? 1 : 0); }
+        if (win) { s.streak = (s.streak || 0) + 1; s.bestStreak = Math.max(s.bestStreak || 0, s.streak); }
         else { s.streak = 0; }
         s.last = Date.now();
         return s;

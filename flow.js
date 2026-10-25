@@ -380,7 +380,7 @@ async function recordResult(st) {
   try { if (await Sync.getPath(`users/${Sync.uid}/games/${key}`)) return; } catch (_) { return; }
   const aliensWin = !!st.result.aliensWin;
   const win = S.role === 'alien' ? aliensWin : !aliensWin;
-  await Sync.recordGame(key, { result: win ? 'win' : 'loss', role: S.role, chars: S.char || '', map: S.mapId || '', players: Object.keys(Sync.players || {}).length, escaped: S.over === 'escaped' });
+  await Sync.recordGame(key, { result: win ? 'win' : 'loss', role: S.role, chars: S.char || '', map: S.mapId || '', players: Object.keys(Sync.players || {}).length, escaped: S.over === 'escaped', bots: Object.values(Sync.players || {}).some(p => p.bot), kills: S.log.filter(e => killOf(e) && playerKey(e) === 'me').length, turns: S.turn || 0 });
 }
 
 const logRec = e => ({ id: e.id, by: e.by || '', turn: e.turn, who: e.who, kind: e.kind, sector: e.sector || null, text: e.text, n: e.n || 0, ok: !!e.ok, mine: false, at: e.at, remote: true });

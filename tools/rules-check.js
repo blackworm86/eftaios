@@ -10,6 +10,9 @@ const has = (v, s) => typeof v === 'string' && v.includes(s);
 let bad = 0;
 const check = (ok, label) => { console.log((ok ? 'ok   ' : 'FAIL ') + label); if (!ok) bad++; };
 
+// every field the app writes in a game record is allowed by the rules (a refused field loses the whole record)
+const recFields = [...fs.readFileSync(path.join(__dirname, '..', 'flow.js'), 'utf8').match(/Sync\.recordGame\(key, \{(.*)\}\);/)[1].matchAll(/(?:^|,)\s*(\w+):/g)].map(m => m[1]);
+check(recFields.length > 5 && recFields.every(k => rules.users.$uid.games.$code[k]), 'the game record fields are all in the rules (' + recFields.join(', ') + ')');
 const member = "child('players').child(auth.uid).exists()";
 check(has(room.log.$id['.write'], member) && has(room.log.$id['.write'], '!data.exists()'), 'only members can add to the public log, and never overwrite an entry');
 check(has(room.log['.write'], '!newData.exists()') && !has(room.log['.write'], member), 'a member cannot wipe the public log');

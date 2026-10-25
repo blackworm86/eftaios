@@ -958,7 +958,7 @@ body[data-tab=table] .panel{max-height:calc(64dvh + 54px + env(safe-area-inset-b
 .rb{display:inline-grid;place-items:center;min-width:14px;height:14px;margin-right:3px;padding:0 3px;border-radius:6px;font:700 9px var(--mono);font-style:normal;vertical-align:1px;color:#fff}
 .rb.alien{background:#ff3b30}.rb.human{background:#2f7dff}.rb+.gi{margin-right:3px;vertical-align:-3px}
 /* v16.4: the log filters are one scrolling row, so the list starts right under them even on a small or landscape phone */
-.logfilter{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 0 4px;padding-bottom:2px}.logfilter::-webkit-scrollbar{display:none}.lfc{flex:none}
+.logfilter{flex-wrap:wrap;margin:0 0 6px}.lfc{flex:none}
 ul.log li.turnh{padding-top:6px}
 /* v17: player bubbles. Outline = faction (thick: known to all, thin: your guess, yellow: no idea); the square shows ? or
    the Character; last action and cards follow. The square guesses (full view only), the rest picks the player for the map. */

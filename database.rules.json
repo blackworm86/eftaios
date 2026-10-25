@@ -110,6 +110,21 @@
         }
       }
     },
+    "lobby": {
+      ".read": "auth != null",
+      "$code": {
+        ".write": "auth != null && (auth.token.admin === true || root.child('rooms').child($code).child('settings/host').val() === auth.uid) && root.child('bans').child(auth.uid).val() !== true",
+        ".validate": "newData.hasChildren(['host', 'map', 'mode', 'n', 'max', 'at'])",
+        "host": { ".validate": "newData.val() === auth.uid || auth.token.admin === true" },
+        "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "map": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "mode": { ".validate": "newData.val() === 'ultimate' || newData.val() === 'basic' || newData.val() === 'advanced' || newData.val() === 'infection'" },
+        "n": { ".validate": "newData.isNumber()" },
+        "max": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8" },
+        "at": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
     "roomIndex": {
       ".read": "auth != null && auth.token.admin === true",
       "$code": {
@@ -278,6 +293,12 @@
           },
           "online": {
             ".validate": "newData.isBoolean()"
+          },
+          "pub": {
+            ".validate": "newData.isBoolean()"
+          },
+          "max": {
+            ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8"
           },
           "order": {
             "$i": {

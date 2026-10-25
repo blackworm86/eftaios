@@ -170,6 +170,7 @@
     if (!code || !Sync.uid) return;
     const st = (await fb.get(at(`rooms/${code}/settings`))).val();
     if (!st || st.host !== Sync.uid) return;
+    Sync.unlist(code);
     await fb.update(at(`rooms/${code}/settings`), { status: 'over', result: { reason: 'closed', aliensWin: false } });
     setTimeout(async () => {
       await fb.remove(at('roomIndex/' + code)).catch(() => {});
@@ -363,8 +364,8 @@
   function listen(code) {
     Sync.code = code; Sync.gen++; Sync.settings = null; Sync.players = {};
     const { onChildAdded, onValue, query, limitToLast } = fb;
-    unsub.push(onValue(path(code, 'settings'), s => { Sync.settings = s.val(); Sync.h.settings && Sync.h.settings(Sync.settings); }));
-    unsub.push(onValue(path(code, 'players'), s => { Sync.players = s.val() || {}; Sync.h.players && Sync.h.players(Sync.players); }));
+    unsub.push(onValue(path(code, 'settings'), s => { Sync.settings = s.val(); Sync.h.settings && Sync.h.settings(Sync.settings); if (Sync.settings && Sync.settings.pub) Sync.listing(); }));
+    unsub.push(onValue(path(code, 'players'), s => { Sync.players = s.val() || {}; Sync.h.players && Sync.h.players(Sync.players); if (Sync.settings && Sync.settings.pub) Sync.listing(); }));
     unsub.push(onChildAdded(query(path(code, 'log'), limitToLast(200)), s => Sync.h.entry && Sync.h.entry(s.val())));
     unsub.push(onValue(path(code, 'turn'), s => { Sync.turn = s.val(); Sync.h.turn && Sync.h.turn(Sync.turn); }));
     unsub.push(onValue(path(code, 'counts'), s => Sync.h.counts && Sync.h.counts(s.val() || {})));
@@ -373,6 +374,27 @@
     unsub.push(onValue(path(code, 'lease'), s => { Sync.lease = s.val() || null; Sync.leaseLoaded = true; Sync.h.lease && Sync.h.lease(Sync.lease); }));
     unsub.push(onValue(at('.info/connected'), s => setStatus(s.val() ? 'online' : 'offline')));
   }
+
+  /* the public listing: a host who made the game Public shows it in the Online lobby while it gathers (host only; rules enforce it) */
+  const LIST_FRESH = 120000;
+  let listTimer = null, listBeat = null;
+  Sync.listing = () => {
+    clearTimeout(listTimer);
+    listTimer = setTimeout(() => {
+      const st = Sync.settings, code = Sync.code; if (!code || !db || !st || st.host !== Sync.uid) return;
+      const n = Object.keys(Sync.players || {}).length, max = st.max || 8, me = (Sync.players || {})[Sync.uid] || {};
+      if (st.pub && st.status === 'lobby' && n < max) {
+        fb.set(at('lobby/' + code), { host: Sync.uid, name: String(me.name || '').slice(0, 20), map: st.map, mode: st.mode, n, max, at: Date.now() }).catch(() => {});
+        try { if (fb.onDisconnect) fb.onDisconnect(at('lobby/' + code)).remove(); } catch (_) { /* fake or offline */ }
+        if (!listBeat) listBeat = setInterval(() => Sync.listing(), 30000);   // an entry nobody refreshes goes stale and drops off the list
+      } else { fb.remove(at('lobby/' + code)).catch(() => {}); }
+    }, 400);
+  };
+  Sync.unlist = code => { clearTimeout(listTimer); if (listBeat) { clearInterval(listBeat); listBeat = null; } if (code && db) fb.remove(at('lobby/' + code)).catch(() => {}); };
+  Sync.browse = async () => {
+    await ensure(); const all = (await fb.get(at('lobby'))).val() || {};
+    return Object.entries(all).filter(([, g]) => g && g.at > Date.now() - LIST_FRESH && g.host !== Sync.uid).sort((a, b) => b[1].at - a[1].at);
+  };
 
   /* host: create a new table */
   Sync.create = async function (settings, me) {
@@ -384,11 +406,11 @@
       for (let i = 0; i < 6 && !code; i++) { const c = Sync.newCode(); if (!(await fb.get(path(c, 'created'))).exists()) code = c; }
       if (!code) { setStatus('error'); return false; }
       await fb.set(path(code, 'created'), fb.serverTimestamp());
-      await fb.set(path(code, 'settings'), Object.assign({ map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', order: [Sync.uid] }, settings.customMap ? { customMap: settings.customMap } : {}));
+      await fb.set(path(code, 'settings'), Object.assign({ map: settings.map, mode: settings.mode, host: Sync.uid, status: 'lobby', first: '', order: [Sync.uid], max: settings.max || 8, pub: !!settings.pub }, settings.customMap ? { customMap: settings.customMap } : {}));
       await fb.set(path(code, 'players/' + Sync.uid), { name: me.name, ready: false, guest: !Sync.registered });
       await fb.set(path(code, 'lease'), { uid: Sync.uid, dev: Sync.dev, at: Sync.now() }).catch(() => {});
       await fb.update(at('roomIndex/' + code), { host: Sync.uid, status: 'lobby', map: settings.map, players: 1, name: me.name, at: Date.now() }).catch(() => {});
-      listen(code); Sync.h.joined && Sync.h.joined(code); Sync.indexRoom(code, 'host'); return true;
+      listen(code); Sync.h.joined && Sync.h.joined(code); Sync.indexRoom(code, 'host'); if (settings.pub) setTimeout(() => Sync.listing(), 800); return true;
     } catch (e) { console.warn(e); Sync.lastError = String(e && (e.code || e.message) || e).slice(0, 80); setStatus(/permission/i.test(Sync.lastError) ? 'rules' : 'error'); return false; }
   };
 
@@ -406,7 +428,7 @@
       if (st.status === 'over' && st.result && st.result.reason === 'closed') { setStatus('closed'); return false; }
       if (mine && mine.out === 'kicked') { setStatus('kicked'); return false; }
       if (st.status === 'playing' && !mine) { setStatus('started'); return false; }
-      if (!mine && Object.keys((await fb.get(path(code, 'players'))).val() || {}).length >= 8) { setStatus('full'); return false; }
+      if (!mine && Object.keys((await fb.get(path(code, 'players'))).val() || {}).length >= (st.max || 8)) { setStatus('full'); return false; }
       if (mine) {
         if (me.name && me.name !== mine.name) await fb.update(path(code, 'players/' + Sync.uid), { name: me.name });
         if (st.status === 'lobby') await Sync.resetMine(code);
@@ -471,6 +493,7 @@
   Sync.watch = (p, cb) => { const u = fb.onValue(path(Sync.code, p), s => cb(s.val())); unsub.push(u); return u; };
   Sync.watchChild = (p, cb) => { const u = fb.onChildAdded(fb.query(path(Sync.code, p)), s => cb(s.val(), s.key)); unsub.push(u); return u; };
   Sync.leave = function (quiet) {
+    if (Sync.code && Sync.settings && Sync.settings.pub && Sync.settings.host === Sync.uid) Sync.unlist(Sync.code);
     Sync.h.leaving && Sync.h.leaving();   // last chance to save this player's seat and journal
     unsub.forEach(f => f()); unsub = [];
     if (!quiet && Sync.code && db && Sync.settings && Sync.settings.status === 'lobby') fb.remove(path(Sync.code, 'players/' + Sync.uid)).catch(() => {});

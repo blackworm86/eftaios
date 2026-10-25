@@ -2,7 +2,9 @@
 /* Pre-game flow: welcome -> (host setup | join) -> lobby -> game.  Solo play skips the table. */
 const MODES = { basic: ['Basic', 'First game: no Items and no Character abilities. Item cards count as Silence.'], ultimate: ['Ultimate', 'The complete rules: Items, Character abilities and Escape Pod cards.'] };
 const modeOf = m => (m === 'basic' ? 'basic' : 'ultimate');
-const OPTS = { mode: ['Rules', MODES] };
+const VIS = { private: ['Private', 'Only people with the code or the QR code can join.'], public: ['Public', 'Listed in the Online lobby for anyone to join.'] };
+const MAXP = Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map(n => [String(n), [String(n), 'The game is full at ' + n + ' players.']]));
+const OPTS = { mode: ['Rules', MODES], vis: ['Who can join', VIS], max: ['Players', MAXP] };
 /* online tables can use any map, your own included: the host sends a custom map's rows along with the table settings */
 const tableMaps = () => T.maps.filter(m => !m.shared);
 const encMap = m => { const s = JSON.stringify({ n: m.name, o: m.odd ? 1 : 0, c: m.cols, r: m.grid.map(r => r.join('')).join('') }); return s.length <= 700 ? s : null; };
@@ -66,7 +68,7 @@ function renderFlow() {
   const ver = document.getElementById('ver'); if (ver) ver.hidden = st !== 'welcome';
   card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
   if (st === 'host') {
-    h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
+    h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${seg('vis', S.vis === 'public' ? 'public' : 'private')}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}${seg('max', String(S.max || 8))}
       <button class="btn primary big wide" data-act="hostcreate">${t('Create game')}</button>${flowStatus()}`;
   } else if (st === 'solo') {
     h = `${fhead(t('Companion'))}<p class="dim hintline">${t('Use the app like the paper sheet: track your own route and what the other players declare. You play with the real cards.')}</p>${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
@@ -84,6 +86,8 @@ function renderFlow() {
       <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>`;
   } else if (st === 'auth' || st === 'account' || st === 'games' || st === 'stats' || st === 'admin') {
     h = (st === 'admin' && window.Admin) ? Admin.html() : Auth.html();
+  } else if (st === 'browse') {
+    h = browseHtml();
   } else if (st === 'lobby') {
     h = lobbyHtml();
   } else {
@@ -97,6 +101,7 @@ function renderFlow() {
             <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Game code')}" aria-label="${t('Game code')}"><button class="btn${Sync.registered ? '' : ' primary'}" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
             ${Sync.registered ? '' : `<button class="btn wide hostbtn" data-act="hostsetup">${t('Create a game')}<small>${t('Account required')}</small></button>`}
           </div>
+          <button class="btn wide" data-act="browse">${t('Online lobby')}<small>${t('Open games you can join')}</small></button>
           <div class="wgrid">
             <button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button>
             <button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button>
@@ -128,6 +133,15 @@ function renderFlow() {
 const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Game not found', started: 'That game has already started', closed: 'The host closed this game.', full: 'This game is full (8 players).' };
 function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="status">${t(FLOW_MSG[Sync.status])}${Sync.status === 'error' && Sync.lastError ? ` <code>${esc(Sync.lastError)}</code>` : ''}</p>` : ''; }
 
+/* the Online lobby: public games that are gathering players right now */
+function browseHtml() {
+  if (T.pubList === undefined && !T.pubLoading) { T.pubLoading = true; Sync.browse().then(l => { T.pubList = l; }).catch(() => { T.pubList = []; }).then(() => { T.pubLoading = false; if (S.stage === 'browse') renderFlow(); }); }
+  const list = T.pubList, mapName = id => { const m = (T.maps || []).find(x => x.id === id); return m ? m.name : id; };
+  const rows = (list || []).map(([code, g]) => `<li class="grow"><span class="pname">${esc(mapName(g.map))}<small>${esc(g.name || '')} · ${t(MODES[modeOf(g.mode)][0])} · ${g.n}/${g.max}</small></span><button class="btn primary" data-act="joinpub" data-c="${esc(code)}">${t('Join')}</button></li>`).join('');
+  return `${fhead(t('Online lobby'))}${Sync.registered ? '' : nameField()}
+    ${list === undefined || T.pubLoading ? `<p class="dim">${t('Loading…')}</p>` : list.length ? `<ul class="plist glist">${rows}</ul>` : `<p class="dim hintline">${t('No open games right now. Create one and make it Public.')}</p>`}
+    <div class="row two"><button class="btn" data-act="browse">${t('Refresh')}</button><button class="btn primary" data-act="hostsetup">${t('Create a game')}</button></div>${flowStatus()}`;
+}
 function lobbyHtml() {
   const st = Sync.settings || {}, host = isHost(), players = orderedPlayers();
   const map = tableMapOf(st);
@@ -136,7 +150,7 @@ function lobbyHtml() {
     <span class="ctl"><span class="pst">${p.bot ? (host ? `<select data-botlvl="${esc(id)}" aria-label="${t('Bot level')}">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${p.bot === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>` : t(BOTSEL.find(x => x[0] === p.bot)[1])) : p.ready ? ico('check', 14) + ' ' + t('Ready') : ''}</span>
     ${host && p.bot ? `<button class="x" data-act="delbot" data-u="${esc(id)}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}
     ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>${ico('up')}</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>${ico('down')}</button></span>` : ''}</span></li>`).join('');
-  const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[modeOf(st.mode)][0])}</dd></dl>`;
+  const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[modeOf(st.mode)][0])}</dd><dt>${t('Who can join')}</dt><dd>${t(st.pub ? 'Public' : 'Private')} · ${st.max || 8} ${t('Players')}</dd></dl>`;
   return `${fhead(t('Game'), 'leavelobby')}
     <div class="steps"><b class="on">1 · ${t('Gathering')}</b><b>2 · ${t('Playing')}</b><b>3 · ${t('Result')}</b></div>
     <div class="roomcard"><div><small>${t('Game code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
@@ -259,9 +273,12 @@ Object.assign(actions, {
     if (!Sync.registered) { T.afterAuth = 'host'; S.stage = 'auth'; T.authReason = t('Create an account to create a game.'); save(); renderFlow(); return; }
     const m = T.maps.find(x => x.id === S.mapId), patch = mapPatch(m);
     if (isCustomMap(m) && !patch.customMap) { toast(t('This map is too large for an online game.')); return; }
-    const ok = await Sync.create({ map: S.mapId, mode: S.mode, customMap: patch.customMap }, { name });
+    S.vis = ($('#f-vis') || {}).value === 'public' ? 'public' : 'private'; S.max = +($('#f-max') || {}).value || 8;
+    const ok = await Sync.create({ map: S.mapId, mode: S.mode, customMap: patch.customMap, pub: S.vis === 'public', max: S.max }, { name });
     if (!ok) renderFlow();
   },
+  browse() { S.stage = 'browse'; T.pubList = undefined; renderFlow(); },
+  async joinpub(b) { const ok = await Sync.join(b.dataset.c, { name: readName() }); if (!ok) { T.pubList = undefined; renderFlow(); } },
   async joinroom() {
     const name = readName(), code = T.pendingRoom || ($('#join-code') || {}).value || '';
     const ok = await Sync.join(code, { name });

@@ -104,7 +104,7 @@ function renderFlow() {
               ? `<button class="btn" data-act="accountgames">${t('Your games')}<small>${t('Resume, history')}</small></button><button class="btn" data-act="maps_">${t('Maps')}<small>${t('Browse, create, publish')}</small></button>`
               : `<button class="btn span2" data-act="maps_">${t('Maps')}<small>${t('Browse, create and share')}</small></button>`}
           </div>
-          ${segRow('Share anonymous results', 'share', 'v', Records.on() ? 'on' : 'off', [['on', t('On')], ['off', t('Off')]])}
+          ${segRow('Share anonymous results', 'recshare', 'v', Records.on() ? 'on' : 'off', [['on', t('On')], ['off', t('Off')]])}
           ${Sync.isAdmin ? `<button class="mrow" data-act="adminopen">${t('Admin')}<small>${t('Players, rooms, maps, reports')}</small><i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}`}
       ${flowStatus()}`;
   }
@@ -271,7 +271,7 @@ Object.assign(actions, {
     Sync.setMeP(Object.assign({ share: Records.on() }, p)).catch(() => Sync.setMeP(p).catch(e => rulesError(e)));
     save(); renderFlow();
   },
-  share(b) { Records.set(b.dataset.v === 'on'); if (S.stage === 'game' && S.role) render(); else renderFlow(); },
+  recshare(b) { Records.set(b.dataset.v === 'on'); if (S.stage === 'game' && S.role) render(); else renderFlow(); },
   makehost(b) {
     if (!isHost()) return;
     Sync.updateSettings({ host: b.dataset.u });

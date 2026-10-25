@@ -34,3 +34,18 @@
 - **Alien Teleport:** an Alien does not always open with its Teleport on turn 1 (1 in 4 does). Done.
 - **Work happens on `main` only; no new branches.**
 - **Speed:** the 5 s bot turn limit must hold on the host's phone; desktop worst case measured 2 s in Phase 2, which is too close.
+
+## The path (decided with the owner, 2026-10-25): the network becomes the bots
+
+No more changes of direction. The trained network improves the bots and, step by step, replaces the hand-built ones.
+
+| Stage | What | Who | Done when |
+|---|---|---|---|
+| A | Measure the first network against Easy, Normal and Hard in the simulator (`nn` level, rl/ training, nn.js) | owner exports and pushes `nn/net.json`; Claude runs the tables | a table: network win rates by side against each level |
+| B | The training engine learns the full rules: all 10 Items and 16 Character powers, with new decisions and inputs; checked against the app like movement was | Claude | tests pass; the Python engine matches the app on items and powers |
+| C | Train network v3 with the full rules (imitation of the rule-based item play first, then self-play) | owner runs `run_training.bat` for as long as needed; Claude reads the evaluation | v3 beats the v2 network and the Hard bot in the simulator at every table size and map |
+| D | Levels: Easy and Normal from earlier checkpoints / weaker settings, Hard from the best network, tuned to the targets in this plan | Claude; owner plays and rates | the ladder easy < normal < hard holds, Hard is "very hard" for the owner |
+| E | Replace the hand-built bots in the app (online and pass-and-play), keep them as the fallback if the network file cannot load; speed checked on a phone | Claude; owner tests on the phone | all levels run on the network, 5 s per bot turn |
+| F | Keep improving from the game records (anonymous real games) and league training | both | ongoing |
+
+Rule for the rest of this plan: results decide how long a stage runs, not whether the path continues. If a stage misses its target we train longer, enlarge the network or fix the inputs.

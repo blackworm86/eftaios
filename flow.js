@@ -61,6 +61,7 @@ const readName = () => { const el = $('#flow-name'); if (el) S.name = el.value.t
 
 function renderFlow() {
   const card = $('#flow-card'); let h = '';
+  if (S.stage === 'auth' && window.Sync && Sync.preloadSignIn) Sync.preloadSignIn();   // so the Google window opens on the first tap, even on Safari
   const st = S.stage;
   const ver = document.getElementById('ver'); if (ver) ver.hidden = st !== 'welcome';
   card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');

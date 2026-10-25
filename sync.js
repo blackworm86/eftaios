@@ -18,7 +18,7 @@
   };
   let fb = null, db = null, auth = null, unsub = [], ready = null, joining = false;
   const authListeners = [];
-  let authSettlers = [], banUnsub = null, profUnsub = null;
+  let authSettlers = [], banUnsub = null, profUnsub = null, AU = null;
   const setStatus = s => { Sync.status = s; Sync.h.status && Sync.h.status(s); };
   const clean = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const path = (code, p) => fb.ref(db, `rooms/${code}/${p}`);
@@ -46,15 +46,18 @@
       if (window.__FAKE_FB) { const f = await window.__FAKE_FB(); fb = f.fb; db = f.db; auth = f.auth || null; Sync.uid = f.uid; Sync.registered = true; Sync.profile = { handle: 'tester', name: 'Tester' }; Sync.authReady = true; return; }
       const [app, au, rtdb] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-database.js'].map(f => import(B + f)));
       const a = app.initializeApp(cfg);
-      auth = fireAuth(au.getAuth(a));
+      /* No popup/redirect helper at start-up: with it, Safari (storage partitioned for the sign-in domain) and in-app browsers can
+         leave the session check hanging, and then no sign-in works at all. The helper is passed only to the Google calls. */
+      AU = au;
+      auth = fireAuth(au.initializeAuth(a, { persistence: [au.indexedDBLocalPersistence, au.browserLocalPersistence, au.browserSessionPersistence] }));
       db = rtdb.getDatabase(a); fb = rtdb;
       /* the gap between this device's clock and Firebase's, so time stamps compare across devices and with the rules' `now` */
       rtdb.onValue(rtdb.ref(db, '.info/serverTimeOffset'), s => { Sync.skew = s.val() || 0; });
-      au.getRedirectResult(auth).catch(e => console.warn(e));
+      try { if (sessionStorage.getItem('eftaios.redirect')) { sessionStorage.removeItem('eftaios.redirect'); au.getRedirectResult(auth, au.browserPopupRedirectResolver).catch(e => console.warn(e)); } } catch (_) { /* no session storage */ }
       au.onAuthStateChanged(auth, u => { handleUser(u).catch(e => console.warn(e)); });
       /* the persisted session is restored asynchronously: wait for it, or a reload would replace a
          signed-in player with a fresh anonymous guest and lose the account */
-      try { await au.getAuth(a).authStateReady(); } catch (_) { /* older SDK */ }
+      try { await Promise.race([auth.authStateReady(), new Promise(r => setTimeout(r, 6000))]); } catch (_) { /* older SDK */ }   // a stuck storage must not block every sign-in
       Sync.authReady = true;
     })().finally(() => { ready = null; });
     await ready;
@@ -106,17 +109,28 @@
 
   /* a sign-in that fails never changes the user, so nothing would ever mark auth as settled again */
   const attempt = async fn => { Sync.authSettled = false; try { return await fn(); } catch (e) { Sync.authSettled = true; throw e; } };
-  Sync.signInGoogle = async () => {
-    await ensure(true); const au = await fbAuth(); Sync.authSettled = false;
-    const p = new au.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
-    try { return await au.signInWithPopup(auth, p); }
-    catch (e) {
-      Sync.authSettled = true;
-      /* the popup helper can fail on mobile browsers and installed apps: fall back to a full-page redirect */
-      if (!/internal-error|popup-blocked|operation-not-supported/.test(String(e && e.code))) throw e;
-      return au.signInWithRedirect(auth, p);
-    }
+  /* Safari only opens the Google window while the tap is still being handled: nothing may be awaited before signInWithPopup
+     once the SDK is loaded (it is, from the first screen on) */
+  Sync.signInGoogle = () => {
+    const go = au => {
+      Sync.authSettled = false;
+      const p = new au.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
+      return au.signInWithPopup(auth, p, au.browserPopupRedirectResolver).catch(e => {
+        Sync.authSettled = true;
+        /* the popup can fail on mobile browsers and installed apps: fall back to a full-page redirect */
+        if (!/internal-error|popup-blocked|operation-not-supported/.test(String(e && e.code))) throw e;
+        try { sessionStorage.setItem('eftaios.redirect', '1'); } catch (_) { /* noop */ }
+        return au.signInWithRedirect(auth, p, au.browserPopupRedirectResolver);
+      });
+    };
+    if (AU && auth) return go(AU);
+    return ensure(true).then(() => go(AU));
   };
+  /* load the sign-in helper's hidden frame while the player reads the sign-in screen, so the Google window opens at once on the tap */
+  let preloaded = false;
+  Sync.preloadSignIn = () => ensure(true).then(() => { if (preloaded || !AU || !auth) return; preloaded = true; AU.getRedirectResult(auth, AU.browserPopupRedirectResolver).catch(() => {}); }).catch(() => {});
+  /* Google refuses to sign in from the browser built into other apps (WhatsApp, Instagram...): say so before the player taps */
+  Sync.inAppBrowser = () => { const ua = navigator.userAgent || ''; return /FBAN|FBAV|Instagram|Line\/|MicroMessenger|Snapchat|; wv\)/.test(ua) || (/iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua)); };
   Sync.signInEmail = async (email, pass) => { await ensure(true); const au = await fbAuth(); return attempt(() => au.signInWithEmailAndPassword(auth, email, pass)); };
   Sync.signUpEmail = async (email, pass, name) => {
     await ensure(true); const au = await fbAuth();

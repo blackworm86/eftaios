@@ -8,6 +8,7 @@ const IT = {
 "Lobby": "Sala d'attesa",
 "Gone": "Chiusa",
 "Leave the table?": "Lasciare il tavolo?",
+"Google sign-in does not work inside this app. Open the page in Safari or Chrome, or use your email below.": "L'accesso con Google non funziona dentro questa app. Apri la pagina in Safari o Chrome, oppure usa la tua email qui sotto.",
 "Share anonymous results": "Condividi risultati anonimi",
 "On": "Sì",
 "Off": "No",

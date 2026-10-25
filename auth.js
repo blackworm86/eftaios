@@ -40,7 +40,7 @@ const Auth = (() => {
       ${pending ? `<p class="dim hintline">${t('We sent a sign-in link. Open it on this device, or enter the email again below.')}</p>` : ''}
       ${Sync.isLink()
         ? `<button class="btn primary big wide" data-act="authcomplete">${t('Complete the sign-in')}</button>`
-        : `<button class="btn primary big wide" data-act="authgoogle">${t('Continue with Google')}</button>
+        : `${Sync.inAppBrowser() ? `<p class="banner">${t('Google sign-in does not work inside this app. Open the page in Safari or Chrome, or use your email below.')}</p>` : ''}<button class="btn primary big wide" data-act="authgoogle">${t('Continue with Google')}</button>
       <div class="or"><span>${t('or')}</span></div>
       <label class="field"><span>${t('Email')}</span><input id="a-email" type="email" autocomplete="email" value="${esc(T.authEmail || '')}" placeholder="you@example.com"></label>
       <label class="field"><span>${t('Password')}</span><input id="a-pass" type="password" autocomplete="current-password" placeholder="${t('At least 6 characters')}"></label>
@@ -82,7 +82,7 @@ const Auth = (() => {
     return `${head(t('Your games'))}<ul class="plist glist">${rows}</ul>${pager}<p class="dim hintline">${t('Finished games stay here for your last 20.')}</p>`;
   }
 
-  async function open(stage) { S.stage = stage; save(); renderFlow(); }
+  async function open(stage) { S.stage = stage; save(); renderFlow(); if (stage === 'auth') Sync.preloadSignIn(); }
   async function loadGames() {
     T.myGames = null; renderFlow();
     const rooms = await Sync.myRooms();

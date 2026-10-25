@@ -1025,7 +1025,7 @@ ul.log li.turnh{padding-top:6px}
 
 /* v20: compact strip as a tight column. The square is centred in the tile; cards sit top-right and the last action bottom-right, inside it */
 .mkbar.compact{gap:3px}
-.mkbar button.pb.mini{width:46px;height:46px;margin:0;display:grid;place-items:center;padding:0;overflow:hidden}   /* margin:0 undoes the generic .mini rule */
+.mkbar button.pb.mini{width:46px;height:46px;margin:0;display:grid;place-items:center;padding:0;overflow:visible}   /* margin:0 undoes the generic .mini rule */
 .pb.mini .psq{width:28px;height:28px;grid-area:1/1;margin:0}
 .pb.mini .pcd{position:absolute;right:1px;top:1px;min-width:14px;height:14px;padding:0 2px;border-radius:5px;font-size:10px;line-height:11px}
 .pb.mini .pa{position:absolute;right:1px;bottom:1px;left:auto;top:auto}
@@ -1059,9 +1059,9 @@ html,body{position:fixed;inset:0;width:100%;overflow:hidden;overscroll-behavior:
 .mkbar:not(.compact){gap:3px}.mkbar.compact{gap:3px}
 .pb:not(.mini){height:40px}.pb .psq{width:28px;height:28px}
 .mkbar button.pb.mini{width:40px;height:40px}.pb.mini .psq{width:26px;height:26px}
-.pb.cur{box-shadow:0 0 0 2px var(--amber),0 0 14px 3px #ffb41faa}
-.pb.picked{box-shadow:0 0 0 2px #fff}.pb.picked.cur{box-shadow:0 0 0 2px #fff,0 0 14px 3px #ffb41faa}
-.mkbar button.pb.picked{box-shadow:0 0 0 2px #fff}.mkbar button.pb.picked.cur{box-shadow:0 0 0 2px #fff,0 0 14px 3px #ffb41faa}
+.pb.cur::after{content:"";position:absolute;right:-9px;top:50%;margin-top:-6px;border:6px solid transparent;border-right:8px solid var(--amber);border-left:0;filter:drop-shadow(0 0 4px #ffb41f);pointer-events:none}
+.pb.picked{box-shadow:0 0 0 2px #fff}
+.mkbar button.pb.picked{box-shadow:0 0 0 2px #fff}.mkbar button
 .pb.mini .pcd{right:1px;top:1px}.pb.mini .pa{right:1px;bottom:1px}
 /* play panel */
 .ph{display:flex;align-items:center;gap:10px;padding:2px 0 8px}

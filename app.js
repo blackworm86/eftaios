@@ -239,6 +239,7 @@ function paintPremove() {
 }
 function paintMoveBtns() {
   paintPremove();
+  document.querySelectorAll('#stage button[aria-label]').forEach(b => { b.title = b.getAttribute('aria-label'); });   // a hover hint on every map button
   const st = $('#stage'); if (!st || !T.map) return;
   let box = $('#movepick');
   if (!box) { box = document.createElement('div'); box.id = 'movepick'; box.className = 'movepick'; box.hidden = true; st.appendChild(box); }
@@ -545,7 +546,7 @@ function paintOverlay() {
       if (it.key === 'me' && S.reborn && killedSector(S.path) === sec) killedBadge(g, size);
       // the printed icons of what this player declared on that step, as marks on the marker
       stepIcons(it.key, last, sec).forEach((n, j) => {
-        const w = size * (n === 'attack' || n === 'claws' ? 2.1 : 1.75), bx = size * 0.9, by = j ? size * 0.9 : -size * 0.9;   // an attack is the icon people look for
+        const w = size * 1.9, bx = size * 0.9, by = j ? size * 0.9 : -size * 0.9;   // an attack is the icon people look for
         el('use', { href: '#gi-' + n, x: (bx - w / 2).toFixed(1), y: (by - w * 0.46).toFixed(1), width: w.toFixed(1), height: (w * 0.92).toFixed(1) }, g);
       });
     });
@@ -942,7 +943,7 @@ function renderMkBar() {
   }
   const nT = T.rng ? T.rng[1] - T.rng[0] + 1 : (mkN() || Math.max(1, S.turn));
   const turnsBtn = `<button class="mkh" data-act="mkall" aria-pressed="${!!T.rng}" aria-label="${t('Turn slider')}: ${nT}"><b>${nT}</b></button>`;
-  const head = `<div class="mkhead">${turnsBtn}${mark}<button class="mkh" data-act="routes" aria-pressed="${!!S.routesOn}" aria-label="${t('Show the routes')}">${ico('route', 20)}</button><button class="mkh" data-act="pshowall" aria-pressed="${!(T.focusSet || []).length}" aria-label="${t('Show all')}">${ico('eye', 20)}</button><button class="mkh" data-act="pcompact" aria-pressed="${pCompact()}" aria-label="${t(pCompact() ? 'Expand the players' : 'Compress the players')}">${ico(pCompact() ? 'expandr' : 'collapsel', 20)}</button></div>`;
+  const head = `<div class="mkhead">${turnsBtn}<button class="mkh" data-act="pshowall" aria-pressed="${!(T.focusSet || []).length}" aria-label="${t('Show all')}">${ico('eye', 20)}</button><button class="mkh" data-act="pcompact" aria-pressed="${pCompact()}" aria-label="${t(pCompact() ? 'Expand the players' : 'Compress the players')}">${ico(pCompact() ? 'expandr' : 'collapsel', 20)}</button><button class="mkh" data-act="routes" aria-pressed="${!!S.routesOn}" aria-label="${t('Show the routes')}">${ico('route', 20)}</button>${mark}</div>`;
   bar.innerHTML = head + stripPlayers().map(([k, n]) => playerBubble(k, n)).join('');
 }
 function follow(k) { followSet(k ? [k] : []); }

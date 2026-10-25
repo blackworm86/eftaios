@@ -25,7 +25,7 @@ const Bot = (() => {
     hard:   { chase: 30, lam: 5, spread: 2, mem: 3.5, smartBluff: true, temp: 0, beta: 0.7, hunt: true,  huntW: 4, roleFromMoves: true,  lw: 3,   dw: 28, camp: 16, pot: 8,   attackAt: 0.8, items: true,  table: true, plan: 3, roleW: 8, spotAt: 0.7, sensorAt: 0.15, atkAt: 3, bluff: true,  think: 4.2, mistake: 0,    decoy: 2, allyCost: 11, humanCal: 0.35 }
   };
 
-  SKILL.nn = SKILL.hard;
+  SKILL.nn = Object.assign({}, SKILL.hard, { think: 2.5 });   // the network needs about a second per decision on a phone, inside the 5 s budget
   const skill = lvl => Object.assign({}, SKILL[lvl] || SKILL.normal, window.__skill && window.__skill[lvl]);   // __skill: tuning hook for benchmarks
 
   /* ---------- the board as a graph (cached per map) ---------- */

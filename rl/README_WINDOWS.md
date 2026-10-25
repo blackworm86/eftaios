@@ -65,7 +65,14 @@ An iteration takes roughly 1-3 minutes on a typical 8-16 core PC. Expect 20-40 i
   players as sparring partners.
 * Rewards: +1 / -1 for the winning / losing side (by the role you end the game with), +0.5 for escaping, +0.2 per Human an Alien kills, -0.3 for killing an Alien by mistake.
 
-## 6. Next steps (I do these when you send a trained network)
+## 6. Trying a trained network in the app
+
+1. Double-click `export_network.bat` (writes `rl\export\eftaios-net-main.json`, about 1 MB).
+2. Copy that file to `nn\net.json` in the repository (the folder next to `index.html`), commit and push it. (Or send it to me.)
+3. Bot level `nn` now plays: the network chooses moves, attacks and decoy noises, while cards and Character powers still follow the Hard rules.
+   In Admin > Bot tests, test 9 is a table of five network bots. In the simulator: `node tools/sim.js out.json --rolemix human:nn,alien:hard --players 6 --no-trace`.
+
+## 7. Next steps (I do these when you send a trained network)
 
 1. A JavaScript player in the app that runs the exported network, with a test that it gives the same decisions as Python.
 2. Measure it against Easy / Normal / Hard in the existing simulator tables.

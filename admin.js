@@ -49,6 +49,7 @@ const Admin = (() => {
     { name: '5. Hard table', who: 'You: random role', ask: 'Play 1 game and tell me how hard it felt (1-5).', look: 'Do the bots feel like players? Any silly move?', seats: [{}, ...Array(5).fill({ bot: 'hard' })] },
     { name: '6. Normal table', who: 'You: random role', ask: 'Play 1 game and rate it 1-5.', look: 'Clearly easier than Hard, clearly harder than Easy?', seats: [{}, ...Array(5).fill({ bot: 'normal' })] },
     { name: '7. Easy table', who: 'You: random role', ask: 'Play 1 game and rate it 1-5.', look: 'A beginner should win most games. Do the mistakes look natural?', seats: [{}, ...Array(5).fill({ bot: 'easy' })] },
+    { name: '9. Network table', who: 'You: random role', ask: 'Optional, needs nn/net.json in the app. Play 1 game and rate it 1-5.', look: 'The five bots are the trained network (moves, attacks, decoys); cards and powers use the Hard rules. Do they hunt together? Do the Humans find the pods?', seats: [{}, ...Array(5).fill({ bot: 'nn' })] },
     { name: '8. Hard table, 8 players', who: 'You: random role', ask: 'Optional.', look: 'Do the Aliens bunch up? Do they avoid killing each other?', seats: [{}, ...Array(7).fill({ bot: 'hard' })] }
   ];
   function botTests() {

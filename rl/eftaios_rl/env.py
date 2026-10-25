@@ -9,7 +9,7 @@ import numpy as np
 from . import engine
 from . import maps as maps_mod
 
-D_DYN = 27   # per-cell dynamic channels, uint8 (see _dyn)
+D_DYN = 29   # per-cell dynamic channels, uint8: 0 me, 1 legal targets, 2 open pods, 3-18 announcement heat, 19-25 per-player traces, 26 my path, 27 walk to a pod, 28 walk from me
 D_STAT = 9   # per-cell static channels: wall, dangerous, secure, H, A, pod1-4
 G_DIM = 96   # global vector
 P_DIM = 40   # critic-only privileged vector
@@ -87,6 +87,9 @@ class Env:
 
     def pod_distance(self, cell):
         """Steps a Human needs from `cell` to the nearest open pod (walls, start sectors and other pods are not walked through)."""
+        return int(self._pod_dist_map()[cell])
+
+    def _pod_dist_map(self):
         key = frozenset(self.g.open_pods)
         d = self._pod_dist_cache.get(key)
         if d is None:
@@ -101,7 +104,7 @@ class Env:
                         d[nb] = d[c] + 1
                         q.append(nb)
             self._pod_dist_cache[key] = d
-        return int(d[cell])
+        return d
 
     def final_rewards(self):
         """Terminal reward per seat: +1 for the side the seat ends on if it won, -1 otherwise."""
@@ -149,6 +152,11 @@ class Env:
         dyn[19:19 + SLOTS] = slot_trace
         for k, (_, pos, _) in enumerate(reversed(s.path[-6:])):
             dyn[26, pos] = max(dyn[26, pos], 0.8 ** k)
+        # distances: a 4-layer graph network sees only 4 steps around a sector, so the walk to the nearest open pod and the walk from me are given
+        pd = self._pod_dist_map()
+        dyn[27] = np.clip(1.0 - pd / 30.0, 0, 1) * (b.kind != "x")
+        for cell, steps in b.reachable(s.pos, 99, s.role, g.open_pods).items():
+            dyn[28, cell] = max(0.0, 1.0 - steps / 20.0)
         glob = np.zeros(G_DIM, np.float32)
         glob[0 if s.role == "human" else 1] = 1
         glob[2], glob[3], glob[4] = float(s.fed), float(s.reborn), g.turn / engine.MAX_TURN

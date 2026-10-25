@@ -30,6 +30,11 @@ If anything crashes it restarts by itself after 30 seconds and resumes from the 
 * **Files** (all in `runs\main\`): `latest.pt` (the network and optimiser), `pool\` (older versions it also plays against), `train.log`, `eval.csv`, `config.json`.
   To start from scratch delete the `runs\main` folder. Delete `config.json` only if you want to change the settings below.
 
+### Starting a new version of the network
+
+When the network's inputs change (as in version 2, which added walking-distance maps) a saved network cannot continue. Rename `runs\main` to `runs\main_v1`
+(it keeps the old network; `python -m eftaios_rl.export_js --run main_v1` exports it) and start `run_training.bat`: it begins a fresh run with the imitation phase.
+
 ## 3. Settings
 
 `runs\main\config.json` is written on the first start. Stop the training, edit it, start again.

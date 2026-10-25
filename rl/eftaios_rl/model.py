@@ -23,6 +23,9 @@ class Net(nn.Module):
         self.phase_emb = nn.Embedding(3, hid)
         self.lins = nn.ModuleList([nn.Linear(hid, hid) for _ in range(layers)])
         self.norms = nn.ModuleList([nn.LayerNorm(hid) for _ in range(layers)])
+        # whole-board attention: every sector looks at every other sector (the graph layers only pass information along the 6 neighbours, one step per layer)
+        self.attn = nn.ModuleList([nn.MultiheadAttention(hid, 4, batch_first=True) for _ in range(2)])
+        self.attn_norm = nn.ModuleList([nn.LayerNorm(hid) for _ in range(2)])
         self.pool = nn.Linear(2 * hid, hid)
         self.move_head = nn.Linear(2 * hid, 1)
         self.decoy_head = nn.Linear(2 * hid, 1)
@@ -37,8 +40,13 @@ class Net(nn.Module):
         g = self.gproj(glob) + self.phase_emb(phase)  # (B, hid)
         h = F.relu(self.inp(x) + g.unsqueeze(1))
         walk = (1.0 - stat[0]).view(1, N, 1)  # row 0 of stat is 'wall'
-        for lin, norm in zip(self.lins, self.norms):
+        wall = (stat[0] > 0).unsqueeze(0).expand(B, -1)  # (B, N) True where there is no sector
+        for k, (lin, norm) in enumerate(zip(self.lins, self.norms)):
             h = h + F.relu(norm(torch.matmul(adj, lin(h)))) * walk
+            if k == self.nlayers // 2 - 1 or k == self.nlayers - 1:  # one look at the whole board halfway and one at the end
+                i = 0 if k < self.nlayers - 1 else 1
+                a, _ = self.attn[i](h, h, h, key_padding_mask=wall, need_weights=False)
+                h = h + self.attn_norm[i](a) * walk
         pooled = (h * walk).sum(1) / walk.sum()
         hmax = (h * walk + (walk - 1) * 1e4).max(1).values
         gemb = F.relu(self.pool(torch.cat([pooled, hmax], 1)))  # (B, hid)

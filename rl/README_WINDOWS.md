@@ -61,7 +61,7 @@ An iteration takes roughly 1-3 minutes on a typical 8-16 core PC. Expect 20-40 i
 * `engine.py` is the game, with no screen: decks, movement, announcements, attacks, conversions, pods, the 40-turn limit and the win rule of the app.
 * `env.py` turns it into decisions. A player sees only what a person at that seat sees: the public announcements, its own role, position, cards. The learner's
   *critic* (used only during training) also sees the truth about the others, which makes learning much faster without letting the player cheat.
-* `model.py` is a graph network over the hex board; `rollout.py` plays games in parallel; `train.py` is PPO self-play with a pool of older versions and rule-based
+* `model.py` is a graph network over the hex board (each sector exchanges information with its 6 neighbours, plus two layers where every sector looks at the whole board); `rollout.py` plays games in parallel; `train.py` is PPO self-play with a pool of older versions and rule-based
   players as sparring partners.
 * Rewards: +1 / -1 for the winning / losing side (by the role you end the game with), +0.5 for escaping, +0.2 per Human an Alien kills, -0.3 for killing an Alien by mistake.
 

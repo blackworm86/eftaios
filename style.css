@@ -1036,3 +1036,14 @@ ul.log li.turnh{padding-top:6px}
 /* v20: the full bubbles sit as close as the compact tiles */
 .mkbar:not(.compact){gap:3px}
 .pb:not(.mini) .psq{width:28px;height:28px}
+
+/* v21: large monitors. The interface was drawn for a phone; from 1600 px the panel, the top bar and the map controls grow 20%
+   so text and buttons keep a comfortable size. The map itself is not scaled: it fits its own area. */
+@media (min-width:1600px){
+  .panel{zoom:1.2}
+  .topbar{zoom:1.15}
+  .setup-card{zoom:1.25}
+  .mkbar{transform:scale(1.2);transform-origin:top left;max-height:calc((100% - 12px) / 1.2)}
+  .zoom{transform:scale(1.2);transform-origin:bottom right}
+  .tlbar{transform:scale(1.15);transform-origin:bottom left;right:calc(60px + 12%)}
+}

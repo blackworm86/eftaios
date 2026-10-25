@@ -248,6 +248,8 @@ Spacing runs on a small scale (6, 10, 14, 20px) with generous separation between
 
 The Table tab uses sub-tabs on phones (Announcements, Players, Pods) and shows all three together on wide screens. The sheet's legend folds behind a Legend button on screens shorter than 760px so the sheet gets the room. On phones shorter than 700px the empty "No items" box is hidden and the panel's spacing tightens so the main action stays in view. Long reference content (rules, map list, map gallery) opens as a full-screen sheet.
 
+On monitors from 1600 px the panel, the top bar, the start cards and the map controls grow 20% (CSS `zoom` on the panel, `transform: scale` on the strip and the zoom buttons); the map is never scaled, it fits its own area.
+
 ## Elevation & Depth
 
 Flat by default. Depth comes from tonal layering (ground, panel, raised) and 1px borders. The only shadow is the standard elevation under dialogs and toasts (offset, soft blur, black). Map glow is reserved for the player's own position ring, which is an SVG state indicator, not decoration.

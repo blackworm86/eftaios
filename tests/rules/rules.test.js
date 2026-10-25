@@ -217,6 +217,22 @@ const log = (text = 'hello') => ({ id: 'l' + Date.now() + Math.random(), turn: 1
     await ok('the player on turn cannot hand it to a stranger', () => assertFails(set(ref(guest, 'rooms/PLAY01/turn'), { n: 1, idx: 1, uid: 'nobody' })));
     await ok('the player on turn can pass it to the next player', () => assertSucceeds(set(ref(guest, 'rooms/PLAY01/turn'), { n: 2, idx: 1, uid: 'host' })));
     await ok('a player not on turn cannot move the turn', () => assertFails(set(ref(guest, 'rooms/PLAY01/turn'), { n: 2, idx: 0, uid: 'guest' })));
+
+    /* friends and invites */
+    const fr = { handle: 'guest', at: 1 };
+    await ok('a player adds a friend to their own list', () => assertSucceeds(set(ref(host, 'friends/host/guest'), { handle: 'guest', at: 1 })));
+    await ok('nobody writes into another player\'s friend list', () => assertFails(set(ref(outsider, 'friends/host/outsider'), { handle: 'outsider', at: 1 })));
+    await ok('nobody reads another player\'s friend list', () => assertFails(get(ref(outsider, 'friends/host'))));
+    await ok('the friend can see they were added (to know it is mutual)', () => assertSucceeds(get(ref(guest, 'friends/host/guest'))));
+    await ok('a request goes into the other player\'s inbox under my own id', () => assertSucceeds(set(ref(host, 'friendReq/guest/host'), { handle: 'host', name: 'Host', at: 1 })));
+    await ok('a request cannot be sent in someone else\'s name', () => assertFails(set(ref(outsider, 'friendReq/guest/host'), { handle: 'host', name: 'Host', at: 1 })));
+    await ok('only the receiver reads their requests', () => assertFails(get(ref(outsider, 'friendReq/guest'))));
+    await ok('the receiver can decline a request', () => assertSucceeds(remove(ref(guest, 'friendReq/guest/host'))));
+    await ok('an invite needs both players to have added each other', () => assertFails(set(ref(host, 'invites/guest/host'), { code: 'PLAY01', name: 'Host', at: 1 })));
+    await ok('the other adds back', () => assertSucceeds(set(ref(guest, 'friends/guest/host'), { handle: 'host', at: 1 })));
+    await ok('friends can invite each other', () => assertSucceeds(set(ref(host, 'invites/guest/host'), { code: 'PLAY01', name: 'Host', at: 1 })));
+    await ok('only the invited player reads the invite', () => assertFails(get(ref(outsider, 'invites/guest'))));
+    await ok('a stranger cannot invite', () => assertFails(set(ref(outsider, 'invites/guest/outsider'), { code: 'PLAY01', name: 'Out', at: 1 })));
   } finally {
     await env.cleanup();
   }

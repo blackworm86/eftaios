@@ -43,6 +43,10 @@ reports/<id>               map/user reports
 adminlog/<id>              append-only audit
 bans/<uid>                 admin-only ban flag
 roomIndex/<code>           code, host, map, status, seats, last activity (admin-readable)
+lobby/<code>               public games that are gathering players (host writes, refreshed every 30 s, anyone signed in reads)
+friends/<me>/<them>        players I added; a friend once they added me back
+friendReq/<them>/<me>      my pending request, readable by them only
+invites/<them>/<me>        my invitation to a game, only between players who added each other
 rooms/<code>/
   created, settings, players, turn, log, hatches, counts
   lease, kicks/<uid>

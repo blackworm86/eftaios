@@ -14,6 +14,7 @@ const check = (ok, label) => { console.log((ok ? 'ok   ' : 'FAIL ') + label); if
 const recFields = [...fs.readFileSync(path.join(__dirname, '..', 'flow.js'), 'utf8').match(/Sync\.recordGame\(key, \{(.*)\}\);/)[1].matchAll(/(?:^|,)\s*(\w+):/g)].map(m => m[1]);
 check(recFields.length > 5 && recFields.every(k => rules.users.$uid.games.$code[k]), 'the game record fields are all in the rules (' + recFields.join(', ') + ')');
 check(has(rules.lobby.$code['.write'], "settings/host').val() === auth.uid") && has(rules.lobby['.read'], 'auth != null'), 'only the host lists a game in the Online lobby; any signed-in player can read the list');
+check(has(rules.friends.$me.$them['.write'], 'auth.uid === $me') && has(rules.friendReq.$to.$from['.write'], 'auth.uid === $from') && has(rules.invites.$to.$from['.write'], "child('friends').child($to).child($from).exists()"), 'friends: a player edits only their own list; an invite needs both to have added each other');
 const member = "child('players').child(auth.uid).exists()";
 check(has(room.log.$id['.write'], member) && has(room.log.$id['.write'], '!data.exists()'), 'only members can add to the public log, and never overwrite an entry');
 check(has(room.log['.write'], '!newData.exists()') && !has(room.log['.write'], member), 'a member cannot wipe the public log');

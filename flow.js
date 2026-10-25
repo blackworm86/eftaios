@@ -65,6 +65,7 @@ function renderFlow() {
   const card = $('#flow-card'); let h = '';
   if (S.stage === 'auth' && window.Sync && Sync.preloadSignIn) Sync.preloadSignIn();   // so the Google window opens on the first tap, even on Safari
   const st = S.stage;
+  if ((!st || st === 'welcome') && Sync.registered && Sync.watchInbox) Sync.watchInbox();
   const ver = document.getElementById('ver'); if (ver) ver.hidden = st !== 'welcome';
   card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
   if (st === 'host') {
@@ -88,11 +89,13 @@ function renderFlow() {
     h = (st === 'admin' && window.Admin) ? Admin.html() : Auth.html();
   } else if (st === 'browse') {
     h = browseHtml();
+  } else if (st === 'friends') {
+    h = friendsHtml();
   } else if (st === 'lobby') {
     h = lobbyHtml();
   } else {
     h = `${hero()}
-      ${Auth.bar()}${T.pendingRoom ? '' : Auth.continueCard()}
+      ${Auth.bar()}${T.pendingRoom ? '' : inviteCards() + Auth.continueCard()}
       ${T.pendingRoom ? `<p class="banner">${t('You are invited to game {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${Sync.registered ? '' : nameField()}
       ${T.pendingRoom
         ? `<div class="wacts"><button class="btn primary big wide" data-act="joinroom">${t('Join game {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button></div>`
@@ -101,8 +104,8 @@ function renderFlow() {
             <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Game code')}" aria-label="${t('Game code')}"><button class="btn${Sync.registered ? '' : ' primary'}" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
             ${Sync.registered ? '' : `<button class="btn wide hostbtn" data-act="hostsetup">${t('Create a game')}<small>${t('Account required')}</small></button>`}
           </div>
-          <button class="btn wide" data-act="browse">${t('Online lobby')}<small>${t('Open games you can join')}</small></button>
           <div class="wgrid">
+            ${Sync.registered ? `<button class="btn" data-act="friends">${t('Friends')}<small>${friendsHint()}</small></button>` : ''}<button class="btn${Sync.registered ? '' : ' span2'}" data-act="browse">${t('Online lobby')}<small>${t('Open games')}</small></button>
             <button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button>
             <button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button>
             ${Sync.registered
@@ -133,6 +136,29 @@ function renderFlow() {
 const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Game not found', started: 'That game has already started', closed: 'The host closed this game.', full: 'This game is full (8 players).' };
 function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="status">${t(FLOW_MSG[Sync.status])}${Sync.status === 'error' && Sync.lastError ? ` <code>${esc(Sync.lastError)}</code>` : ''}</p>` : ''; }
 
+/* friends: invitations on the home screen, the friends list, adding by handle, inviting from the game page */
+const inbox = () => Sync.inbox || { invites: [], requests: 0 };
+const friendsHint = () => { const n = inbox().requests, i = inbox().invites.length; return n || i ? [i ? t('{n} invitations', { n: i }) : '', n ? t('{n} requests', { n }) : ''].filter(Boolean).join(' · ') : t('Invite and play together'); };
+function inviteCards() {
+  return inbox().invites.slice(0, 2).map(i => `<div class="livecard"><div class="top"><b>${t('{n} invites you to a game', { n: esc(i.name) })}</b></div><small>${esc(i.map || '')} · ${t('Game {c}', { c: esc(i.code) })}</small><div class="row two"><button class="btn primary" data-act="joininvite" data-c="${esc(i.code)}" data-f="${esc(i.from)}">${t('Join')}</button><button class="btn" data-act="skipinvite" data-f="${esc(i.from)}">${t('Not now')}</button></div></div>`).join('');
+}
+const FRIEND_MSG = { bad: 'Handles have 3–16 letters, numbers or _.', nouser: 'Nobody has that handle.', self: 'That is you.', guest: 'Sign in to add friends.', sent: 'Request sent.', friends: 'You are friends now.' };
+function friendsHtml() {
+  if (T.friendList === undefined && !T.friendLoading) { T.friendLoading = true; Sync.friends().then(l => { T.friendList = l; }).catch(() => { T.friendList = { friends: [], requests: [] }; }).then(() => { T.friendLoading = false; if (S.stage === 'friends') renderFlow(); }); }
+  const L = T.friendList;
+  const body = !L ? `<p class="dim">${t('Loading…')}</p>` : `
+    ${L.requests.length ? `<h3>${t('Requests')}</h3><ul class="plist glist">${L.requests.map(r => `<li class="grow"><span class="pname">@${esc(r.handle)}<small>${esc(r.name || '')}</small></span><button class="btn primary" data-act="friendok" data-u="${esc(r.uid)}" data-h="${esc(r.handle)}">${t('Accept')}</button><button class="x" data-act="friendno" data-u="${esc(r.uid)}" aria-label="${t('Decline')}">${ico('close', 16)}</button></li>`).join('')}</ul>` : ''}
+    ${L.requests.length ? `<h3>${t('Friends')}</h3>` : ''}${L.friends.length ? `<ul class="plist glist">${L.friends.map(f => `<li class="grow"><span class="pname">@${esc(f.handle)}<small>${f.mutual ? t('Friends') : t('Waiting for them to accept')}</small></span><button class="x" data-act="friendrm" data-u="${esc(f.uid)}" aria-label="${t('Remove')}">${ico('close', 16)}</button></li>`).join('')}</ul>` : `<p class="dim hintline">${t('No friends yet. Add one by their handle.')}</p>`}`;
+  return `${fhead(t('Friends'))}
+    <div class="inline joinrow"><input id="friend-handle" type="text" maxlength="17" autocapitalize="off" autocomplete="off" placeholder="${t('Friend handle')}" aria-label="${t('Friend handle')}"><button class="btn primary" data-act="friendadd">${t('Add')}</button></div>
+    ${T.friendMsg ? `<p class="dim hintline" role="status">${t(T.friendMsg)}</p>` : ''}${body}`;
+}
+/* host, in the game page: pick friends to invite */
+async function inviteDlg() {
+  const L = await Sync.friends(), ok = L.friends.filter(f => f.mutual), sent = T.invited || (T.invited = {});
+  dlg.innerHTML = `<h2>${t('Invite a friend')}</h2>${ok.length ? `<ul class="plist">${ok.map(f => `<li class="grow"><span class="pname">@${esc(f.handle)}</span><button class="btn${sent[f.uid] ? '' : ' primary'}" data-act="sendinvite" data-u="${esc(f.uid)}" ${sent[f.uid] ? 'disabled' : ''}>${sent[f.uid] ? t('Invited') : t('Invite')}</button></li>`).join('')}</ul>` : `<p class="dim">${t('No friends yet. Add one by their handle.')}</p>`}<div class="row"><button class="btn" id="d-no">${t('Close')}</button></div>`;
+  if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
+}
 /* the Online lobby: public games that are gathering players right now */
 function browseHtml() {
   if (T.pubList === undefined && !T.pubLoading) { T.pubLoading = true; Sync.browse().then(l => { T.pubList = l; }).catch(() => { T.pubList = []; }).then(() => { T.pubLoading = false; if (S.stage === 'browse') renderFlow(); }); }
@@ -155,6 +181,7 @@ function lobbyHtml() {
     <div class="steps"><b class="on">1 · ${t('Gathering')}</b><b>2 · ${t('Playing')}</b><b>3 · ${t('Result')}</b></div>
     <div class="roomcard"><div><small>${t('Game code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
       <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>
+    ${host && Sync.registered ? `<button class="btn wide" data-act="invitefriend">${t('Invite a friend')}</button>` : ''}
     <div class="setcard">${host ? `<input type="hidden" id="f-map" value="${esc(map.id)}"><button type="button" class="mapcard mini" data-act="mapgallery" aria-label="${t('Map')}: ${esc(map.name)}. ${t('Tap to choose another map')}"><span class="prevbox">${mapPreview(map)}</span></button>` : `<span class="prevbox">${mapPreview(map)}</span>`}
       ${kv}${host ? `<button class="btn edit" data-act="lobbyopts" aria-label="${t('Game options')}">${ico('pencil', 20)}</button>` : ''}</div>
     <h3>${t('Turn order')} ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>${players.length < 8 ? `<button class="mini-link" data-act="addlobbybot">+ ${t('Add bot')}</button>` : ''}` : ''}</h3>
@@ -277,6 +304,15 @@ Object.assign(actions, {
     const ok = await Sync.create({ map: S.mapId, mode: S.mode, customMap: patch.customMap, pub: S.vis === 'public', max: S.max }, { name });
     if (!ok) renderFlow();
   },
+  friends() { S.stage = 'friends'; T.friendList = undefined; T.friendMsg = ''; renderFlow(); },
+  async friendadd() { const r = await Sync.addFriend(($('#friend-handle') || {}).value); T.friendMsg = FRIEND_MSG[r] || ''; T.friendList = undefined; renderFlow(); },
+  async friendok(b) { await Sync.acceptFriend(b.dataset.u, b.dataset.h); T.friendList = undefined; renderFlow(); },
+  async friendno(b) { await Sync.declineFriend(b.dataset.u); T.friendList = undefined; renderFlow(); },
+  friendrm(b) { confirmDlg(t('Remove this friend?'), t('They stay out of your list until you add each other again.'), async () => { await Sync.removeFriend(b.dataset.u); T.friendList = undefined; renderFlow(); }); },
+  invitefriend() { inviteDlg(); },
+  async sendinvite(b) { const st = Sync.settings || {}; await Sync.invite(b.dataset.u, Sync.code, tableMapOf(st).name).catch(() => {}); (T.invited = T.invited || {})[b.dataset.u] = 1; inviteDlg(); },
+  async joininvite(b) { await Sync.dismissInvite(b.dataset.f); const ok = await Sync.join(b.dataset.c, { name: readName() }); if (!ok) renderFlow(); },
+  skipinvite(b) { Sync.dismissInvite(b.dataset.f); },
   browse() { S.stage = 'browse'; T.pubList = undefined; renderFlow(); },
   async joinpub(b) { const ok = await Sync.join(b.dataset.c, { name: readName() }); if (!ok) { T.pubList = undefined; renderFlow(); } },
   async joinroom() {
@@ -483,6 +519,7 @@ function applyJournal(jr) {
 }
 
 Sync.on({
+  inbox() { if (!S.stage || S.stage === 'welcome' || S.stage === 'friends') renderFlow(); },
   leaving() { const st = Sync.settings; if (st && !(st.result && st.result.reason === 'closed')) { flushSeat(); flushJournal(); } },   // a closed or deleted table takes no more saves
   status(s) {
     if ((S.stage === 'lobby' || S.stage === 'game') && (s === 'no-room' || s === 'started' || s === 'closed' || s === 'full')) { toast(t(FLOW_MSG[s])); Sync.leave(true); resetToWelcome(); return; }

@@ -110,6 +110,46 @@
         }
       }
     },
+    "friends": {
+      "$me": {
+        ".read": "auth != null && auth.uid === $me",
+        "$them": {
+          ".read": "auth != null && (auth.uid === $me || auth.uid === $them)",
+          ".write": "auth != null && auth.uid === $me && root.child('bans').child(auth.uid).val() !== true && root.child('users').child(auth.uid).child('profile/handle').exists()",
+          ".validate": "newData.hasChildren(['handle', 'at'])",
+          "handle": { ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{3,16}$/)" },
+          "at": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+    "friendReq": {
+      "$to": {
+        ".read": "auth != null && auth.uid === $to",
+        "$from": {
+          ".write": "auth != null && (auth.uid === $to || (auth.uid === $from && root.child('bans').child(auth.uid).val() !== true && root.child('users').child(auth.uid).child('profile/handle').exists()))",
+          ".validate": "newData.hasChildren(['handle', 'name', 'at'])",
+          "handle": { ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{3,16}$/)" },
+          "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "at": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+    "invites": {
+      "$to": {
+        ".read": "auth != null && auth.uid === $to",
+        "$from": {
+          ".write": "auth != null && (auth.uid === $to || (auth.uid === $from && root.child('friends').child($from).child($to).exists() && root.child('friends').child($to).child($from).exists() && root.child('bans').child(auth.uid).val() !== true))",
+          ".validate": "newData.hasChildren(['code', 'name', 'at'])",
+          "code": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z0-9]{4,8}$/)" },
+          "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "map": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "at": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
     "lobby": {
       ".read": "auth != null",
       "$code": {

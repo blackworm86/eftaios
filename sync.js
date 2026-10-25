@@ -197,6 +197,7 @@
       } catch (_) { /* room already gone */ }
     }
     await fb.remove(at(`users/${uid}`)).catch(() => {});
+    await fb.remove(at(`friends/${uid}`)).catch(() => {}); await fb.remove(at(`friendReq/${uid}`)).catch(() => {}); await fb.remove(at(`invites/${uid}`)).catch(() => {});
     if (prof && prof.handle) await fb.remove(at('handles/' + prof.handle)).catch(() => {});
     const au = await fbAuth(); await au.deleteUser(auth.currentUser);
     try { localStorage.removeItem('eftaios.account'); } catch (_) { /* noop */ }
@@ -338,6 +339,45 @@
   Sync.writeRoomIndex = patch => {
     if (!Sync.code || !db) return;
     fb.update(at('roomIndex/' + Sync.code), Object.assign({ host: Sync.uid, at: Date.now() }, patch)).catch(() => {});
+  };
+
+  /* ---------------- friends and invites ----------------
+     friends/<me>/<them>   I added them (they are a friend once they have added me back)
+     friendReq/<them>/<me> my request, waiting in their inbox until they accept or decline
+     invites/<them>/<me>   my invitation to a game, only between two people who added each other */
+  const myHandle = () => (Sync.profile && Sync.profile.handle) || '';
+  const myShown = () => (Sync.profile && Sync.profile.name) || myHandle();
+  Sync.addFriend = async raw => {
+    await ensure(); if (!Sync.registered) return 'guest';
+    const h = String(raw || '').trim().toLowerCase().replace(/^@/, '');
+    if (!/^[a-z0-9_]{3,16}$/.test(h)) return 'bad';
+    const uid = (await fb.get(at('handles/' + h))).val();
+    if (!uid) return 'nouser'; if (uid === Sync.uid) return 'self';
+    await fb.set(at(`friends/${Sync.uid}/${uid}`), { handle: h, at: Date.now() });
+    const back = (await fb.get(at(`friends/${uid}/${Sync.uid}`))).exists();
+    if (!back) await fb.set(at(`friendReq/${uid}/${Sync.uid}`), { handle: myHandle(), name: String(myShown()).slice(0, 20), at: Date.now() });
+    else await fb.remove(at(`friendReq/${Sync.uid}/${uid}`)).catch(() => {});
+    return back ? 'friends' : 'sent';
+  };
+  Sync.acceptFriend = async (uid, handle) => { await ensure(); await fb.set(at(`friends/${Sync.uid}/${uid}`), { handle, at: Date.now() }); await fb.remove(at(`friendReq/${Sync.uid}/${uid}`)).catch(() => {}); };
+  Sync.declineFriend = async uid => { await ensure(); await fb.remove(at(`friendReq/${Sync.uid}/${uid}`)).catch(() => {}); };
+  Sync.removeFriend = async uid => { await ensure(); await fb.remove(at(`friends/${Sync.uid}/${uid}`)); await fb.remove(at(`friendReq/${uid}/${Sync.uid}`)).catch(() => {}); await fb.remove(at(`invites/${uid}/${Sync.uid}`)).catch(() => {}); };
+  /* my friends (mutual or still waiting for them) and the requests waiting for me */
+  Sync.friends = async () => {
+    await ensure(); if (!Sync.registered) return { friends: [], requests: [] };
+    const mine = (await fb.get(at(`friends/${Sync.uid}`))).val() || {}, reqs = (await fb.get(at(`friendReq/${Sync.uid}`))).val() || {};
+    const friends = await Promise.all(Object.entries(mine).map(async ([uid, f]) => ({ uid, handle: f.handle, mutual: await fb.get(at(`friends/${uid}/${Sync.uid}`)).then(x => x.exists()).catch(() => false) })));
+    return { friends: friends.sort((a, b) => b.mutual - a.mutual || a.handle.localeCompare(b.handle)), requests: Object.entries(reqs).map(([uid, r]) => ({ uid, handle: r.handle, name: r.name })).filter(r => !mine[r.uid] || true) };
+  };
+  Sync.invite = async (uid, code, map) => { await ensure(); await fb.set(at(`invites/${uid}/${Sync.uid}`), { code, name: String(myShown()).slice(0, 20), map: String(map || '').slice(0, 40), at: Date.now() }); };
+  Sync.dismissInvite = async from => { await ensure(); await fb.remove(at(`invites/${Sync.uid}/${from}`)).catch(() => {}); };
+  /* the inbox: invitations and friend requests waiting for me, pushed to the screen as they arrive */
+  let inboxOn = false;
+  Sync.watchInbox = async () => {
+    if (inboxOn) return; await ensure(); if (!Sync.registered || !Sync.uid || !fb.onValue) return; inboxOn = true;
+    Sync.inbox = { invites: [], requests: 0 };
+    fb.onValue(at(`invites/${Sync.uid}`), s => { const v = s.val() || {}; Sync.inbox.invites = Object.entries(v).map(([from, i]) => Object.assign({ from }, i)).filter(i => i.at > Date.now() - 30 * 60000).sort((a, b) => b.at - a.at); Sync.h.inbox && Sync.h.inbox(); });
+    fb.onValue(at(`friendReq/${Sync.uid}`), s => { Sync.inbox.requests = Object.keys(s.val() || {}).length; Sync.h.inbox && Sync.h.inbox(); });
   };
 
   /* ---------------- maps ---------------- */

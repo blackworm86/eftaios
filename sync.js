@@ -314,7 +314,7 @@
       const keep = Object.entries(all).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 50);
       await Promise.all(Object.keys(all).filter(k => !keep.some(([c]) => c === k)).map(k => fb.remove(at(`users/${Sync.uid}/games/${k}`))));
       await fb.runTransaction(at(`users/${Sync.uid}/stats`), cur => {
-        const s = cur.val() || {}, win = g.result === 'win', add = (k, n) => { if (n) s[k] = (s[k] || 0) + n; };
+        const s = cur || {}, win = g.result === 'win', add = (k, n) => { if (n) s[k] = (s[k] || 0) + n; };
         const key = v => String(v || '?').replace(/[.$#\[\]\/]/g, '_').slice(0, 40);   // a database key cannot hold . $ # [ ] /
         if (g.bots) { add('botGames', 1); add('botWins', win ? 1 : 0); return s; }   // games with a bot at the table are counted apart
         add('games', 1); add('wins', win ? 1 : 0); add('losses', win ? 0 : 1);

@@ -19,6 +19,7 @@ window.__FAKE_FB = async () => {
     set: async (r, v) => write(r.path, v),
     update: async (r, o) => locked(() => { const t = load(); for (const k in o) setAt(t, r.path + '/' + k, o[k]); saveT(t); }),
     remove: async r => write(r.path, null),
+    runTransaction: async (r, fn) => { const cur = getAt(load(), r.path); await write(r.path, fn(cur === undefined ? null : cur)); },   // like the modular SDK: the plain value in, the new value out
     onValue(r, cb) {
       if (r.path === '.info/connected') { setTimeout(() => cb(snap(true)), 0); return () => {}; }
       let last = JSON.stringify(getAt(load(), r.path)); const l = { check: t => { const j = JSON.stringify(getAt(t, r.path)); if (j !== last) { last = j; cb(snap(getAt(t, r.path))); } } };

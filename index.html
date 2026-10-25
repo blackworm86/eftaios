@@ -20,15 +20,6 @@
 
 <!-- APP -->
 <div id="app" hidden>
-  <header class="topbar">
-    <div class="brand" aria-hidden="true">EFTAIOS</div>
-    <div class="stat" aria-live="polite"><small data-i18n="Turn">Turn</small><b id="hd-turn">1</b><i>/40</i></div>
-    <div id="hd-role" class="chip"></div>
-    <div class="pos stat"><small data-i18n="Sector">Sector</small><b id="hd-pos">—</b></div>
-    <button id="hide-btn" class="icon-btn" data-act="hide" data-i18n-aria="Hide screen" aria-label="Hide screen">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><path d="M4 4l16 16"/></svg>
-    </button>
-  </header>
   <div id="turnbar" class="turnbar" role="status" hidden></div>
 
   <div id="layout">
@@ -46,8 +37,10 @@
         <button data-act="zout" data-i18n-aria="Zoom out" aria-label="Zoom out" class="zb"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
         <button data-act="fit" data-i18n-aria="Fit map to screen" aria-label="Fit map to screen"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         <button data-act="focus" data-i18n-aria="Center on my position" aria-label="Center on my position"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
-        <button data-act="routes" data-i18n-aria="Show the routes" aria-label="Show the routes" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 17c5-1 3-9 9-10"/><path d="M13.5 5.5L16.5 7l-1.6 2.8"/></svg></button>
-        <button data-act="annot" data-i18n-aria="Stamps and drawings" aria-label="Stamps and drawings" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M9 11h6M9 15h4"/></svg></button>
+                <button data-act="annot" data-i18n-aria="Stamps and drawings" aria-label="Stamps and drawings" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M9 11h6M9 15h4"/></svg></button>
+        <button id="hide-btn"   data-act="hide" data-i18n-aria="Hide screen" aria-label="Hide screen">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><path d="M4 4l16 16"/></svg>
+    </button>
       </div>
     </section>
 

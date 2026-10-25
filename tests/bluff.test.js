@@ -23,7 +23,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  await p.click('#mkbar [data-act=pfocus][data-k="n:zoe"]');
  assert(await p.evaluate(()=>!document.querySelector('#followbar').hidden&&document.querySelectorAll('#zone .fzone').length>1),'following a player shows a banner and where they could be now');
  await p.click('[data-act=unfollow]');assert(await p.evaluate(()=>document.querySelector('#followbar').hidden&&!T.focus),'Stop ends follow mode');
- await p.click('.tabs [data-tab=table]');
+ await p.click('.tabs [data-tab=table]');await p.click('[data-act=tsec][data-k=sheet]');
  assert(await p.locator('.sheet tbody tr').count()===2&&await p.locator('.sheet .c.bluff').count()===1,'the sheet has a row per player and shows the bluff');
  await p.click('.sheet [data-act=follow][data-k="n:zoe"]');assert(await p.evaluate(()=>T.focus==='n:zoe'&&S.tab==='play'),'tapping a name in the sheet follows that player');
  await p.evaluate(()=>follow(null));

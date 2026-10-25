@@ -9,7 +9,7 @@ const STORE = 'eftaios.v1';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 /* one icon family: 24px grid, 2px round strokes */
-const ICONS = { close: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7', up: 'M6 15l6-6 6 6', left: 'M15 5l-7 7 7 7', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z', collapsel: 'M5 5v14M19 12H9M13 8l-4 4 4 4', expandr: 'M19 5v14M5 12h10M11 8l4 4-4 4', flag: 'M6 21V4M6 5h12l-2.5 4L18 13H6', down: 'M6 9l6 6 6-6', next: 'M9 5l7 7-7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', pencil: 'M4 20l1-5L16 4l4 4L9 19zM14 6l4 4', turn: 'M8 5l10 7-10 7z', cross: 'M7 7l10 10M17 7L7 17', bucket: 'M5 12l7-7 7 7-6.5 6.5a2.1 2.1 0 01-3 0zM5 12h14M20 15c0 0-1.8 2.2-1.8 3.4a1.8 1.8 0 003.6 0C21.8 17.2 20 15 20 15z', picker: 'M14.5 4.5l5 5-3 3-5-5zM13 8L4.5 16.5V19.5h3L16 11', expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', hand: 'M8 13V6.5a1.5 1.5 0 013 0V11M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6.5a1.5 1.5 0 013 0V14c0 4-2 7-6 7-3 0-4.5-2-6-5l-1.5-3a1.5 1.5 0 012.5-1.5L8 14' };
+const ICONS = { close: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7', up: 'M6 15l6-6 6 6', left: 'M15 5l-7 7 7 7', route: 'M3 18a2 2 0 104 0 2 2 0 10-4 0M7 17c5-1 3-8 9-9M13 5l4 3-3 4', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z', collapsel: 'M5 5v14M19 12H9M13 8l-4 4 4 4', expandr: 'M19 5v14M5 12h10M11 8l4 4-4 4', flag: 'M6 21V4M6 5h12l-2.5 4L18 13H6', down: 'M6 9l6 6 6-6', next: 'M9 5l7 7-7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', pencil: 'M4 20l1-5L16 4l4 4L9 19zM14 6l4 4', turn: 'M8 5l10 7-10 7z', cross: 'M7 7l10 10M17 7L7 17', bucket: 'M5 12l7-7 7 7-6.5 6.5a2.1 2.1 0 01-3 0zM5 12h14M20 15c0 0-1.8 2.2-1.8 3.4a1.8 1.8 0 003.6 0C21.8 17.2 20 15 20 15z', picker: 'M14.5 4.5l5 5-3 3-5-5zM13 8L4.5 16.5V19.5h3L16 11', expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', hand: 'M8 13V6.5a1.5 1.5 0 013 0V11M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6.5a1.5 1.5 0 013 0V14c0 4-2 7-6 7-3 0-4.5-2-6-5l-1.5-3a1.5 1.5 0 012.5-1.5L8 14' };
 const ico = (n, s = 20) => `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="${n === 'turn' ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 const colL = c => String.fromCharCode(65 + c);
 const cid = (c, r) => colL(c) + String(r + 1).padStart(2, '0');
@@ -209,10 +209,16 @@ const hexSvg = kind => `<svg viewBox="-55 -50 110 100" width="50" height="46" ar
 const hexPair = (no, yes, noLabel, yesLabel) => `<div class="hexpair">${no ? `<button class="hexbtn" data-act="${no}" aria-label="${esc(noLabel)}" title="${esc(noLabel)}">${hexSvg('no')}</button>` : ''}<button class="hexbtn" data-act="${yes}" aria-label="${esc(yesLabel)}" title="${esc(yesLabel)}">${hexSvg('yes')}</button></div>`;
 const cmdChip = (icon, text) => `<div class="cmdchip">${icon || ''}<span>${text}</span></div>`;
 /* what the map offers right now, next to the sector it acts on; the panel only explains it */
+/* what the turn came to (the announcement, an item drawn, who was hit) next to my sector, with the tick that ends the turn */
+function doneCallout(r) {
+  const lines = [r.sub, r.extra].concat(r.report || []).filter(Boolean), last = !inRoom() && S.turn >= MAX_TURN;
+  return `<div class="callout">${r.icon ? gico(r.icon, 34) : ''}<div class="ct"><b>${esc(r.say)}</b>${lines.map(l => `<small>${esc(l)}</small>`).join('')}</div>${hexPair('', 'next', '', t(last ? 'Finish game' : 'End turn'))}</div>`;
+}
 function mapCmd() {
   if (T.pick && T.pick.sel) return { at: T.pick.sel, key: 'pick:' + T.pick.sel, html: cmdChip(T.pick.icon, esc(T.pick.sel)) + hexPair('pickno', 'pickyes', t('Change sector'), t('Confirm')) };
   if (T.pick) return null;
   if (T.sel && canMoveNow()) return { at: T.sel, key: 'move', html: hexPair('mpno', 'mpyes', t('Change'), t('Confirm move')) };
+  if (digital() && S.phase === 'resolve' && S.res && S.res.stage === 'done' && myTurn() && !S.over && !gameOver()) return { at: S.pos, key: 'done:' + S.turn + '|' + S.res.say + '|' + (S.res.extra || '') + (S.res.report || []).join(), html: doneCallout(S.res) };
   const opts = typeof turnOptions === 'function' ? turnOptions() : null;
   if (!opts || !opts.length) return null;
   const o = curOpt(opts), sole = o && !T.opt;   // a lone option is already chosen: cross = undo the move, if allowed
@@ -236,7 +242,7 @@ function paintMoveBtns() {
   const st = $('#stage'); if (!st || !T.map) return;
   let box = $('#movepick');
   if (!box) { box = document.createElement('div'); box.id = 'movepick'; box.className = 'movepick'; box.hidden = true; st.appendChild(box); }
-  const c = mapCmd(); box.hidden = !c; if (!c) return;
+  const c = mapCmd(); box.hidden = !c; if (!c) { box.dataset.k = ''; box.textContent = ''; return; }
   const key = LANG + '|' + c.key; if (box.dataset.k !== key) { box.dataset.k = key; box.innerHTML = c.html; }
   const p = parseId(c.at), h = hexPos(T.map, p[0], p[1]), top = view.y + (h.y - HEX) * view.k;
   const below = top < box.offsetHeight + 10;   // no room above: under the sector
@@ -360,12 +366,6 @@ function endFacts(k) {
 }
 const factOf = k => { if (k === 'me') return {}; const f = publicFacts().get(k) || {}, e = endFacts(k); return e ? Object.assign({}, f, e) : f; };
 const suspicion = key => (key !== 'me' && (factOf(key).role || (S.sus && S.sus[key]))) || '';
-/* a little tag next to a player's name: A / H when the table knows the faction, with the Character when it was shown */
-function roleTag(k) {
-  const f = factOf(k); if (!f.role) return '';
-  const why = f.role === 'alien' ? t('Alien: the table has seen it') : t('Human: the table has seen it');
-  return `<i class="rb ${f.role}" title="${esc(why)}">${f.role === 'alien' ? t('A') : t('H')}</i>${f.char && typeof charIcon === 'function' ? charIcon(f.char, 13) : ''}`;
-}
 const borderOf = key => key === 'me' ? BORDER.me : BORDER[suspicion(key)] || BORDER[''];
 /* one marker body (outline + fill + border) at the origin of `g`: a rounded hexagon */
 function markBody(g, key, r, o = {}) {
@@ -874,6 +874,11 @@ function charGlyph(ch, size = 18) {
   }
   return `<svg class="glyph" viewBox="${GLYPH_BOX.get(n)}" width="${size}" height="${size}" aria-hidden="true">${head}${paths}</g></svg>`;
 }
+/* a player as a small bubble (colour square, ? or Character, faction outline): the same sign in the log, the sheet and the filters */
+function miniBubble(k) {
+  const f = factOf(k), known = k !== 'me' && !!f.role, ch = k === 'me' ? (S.reborn ? '' : S.char) : f.char;
+  return `<span class="mb${known ? ' known' : ''}" style="--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}">${ch && CHAR_ICON[ch] ? charGlyph(ch, 14) : k === 'me' ? '' : '?'}</span>`;
+}
 /* the last thing a player did, as the game's icon, and the turn */
 function lastAct(k) {
   const e = S.log.find(x => playerKey(x) === k && ['noise', 'silence', 'attack', 'spot', 'item', 'hatch', 'reveal', 'out'].includes(x.kind)); if (!e) return '';
@@ -881,13 +886,27 @@ function lastAct(k) {
   return ic ? `<span class="pa" title="${esc(entryText(e))}">${ic}<i>${esc(e.turn)}</i></span>` : '';
 }
 const pCompact = () => { if (T.pcompact === undefined) { try { T.pcompact = localStorage.getItem('eftaios.pcompact') === '1'; } catch (_) { T.pcompact = false; } } return T.pcompact; };
+/* the player whose turn it is, as a bubble key */
+function curKey() {
+  const u = S.hot ? (window.Hot && Hot.curId && Hot.curId()) : T.turnState && T.turnState.uid;
+  return !u || gameOver() ? '' : u === myId() ? 'me' : 'u:' + u;
+}
+/* the players in the strip, in turn order, me in my own seat */
+function stripPlayers() {
+  const ps = knownPlayers(), ord = tableOrder(), me = [['me', t('Me')]];
+  if (!S.role || ord.indexOf(myId()) < 0) return me.concat(ps);
+  const byKey = new Map(ps), out = [];
+  ord.forEach(u => { if (u === myId()) out.push(me[0]); else if (byKey.has('u:' + u)) out.push(['u:' + u, byKey.get('u:' + u)]); });
+  ps.forEach(([k, n]) => { if (!out.some(o => o[0] === k)) out.push([k, n]); });
+  return out;
+}
 /* one player in the strip: outline = faction (thick: everybody knows it; thin: your guess), the square shows ? or the
    Character, then the last action and the cards. Tapping the square guesses the faction (full view only), the rest picks the player for the map. */
 function playerBubble(k, n) {
   const f = factOf(k), known = k !== 'me' && !!f.role, guess = !known && k !== 'me' && !!(S.sus && S.sus[k]), picked = (T.focusSet || []).includes(k), any = (T.focusSet || []).length;
   const ch = k === 'me' ? (S.reborn ? '' : S.char) : f.char, sq = ch && CHAR_ICON[ch] ? charGlyph(ch, pCompact() ? 20 : 18) : k === 'me' ? '' : '?';
   const cn = digital() ? (cardCounts()[k] || {}).down || 0 : null, out = outMark(k), act = out && !/conv/.test(out) ? `<span class="pa">${out}</span>` : lastAct(k);   // out of the game: that is the status
-  const cls = `pb${known ? ' known' : guess ? ' guess' : ''}${picked ? ' picked' : any ? ' off' : ''}${out ? ' isout' : ''}`, st = `--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}`;
+  const cls = `pb${known ? ' known' : guess ? ' guess' : ''}${picked ? ' picked' : any ? ' off' : ''}${out ? ' isout' : ''}${k === curKey() ? ' cur' : ''}`, st = `--c:${pal(k)[0]};--t:${pal(k)[1]};--b:${borderOf(k)}`;
   const why = known ? ' · ' + t(f.role === 'alien' ? 'Alien: the table has seen it' : 'Human: the table has seen it') : '', label = esc(n) + esc(why) + (out ? ' · ' + t(/esc/.test(out) ? 'escaped' : /conv/.test(out) ? 'Killed as a Human: now an Alien' : 'eliminated') : '');
   const tick = picked ? `<span class="ptick">${ico('check', 11)}</span>` : '';
   const cards = cn === null ? '' : `<span class="pcd" title="${esc(t('{n} cards face down', { n: cn }))}"><i></i>${cn}</span>`;
@@ -915,17 +934,17 @@ function renderMkBar() {
   if (!ps.length && !manual) { bar.hidden = true; return; }
   bar.hidden = false; bar.classList.toggle('compact', !T.markMode && pCompact()); bar.classList.toggle('marking', !!T.markMode);
   const turns = `<button class="mkt" data-act="mkall" aria-pressed="${!!T.rng}" aria-label="${t('Turn slider')}"><b>${T.rng ? (T.rng[0] === T.rng[1] ? 'T' + T.rng[0] : T.rng[0] + '–' + T.rng[1]) : mkN() || t('All')}</b><span>${T.rng ? t('turns') : mkN() === 1 ? t('turn') : t('turns')}</span></button>`;
-  const mark = manual ? `<button class="mkt" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}"><b>${ico('pencil', 18)}</b><span>${t('mark')}</span></button>` : '';
+  const mark = manual ? `<button class="mkh" data-act="markmode" aria-pressed="${!!T.markMode}" aria-label="${t('Record what the other players declare')}">${ico('pencil', 20)}</button>` : '';
   if (T.markMode) {
     bar.innerHTML = turns + mark + ps.map(([k, n]) => `<button data-act="markwho" data-k="${esc(k)}" aria-pressed="${T.markKey === k}" aria-label="${esc(n)}" title="${esc(n)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`).join('') +
       (!Sync.code && !S.hot && ps.length < 7 ? `<button class="mkt" data-act="addplayer" aria-label="${t('Add player')}"><b>+</b></button>` : '');
     return;
   }
-  const any = (T.focusSet || []).length;
-  const head = `<div class="mkhead">${turns}${mark}<button class="mkh all" data-act="pshowall" aria-pressed="${!any}" ${any ? '' : 'disabled'} aria-label="${t('Show all')}">${ico('eye', 15)}${pCompact() ? '' : `<span>${t('Show all')}</span>`}</button><button class="mkh" data-act="pcompact" aria-pressed="${pCompact()}" aria-label="${t(pCompact() ? 'Expand the players' : 'Compress the players')}">${ico(pCompact() ? 'expandr' : 'collapsel', 15)}</button></div>`;
-  bar.innerHTML = head + [['me', t('Me')]].concat(ps).map(([k, n]) => playerBubble(k, n)).join('');
+  const nT = T.rng ? T.rng[1] - T.rng[0] + 1 : (mkN() || Math.max(1, S.turn));
+  const turnsBtn = `<button class="mkh" data-act="mkall" aria-pressed="${!!T.rng}" aria-label="${t('Turn slider')}: ${nT}"><b>${nT}</b></button>`;
+  const head = `<div class="mkhead">${turnsBtn}${mark}<button class="mkh" data-act="routes" aria-pressed="${!!S.routesOn}" aria-label="${t('Show the routes')}">${ico('route', 20)}</button><button class="mkh" data-act="pshowall" aria-pressed="${!(T.focusSet || []).length}" aria-label="${t('Show all')}">${ico('eye', 20)}</button><button class="mkh" data-act="pcompact" aria-pressed="${pCompact()}" aria-label="${t(pCompact() ? 'Expand the players' : 'Compress the players')}">${ico(pCompact() ? 'expandr' : 'collapsel', 20)}</button></div>`;
+  bar.innerHTML = head + stripPlayers().map(([k, n]) => playerBubble(k, n)).join('');
 }
-/* follow one player (or only my route): grey out the rest and frame what matters */
 function follow(k) { followSet(k ? [k] : []); }
 /* the players picked on the bar: one player shows only them; several show exactly those; none shows everybody */
 function followSet(keys) {
@@ -1283,7 +1302,12 @@ const actions = {
   ovclose() { const o = $('#overlay'); if (o) o.remove(); },
   revealview(b) { T.showAnn = b.dataset.v === 'ann'; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); paintOverlay(); },
   routes() { S.routesOn = !S.routesOn; save(); paintOverlay(); const b = document.querySelector('[data-act=routes]'); if (b) b.setAttribute('aria-pressed', !!S.routesOn); toast(t(S.routesOn ? 'Routes shown' : 'Routes hidden')); },
-  mkall() { T.rng = T.rng ? null : [1, Math.max(1, S.turn)]; T.rngMax = S.turn; stopPlay(); render(); paintOverlay(); },
+  /* opening the slider shows the span you prefer; closing it keeps the span you left as the number of turns shown on the map */
+  mkall() {
+    if (T.rng) { const n = T.rng[1] - T.rng[0] + 1; S.mkN = n >= S.turn ? 0 : n; T.rng = null; save(); }
+    else { const n = mkN() || Math.max(1, S.turn); T.rng = [Math.max(1, S.turn - n + 1), Math.max(1, S.turn)]; }
+    T.rngMax = S.turn; stopPlay(); render(); paintOverlay();
+  },
   tlprev() { tlShift(-1); }, tlnext() { tlShift(1); },
   tlall() { T.rng = [1, Math.max(1, S.turn)]; render(); paintOverlay(); },
   tlnow() { T.rng = [Math.max(1, S.turn), Math.max(1, S.turn)]; render(); paintOverlay(); },
@@ -1377,24 +1401,20 @@ function tabClick(k) {
 }
 function applyCollapse() { document.body.classList.toggle('panel-closed', !!T.collapsed); }
 function hdr() {
-  { const rb = document.querySelector('[data-act=routes]'); if (rb) rb.setAttribute('aria-pressed', !!S.routesOn); }
-  $('#hd-turn').textContent = S.turn; $('#hd-pos').textContent = S.pos ? ('HA'.includes(at(T.map, S.pos)) ? t('Start') : label(S.pos)) : '—';
-  const r = $('#hd-role'); r.className = 'chip ' + S.role + (S.fed ? ' fed' : ''); r.innerHTML = gico(roleIcon(), 20) + '<span>' + (S.role === 'alien' ? (S.fed ? t('Alien') + ' · ' + t('Fed') : t('Alien')) : t('Human')) + '</span>'; r.dataset.act = 'roledlg'; r.setAttribute('role', 'button'); r.tabIndex = 0; r.setAttribute('aria-label', t('Who am I?'));
   document.querySelectorAll('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab)); document.body.dataset.tab = S.tab;
-  const tb = $('#turnbar');
+  /* the turn bar only carries what needs an action: a host who is away, paused bots, an idle player. Whose turn it is shows on the player bubbles. */
+  const tb = $('#turnbar'); tb.hidden = true;
   if (Sync.code && T.turnState && !(Sync.settings && Sync.settings.status === 'over')) {
-    const mine = T.turnState.uid === Sync.uid, tail = '';   // what the others declared is in the Play box and the log, not repeated here
+    const mine = T.turnState.uid === Sync.uid;
     const bot = typeof Online !== 'undefined' && Online.isBotId(T.turnState.uid);
     const ak = (Sync.settings && Sync.settings.autoKick) || 0;
     const idle = !mine && !bot && ak > 0 && T.turnAt && Date.now() - T.turnAt > ak * 60000 && Sync.isHolder();
     const away = !mine && Sync.leaseLoaded && !Sync.isHolder() && Sync.settings && Sync.settings.status === 'playing' && (!Sync.lease || Sync.now() - (Sync.lease.at || 0) > 45000);
-    tb.hidden = false; tb.className = 'turnbar' + (mine ? ' mine' : '');
-    tb.innerHTML = away
-      ? `<span>${t('The host is away: cards and bots are paused.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`
-      : bot && !Sync.isHolder()
-        ? `<span>${t('Bots are paused: the host is away.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`
-        : `${esc((mine ? t('Your turn!') : t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' })) + tail)}${idle ? `<button class="btn" data-act="kickturn">${t('Remove idle player')}</button>` : ''}`;
-  } else tb.hidden = true;
+    const html = away ? `<span>${t('The host is away: cards and bots are paused.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`
+      : bot && !Sync.isHolder() ? `<span>${t('Bots are paused: the host is away.')}</span><button class="btn" data-act="takeover">${t('Take over')}</button>`
+      : idle ? `<span>${esc(t('{p} is playing', { p: ((Sync.players[T.turnState.uid] || {}).name) || '?' }))}</span><button class="btn" data-act="kickturn">${t('Remove idle player')}</button>` : '';
+    if (html) { tb.hidden = false; tb.className = 'turnbar'; tb.innerHTML = html; }
+  }
 }
 function render() {
   paintMoveBtns();   // the map's commands follow every redraw of the panel that explains them
@@ -1402,7 +1422,7 @@ function render() {
   if (T.pick) h = `<div class="banner"><span>${esc(T.pick.sel ? t('Confirm {s} on the map, or tap another sector.', { s: T.pick.sel }) : T.pick.label)}</span>${T.pick.locked ? '' : `<button class="btn" data-act="cancelpick">${t('Cancel')}</button>`}</div>`;
   if (T.markMode && !T.pick) h = markBanner();
   if (T.markMode && !T.pick) { /* marking: banner only */ }
-  else if (S.tab === 'play') { h += playPanel(); if (S.role && !T.pick && S.log.length && window.matchMedia('(min-width:900px)').matches) h += `<div class="deskLog"><h3>${t('Log')}</h3>${logBlock()}</div>`; }   // a desktop has the room: the history sits under the Play box
+  else if (S.tab === 'play') h += playPanel();
   else if (S.tab === 'table') h += tablePanel();
   else h += morePanel();
   p.innerHTML = h;

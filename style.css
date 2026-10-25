@@ -657,9 +657,7 @@ body.botturn #panel-body{opacity:.3;pointer-events:none}
 .bt-dots{display:inline-flex;gap:4px}.bt-dots i{width:8px;height:8px;border-radius:50%;background:var(--amber);animation:btdot 1.1s infinite ease-in-out}
 .bt-dots i:nth-child(2){animation-delay:.18s}.bt-dots i:nth-child(3){animation-delay:.36s}
 @keyframes btdot{0%,80%,100%{opacity:.25;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
-.stage.thinking::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 42%,#ffb41f26 50%,transparent 58%);background-size:260% 100%;animation:btsweep 1.8s linear infinite}
-@keyframes btsweep{0%{background-position:130% 0}100%{background-position:-30% 0}}
-@media (prefers-reduced-motion:reduce){.bt-dots i,.stage.thinking::after{animation:none}}
+@media (prefers-reduced-motion:reduce){.bt-dots i{animation:none}}
 
 /* ---- map manager ---- */
 .mmtop{margin:10px 0}.mmbig .mapprev{width:100%;max-height:none;aspect-ratio:3/2;background:#0b1222;border-radius:12px}.mmacts{display:grid;gap:8px;margin-top:14px}
@@ -1047,3 +1045,42 @@ ul.log li.turnh{padding-top:6px}
   .zoom{transform:scale(1.2);transform-origin:bottom right}
   .tlbar{transform:scale(1.15);transform-origin:bottom left;right:calc(60px + 12%)}
 }
+
+/* v22: no top bar; the page never scrolls; one standard bubble height; panels slimmed down */
+html,body{position:fixed;inset:0;width:100%;overflow:hidden;overscroll-behavior:none}
+#app{position:absolute;inset:0;height:auto}
+.panel,#panel-body,.screen,.tsecs,.sheet,.logfilter{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.panel-closed .panel{max-height:none!important}   /* hiding the panel works whatever the tab was showing */
+.mkbar .mkhead{display:flex;gap:4px;flex:none}
+.mkbar button.mkh{flex:none;width:40px;height:40px;min-height:0;padding:0;display:grid;place-items:center;border-radius:10px;border:1.5px solid #2a3550;background:#0e1627;color:var(--text);font:700 15px var(--mono);opacity:1}
+.mkbar button.mkh[aria-pressed=true]:not([data-act=pshowall]){border-color:var(--amber);color:var(--amber);background:#2a2008}
+.mkbar button.mkh b{font:700 15px var(--mono)}
+.stage.classic .mkbar button.mkh{background:#ffffffe6;border-color:#9aa;color:#111}
+.mkbar:not(.compact){gap:3px}.mkbar.compact{gap:3px}
+.pb:not(.mini){height:40px}.pb .psq{width:28px;height:28px}
+.mkbar button.pb.mini{width:40px;height:40px}.pb.mini .psq{width:26px;height:26px}
+.pb.cur{box-shadow:0 0 0 2px var(--amber),0 0 14px 3px #ffb41faa}
+.pb.picked{box-shadow:0 0 0 2px #fff}.pb.picked.cur{box-shadow:0 0 0 2px #fff,0 0 14px 3px #ffb41faa}
+.mkbar button.pb.picked{box-shadow:0 0 0 2px #fff}.mkbar button.pb.picked.cur{box-shadow:0 0 0 2px #fff,0 0 14px 3px #ffb41faa}
+.pb.mini .pcd{right:1px;top:1px}.pb.mini .pa{right:1px;bottom:1px}
+/* play panel */
+.ph{display:flex;align-items:center;gap:10px;padding:2px 0 8px}
+.chr{display:flex;align-items:center;gap:8px;flex:1;min-width:0;text-align:left;border:1.5px solid var(--alien);border-radius:12px;padding:5px 10px 5px 6px;background:#0b1222;color:var(--text);min-height:48px}
+.chr.human{border-color:var(--human,#2f7dff)}.chr .gl{flex:none;width:36px;height:36px;border-radius:9px;display:grid;place-items:center;background:#16233c}
+.chr.alien .gl{color:#ff4a8a}.chr.human .gl{color:#38a3ff}.chr .gl svg{width:26px;height:26px}
+.chr .tx{min-width:0;display:block}.chr b{display:block;font:700 14px var(--font)}.chr small{display:block;font:500 11px var(--font);color:var(--dim);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trn{flex:none;text-align:right;line-height:1}.trn b{font:700 24px var(--mono)}.trn span{font:600 13px var(--mono);color:var(--dim)}.trn small{display:block;font:600 10px var(--font);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:2px}
+.optsheet.slim{display:flex;gap:10px;align-items:flex-start;margin:0 0 8px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:#0b1222}.optsheet.slim b{font:700 13px var(--font)}.optsheet.slim p{margin:2px 0 0;font-size:12.5px;color:var(--dim)}
+/* end of turn on the map */
+.callout{display:flex;align-items:center;gap:10px;min-width:230px;max-width:300px;padding:8px 8px 8px 10px;border-radius:14px;background:#0b1522f6;border:1px solid var(--amber);box-shadow:0 6px 18px #000a}
+.callout .ct{flex:1;min-width:0}.callout .ct b{display:block;font:700 13.5px var(--font)}.callout .ct small{display:block;font:500 11.5px var(--font);color:var(--dim);line-height:1.3}
+.callout .hexpair{margin:0}
+/* log and sheet: players drawn like the bubbles, the latest declaration of each player stands out, links are underlined */
+.mb{display:inline-grid;place-items:center;flex:none;width:22px;height:22px;border-radius:6px;background:var(--c);color:var(--t);border:2.5px solid var(--b);font:800 10px var(--font);box-sizing:border-box;overflow:hidden;vertical-align:-6px;margin-right:5px}
+.mb.known{border-width:3.5px}.mb svg{width:13px;height:13px}
+ul.log li{background:#0e1627;color:#b9c3d8}
+ul.log li.last{background:#16233c;border-color:#3a5384;color:#fff;position:relative}
+ul.log li.last::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:2px;background:var(--amber)}
+ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-color:#7fe3ff}
+.sheet .c[data-act]{text-decoration-style:dotted}
+.sheet .who .mb{margin:0 4px 0 0}

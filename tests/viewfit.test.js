@@ -32,7 +32,7 @@ const assert = (c, m) => { if (!c) { console.error('FAIL', m); process.exitCode 
 
   /* the Table legend folds on a short phone and can be opened */
   await p.setViewportSize({ width: 360, height: 640 }); await p.waitForTimeout(300);
-  await p.click('[data-tab=table]'); await p.waitForSelector('.legendtoggle');
+  await p.click('[data-tab=table]'); await p.click('[data-act=tsec][data-k=sheet]'); await p.waitForSelector('.legendtoggle');
   assert(await p.locator('.legend').count() === 0, 'the legend is folded on a short phone');
   await p.click('.legendtoggle'); assert(await p.locator('.legend').count() > 0, 'the legend opens on tap');
   await p.click('.legendtoggle'); assert(await p.locator('.legend').count() === 0, 'and folds again');

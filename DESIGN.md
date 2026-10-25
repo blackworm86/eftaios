@@ -313,3 +313,10 @@ One family drawn on a 24px grid with 2.2px round strokes: close, check, up, down
 - Don't scroll the main play panel; move content into a sub-tab, sheet or popup.
 - Don't send anything about a player's faction, position or route to the shared table.
 - Don't put an eyebrow or kicker label above headings, or nest cards inside cards.
+
+## Layout v22
+- No top band: the map fills the screen; the page itself never scrolls (iOS lock).
+- Strip head row (40 px buttons): turn count, mark, routes, show all (icon), compact. Bubbles follow in turn order, me in my seat; the current player glows amber.
+- Play panel: character chip, turn/total, cards. The end-of-turn result and its tick sit on the map beside my sector.
+- Table tabs: Log (default), Sheet, Status. Log highlights each player's last action; clickable items are underlined.
+- Slider: closing it saves the number of turns (0 = all).

@@ -9,7 +9,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');
   assert(await mover.evaluate(()=>T.reach.size>0&&!!document.querySelector('.hex.reach')),'the player whose turn it is sees them');
   // a declaration from the other player stays visible in the move panel
   await mover.evaluate(()=>{S.log.unshift({id:'d1',by:'u2',who:'Zed',turn:S.turn,kind:'noise',sector:'K10',text:'noise',at:Date.now()});render()});
-  assert((await mover.textContent('#panel-body')).includes('Noise in Sector K10'),'what the others declared stays in the move panel');
+  assert((await mover.evaluate(()=>{setTab('table');render();return document.querySelector('#panel-body').textContent})).includes('Noise in Sector K10'),'what the others declared stays in the move panel');
   // confirm / deny next to the tapped sector
   const id=await mover.evaluate(()=>[...T.reach.keys()].find(k=>at(T.map,k)==='.'));
   await mover.evaluate(i=>selectCell(i),id);

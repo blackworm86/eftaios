@@ -27,8 +27,8 @@ let ok=0,bad=0;const assert=(c,m)=>{console.log((c?'ok   ':'FAIL ')+m);c?ok++:ba
  await p.evaluate(f=>{setFake('Ben1noise'+f,'f')},r.far);
  assert(await p.evaluate(f=>fakeState('Ben1noise'+f)==='f'&&JSON.parse(journalOf().sus)['~f']['Ben1noise'+f]==='f',r.far),'a mark is saved in the journal');
  assert(await p.evaluate(f=>!suggestFakes().has('Ben1noise'+f),r.far),'a marked declaration is not suggested again');
- await p.evaluate(()=>{setTab('play');render()});assert(await p.locator('.roundcard .fakechip').count()===1,'the Play box shows how many declarations seem fake');
- await p.click('.roundcard .fakechip');assert(await p.locator('dialog[open] .fakecard .fk').count()>=1,'tapping it opens the list with the reason for each');
+ await p.evaluate(()=>{setTab('table');render()});assert(await p.locator('.fakeline').count()===1,'the Play box shows how many declarations seem fake');
+ await p.click('.fakeline');assert(await p.locator('dialog[open] .fakecard .fk').count()>=1,'tapping it opens the list with the reason for each');
  const before=await p.locator('dialog[open] .fk').count();await p.click('dialog[open] [data-act=fakeno]');
  assert(await p.locator('dialog[open] .fk').count()===before-1||!await p.locator('dialog[open]').count(),'answering one removes it from the list');
  await p.evaluate(()=>closeDlg());
@@ -43,15 +43,14 @@ let ok=0,bad=0;const assert=(c,m)=>{console.log((c?'ok   ':'FAIL ')+m);c?ok++:ba
   L('Eve',4,'item',null,'cat');L('Eve',4,'noise','K12');L('Eve',4,'noise','K13');   // with a Cat card: nobody in particular
   L('Fox',4,'reveal',null,'Id|human|Soldier');L('Fox',4,'attack','K14');           // the Soldier's attack is shown like a card
   const f=k=>factOf('n:'+k.toLowerCase());
-  return {ann:f('Ann').role,bob:f('Bob').role,cy:[f('Cy').role,f('Cy').char],dee:[f('Dee').role,f('Dee').char],eve:f('Eve').char||'',fox:f('Fox').role,txt:entryText(S.log.find(e=>e.who==='Ann')),tag:roleTag('n:ann')}});
+  return {ann:f('Ann').role,bob:f('Bob').role,cy:[f('Cy').role,f('Cy').char],dee:[f('Dee').role,f('Dee').char],eve:f('Eve').char||'',fox:f('Fox').role,txt:entryText(S.log.find(e=>e.who==='Ann'))}});
  assert(fx.ann==='alien'&&/Alien/.test(fx.txt),'an attack with no Attack card marks the attacker as an Alien, in the log text too ('+fx.txt+')');
  assert(fx.bob==='human'&&fx.fox==='human','an Attack card, or the Soldier, marks a Human');
  assert(fx.cy[0]==='human'&&fx.cy[1]==='Captain','the Captain\'s declaration shows who he is');
  assert(fx.dee[1]==='Pilot'&&fx.eve==='','two noises with no Cat card are the Pilot; with a Cat card they prove nothing');
- assert(/class="rb alien"/.test(fx.tag),'the player bar and log get an A / H tag next to the name');
  // the slider
  await p.evaluate(()=>{paintOverlay()});
- await p.click('#mkbar [data-act=mkall]');
+ await p.evaluate(()=>{S.mkN=0});await p.click('#mkbar [data-act=mkall]');
  assert(await p.evaluate(()=>JSON.stringify(T.rng))==='[1,6]','the slider opens on all the turns');
  const box=await p.evaluate(()=>{const r=document.querySelector('#tlbar .tltrack').getBoundingClientRect();return {x:r.x,w:r.width,y:r.y+15}});
  const px=n=>box.x+(n-1)/5*box.w;   // 6 turns

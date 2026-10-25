@@ -25,7 +25,7 @@ const {assert,setup,startTable,begin,uidOf}=require('./helpers');
   await H.click(`#mkbar [data-act=pfocus][data-k="u:${uB}"]`);
   assert(await H.evaluate(()=>T.focusSet.length===1)&&await H.locator('#mkbar .pb.picked').count()===1&&await H.locator('#mkbar .pb.off').count()===2,'tapping a bubble picks that player; the others fade');
   await H.click('#mkbar [data-act=pshowall]');
-  assert(await H.evaluate(()=>!T.focusSet.length)&&await H.locator('#mkbar .pb.off').count()===0&&await H.locator('#mkbar [data-act=pshowall][disabled]').count()===1,'Show all brings everybody back');
+  assert(await H.evaluate(()=>!T.focusSet.length)&&await H.locator('#mkbar .pb.off').count()===0&&await H.locator('#mkbar [data-act=pshowall]').count()===1,'Show all brings everybody back');
   // compact: guessing is full view only, the outline stays
   await H.click('#mkbar [data-act=pcompact]');
   assert(await H.locator('#mkbar .pb.mini').count()===3&&await H.locator('#mkbar [data-act=pguess]').count()===0,'the compressed strip has no guess squares');

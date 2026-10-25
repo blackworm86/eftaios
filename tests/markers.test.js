@@ -20,7 +20,7 @@ const {assert,setup,startTable,begin,current}=require('./helpers');const SS='/tm
   assert(same&&new Set(cols).size===3,'every device gives each other player the same, distinct colour');
   assert(await A.evaluate(()=>pal('me')[0])==='#f5f5f5','I am always white on my own device');
   // A suspects B is an alien and C is human
-  await A.click('[data-tab=table]');
+  await A.click('[data-tab=table]'); await A.click('[data-act=tsec][data-k=sheet]');
   const uB=await B.evaluate(()=>Sync.uid),uC=await C.evaluate(()=>Sync.uid);
   const gb=u=>A.click(`.sheet [data-act=sus][data-k="u:${u}"]`);await gb(uB);await gb(uB);await gb(uC);
   const cls=await A.evaluate(()=>[...document.querySelectorAll('#marks .pm:not(.mine) path[stroke]')].map(c=>c.getAttribute('stroke')).join(' '));

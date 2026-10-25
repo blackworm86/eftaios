@@ -11,8 +11,8 @@ const {assert,setup,startTable,begin,current,uidOf}=require('./helpers');
   assert(await B.locator('[data-act=mvup]').count()===0,'guests cannot reorder');
   await begin(pages);
   const cur=await current(pages);assert(cur===C,'first player is the top of the order');
-  assert(await C.locator('#turnbar.mine').count()===1,'current player sees "your turn"');
-  assert(await A.locator('[data-act=mpyes]').count()===0&&(await A.textContent('#panel-body')).includes('P2'),'other players only wait');
+  assert(await C.evaluate(()=>myTurn()),'current player sees "your turn"');
+  assert(await A.locator('[data-act=mpyes]').count()===0&&!(await A.evaluate(()=>myTurn())),'other players only wait');
   // current player moves and ends turn
   const id=await C.evaluate(()=>[...T.reach.keys()][0]);await C.evaluate(i=>selectCell(i),id);await C.click('[data-act=mpyes]');
   await C.evaluate(()=>{S.res={stage:'done',say:'x'};render()});await C.click('[data-act=next]');

@@ -386,12 +386,7 @@ const keyOfUid = u => u === Sync.uid ? 'me' : 'u:' + u;
 function orderList() {
   const ord = tableOrder(), ps = tablePlayers(), cur = S.hot ? Hot.curId() : T.turnState && T.turnState.uid;
   if (!ord.length) return '';
-  return `<ol class="turnlist${S.hot ? '' : ' chips'}">${ord.filter(u => ps[u]).map(u => { const k = u === myId() ? 'me' : 'u:' + u; return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? ico('turn', 12) : ''}</span>${dotIcon(k)}<span class="pname">${roleTag(k)}${esc(ps[u].name)}${k === 'me' ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out || !S.hot ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
-}
-function waitPanel() {
-  const cur = T.turnState;
-  return `<h2>${t('{p} is playing', { p: esc(pname(cur.uid)) })}</h2>
-    ${fakeCard()}${roundCard()}${orderList()}${handHtml()}`;
+  return `<ol class="turnlist${S.hot ? '' : ' chips'}">${ord.filter(u => ps[u]).map(u => { const k = u === myId() ? 'me' : 'u:' + u; return `<li class="${u === cur ? 'cur' : ''}${ps[u].out ? ' out' : ''}"><span class="mk">${u === cur ? ico('turn', 12) : ''}</span>${dotIcon(k)}<span class="pname">${esc(ps[u].name)}${k === 'me' ? ` <em>${t('(you)')}</em>` : ''}</span>${outBadge(ps[u])}${ps[u].out || !S.hot ? '' : susBtns(k)}</li>`; }).join('')}</ol>`;
 }
 function overPanel() {
   const m = { escaped: ['Escaped!', 'You left the ship and win. That pod is now blocked.'], time: ['40 rounds played', 'Humans still on board are eliminated: the Aliens win.'], dead: ['Out of the game', 'You were eliminated. Your Character card is revealed.'], trapped: ['No way out', 'Every Escape Pod is blocked or damaged. You are eliminated.'] }[S.over];
@@ -464,18 +459,32 @@ function mapHint() {
   try { localStorage.setItem('eftaios.hint.map', '1'); } catch (_) {}
   return `<div class="maphint"><b>${t('How to read the map')}</b><ul><li>${t('Numbered markers are the other players: the number is the turn they were heard.')}</li><li>${t('Arrows show how they moved: tap the routes button on the map.')}</li><li>${t('The turns button (top left) opens a slider to look at earlier turns. Tap a sector to see what was declared there. Pinch to zoom.')}</li></ul></div>`;
 }
+/* who I am (tap for the card and its power) and how far the game is */
+function playHeader() {
+  const ch = S.reborn ? '' : S.char, role = S.role === 'alien' ? 'alien' : 'human';
+  const sq = ch && CHAR_ICON[ch] ? charGlyph(ch, 26) : gico(roleIcon(), 26);
+  const sub = t(role === 'alien' ? (S.fed ? 'Alien · Fed' : 'Alien') : 'Human') + (ch && powerText(ch) ? ' · ' + powerText(ch) : '');
+  return `<div class="ph"><button class="chr ${role}" data-act="roledlg" aria-label="${esc(t('Who am I?'))}"><span class="gl">${sq}</span><span class="tx"><b>${esc(t(ch || (role === 'alien' ? 'Alien' : 'Human')))}</b><small>${esc(sub)}</small></span></button><div class="trn" aria-live="polite"><b>${S.turn}</b><span>/${MAX_TURN}</span><small>${t('Turn')}</small></div></div>`;
+}
 function playPanel() {
   if (T.pick) return '';
   if (gameOver()) return globalOverPanel();
   if (S.over) return overPanel();
-  if (inRoom() && !myTurn()) return waitPanel();
+  const ph = playHeader();
+  if (digital()) {   // everything the player does is on the map: the panel is who you are, the turn and your cards
+    const opts = turnOptions(), cur = opts && curOpt(opts);
+    return ph + (S.res && S.res.stage === 'wait' ? `<p class="dim hintline" role="status">${t('Waiting for the host…')}</p>` : '') + catNote() + (cur ? `<div class="optsheet slim"><div class="oi">${cur.icon}</div><div><b>${esc(cur.label)}</b><p>${esc(cur.text)}</p></div></div>` : '') + handHtml();
+  }
+  return ph + manualPanel();
+}
+/* companion mode: the paper cards stay in the player's hand, so this panel still asks what they drew */
+function manualPanel() {
   const n = allowance(), alien = S.role === 'alien';
   if (S.phase === 'move') {
     const sel = T.sel;
-    const seen = !sel && !!roundLines().length;   // with declarations to read, they take the place of the "tap a sector" line
-    return `${catNote()}${seen ? '' : `<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>`}
+    return `${catNote()}${`<h2>${sel ? esc(label(sel)) + ` <span class="dim sub">${esc(typeName(at(T.map, sel)))}</span>` : t('Tap a highlighted sector')}</h2>`}
       ${sel ? `<p class="dim hintline">${t('Confirm the move on the map, next to the sector.')}</p>` : ''}
-      ${roundCard(true, !!sel)}${handHtml()}${extras()}`;
+      ${handHtml()}${extras()}`;
   }
   const ty = at(T.map, S.pos), r = S.res || { stage: 'choose' };
   const head = `${catNote()}<h2>${esc(label(S.pos))}${'.sHA'.includes(ty) ? ` <span class="dim sub">${esc(typeName(ty))}</span>` : ''}</h2>`;
@@ -563,7 +572,7 @@ function sheetHtml() {
   const body = rows.map(([k, n]) => {
     const u = k.startsWith('u:') ? k.slice(2) : k === 'me' ? myId() : null, p = u && ps[u], g = suspicion(k);
     const guess = k === 'me' ? '' : `<button class="gb ${g || 'none'}" data-act="sus" data-k="${esc(k)}" data-v="${NEXT_SUS[g]}" aria-label="${t('Your suspicion')}: ${t(g === 'human' ? 'Suspected Human' : g === 'alien' ? 'Suspected Alien' : 'No idea')}">${g === 'human' ? t('H') : g === 'alien' ? t('A') : '?'}</button>`;
-    return `<tr class="${u && u === cur ? 'cur' : ''}${p && p.out ? ' out' : ''}"><th><span class="who"><button class="name" data-act="follow" data-k="${esc(k)}" aria-label="${t('Follow {p}', { p: esc(n) })}"><span class="dotw">${dotIcon(k)}${outMark(k)}${cardBadge(k)}</span><span>${roleTag(k)}${esc(shortName(n))}</span></button>${shownItems(k)}${guess}</span></th>${turns.map(x => cell(k, x)).join('')}</tr>`;
+    return `<tr class="${u && u === cur ? 'cur' : ''}${p && p.out ? ' out' : ''}"><th><span class="who"><button class="name" data-act="follow" data-k="${esc(k)}" aria-label="${t('Follow {p}', { p: esc(n) })}"><span class="dotw">${miniBubble(k)}${outMark(k)}${cardBadge(k)}</span><span>${esc(shortName(n))}</span></button>${shownItems(k)}${guess}</span></th>${turns.map(x => cell(k, x)).join('')}</tr>`;
   }).join('');
   return `<div class="sheet${rows.length > 5 ? ' dense' : ''}" id="sheet"><table><thead><tr><th></th>${turns.map(n => `<th>${t('T{n}', { n })}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
@@ -578,18 +587,21 @@ function logBlock() {
   SUGGEST = suggestFakes();
   const sel = logSel(), quiet = T.logEv ? ['noise', 'silence'] : T.logSil ? ['silence'] : [];
   let lastTurn = null;
+  const newest = new Set(), seenK = new Set();   // each player's latest declaration, highlighted
+  S.log.forEach(e => { if (ANN_KINDS.includes(e.kind) && e.who !== t('Game')) { const k = playerKey(e); if (!seenK.has(k)) { seenK.add(k); newest.add(e.id); } } });
+  const nf = fakeList().length;
   const ln = killFirst(S.log).filter(e => (!sel.length || sel.includes(playerKey(e))) && !quiet.includes(e.kind)).map(e => {
-    const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : dotIcon(k), head = e.turn !== lastTurn ? `<li class="turnh">${t('Turn {n}', { n: e.turn })}</li>` : '';
+    const k = playerKey(e), icon = e.who === t('Game') || e.kind === 'info' && !e.by ? '' : miniBubble(k), head = e.turn !== lastTurn ? `<li class="turnh">${t('Turn {n}', { n: e.turn })}</li>` : '';
     lastTurn = e.turn;
-    return head + `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><span>${icon}<b>${esc(e.mine ? t('Me') : e.who)}</b>${e.mine ? '' : roleTag(k)} · ${logIcon(e)}${esc(entryText(e))}${powerNote(e)}</span>${!e.mine && ['noise', 'attack', 'silence', 'spot', 'item'].includes(e.kind) ? flagBtn(e) : ''}</li>`;
+    return head + `<li class="${killOf(e) ? 'kill' : e.kind}${e.mine ? ' mine' : ''}${newest.has(e.id) ? ' last' : ''}${e.sector && parseId(e.sector) ? ' go' : ''}"${e.sector && parseId(e.sector) ? ` data-act="gosector" data-s="${esc(e.sector)}" role="button" tabindex="0"` : ''}><span>${icon}<b>${esc(e.mine ? t('Me') : e.who)}</b> · ${logIcon(e)}${e.sector && parseId(e.sector) ? esc(entryText(e)).replace(esc(e.sector), `<u>${esc(e.sector)}</u>`) : esc(entryText(e))}${powerNote(e)}</span>${!e.mine && ['noise', 'attack', 'silence', 'spot', 'item'].includes(e.kind) ? flagBtn(e) : ''}</li>`;
   }).join('');
-  return `${S.log.length ? logFilterHtml() : ''}
+  return `${nf ? `<button class="fakeline" data-act="fakereview">${ico('flag', 16)}<span>${t(nf === 1 ? '1 declaration seems fake' : '{n} declarations seem fake', { n: nf })}</span><b>${t('Review')}</b></button>` : ''}${S.log.length ? logFilterHtml() : ''}
       ${ln ? `<ul class="log">${ln}</ul>${digital() || S.hot ? '' : `<button class="btn link wide" data-act="clearlog">${t('Clear announcements')}</button>`}` : `<p class="dim">${t('No announcements yet.')}</p>`}`;
 }
 function tablePanel() {
   const skip = inRoom() && isHost() && T.turnState.uid !== Sync.uid && !gameOver() ? `<button class="btn wide" data-act="skipturn">${t('Skip {p}?', { p: pname(T.turnState.uid) })}</button>` : '';
-  const sec = { players: 'sheet', hatches: 'status' }[T.tableSec] || T.tableSec || 'sheet', hatchAct = digital() ? '' : 'hatch';
-  const secs = [['sheet', 'Sheet'], ['log', 'Log'], ['status', 'Status']];
+  const sec = { players: 'sheet', hatches: 'status' }[T.tableSec] || T.tableSec || 'log', hatchAct = digital() ? '' : 'hatch';
+  const secs = [['log', 'Log'], ['sheet', 'Sheet'], ['status', 'Status']];
   return `<div class="subtabs" role="tablist">${secs.map(([k, l]) => `<button role="tab" data-act="tsec" data-k="${k}" aria-selected="${sec === k}">${t(l)}</button>`).join('')}</div>
     <div class="tsecs">
     <section class="sec sheetsec${sec === 'sheet' ? ' on' : ''}">${sheetHtml()}${legendBox()}</section>
@@ -638,10 +650,6 @@ function onPublicEntry(e) {
   showBanner(e);
   const i = revealInfo(e); if (i && (e.kind === 'reveal' || i.killed)) showReveal(e, i);
 }
-/* the last declarations of other players, newest first */
-function recentOthers(n = 8, from = S.turn - 1) {
-  return S.log.filter(e => ANN_KINDS.includes(e.kind) && playerKey(e) !== 'me' && e.turn >= from).slice(0, n);
-}
 /* the victim's 'was eliminated' line can arrive before the attacker's 'killed X' line: show the cause first, as it happened */
 function killFirst(list) {
   const a = list.slice();
@@ -651,28 +659,12 @@ function killFirst(list) {
 /* declarations the game thinks are fake: it asks, the player decides */
 const fakeItem = e => `<div class="fk"><p>${t('{p}: {d} seems fake. {why} Mark it as fake?', { p: esc(e.who), d: esc(entryText(e)), why: esc(SUGGEST.get(e.id)) })}</p><div class="row tight"><button class="btn danger" data-act="fakeyes" data-id="${esc(e.id)}">${t('Mark fake')}</button><button class="btn" data-act="fakedub" data-id="${esc(e.id)}">${t('Dubious')}</button><button class="btn" data-act="fakeno" data-id="${esc(e.id)}">${t('Keep')}</button></div></div>`;
 const fakeList = () => { SUGGEST = suggestFakes(); return [...SUGGEST.keys()].map(id => S.log.find(e => e.id === id)).filter(Boolean).sort((p, q) => q.turn - p.turn); };
-/* on the player's own turn a single line (the map keeps its room); while waiting, the newest one in full */
-function fakeCard(compact) {
-  const es = fakeList(); if (!es.length) return '';
-  if (compact) return `<button class="fakeline" data-act="fakereview">${ico('flag', 16)}<span>${t(es.length === 1 ? '1 declaration seems fake' : '{n} declarations seem fake', { n: es.length })}</span><b>${t('Review')}</b></button>`;
-  return `<div class="fakecard">${fakeItem(es[0])}</div>`;
-}
 function fakeReview() {
   const es = fakeList().slice(0, 6);
   dlg.innerHTML = `<h2>${t('Seems fake')}</h2>${es.length ? `<div class="fakecard">${es.map(fakeItem).join('')}</div>` : `<p class="dim">${t('Nothing to review.')}</p>`}<div class="row"><button class="btn primary" id="d-no">${t('Close')}</button></div>`;
   if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
 Object.assign(actions, { fakereview: fakeReview });
-/* the last round at a glance: each player's newest noise, silence or attack, plus every event (item, pod, reveal, death) */
-function roundLines() {
-  const seen = new Set();
-  return killFirst(recentOthers(40)).filter(e => { if (!['noise', 'silence', 'attack'].includes(e.kind)) return true; const k = playerKey(e); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
-}
-const annLine = e => `<li>${dotIcon(playerKey(e))}<b>${esc(e.who)}</b>${logIcon(e, 18)}<span>${esc(entryText(e))}</span><i>${t('T{n}', { n: e.turn })}</i></li>`;
-function roundCard(compact, few) {
-  const es = roundLines(), nf = compact ? fakeList().length : 0; if (!es.length && !nf) return '';
-  return `<div class="roundcard${compact ? ' compact' : ''}"><small>${t('What the others declared')}</small>${nf ? `<button class="fakechip" data-act="fakereview" aria-label="${esc(t(nf === 1 ? '1 declaration seems fake' : '{n} declarations seem fake', { n: nf }))}">${ico('flag', 14)}<b>${nf}</b></button>` : ''}<ul>${(compact ? es.slice(0, few ? 3 : 9) : es).map(annLine).join('')}</ul></div>`;
-}
 /* every Character card the table has seen so far */
 function knownChars() {
   const m = new Map();
@@ -688,7 +680,7 @@ function charsHtml() {
 const logSel = () => T.logSel || [];
 function logFilterHtml() {
   const ps = [['me', t('Me')]].concat(knownPlayers()), sel = logSel();
-  return `<div class="logfilter" role="group" aria-label="${t('Show players')}"><button class="lfc" data-act="logf" data-k="" aria-pressed="${!sel.length}">${t('All')}</button>${ps.map(([k, n]) => `<button class="lfc" data-act="logf" data-k="${esc(k)}" aria-pressed="${sel.includes(k)}">${dotIcon(k)}<span>${esc(shortName(n))}</span></button>`).join('')}<button class="lfc kindf" data-act="logk" data-k="sil" aria-pressed="${!!T.logSil && !T.logEv}">${t('Hide silences')}</button><button class="lfc kindf" data-act="logk" data-k="ev" aria-pressed="${!!T.logEv}">${t('Only events')}</button></div>`;
+  return `<div class="logfilter" role="group" aria-label="${t('Show players')}"><button class="lfc" data-act="logf" data-k="" aria-pressed="${!sel.length}">${t('All')}</button>${ps.map(([k, n]) => `<button class="lfc" data-act="logf" data-k="${esc(k)}" aria-pressed="${sel.includes(k)}">${miniBubble(k)}<span>${esc(shortName(n))}</span></button>`).join('')}<button class="lfc kindf" data-act="logk" data-k="sil" aria-pressed="${!!T.logSil && !T.logEv}">${t('Hide silences')}</button><button class="lfc kindf" data-act="logk" data-k="ev" aria-pressed="${!!T.logEv}">${t('Only events')}</button></div>`;
 }
 Object.assign(actions, { logk(b) { if (b.dataset.k === 'ev') { T.logEv = !T.logEv; T.logSil = false; } else { T.logSil = !T.logSil; T.logEv = false; } render(); }, logf(b) { const k = b.dataset.k; if (!k) T.logSel = []; else { const s = logSel().slice(), i = s.indexOf(k); if (i >= 0) s.splice(i, 1); else s.push(k); T.logSel = s; } render(); } });
 window.onPublicEntry = onPublicEntry;

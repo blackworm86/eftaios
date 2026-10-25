@@ -7,7 +7,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  const first=await p.textContent('dialog');
  assert(await p.locator('dialog .gi').count()>=1&&/Ability|Basic/.test(first)&&/Reach an Escape Pod|Hunt the Humans/.test(first),'the secret-role screen shows the Character icon, its ability and what the role does');
  await p.click('#d-no');
- await p.click('#hd-role');
+ await p.click('.ph .chr');
  assert(await p.locator('dialog[open] .gi').count()>=1,'tapping the role chip shows it again');await p.click('#d-no');
  assert(await p.evaluate(()=>CHAR_ICON&&Object.values(CHAR_ICON).every(k=>GI_ART[k])&&Object.keys(CHAR_ICON).length===16),'all 16 Characters have an icon');
  // Cat in the move phase

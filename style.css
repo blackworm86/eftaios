@@ -1091,3 +1091,12 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 .stc b{font:700 24px var(--mono)}.stc span{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
 .sth{margin:6px 0 8px;font:700 13px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .ststrip{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:12px}.ststrip i{width:10px;height:18px;border-radius:3px;background:var(--line)}.ststrip i.w{background:#3ecf7a}.ststrip i.l{background:#ff3b30}
+
+/* game list and the Continue card */
+.gstate{font:800 11px var(--font);letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.gstate.you{background:var(--amber);color:#1a1200}.gstate.wait{border:1px solid var(--line);color:var(--dim)}.gstate.open{border:1px solid var(--pod);color:var(--pod)}
+.livecard{border:1.5px solid var(--amber);border-radius:16px;background:#2a200833;padding:12px 14px;margin:0 0 12px;display:flex;flex-direction:column;gap:6px}
+.livecard .top{display:flex;align-items:center;justify-content:space-between;gap:8px}.livecard small{color:var(--dim)}
+.gtabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:0 0 12px}
+.gtabs button{border:0;background:var(--bg2);height:42px;font:700 13px var(--font);color:var(--dim)}.gtabs button[aria-selected=true]{background:#2a2008;color:var(--amber);box-shadow:inset 0 -3px var(--amber)}
+.steps{display:flex;gap:6px;margin:0 0 12px}.steps b{flex:1;text-align:center;font:700 11px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);border-bottom:3px solid var(--line);padding-bottom:6px}.steps b.on{color:var(--amber);border-color:var(--amber)}.steps b.ok{color:var(--pod);border-color:var(--pod)}

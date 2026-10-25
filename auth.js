@@ -37,7 +37,7 @@ const Auth = (() => {
     return `${head(t('Sign in'))}
       ${Sync.authError === 'banned' ? `<p class="banner">${t('This account is banned.')}</p>` : ''}
       ${T.authReason ? `<p class="banner">${esc(T.authReason)}</p>` : ''}
-      <p class="dim hintline">${t('Guests can join a table with a code. An account keeps your games, maps and statistics, and lets you host.')}</p>
+      <p class="dim hintline">${t('Guests can join a game with a code. An account keeps your games, maps and statistics, and lets you create games.')}</p>
       ${pending ? `<p class="dim hintline">${t('We sent a sign-in link. Open it on this device, or enter the email again below.')}</p>` : ''}
       ${Sync.isLink()
         ? `<button class="btn primary big wide" data-act="authcomplete">${t('Complete the sign-in')}</button>`
@@ -56,14 +56,14 @@ const Auth = (() => {
       ${p.handle ? `<dl class="kv"><dt>${t('Handle')}</dt><dd>@${esc(p.handle)}</dd><dt>${t('Email')}</dt><dd>${esc(u.email || '—')}</dd></dl>
         <label class="field"><span>${t('Display name')}</span><input id="a-name" maxlength="20" value="${esc(p.name || '')}"></label>
         <button class="btn primary wide" data-act="accountsave">${t('Save')}</button>
-        <div class="row two acctnav"><button class="btn" data-act="accountgames">${t('Your games')}</button><button class="btn" data-act="accountstats">${t('Statistics')}</button></div>
+        <div class="row two acctnav"><button class="btn" data-act="accountgames">${t('My games')}</button><button class="btn" data-act="accountstats">${t('Statistics')}</button></div>
         <div class="acctend"><button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>
         <button class="btn danger wide" data-act="accountdelete">${t('Delete my account')}</button></div>`
       : Sync.profileLoading ? `<p class="dim" role="status">${t('Loading…')}</p>`
       : Sync.profileError ? `<p class="banner">${t('Your profile could not be loaded. Check your connection and try again; your account is safe.')} <code>${esc(Sync.profileError)}</code></p><button class="btn primary wide" data-act="accountretry">${t('Try again')}</button>
         <button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>`
       : `
-        <p class="dim hintline">${t('Choose a handle once: it is how the table and the statistics know you.')}</p>
+        <p class="dim hintline">${t('Choose a handle once: it is how the other players and the statistics know you.')}</p>
         <label class="field"><span>${t('Handle')}</span><input id="a-handle" maxlength="16" autocapitalize="off" placeholder="riccardo" value="${esc(p.handle || '')}"></label>
         <label class="field"><span>${t('Display name')}</span><input id="a-name" maxlength="20" value="${esc(p.name || (u.displayName || ''))}"></label>
         <button class="btn primary wide" data-act="accountcreate">${t('Create account')}</button>
@@ -71,29 +71,43 @@ const Auth = (() => {
       ${T.authMsg ? `<p class="dim hintline" role="status">${esc(T.authMsg)}</p>` : ''}`;
   }
   function gamesHtml() {
-    if (!T.myGames) return `${head(t('Your games'))}<p class="dim">${t('Loading…')}</p>`;
-    if (!T.myGames.length) return `${head(t('Your games'))}<p class="dim hintline">${t('No games yet. Host a table to start one.')}</p><button class="btn primary wide" data-act="hostsetup">${t('Host a table')}</button>`;
-    const per = 5, pages = Math.max(1, Math.ceil(T.myGames.length / per));
+    if (!T.myGames) return `${head(t('My games'))}<p class="dim">${t('Loading…')}</p>`;
+    const tab = T.gamesTab === 'over' ? 'over' : 'active', all = T.myGames, list = all.filter(([, g]) => (g.state === 'over') === (tab === 'over'));
+    const tabs = `<div class="gtabs" role="tablist"><button role="tab" data-act="gamestab" data-k="active" aria-selected="${tab === 'active'}">${t('Active')} · ${all.filter(([, g]) => g.state !== 'over').length}</button><button role="tab" data-act="gamestab" data-k="over" aria-selected="${tab === 'over'}">${t('Finished')}</button></div>`;
+    if (!all.length) return `${head(t('My games'))}<p class="dim hintline">${t('No games yet. Create a game to start one.')}</p><button class="btn primary wide" data-act="hostsetup">${t('Create a game')}</button>`;
+    const per = 5, pages = Math.max(1, Math.ceil(list.length / per));
     const page = Math.min(Math.max(T.gamesPage || 0, 0), pages - 1);
     T.gamesPage = page;
-    const rows = T.myGames.slice(page * per, page * per + per).map(([code, g]) => `<li class="grow"><span class="pname">${esc(code)}<small>${esc(g.status || '')}</small></span><button class="btn" data-act="resumeroom" data-c="${esc(code)}">${t('Open')}</button><button class="x" data-act="forgetroom" data-c="${esc(code)}" aria-label="${t('Remove')}">${ico('close', 16)}</button></li>`).join('');
+    const rows = list.slice(page * per, page * per + per).map(([code, g]) => { const [cls, label] = gstate(g); return `<li class="grow"><span class="pname">${esc(code)}<small>${g.host ? t('You are the host') : ''}${g.turn ? (g.host ? ' · ' : '') + t('Turn {n}', { n: g.turn }) : ''}</small></span><span class="gstate ${cls}">${esc(label)}</span><button class="btn" data-act="resumeroom" data-c="${esc(code)}">${t('Open')}</button><button class="x" data-act="forgetroom" data-c="${esc(code)}" aria-label="${t('Remove')}">${ico('close', 16)}</button></li>`; }).join('');
     const pager = pages > 1
       ? `<div class="pager"><button class="prev" data-act="gamespage" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">${ico('next', 16)}</button><span>${page + 1} / ${pages}</span><button data-act="gamespage" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">${ico('next', 16)}</button></div>`
       : '';
-    return `${head(t('Your games'))}<ul class="plist glist">${rows}</ul>${pager}<p class="dim hintline">${t('Finished games stay here for your last 20.')}</p>`;
+    return `${head(t('My games'))}${tabs}${list.length ? `<ul class="plist glist">${rows}</ul>` : `<p class="dim hintline">${t('Nothing here.')}</p>`}${pager}`;
   }
 
   async function open(stage) { S.stage = stage; save(); renderFlow(); if (stage === 'auth') Sync.preloadSignIn(); }
-  async function loadGames() {
-    T.myGames = null; renderFlow();
-    const rooms = await Sync.myRooms();
+  /* my games with their state: gathering (lobby), playing (my turn or waiting) or finished; a closed game is dropped from the list */
+  async function fetchGames() {
     const out = [];
-    for (const [code, g] of rooms) {
-      let st = null; try { st = await Sync.getPath(`rooms/${code}/settings`); } catch (_) { /* noop */ }
-      if (!st) { Sync.delPath(`users/${Sync.uid}/rooms/${code}`).catch(() => {}); continue; }   // a closed table is deleted: drop it from the list
-      out.push([code, { at: g.at, role: g.role, status: st ? (st.status === 'playing' ? t('In progress') : st.status === 'over' ? t('Finished') : t('Lobby')) : t('Gone'), ok: !!st }]);
+    for (const [code, g] of await Sync.myRooms()) {
+      let st = null, turn = null; try { st = await Sync.getPath(`rooms/${code}/settings`); } catch (_) { /* noop */ }
+      if (!st) { Sync.delPath(`users/${Sync.uid}/rooms/${code}`).catch(() => {}); continue; }
+      if (st.status === 'playing') { try { turn = await Sync.getPath(`rooms/${code}/turn`); } catch (_) { /* noop */ } }
+      const state = st.status === 'playing' ? 'playing' : st.status === 'over' ? 'over' : 'lobby', mine = state === 'playing' && !!turn && turn.uid === Sync.uid;
+      out.push([code, { at: g.at, role: g.role, state, mine, host: st.host === Sync.uid, turn: turn && turn.n, map: st.mapName || st.map || '' }]);
     }
-    T.myGames = out; renderFlow();
+    return out;
+  }
+  async function loadGames() { T.myGames = null; renderFlow(); T.myGames = await fetchGames(); renderFlow(); }
+  const gstate = g => g.state === 'over' ? ['wait', t('Finished')] : g.state === 'lobby' ? ['open', t('Gathering')] : g.mine ? ['you', t('Your turn')] : ['wait', t('Waiting')];
+  /* the card on the home screen that takes you back to a game that is still going */
+  function continueCard() {
+    if (!Sync.registered) return '';
+    if (T.homeGames === undefined && !T.homeLoading) { T.homeLoading = true; fetchGames().then(l => { T.homeGames = l; }).catch(() => { T.homeGames = []; }).then(() => { T.homeLoading = false; if (!S.stage || S.stage === 'welcome') renderFlow(); }); }
+    const live = (T.homeGames || []).filter(([, g]) => g.state !== 'over').sort((x, y) => (y[1].mine - x[1].mine) || ((y[1].state === 'playing') - (x[1].state === 'playing')));
+    if (!live.length) return '';
+    const [code, g] = live[0], [cls, label] = gstate(g);
+    return `<div class="livecard"><div class="top"><b>${t('Game {c}', { c: esc(code) })}</b><span class="gstate ${cls}">${esc(label)}</span></div>${g.turn ? `<small>${t('Turn {n}', { n: g.turn })}</small>` : ''}<button class="btn primary wide" data-act="resumeroom" data-c="${esc(code)}">${t('Continue')}</button></div>`;
   }
   /* the statistics screen: totals kept forever, plus the last games (result, role, Character, map) */
   async function loadStats() {
@@ -130,6 +144,7 @@ const Auth = (() => {
     authcomplete() { guard(async () => { await Sync.completeLink(($('#a-email') || {}).value); postSignIn(); }); },
     accountcreate() { guard(async () => { await Sync.saveProfile({ handle: $('#a-handle').value, name: $('#a-name').value }); T.authMsg = t('Account ready.'); postSignIn(); }); },
     accountsave() { guard(async () => { await Sync.renameMe($('#a-name').value); T.authMsg = t('Saved.'); renderFlow(); }); },
+    gamestab(b) { T.gamesTab = b.dataset.k; T.gamesPage = 0; renderFlow(); },
     accountgames() { S.stage = 'games'; T.gamesPage = 0; save(); loadGames(); },
     gamespage(b) { T.gamesPage = Math.max(0, (T.gamesPage || 0) + Number(b.dataset.d)); renderFlow(); },
     accountstats() { S.stage = 'stats'; T.stats = null; save(); renderFlow(); },
@@ -148,7 +163,7 @@ const Auth = (() => {
     },
     forgetroom(b) {
       const code = b.dataset.c;
-      confirmDlg(t('Remove this game from your list?'), t('The room is closed for everyone if you host it. This cannot be undone.'), () => guard(async () => {
+      confirmDlg(t('Remove this game from your list?'), t('The game is closed for everyone if you host it. This cannot be undone.'), () => guard(async () => {
         await Sync.forgetRoom(code); T.myGames = null; loadGames();
       }));
     }
@@ -165,6 +180,6 @@ const Auth = (() => {
     try { await fn(); }
     catch (e) { T.authMsg = msg(e); renderFlow(); }
   }
-  return { html, bar, actions: acts, guard, loadGames };
+  return { html, bar, actions: acts, guard, loadGames, continueCard };
 })();
 window.Auth = Auth;

@@ -4,7 +4,7 @@ const {assert,setup,startTable,begin}=require('./helpers');
   const {b,pages,errs}=await setup(2);const [H,G]=pages;
   const code=await startTable(pages);await begin(pages);
   await H.evaluate(()=>actions.closetable());await H.click('#d-yes');
-  await H.waitForSelector('#flow:not([hidden])');assert((await H.textContent('#flow-card')).includes('Create table'),'host lands on the "host a table" screen');
+  await H.waitForSelector('#flow:not([hidden])');assert((await H.textContent('#flow-card')).includes('Create a game'),'host lands on the "create game" screen');
   await G.waitForSelector('#flow:not([hidden])',{timeout:10000});assert(await G.evaluate(()=>S.stage)==='welcome'&&await G.evaluate(()=>S.room)===null,'guest is sent back to the start screen');
   await G.fill('#join-code',code);await G.click('[data-act=joinroom]');await G.waitForTimeout(500);
   assert((await G.textContent('#flow-card')).includes('closed'),'closed table cannot be rejoined');

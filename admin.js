@@ -263,7 +263,7 @@ const Admin = (() => {
       };
     },
     admincloseroom() {
-      dlg.innerHTML = `<h2>${t('Close a room')}</h2><label class="field"><span>${t('Table code')}</span><input id="ad-code" maxlength="8" autocapitalize="characters"></label><div class="row"><button class="btn" id="d-no">${t('Cancel')}</button><button class="btn primary" id="ad-go">${t('Close')}</button></div>`;
+      dlg.innerHTML = `<h2>${t('Close a room')}</h2><label class="field"><span>${t('Game code')}</span><input id="ad-code" maxlength="8" autocapitalize="characters"></label><div class="row"><button class="btn" id="d-no">${t('Cancel')}</button><button class="btn primary" id="ad-go">${t('Close')}</button></div>`;
       if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
       $('#ad-go').onclick = async () => {
         const code = $('#ad-code').value.trim().toUpperCase(); if (!code) return;

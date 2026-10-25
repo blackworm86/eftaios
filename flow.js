@@ -66,8 +66,8 @@ function renderFlow() {
   const ver = document.getElementById('ver'); if (ver) ver.hidden = st !== 'welcome';
   card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
   if (st === 'host') {
-    h = `${fhead(t('Host a table'))}${Sync.registered ? '' : nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
-      <button class="btn primary big wide" data-act="hostcreate">${t('Create table')}</button>${flowStatus()}`;
+    h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
+      <button class="btn primary big wide" data-act="hostcreate">${t('Create game')}</button>${flowStatus()}`;
   } else if (st === 'solo') {
     h = `${fhead(t('Companion'))}<p class="dim hintline">${t('Use the app like the paper sheet: track your own route and what the other players declare. You play with the real cards.')}</p>${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
       <fieldset class="roles"><legend>${t('Your Character card')}</legend>
@@ -88,20 +88,20 @@ function renderFlow() {
     h = lobbyHtml();
   } else {
     h = `${hero()}
-      ${Auth.bar()}
-      ${T.pendingRoom ? `<p class="banner">${t('You are invited to table {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${Sync.registered ? '' : nameField()}
+      ${Auth.bar()}${T.pendingRoom ? '' : Auth.continueCard()}
+      ${T.pendingRoom ? `<p class="banner">${t('You are invited to game {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${Sync.registered ? '' : nameField()}
       ${T.pendingRoom
-        ? `<div class="wacts"><button class="btn primary big wide" data-act="joinroom">${t('Join table {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button></div>`
+        ? `<div class="wacts"><button class="btn primary big wide" data-act="joinroom">${t('Join game {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button></div>`
         : `<div class="wacts">
-            ${Sync.registered ? `<button class="btn primary big wide" data-act="hostsetup">${t('Host a table')}</button>` : ''}
-            <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Table code')}" aria-label="${t('Table code')}"><button class="btn${Sync.registered ? '' : ' primary'}" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
-            ${Sync.registered ? '' : `<button class="btn wide hostbtn" data-act="hostsetup">${t('Host a table')}<small>${t('Account required')}</small></button>`}
+            ${Sync.registered ? `<button class="btn primary big wide" data-act="hostsetup">${t('Create a game')}</button>` : ''}
+            <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Game code')}" aria-label="${t('Game code')}"><button class="btn${Sync.registered ? '' : ' primary'}" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
+            ${Sync.registered ? '' : `<button class="btn wide hostbtn" data-act="hostsetup">${t('Create a game')}<small>${t('Account required')}</small></button>`}
           </div>
           <div class="wgrid">
             <button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button>
             <button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button>
             ${Sync.registered
-              ? `<button class="btn" data-act="accountgames">${t('Your games')}<small>${t('Resume, history')}</small></button><button class="btn" data-act="maps_">${t('Maps')}<small>${t('Browse, create, publish')}</small></button>`
+              ? `<button class="btn" data-act="accountgames">${t('My games')}<small>${t('Resume, history')}</small></button><button class="btn" data-act="maps_">${t('Maps')}<small>${t('Browse, create, publish')}</small></button>`
               : `<button class="btn span2" data-act="maps_">${t('Maps')}<small>${t('Browse, create and share')}</small></button>`}
           </div>
           ${segRow('Share anonymous results', 'recshare', 'v', Records.on() ? 'on' : 'off', [['on', t('On')], ['off', t('Off')]])}
@@ -114,7 +114,7 @@ function renderFlow() {
   const upd = () => {
     if (fm && $('#f-map-prev')) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-name').textContent = m ? m.name : ''; $('#f-map-desc').textContent = m ? mapInfo(m) : ''; $('#f-map-text').textContent = m && m.description ? t(m.description) : ''; }
   };
-  if (fm) fm.onchange = () => { S.mapId = fm.value; upd(); if (st === 'lobby') { const m = T.maps.find(x => x.id === fm.value); if (m && isCustomMap(m) && !encMap(m)) { toast(t('This map is too large for an online table.')); return; } Sync.updateSettings(mapPatch(m)); } };
+  if (fm) fm.onchange = () => { S.mapId = fm.value; upd(); if (st === 'lobby') { const m = T.maps.find(x => x.id === fm.value); if (m && isCustomMap(m) && !encMap(m)) { toast(t('This map is too large for an online game.')); return; } Sync.updateSettings(mapPatch(m)); } };
   upd();
   const jc = $('#join-code'); if (jc) jc.onkeydown = e => { if (e.key === 'Enter') actions.joinroom(); };
   document.querySelectorAll('[data-botlvl]').forEach(sel => { sel.onchange = () => Sync.upd('players/' + sel.dataset.botlvl, { bot: sel.value }).catch(() => {}); });
@@ -125,7 +125,7 @@ function renderFlow() {
     renderFlow();
   }; });
 }
-const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found', started: 'That game has already started', closed: 'The host closed this game.', full: 'This table is full (8 players).' };
+const FLOW_MSG = { connecting: 'Connecting…', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Game not found', started: 'That game has already started', closed: 'The host closed this game.', full: 'This game is full (8 players).' };
 function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="status">${t(FLOW_MSG[Sync.status])}${Sync.status === 'error' && Sync.lastError ? ` <code>${esc(Sync.lastError)}</code>` : ''}</p>` : ''; }
 
 function lobbyHtml() {
@@ -137,8 +137,9 @@ function lobbyHtml() {
     ${host && p.bot ? `<button class="x" data-act="delbot" data-u="${esc(id)}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}
     ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>${ico('up')}</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>${ico('down')}</button></span>` : ''}</span></li>`).join('');
   const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[modeOf(st.mode)][0])}</dd></dl>`;
-  return `${fhead(t('Table'), 'leavelobby')}
-    <div class="roomcard"><div><small>${t('Table code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
+  return `${fhead(t('Game'), 'leavelobby')}
+    <div class="steps"><b class="on">1 · ${t('Gathering')}</b><b>2 · ${t('Playing')}</b><b>3 · ${t('Result')}</b></div>
+    <div class="roomcard"><div><small>${t('Game code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
       <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>
     <div class="setcard">${host ? `<input type="hidden" id="f-map" value="${esc(map.id)}"><button type="button" class="mapcard mini" data-act="mapgallery" aria-label="${t('Map')}: ${esc(map.name)}. ${t('Tap to choose another map')}"><span class="prevbox">${mapPreview(map)}</span></button>` : `<span class="prevbox">${mapPreview(map)}</span>`}
       ${kv}${host ? `<button class="btn edit" data-act="lobbyopts" aria-label="${t('Game options')}">${ico('pencil', 20)}</button>` : ''}</div>
@@ -147,6 +148,7 @@ function lobbyHtml() {
     <p class="dim hintline lobbyhint">${t('Roles and cards are dealt when the game starts.')}</p>
     <div class="row lobbyact"><button class="btn big ${S.ready ? 'ok' : host ? '' : 'primary'}" data-act="ready">${S.ready ? ico('check') + ' ' + t('Ready') : t("I'm ready")}</button>
     ${host ? `<button class="btn primary big startbtn" data-act="startgame" ${allReady ? '' : 'disabled'}>${t('Start game')}<small>${t('{n}/{m} ready', { n: nReady, m: players.length })}</small></button>` : ''}</div>
+    ${host ? `<button class="btn link wide" data-act="closetable">${t('Cancel game')}</button>` : ''}
     ${!host && S.ready ? `<p class="dim hintline center">${t('Waiting for the host to start the game…')}</p>` : ''}`;
 }
 /* the database refused a write: almost always rules that were not published again after an update */
@@ -173,7 +175,7 @@ async function beginGame() {
   { const sec = await Sync.get('secret/' + Sync.uid); if (sec) { role = sec.role; char = sec.char || ''; } else role = null; }
   T.beginning = false;
   if (!role) { toast(t('The game started without you. Ask the host.')); leaveToWelcome(); return; }
-  if (!S.ready) { toast(t('This table is already running, but this device has no saved game for it. Reopen it from My games on the device that played it.')); leaveToWelcome(); return; }
+  if (!S.ready) { toast(t('This game is already running, but this device has no saved game for it. Reopen it from My games on the device that played it.')); leaveToWelcome(); return; }
   T.map = tableMapOf(st);
   const keep = S.customMaps, name = S.name, room = S.room, shared = T.map.shared ? T.map.rec : null;
   S = Object.assign(fresh(), { stage: 'game', mapId: T.map.id, mode: st.mode, track: 'auto', role, char, online: true, name, room, customMaps: keep, sharedMap: shared, tab: 'play' });
@@ -194,7 +196,7 @@ function backToLobby() {
   closeDlg(); Sync.resetMine().finally(renderFlow); save(); boot();
   toast(t('Back in the lobby. Tap ready for the next game.'));
 }
-function leaveToWelcome() { T.maps = T.maps.filter(m => !m.shared); Sync.leave(); S.room = null; S.stage = 'welcome'; S.ready = false; save(); renderFlow(); }
+function leaveToWelcome() { T.homeGames = undefined; T.maps = T.maps.filter(m => !m.shared); Sync.leave(); S.room = null; S.stage = 'welcome'; S.ready = false; save(); renderFlow(); }
 
 function soloStart(role) {
   const id = $('#f-map').value; T.map = T.maps.find(m => m.id === id) || T.maps[0];
@@ -254,9 +256,9 @@ Object.assign(actions, {
   async hostcreate() {
     const name = readName(); S.mapId = $('#f-map').value; S.mode = $('#f-mode').value; S.track = 'auto';
     try { await Sync.ensure(); } catch (_) { /* stays offline */ }
-    if (!Sync.registered) { T.afterAuth = 'host'; S.stage = 'auth'; T.authReason = t('Create an account to host a table.'); save(); renderFlow(); return; }
+    if (!Sync.registered) { T.afterAuth = 'host'; S.stage = 'auth'; T.authReason = t('Create an account to create a game.'); save(); renderFlow(); return; }
     const m = T.maps.find(x => x.id === S.mapId), patch = mapPatch(m);
-    if (isCustomMap(m) && !patch.customMap) { toast(t('This map is too large for an online table.')); return; }
+    if (isCustomMap(m) && !patch.customMap) { toast(t('This map is too large for an online game.')); return; }
     const ok = await Sync.create({ map: S.mapId, mode: S.mode, customMap: patch.customMap }, { name });
     if (!ok) renderFlow();
   },
@@ -278,13 +280,13 @@ Object.assign(actions, {
     toast(t('Bots will run on that player’s device.'));
   },
   async takeover() {
-    try { await Sync.claimHost(); if (typeof Online !== 'undefined') Online.hostCheck(); toast(t('You are running the bots now.')); } catch (_) { toast(t('Could not take over the table.')); }
+    try { await Sync.claimHost(); if (typeof Online !== 'undefined') Online.hostCheck(); toast(t('You are running the bots now.')); } catch (_) { toast(t('Could not take over the game.')); }
     if (S.stage === 'game') { render(); hdr(); } else renderFlow();
   },
   handover() {
     const me = Sync.uid;
     const others = Object.entries(Sync.players || {}).filter(([u, p]) => u !== me && !p.bot && !p.out);
-    if (!others.length) { toast(t('Nobody else is at the table.')); return; }
+    if (!others.length) { toast(t('Nobody else is in the game.')); return; }
     dlg.innerHTML = `<h2>${t('Hand over hosting')}</h2><p class="dim">${t('Bots will run on the device you choose. You can take over again later.')}</p>
       <ul class="plist">${others.map(([u, p]) => `<li><span class="pname">${esc(p.name)}</span><button class="btn" data-act="gohost" data-u="${esc(u)}">${t('Choose')}</button></li>`).join('')}</ul>
       <div class="row"><button class="btn" id="d-no">${t('Cancel')}</button></div>`;
@@ -302,9 +304,9 @@ Object.assign(actions, {
   mvdown(b) { reorder(b.dataset.u, 1); },
   shuffleorder() { const ids = orderedIds(); for (let i = ids.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [ids[i], ids[j]] = [ids[j], ids[i]]; } Sync.updateSettings({ order: ids }); },
   startgame: startTable,
-  leavelobby() { confirmDlg(t('Leave this table?'), t('You will stop receiving announcements.'), leaveToWelcome); },
+  leavelobby() { confirmDlg(t('Leave this game?'), t('You will stop receiving announcements.'), leaveToWelcome); },
   leavetable() {
-    confirmDlg(t('Leave the table?'), t('The game keeps going and you can come back from My games.'), () => {
+    confirmDlg(t('Leave the game?'), t('The game keeps going and you can come back from My games.'), () => {
       if (Sync.isHost()) {
         const other = Object.keys(Sync.players || {}).find(u => u !== Sync.uid && !Sync.players[u].bot && !Sync.players[u].out);
         if (other) Sync.updateSettings({ host: other });
@@ -314,11 +316,16 @@ Object.assign(actions, {
       Sync.leave(true); S.room = null; S.stage = 'welcome'; T.turnState = null; save(); boot(); renderFlow();
     });
   },
+  /* leave a finished game: the host hands the game to another person first, so the others can still rematch */
+  backtoplay() {
+    if (Sync.isHost()) { const other = Object.keys(Sync.players || {}).find(u => u !== Sync.uid && !Sync.players[u].bot && !Sync.players[u].out); if (other) Sync.updateSettings({ host: other }); }
+    flushSeat(); Sync.releaseHost(); Sync.leave(true); S.room = null; S.stage = 'welcome'; T.turnState = null; T.homeGames = null; save(); boot(); renderFlow();
+  },
   closetable() {
     if (!Sync.isHost()) return;
-    confirmDlg(t('Close the table?'), t('The game ends for everyone at the table. This cannot be undone.'), () => {
+    confirmDlg(t('End the game for everyone?'), t('The game ends for everyone. This cannot be undone.'), () => {
       Sync.closeRoom().catch(() => {});
-      Sync.leave(true); S.room = null; S.stage = 'host'; T.turnState = null; save(); boot(); renderFlow();
+      Sync.leave(true); S.room = null; S.stage = 'welcome'; T.turnState = null; T.homeGames = null; save(); boot(); renderFlow();
     });
   },
   solostart(b) { soloStart(b.dataset.role); },
@@ -337,7 +344,7 @@ const codeFromScan = txt => {
   const m = String(txt).trim().toUpperCase().match(/^[A-Z2-9]{4,8}$/); return m ? m[0] : '';
 };
 async function scanDlg() {
-  dlg.innerHTML = `<h2>${t('Scan a table QR code')}</h2><div class="scanbox"><video id="scan-video" playsinline muted></video><i class="scanframe"></i></div>
+  dlg.innerHTML = `<h2>${t('Scan a game QR code')}</h2><div class="scanbox"><video id="scan-video" playsinline muted></video><i class="scanframe"></i></div>
     <p class="dim" id="scan-msg">${t("Point the camera at the QR code on the host's screen.")}</p><div class="row"><button class="btn" id="d-no">${t('Cancel')}</button></div>`;
   if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
   const msg = x => { const m = $('#scan-msg'); if (m) m.textContent = x; };
@@ -345,7 +352,7 @@ async function scanDlg() {
     await loadJsQR();
     if (!dlg.open) return;
     scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
-  } catch (e) { const sb = $('.scanbox'); if (sb) sb.style.display = 'none'; msg(t('The camera is not available. Allow camera access, or type the table code.')); return; }
+  } catch (e) { const sb = $('.scanbox'); if (sb) sb.style.display = 'none'; msg(t('The camera is not available. Allow camera access, or type the game code.')); return; }
   const video = $('#scan-video'); if (!video || !dlg.open) { stopScan(); return; }
   video.srcObject = scanStream; try { await video.play(); } catch (_) { /* autoplay refused */ }
   const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true }), stream = scanStream;
@@ -357,7 +364,7 @@ async function scanDlg() {
       const hit = window.jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height, { inversionAttempts: 'attemptBoth' });
       const code = hit && codeFromScan(hit.data);
       if (code) { stopScan(); closeDlg(); const jc = $('#join-code'); if (jc) jc.value = code; T.pendingRoom = null; actions.joinroom(); return; }
-      if (hit) msg(t('That QR code is not a table.'));
+      if (hit) msg(t('That QR code is not a game.'));
     }
     setTimeout(tick, 120);
   };
@@ -414,7 +421,7 @@ async function serverResume(code) {
     T.turnState = Sync.turn || null;
     save(); boot();
     if (typeof Online !== 'undefined') { Online.attach(); Online.hostCheck(); }
-    toast(t('Game restored from the table.'));
+    toast(t('Game restored.'));
     return true;
   } catch (e) { console.warn('resume', e); return false; }
   finally { T.resuming = false; }

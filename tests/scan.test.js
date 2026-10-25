@@ -32,7 +32,7 @@ with open(${JSON.stringify(file)},'wb') as f:
     if(expect){await p.waitForFunction(()=>window.__joined,null,{timeout:15000});
       assert(await p.evaluate(()=>window.__joined)===expect,'scanning '+name+' joins table '+expect);
       assert(await p.evaluate(()=>!document.querySelector('dialog[open]')),'the scanner closes after a scan');}
-    else{await p.waitForFunction(()=>/not a table/.test(document.querySelector('#scan-msg').textContent),null,{timeout:15000});
+    else{await p.waitForFunction(()=>/not a game/.test(document.querySelector('#scan-msg').textContent),null,{timeout:15000});
       assert(await p.evaluate(()=>window.__joined)===null,'scanning '+name+' does not join anything');
       await p.click('#d-no');}
     assert(await p.evaluate(()=>!document.querySelector('dialog[open]')),'the scanner dialog is closed');

@@ -418,7 +418,7 @@ function globalOverPanel() {
     <p class="dim">${t(why)}</p>${esc_.length ? `<p>${t('Humans who escaped: {n}', { n: esc_.map(esc).join(', ') })}</p>` : ''}
     ${routesNote()}${(Records.maybeSend(), Records.note())}${window.Admin && Admin.ratePanel ? Admin.ratePanel() : ''}
     <div class="seg revseg" role="radiogroup" aria-label="${t('Map')}"><button role="radio" data-act="revealview" data-v="real" aria-checked="${!T.showAnn}">${t('Real routes')}</button><button role="radio" data-act="revealview" data-v="ann" aria-checked="${!!T.showAnn}">${t('Announcements')}</button></div>
-    <ul class="plist rev">${rows}</ul><button class="btn big wide" data-act="savelog">${t('Save game log')}</button>${!S.hot && Sync.code && Sync.isHost() ? `<button class="btn primary big wide" data-act="rematch">${t('Play again')}</button><button class="btn big wide" data-act="newgame">${t('Close table')}</button>` : `<button class="btn primary big wide" data-act="newgame">${t(!S.hot && Sync.code ? 'Leave table' : 'New game')}</button>`}`;
+    <ul class="plist rev">${rows}</ul><button class="btn big wide" data-act="savelog">${t('Save game log')}</button>${!S.hot && Sync.code ? `${Sync.isHost() ? `<button class="btn primary big wide" data-act="rematch">${t('Rematch with the same players')}</button>` : ''}<button class="btn${Sync.isHost() ? '' : ' primary'} big wide" data-act="backtoplay">${t('Back to Play')}</button>` : `<button class="btn primary big wide" data-act="newgame">${t('New game')}</button>`}`;
 }
 
 /* everything the player may do now that they have moved: the bar next to their sector offers it, the panel explains the chosen one */
@@ -507,10 +507,10 @@ function manualPanel() {
     <div class="row tight">${undoBtn()}</div>${extras()}`;
 }
 
-const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Table not found' };
+const SYNC_MSG = { connecting: 'Connecting…', online: 'Online', offline: 'Offline, will resync', error: 'Connection error', 'bad-code': 'Enter the 4-letter code', 'no-room': 'Game not found' };
 function roomBlock() {
   if (!Sync.code) return '';
-  return `<div class="roomrow"><div><small>${t('Table code')}</small><b>${esc(Sync.code)}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
+  return `<div class="roomrow"><div><small>${t('Game code')}</small><b>${esc(Sync.code)}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
     <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>`;
 }
 /* what the border of a marker means, and how my own steps look */

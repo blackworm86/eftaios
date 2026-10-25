@@ -50,7 +50,7 @@ async function flushJournal() {
     S.jsent = j; try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable */ }
     journalWarned = false;
   } catch (e) {
-    if (!journalWarned) { journalWarned = true; toast(t('Could not save your notes to the table. Check your connection.')); }
+    if (!journalWarned) { journalWarned = true; toast(t('Could not save your notes to the game. Check your connection.')); }
   }
 }
 const queueJournal = () => { clearTimeout(journalTimer); journalTimer = setTimeout(flushJournal, 1000); };
@@ -1263,15 +1263,15 @@ const actions = {
   rematch() { Sync.rematch().then(ok => { if (!ok) toast(t('Could not start another game.')); }); },
   newgame() {
     const host = !!(Sync.code && Sync.isHost());
-    const [title, body] = S.hot ? ['Close this game?', 'The pass-and-play game ends for everyone.'] : !Sync.code ? ['Start a new game?', 'Your route, notes and role will be erased.'] : host ? ['Close this game?', 'The game ends for everyone at the table. You can then host a new one.'] : ['Leave this game?', 'You leave the table. Your route and notes on this device are erased.'];
+    const [title, body] = S.hot ? ['Close this game?', 'The pass-and-play game ends for everyone.'] : !Sync.code ? ['Start a new game?', 'Your route, notes and role will be erased.'] : host ? ['Close this game?', 'The game ends for everyone. You can then create a new one.'] : ['Leave this game?', 'You leave the game. Your route and notes on this device are erased.'];
     confirmDlg(t(title), t(body), async () => {
       if (S.hot) Hot.clear();
       if (host) await Sync.closeRoom().catch(() => {});
-      Sync.leave(true); resetToWelcome(host ? 'host' : 'welcome');
+      Sync.leave(true); resetToWelcome('welcome');
     });
   },
   map(b) { actions.ovclose(); const m = T.maps.find(x => x.id === b.dataset.id); if (!m || m === T.map) return; confirmDlg(t('Switch map?'), t('Your position resets to the start sector of the new map.'), () => { T.map = m; S.mapId = m.id; S.pos = find(m, S.role === 'human' ? 'H' : 'A'); S.path = [{ turn: 0, pos: S.pos }]; T.sel = null; S.phase = 'move'; S.res = null; buildMap(); afterChange(); }); },
-  share() { const url = roomUrl(), data = { title: 'EFTAIOS', text: t('Join my table: {c}', { c: Sync.code }), url }; if (navigator.share) navigator.share(data).catch(() => {}); else copyText(url, t('Link copied')); },
+  share() { const url = roomUrl(), data = { title: 'EFTAIOS', text: t('Join my game: {c}', { c: Sync.code }), url }; if (navigator.share) navigator.share(data).catch(() => {}); else copyText(url, t('Link copied')); },
   qr() { qrDlg(); },
   lang(b) { setLang(b.dataset.l); },
   mapstyle(b) { setMapStyle(b.dataset.v); b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); },
@@ -1378,8 +1378,8 @@ function qrSvg(text) {
 }
 function qrDlg() {
   const url = roomUrl();
-  dlg.innerHTML = `<h2>${t('Join my table')}</h2><p class="dim">${t('Scan with the phone camera, or enter the code in the app.')}</p>
-    <div class="qr">${qrSvg(url)}</div><div class="say silent" style="margin:12px 0 0;text-align:center"><small>${t('Table code')}</small><b style="letter-spacing:.3em;color:var(--text)">${esc(Sync.code)}</b></div>
+  dlg.innerHTML = `<h2>${t('Join my game')}</h2><p class="dim">${t('Scan with the phone camera, or enter the code in the app.')}</p>
+    <div class="qr">${qrSvg(url)}</div><div class="say silent" style="margin:12px 0 0;text-align:center"><small>${t('Game code')}</small><b style="letter-spacing:.3em;color:var(--text)">${esc(Sync.code)}</b></div>
     <div class="row"><button class="btn" id="d-no">${t('Close')}</button><button class="btn primary" data-act="share">${t('Share link')}</button></div>`;
   dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
@@ -1469,13 +1469,13 @@ function morePanel() {
     ${Sync.code && Sync.isHost() ? `<button class="mrow" data-act="handover">${t('Hand over hosting')}<i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}
     </div>
     ${online
-      ? `<div class="row menuact"><button class="btn" data-act="leavetable">${t('Leave table')}</button>${host ? `<button class="btn danger" data-act="closetable">${t('Close table')}</button>` : ''}</div>`
+      ? `<div class="row menuact"><button class="btn" data-act="leavetable">${t('Leave game')}</button>${host ? `<button class="btn danger" data-act="closetable">${t('End game for everyone')}</button>` : ''}</div>`
       : `<div class="row menuact"><button class="btn danger" data-act="newgame">${t(ng)}</button></div>`}`;
 }
 /* ---------------- boot ---------------- */
 function setLang(l) { LANG = l; try { localStorage.setItem('eftaios.lang', l); } catch (_) { /* noop */ } applyStatic(); if (S.stage === 'game' && S.role) { render(); hdr(); paintCells(); } else renderFlow(); }
 /* back to the start screen, keeping only the name and custom maps */
-function resetToWelcome(stage) { T.maps = T.maps.filter(m => !m.shared); const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards }; S = Object.assign(fresh(), keep); S.stage = stage || 'welcome'; T.turnState = null; T.counts = null; Sync.status = 'off'; closeDlg(); save(); boot(); }
+function resetToWelcome(stage) { T.homeGames = undefined; T.maps = T.maps.filter(m => !m.shared); const keep = { customMaps: S.customMaps, name: S.name, mapId: S.mapId, mode: S.mode, cards: S.cards }; S = Object.assign(fresh(), keep); S.stage = stage || 'welcome'; T.turnState = null; T.counts = null; Sync.status = 'off'; closeDlg(); save(); boot(); }
 function boot() {
   if (S.hot && window.Hot) Hot.rebind();
   const ver = $('#ver'); if (ver) ver.hidden = S.stage !== 'welcome';

@@ -29,14 +29,12 @@ def _avg(rows, col):
 
 
 def speed(run_dir):
-    """Seconds per iteration, from the time stamps of the last iteration lines in train.log."""
+    """Typical seconds per iteration: the median of the gaps between consecutive iteration lines (a stop in between does not count)."""
     ts = []
     for m in re.finditer(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) it (\d+):", _read(os.path.join(run_dir, "train.log")), re.M):
         ts.append((time.mktime(time.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")), int(m.group(2))))
-    ts = ts[-21:]
-    if len(ts) < 2 or ts[-1][1] == ts[0][1]:
-        return None
-    return (ts[-1][0] - ts[0][0]) / (ts[-1][1] - ts[0][1])
+    gaps = sorted(b[0] - a[0] for a, b in zip(ts[-31:], ts[-30:]) if b[1] == a[1] + 1)
+    return gaps[len(gaps) // 2] if gaps else None
 
 
 def iteration(run_dir):

@@ -1,25 +1,5 @@
 // Spacing guard: on every start/flow screen, blocks stacked on top of each other keep at least 6px between them (nothing touches).
-const {assert,setup}=require('./helpers');
-const MIN=6;
-const measure=()=>{
-  const card=document.querySelector('#flow-card');const out=[];
-  const vis=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.height>0&&r.width>0&&s.position!=='absolute'&&s.position!=='fixed'&&s.display!=='none'&&s.visibility!=='hidden'};
-  const parents=[card,...card.querySelectorAll('*')].filter(p=>p.children.length>1);
-  const inner='.stc,.mapname,.mapcard,.pname,.who';   // text stacked inside one card is meant to be tight
-  for(const p of parents){
-    if(p.closest(inner))continue;
-    const kids=[...p.children].filter(vis).sort((a,b)=>a.getBoundingClientRect().top-b.getBoundingClientRect().top);
-    for(let i=1;i<kids.length;i++){
-      const a=kids[i-1].getBoundingClientRect(),b=kids[i].getBoundingClientRect();
-      const overlap=Math.min(a.right,b.right)-Math.max(a.left,b.left);
-      if(overlap<Math.min(a.width,b.width)*0.3||b.top<a.bottom-1&&b.top>a.top+2&&false)continue;
-      if(b.top<a.top+a.height*0.5)continue;   // side by side
-      const gap=b.top-a.bottom;
-      if(gap<6){const d=e=>(e.tagName.toLowerCase()+(e.className&&typeof e.className==='string'?'.'+e.className.trim().split(/\s+/).join('.'):'')+(e.dataset&&e.dataset.act?'['+e.dataset.act+']':''));out.push(Math.round(gap)+'px between '+d(kids[i-1])+' and '+d(kids[i])+' in '+d(p))}
-    }
-  }
-  return out;
-};
+const {assert,setup,measureGaps:measure}=require('./helpers');
 (async()=>{
   const {b,pages,errs}=await setup(1);const [P]=pages;
   await P.goto('http://localhost:8123/');await P.waitForSelector('#flow:not([hidden])');

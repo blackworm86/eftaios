@@ -431,7 +431,6 @@ html,body{height:100vh;height:100dvh}
 .sec .log{margin-top:10px}
 .hatches .hb{min-height:44px;display:grid;place-items:center;border-radius:12px;border:2px solid var(--pod);background:#1e8a4f22;font:700 18px var(--font-head)}
 .hatches .hb.closed{border-color:#7a4a58;background:#3a263066;color:#ba8794;text-decoration:line-through}
-}
 /* More: a short settings list, long content opens full screen */
 .menu{display:grid;gap:8px}
 .mrow{display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);text-align:left;font:700 14px var(--font-head);letter-spacing:.1em;text-transform:uppercase}
@@ -1136,3 +1135,4 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 #flow-card>.plist{margin:0 0 10px}
 #flow-card>.lobbyhint{margin:0 0 12px}
 #flow-card>.row.lobbyact{margin-top:12px}
+#panel-body .legendtoggle{margin-top:8px}

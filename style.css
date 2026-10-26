@@ -1123,3 +1123,16 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 .acctnav{margin:18px 0 12px}
 .setup-card.top .btn.big.wide+.row.two{margin-top:10px}
 .setup-card.top .setrow,.setup-card.top .mrow{margin:0 0 10px}
+/* a row of buttons under a button never touches it (the id rule above would otherwise win) */
+#flow-card>.btn+.row{margin-top:10px}
+/* the game page (lobby): one vertical rhythm, written with the id so no older rule can squeeze it */
+#flow-card>.steps{margin:0 0 14px}
+#flow-card>.roomcard{margin:0 0 12px}
+#flow-card .roomcard small{margin-bottom:6px}
+#flow-card .roomcard b{margin-bottom:6px}
+#flow-card>.btn.wide{margin:0 0 12px}
+#flow-card>.setcard{margin:0 0 14px}
+#flow-card>h3{margin:14px 0 8px}
+#flow-card>.plist{margin:0 0 10px}
+#flow-card>.lobbyhint{margin:0 0 12px}
+#flow-card>.row.lobbyact{margin-top:12px}

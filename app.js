@@ -574,18 +574,6 @@ function typeAtPoint(map, x, y) {
   }
   return best;
 }
-/* which way a bent arrow between a and b should curve: the side that crosses no empty space or start sector (+1 or -1 relative to its direction) */
-function curveSide(map, a, b) {
-  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, bend = 0.3, bad = [0, 0];
-  [1, -1].forEach((s, k) => {
-    const cx = (a[0] + b[0]) / 2 + nx * bend * s * L, cy = (a[1] + b[1]) / 2 + ny * bend * s * L;
-    for (let i = 3; i <= 17; i++) {
-      const t = i / 20, px = (1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cx + t * t * b[0], py = (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cy + t * t * b[1];
-      const ty = typeAtPoint(map, px, py); if (ty === 'x' || ty === 'H' || ty === 'A') bad[k]++;
-    }
-  });
-  return bad[0] <= bad[1] ? 1 : -1;
-}
 /* is the line between two sectors a straight row of sectors (so it crosses their centres, not an edge)? */
 function straightMove(map, a, b) {
   const p = parseId(a), q = parseId(b); if (!p || !q) return true;
@@ -639,6 +627,23 @@ function liveSteps(fset, recent) {
   });
   return all.filter(r => (!fset.length || fset.includes(r.key))).map(r => ({ key: r.key, steps: r.steps.filter(s => recent({ key: r.key, turn: s.t }) && (inRng(s.t0) || !s.t0)) }));
 }
+/* how far to bend an arrow so it keeps off empty sectors, the start sectors and other players' markers: tries a few bends, the cheapest wins (straight wins a tie) */
+function bestBend(map, x, markers) {
+  const a = x.a, b = x.b, dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, k = x.s.kind, base = k === 'jump' ? 0.38 : 0.26;
+  const cands = k === 'move' ? (x.curve ? [0.15, -0.15, 0.3, -0.3, 0.45, -0.45] : [0, 0.15, -0.15, 0.3, -0.3, 0.45, -0.45]) : [base, -base, base * 1.6, -base * 1.6];
+  const others = markers.filter(m => Math.hypot(m[0] - a[0], m[1] - a[1]) > 3 && Math.hypot(m[0] - b[0], m[1] - b[1]) > 3);   // the arrow's own two markers do not count
+  let best = cands[0], bc = 1e9;
+  for (const bend of cands) {
+    const cx = (a[0] + b[0]) / 2 + nx * bend * L, cy = (a[1] + b[1]) / 2 + ny * bend * L; let cost = Math.abs(bend) * (k === 'move' ? 3 : 0.5);
+    for (let i = 2; i <= 18; i++) {
+      const t = i / 20, px = (1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cx + t * t * b[0], py = (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cy + t * t * b[1], ty = typeAtPoint(map, px, py);
+      if (ty === 'x') cost += 4; else if (ty === 'H' || ty === 'A') cost += 3;
+      if (others.some(m => Math.hypot(px - m[0], py - m[1]) < (m[2] || 6) + 3)) cost += 3;
+    }
+    if (cost < bc - 1e-9) { bc = cost; best = bend; }
+  }
+  return best;
+}
 function drawRouteArrows(routes, mkPos, marks, solid) {
   const map = T.map, g = el('g', { class: 'routes' }), now = S.turn, classic = svg.classList.contains('classic');
   const at = (k, sec) => { const p = mkPos.get(k + '|' + sec); if (p) return p; const q = parseId(sec); if (!q) return null; const h = hexPos(map, q[0], q[1]); return [h.x, h.y, 0]; };
@@ -655,6 +660,8 @@ function drawRouteArrows(routes, mkPos, marks, solid) {
       } else arrows.push({ key: r.key, s, a, b, t: s.t });
     });
   });
+  const markers = [...mkPos.values()];
+  arrows.forEach(x => { if (x.s.kind === 'stay') return; x.bend = bestBend(map, x, markers); if (x.s.kind === 'move' && x.bend !== 0) x.curve = true; });
   // lanes: straight arrows on the same two sectors are spread so none sits on another
   const groups = new Map();
   arrows.filter(x => x.s.kind === 'move' && !x.curve).forEach(x => { const id = [x.s.from, x.s.to].sort().join('|'); if (!groups.has(id)) groups.set(id, []); groups.get(id).push(x); });
@@ -690,7 +697,7 @@ function drawRouteArrows(routes, mkPos, marks, solid) {
       return;
     }
     // a jump, unheard turns, or a move that is not in a straight row of sectors: a curve (a straight line there would run along the edge between two sectors)
-    const side = x.s.kind === 'move' ? curveSide(map, a, b) * (x.s.from < x.s.to ? 1 : -1) : 1, bend = x.s.kind === 'jump' ? 0.38 : x.s.kind === 'gap' ? 0.26 : 0.3 * side, cxp = (a[0] + b[0]) / 2 + nx * bend * L, cyp = (a[1] + b[1]) / 2 + ny * bend * L, q = t => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cxp + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cyp + t * t * b[1]];
+    const bend = x.bend, cxp = (a[0] + b[0]) / 2 + nx * bend * L, cyp = (a[1] + b[1]) / 2 + ny * bend * L, q = t => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cxp + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cyp + t * t * b[1]];
     const pts = []; for (let i = 0; i <= 48; i++) pts.push(q(i / 48));
     const acc = [0]; for (let i = 1; i < pts.length; i++) acc.push(acc[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     const tot = acc[acc.length - 1], i0 = acc.findIndex(v => v >= t0), i1 = acc.reduce((m, v, i) => v <= tot - t1 ? i : m, 0), ib = acc.reduce((m, v, i) => v <= acc[i1] - HL ? i : m, 0);

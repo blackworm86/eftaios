@@ -556,8 +556,8 @@ const Bot = (() => {
       return;
     }
     // Alien attack
-    // the network attacks in 3 turns out of 4 (its training game had no counter-play to attacks), so the Hard rules decide attacks for now
-    const nnAttack = null;
+    // Tried: the Hard rules deciding attacks for the network's moves. The Aliens then attack 0.03 times per turn and are weaker than Easy (see tools/rounds/NOTES.md), so the network decides.
+    const nnAttack = useNN && !human && !lurk ? NN.attack(H, idx, st, 'alien', 1) : null;
     const worth = !human && (lurk || (nnAttack !== null ? nnAttack : attackWorth(ctx, W, st, lvl)));
     if (window.__trace && !human && window.Hot && Hot.dump) {   // benchmark hook: what the tracker believed here against who really stands here
       const c0 = g.idx.get(st.pos); let truth = 0, aliens = 0;

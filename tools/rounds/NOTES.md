@@ -415,3 +415,11 @@ After (Easy mistake rate 0.5), Human escape % / Alien win %:
 - Aliens: easy 66% escape, normal 46%, hard 34% against Normal Humans (gaps 20 and 12 points). Hard meets the target "Humans escape 35% or less".
 - Humans: Easy 32% against Normal Aliens, Normal 46%, Hard 44%: Easy is clearly weaker, Normal and Hard Humans are the same (nothing left to gain by tuning).
 - Hard Aliens win 46.5% against Hard Humans in bot-only games; the target "Aliens win 55% or more" is not met, and "an experienced player beats Hard 1 game in 4" cannot be measured without people.
+
+## The first network (v2, iteration 1052) against Easy / Normal / Hard (tools/nn-v2 reports, 72 games per cell, rolemix, seed 4402)
+
+Full tables: `nn-v2-matrix.report.txt` (the network decides everything it was trained for) and `nn-v2-hybrid-matrix.report.txt` (the Hard rules decide attacks).
+- The network attacks in 76-88% of its Alien turns (Hard: 7-15%): its training game had no counter-play. It still wins 6 and 8 player tables that way (Alien win 65% / 90% against Normal Humans, Hard Aliens 47% / 49%) but loses at 4 players (40% against 60%).
+- As Humans it plays at about Easy level: against Hard Aliens it escapes 31 / 20 / 15% at 4 / 6 / 8 players, Hard Humans 42 / 33 / 29%, Easy Humans 24 / 25 / 21%.
+- Letting the Hard rules decide its attacks makes the Aliens passive (0.03 attacks per turn) and weaker than Easy Aliens: Humans escape 55-72% against them. Its moves were learned together with its own attacks.
+- Python rule-based players (the training yardstick) are much simpler than the app's Hard bot, so "61% against rule-based Humans" did not mean "as good as Hard".

@@ -49,3 +49,16 @@ No more changes of direction. The trained network improves the bots and, step by
 | F | Keep improving from the game records (anonymous real games) and league training | both | ongoing |
 
 Rule for the rest of this plan: results decide how long a stage runs, not whether the path continues. If a stage misses its target we train longer, enlarge the network or fix the inputs.
+
+### Fixing the network (after the first comparison, 2026-10-26)
+
+Diagnosis: the network's Humans play at Easy level, its Aliens spam attacks (no counter-play in the training game), and its sparring partners (simple Python rule-based players) are far weaker than the app's Hard bot.
+Method: learn from the real teacher first, then improve beyond it.
+
+| Step | What | Who |
+|---|---|---|
+| 1 | Record the teacher: the real Hard bots playing full-rules games in the app engine, every move / attack / decoy decision saved in the network's input format | Claude builds the recorder; owner runs it on the PC (about 20 min) |
+| 2 | Distil: train the network to copy the Hard bot (all seats, all table sizes and maps) | owner runs the training; Claude measures against Hard in the simulator. Target: the network is as strong as Hard |
+| 3 | Full rules in the training engine (stage B) with the Humans' counter-play, and Item / power decisions recorded from the teacher and distilled too | Claude |
+| 4 | Improve beyond the teacher: self-play and league training with the full rules, the distilled-Hard network as a frozen sparring partner, evaluated against the real Hard bot every few hundred iterations | owner runs; Claude measures |
+| 5 | Levels and replacement of the hand-built bots (stages D and E) | both |

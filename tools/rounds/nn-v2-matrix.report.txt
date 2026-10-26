@@ -1,0 +1,27 @@
+
+== 4 players: rows = who plays the Humans, columns = who plays the Aliens; Human escape % / Alien team win % (72 games per cell)
+          A=nn            A=easy          A=normal        A=hard          
+H=nn      31% / 58%       58% / 42%       40% / 46%       31% / 56%       
+H=easy    24% / 81%       49% / 60%       35% / 61%       24% / 68%       
+H=normal  56% / 40%       81% / 19%       51% / 44%       34% / 60%       
+H=hard    49% / 54%       77% / 21%       57% / 38%       42% / 49%       
+attacks per Alien turn when the Aliens are:  nn 0.98   easy 0.04   normal 0.09   hard 0.17
+friendly kills per game when the Aliens are:  nn 0.14   easy 0.11   normal 0.17   hard 0.28
+
+== 6 players: rows = who plays the Humans, columns = who plays the Aliens; Human escape % / Alien team win % (72 games per cell)
+          A=nn            A=easy          A=normal        A=hard          
+H=nn      14% / 78%       34% / 50%       24% / 56%       20% / 58%       
+H=easy    17% / 79%       44% / 71%       29% / 67%       25% / 65%       
+H=normal  35% / 65%       69% / 28%       41% / 43%       33% / 47%       
+H=hard    37% / 60%       69% / 32%       41% / 43%       33% / 51%       
+attacks per Alien turn when the Aliens are:  nn 0.89   easy 0.04   normal 0.08   hard 0.14
+friendly kills per game when the Aliens are:  nn 0.43   easy 0.33   normal 0.40   hard 0.38
+
+== 8 players: rows = who plays the Humans, columns = who plays the Aliens; Human escape % / Alien team win % (72 games per cell)
+          A=nn            A=easy          A=normal        A=hard          
+H=nn      26% / 85%       33% / 61%       19% / 54%       15% / 71%       
+H=easy    26% / 99%       38% / 83%       25% / 78%       21% / 69%       
+H=normal  42% / 90%       59% / 56%       44% / 35%       32% / 49%       
+H=hard    44% / 85%       55% / 67%       36% / 40%       29% / 53%       
+attacks per Alien turn when the Aliens are:  nn 0.27   easy 0.05   normal 0.08   hard 0.11
+friendly kills per game when the Aliens are:  nn 0.69   easy 0.53   normal 0.93   hard 0.89

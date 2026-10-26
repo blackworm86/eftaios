@@ -556,7 +556,8 @@ const Bot = (() => {
       return;
     }
     // Alien attack
-    const nnAttack = useNN && !human && !lurk ? NN.attack(H, idx, st, 'alien', 1) : null;
+    // the network attacks in 3 turns out of 4 (its training game had no counter-play to attacks), so the Hard rules decide attacks for now
+    const nnAttack = null;
     const worth = !human && (lurk || (nnAttack !== null ? nnAttack : attackWorth(ctx, W, st, lvl)));
     if (window.__trace && !human && window.Hot && Hot.dump) {   // benchmark hook: what the tracker believed here against who really stands here
       const c0 = g.idx.get(st.pos); let truth = 0, aliens = 0;

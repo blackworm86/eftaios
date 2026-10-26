@@ -262,7 +262,9 @@ function paintMoveBtns() {
    dashed border = a bluff, joined to where I really was by a dashed line. */
 const mkN = () => S.mkN === undefined ? (S.mkAll ? 0 : 5) : S.mkN;
 /* the turn slider: T.rng = [first, last] turn shown on the map and the sheet (null = the last few steps of everyone) */
-const inRng = n => !T.rng || (n >= T.rng[0] && n <= T.rng[1]);
+/* the turns shown: the slider's span, or while it is closed the last N turns you chose, so the map looks the same either way (following a player and a finished game show everything) */
+const effRng = () => T.rng || ((T.focusSet || []).length || !mkN() || (typeof gameOver === 'function' && gameOver()) ? null : [Math.max(1, S.turn - mkN() + 1), S.turn]);
+const inRng = n => { const r = effRng(); return !r || (n >= r[0] && n <= r[1]); };
 /* Declarations that cannot be where the player is. The game only suggests: the player decides, and marks a declaration
    fake ('f'), dubious ('d') or looked-at-and-kept ('k'). The marks live in the private journal, inside sus['~f'] (one more
    journal field would need new database rules). */
@@ -510,7 +512,7 @@ function paintOverlay() {
   // the last N known steps of every player, yours included (0 = all); following someone shows only them, from the start
   const N = mkN(), winTurns = new Map();
   new Set(visits.map(v => v.key)).forEach(k => { if (k === 'bluff' || k === 'spot') return; const ts = [...new Set(visits.filter(v => v.key === k).map(v => v.turn))].sort((x, y) => y - x); winTurns.set(k, new Set(N ? ts.slice(0, N) : ts)); });
-  const recent = v => T.rng ? inRng(v.turn) && (!fset.length || fset.includes(v.key) || (fset.includes('me') && v.key === 'bluff')) : fset.length ? (fset.includes(v.key) || (fset.includes('me') && v.key === 'bluff')) : v.key === 'bluff' ? (winTurns.get('me') || new Set()).has(v.turn) : v.key === 'spot' ? (!N || S.turn - v.turn < N) : (winTurns.get(v.key) || new Set()).has(v.turn);
+  const R = effRng(), recent = v => R ? inRng(v.turn) && (!fset.length || fset.includes(v.key) || (fset.includes('me') && v.key === 'bluff')) : fset.length ? (fset.includes(v.key) || (fset.includes('me') && v.key === 'bluff')) : v.key === 'bluff' ? (winTurns.get('me') || new Set()).has(v.turn) : v.key === 'spot' ? (!N || S.turn - v.turn < N) : (winTurns.get(v.key) || new Set()).has(v.turn);
   // group: sector -> player -> turns
   const bySector = new Map();
   for (const v of visits) {
@@ -540,7 +542,7 @@ function paintOverlay() {
       const label = turns.slice(0, 2).map(n => n || 'S').join(',') + (turns.length > 2 ? '…' : '');
       const ownM = mine(it.key), ck = ownM ? 'me' : it.key, ink = pal(ck)[1], bluff = it.key === 'bluff';
       const faded = it.key === 'me' && !own.heard.has(last);
-      const dim = fset.length && !(fset.includes(it.key) || (fset.includes('me') && ownM)), old = !T.rng && !fset.length && !ownM && S.turn - last >= 2;
+      const dim = fset.length && !(fset.includes(it.key) || (fset.includes('me') && ownM)), old = !R && !fset.length && !ownM && S.turn - last >= 2;
       if (!bluff) mkPos.set((ownM ? 'me' : it.key) + '|' + sec, [h.x + dx, h.y + dy, size]);
       const g = el('g', { class: `mk pm ${it.kind}${it.allF ? ' fake' : it.allD ? ' dubious' : ''}${ownM ? ' mine' : ''}${bluff ? ' bluff' : ''}${faded ? ' faded' : ''}${old ? ' old' : ''}${dim ? ' dim' : ''}`, transform: `translate(${(h.x + dx).toFixed(1)} ${(h.y + dy).toFixed(1)})` }, marks);
       const ty = markBody(g, ck, size, { faded, dashed: bluff });
@@ -551,7 +553,7 @@ function paintOverlay() {
       stepBadges(g, stepIcons(it.key, last, sec), size);
     });
   });
-  if (S.routesOn) drawRouteArrows(liveSteps(fset, recent), mkPos, marks, !!T.rng);
+  if (S.routesOn) drawRouteArrows(liveSteps(fset, recent), mkPos, marks, !!R);
 }
 /* ---------------- routing overlay ----------------
    Colored arrows join each player's known steps, from their marker in one sector to their marker in the next.

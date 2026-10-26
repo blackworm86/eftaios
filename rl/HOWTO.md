@@ -90,7 +90,7 @@ Verdict: flat: it has stopped getting better with this setup
 | "Python was not found" | Install Python (section 2) and make sure "Add python.exe to PATH" was ticked. Double-click `NN.bat` again. |
 | PyTorch download fails or "no matching distribution" | Your Python may be newer than PyTorch supports. Install Python 3.12, delete the folder `rl\.venv`, double-click `NN.bat` again and press 6. |
 | "The GPU cannot run this PyTorch build" | The program continues on the processor, slowly. Update the NVIDIA driver, delete `rl\.venv`, start `NN.bat` and press 6. If it persists, send me the text. |
-| "A training seems to be running already" | Another training window is open. Use that one, or close it first. (After a crash wait 5 minutes.) |
+| "A training is running already" | Another training window is open (look at the taskbar). Use that one, or close it first. Never run two at the same time: both become slow and mix up their files. If you did, close all of them, rename `runs\main` to `runs\main_broken` and start one again. |
 | "The training stopped by itself ... Restarting in 30 seconds" | Normal after a rare error: it resumes alone. If the same error comes back every time, copy it and send it to me. |
 | Token message "wrong or expired" / "cannot write" | Make a new token (3.1) and save it again with menu item 4. |
 | The PC feels slow | The training uses all processor cores but one. Stop it while you work (item 5), or ask me for a lighter setting. |

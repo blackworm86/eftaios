@@ -31,7 +31,27 @@ def ensure_torch():
     return torchsetup.main() == 0
 
 
+LOCK = os.path.join(RUN, "training.lock")
+
+
+def pid_alive(pid):
+    if os.name == "nt":  # os.kill would end the process on Windows, so ask the task list
+        out = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH"], capture_output=True, text=True).stdout
+        return str(pid) in out
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
 def running():
+    """A training is running when its lock file names a live process (or, for an old start, its log changed in the last 5 minutes)."""
+    try:
+        if pid_alive(int(open(LOCK).read().strip())):
+            return True
+    except (OSError, ValueError):
+        pass
     log = os.path.join(RUN, "train.log")
     return os.path.exists(log) and time.time() - os.path.getmtime(log) < 300
 
@@ -43,11 +63,12 @@ def cmd_train():
     if not publish.token():
         say("NOTE: no GitHub token saved, so progress will NOT be sent to the repository. Choose 'Save the GitHub token' in the menu when you can.\n")
     if running():
-        say("A training seems to be running already (its log changed in the last 5 minutes). Close that window first, or choose 'Stop'.")
+        say("A training is running already (another window of this program). Use that one, or close it first. Starting a second one would make both slow and mix up their files.")
         return 1
     os.makedirs(RUN, exist_ok=True)
     if os.path.exists(STOP):
         os.remove(STOP)
+    open(LOCK, "w").write(str(os.getpid()))  # written before anything else starts, so a second start sees it
     say("Training started. It keeps going until you choose 'Stop' in a second window (or close this window). Progress is saved after every iteration.\n")
     while True:
         rc = subprocess.call([sys.executable, "-m", "eftaios_rl.train", "--run", "main"], cwd=ROOT)
@@ -55,6 +76,10 @@ def cmd_train():
             break
         say("\nThe training stopped by itself (error %s). Restarting in 30 seconds; close this window to quit." % rc)
         time.sleep(30)
+    try:
+        os.remove(LOCK)
+    except OSError:
+        pass
     say("\nTraining stopped.")
     return 0
 

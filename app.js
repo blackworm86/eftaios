@@ -637,7 +637,7 @@ function liveSteps(fset, recent) {
     }
     all.push({ key: k, steps });
   });
-  return all.filter(r => (!fset.length || fset.includes(r.key))).map(r => ({ key: r.key, steps: r.steps.filter(s => recent({ key: r.key, turn: s.t })) }));
+  return all.filter(r => (!fset.length || fset.includes(r.key))).map(r => ({ key: r.key, steps: r.steps.filter(s => recent({ key: r.key, turn: s.t }) && (inRng(s.t0) || !s.t0)) }));
 }
 function drawRouteArrows(routes, mkPos, marks, solid) {
   const map = T.map, g = el('g', { class: 'routes' }), now = S.turn, classic = svg.classList.contains('classic');
@@ -752,7 +752,7 @@ function paintRoutes(routes, fset, hp, marks) {
       });
     });
   });
-  if (S.routesOn) drawRouteArrows(routes.map(r => ({ key: r.key, steps: pathSteps(r.path).filter(x => inRng(x.t)) })), rpos, marks, true);   // an arrow arrives in a turn shown: it starts at the turn before
+  if (S.routesOn) drawRouteArrows(routes.map(r => ({ key: r.key, steps: pathSteps(r.path).filter(x => inRng(x.t) && (inRng(x.t0) || !x.t0)) })), rpos, marks, true);   // both ends are in the turns shown; the start sector (turn 0) counts as turn 1
 }
 /* eliminated / escaped badge on a player's icon in the strip and the sheet */
 function outMark(k) {

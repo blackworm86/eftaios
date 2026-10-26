@@ -548,10 +548,7 @@ function paintOverlay() {
       const tx = el('text', { fill: ink, y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
       if (it.key === 'me' && S.reborn && killedSector(S.path) === sec) killedBadge(g, size);
       // the printed icons of what this player declared on that step, as marks on the marker
-      stepIcons(it.key, last, sec).forEach((n, j) => {
-        const w = size * 1.9, bx = size * 0.9, by = j ? size * 0.9 : -size * 0.9;   // an attack is the icon people look for
-        el('use', { href: '#gi-' + n, x: (bx - w / 2).toFixed(1), y: (by - w * 0.46).toFixed(1), width: w.toFixed(1), height: (w * 0.92).toFixed(1) }, g);
-      });
+      stepBadges(g, stepIcons(it.key, last, sec), size);
     });
   });
   if (S.routesOn) drawRouteArrows(liveSteps(fset, recent), mkPos, marks, !!T.rng);
@@ -590,7 +587,7 @@ function killedSector(path, out) {
   const p = (path || []).filter(x => x && parseId(x.pos)), i = p.findIndex(x => x.note === 'reborn');
   return i > 0 ? p[i - 1].pos : out === 'killed' && p.length ? p[p.length - 1].pos : null;
 }
-const killedBadge = (g, size) => el('use', { href: '#gi-killed', x: (size * 0.2).toFixed(1), y: (-size * 1.9).toFixed(1), width: (size * 1.6).toFixed(1), height: (size * 1.6).toFixed(1) }, g);
+const killedBadge = (g, size) => el('use', { href: '#gi-killed', x: (-size * 1.8).toFixed(1), y: (-size * 1.9).toFixed(1), width: (size * 1.6).toFixed(1), height: (size * 1.6).toFixed(1) }, g);   // top left: the step icons are on the right
 /* a real route (my path, or anyone's at game over) as steps */
 function pathSteps(path) {
   const out = [], p = (path || []).filter(x => x && parseId(x.pos));
@@ -753,10 +750,7 @@ function paintRoutes(routes, fset, hp, marks) {
       const ty = markBody(g, k, size, { border: k === 'me' ? null : ROLE_BORDER[it.role || it.r.role] });
       const tx = el('text', { fill: pal(k)[1], y: ty.toFixed(1), 'font-size': (label.length > 2 ? size * 0.72 : size * 0.98).toFixed(1) }, g); tx.textContent = label;
       if (it.r.dead === sec) killedBadge(g, size);
-      stepIcons(k, turns[0], sec).forEach((n, j) => {   // what they declared on that step, as in the live view
-        const w = size * 1.9, bx = size * 0.9, by = j ? size * 0.9 : -size * 0.9;
-        el('use', { href: '#gi-' + n, x: (bx - w / 2).toFixed(1), y: (by - w * 0.46).toFixed(1), width: w.toFixed(1), height: (w * 0.92).toFixed(1) }, g);
-      });
+      stepBadges(g, stepIcons(k, turns[0], sec, it.role || it.r.role), size);   // what they declared on that step, as in the live view
     });
   });
   if (S.routesOn) drawRouteArrows(routes.map(r => ({ key: r.key, steps: pathSteps(r.path).filter(x => inRng(x.t) && (inRng(x.t0) || !x.t0)) })), rpos, marks, true);   // both ends are in the turns shown; the start sector (turn 0) counts as turn 1
@@ -1199,14 +1193,19 @@ function say(text, kind, sector, extra = {}) {
 }
 /* the printed icons for what a player declared on one turn, for the marker of that step (at most two):
    an attack, then items, then Silence or Silent Sector, then Noise. A bluffed Noise is a "Noise in any sector". */
-function stepIcons(key, turn, here) {
+function stepIcons(key, turn, here, role) {
   if (key === 'bluff') return ['noise-any'];
   const out = [], add = n => { if (n && !out.includes(n)) out.push(n); }, es = S.log.filter(e => e.turn === turn && playerKey(e) === key);
-  es.filter(e => e.kind === 'attack' && e.sector === here).forEach(() => add(key === 'me' ? (S.role === 'human' ? 'attack' : 'claws') : es.some(x => x.kind === 'item' && x.text === 'attack') ? 'attack' : 'claws'));
+  es.filter(e => e.kind === 'attack' && e.sector === here).forEach(() => add((key === 'me' ? S.role : role || factOf(key).role) === 'human' || es.some(x => x.kind === 'item' && x.text === 'attack') ? 'attack' : 'claws'));   // a Human attacks with the Attack card, an Alien with claws
   es.filter(e => e.kind === 'item' && GI_ART[e.text]).forEach(e => add(e.text));
   es.filter(e => e.kind === 'silence').forEach(e => add(e.text === 'secure' ? 'silent' : 'silence'));
   if (es.some(e => e.kind === 'noise' && (key !== 'me' || e.sector === here))) add('noise-here');
-  return out.slice(0, 2);
+  return out.slice(0, 3);
+}
+/* the icons of a step stacked down the right of the marker (one sits at the top); the killed badge is on the left, so nothing overlaps */
+function stepBadges(g, icons, size) {
+  const n = icons.length, w = size * (n > 2 ? 1.5 : 1.9), h = w * 0.92;
+  icons.forEach((nm, j) => { const cy = n === 1 ? -size * 0.9 : (j - (n - 1) / 2) * h * 1.04; el('use', { href: '#gi-' + nm, x: (size * 0.95 - w / 2).toFixed(1), y: (cy - h / 2).toFixed(1), width: w.toFixed(1), height: h.toFixed(1) }, g); });
 }
 /* the printed icon that goes with a log line, if there is one */
 function logIcon(e, w = 18) {

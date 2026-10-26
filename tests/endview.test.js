@@ -18,6 +18,11 @@ const {assert,setup,startTable,begin}=require('./helpers');
   assert(await n()<all,'the slider narrows the real routes to the chosen turns ('+await n()+' of '+all+')');
   await H.evaluate(()=>{T.rng=[1,3];paintOverlay()});
   assert(await H.evaluate(()=>document.querySelectorAll('#marks .pm.route use').length)>0,'the declared actions show on the markers');
+  // arrows follow the slider: a step is drawn when the turn it arrives in is shown (it starts at the turn before)
+  await H.evaluate(()=>{S.routesOn=true});
+  const arrows=async r=>{await H.evaluate(r=>{T.rng=r;paintOverlay()},r);return H.evaluate(()=>document.querySelectorAll('#marks .routes .rt').length)};
+  const a13=await arrows([1,3]),a33=await arrows([3,3]),a23=await arrows([2,3]);
+  assert(a13===3&&a33===1&&a23===2,'arrows follow the slider at game end ([1,3] '+a13+', [3,3] '+a33+', [2,3] '+a23+')');
   assert(errs.length===0,'no page errors');
   await b.close();
 })();

@@ -752,7 +752,7 @@ function paintRoutes(routes, fset, hp, marks) {
       });
     });
   });
-  if (S.routesOn) drawRouteArrows(routes.map(r => ({ key: r.key, steps: pathSteps(r.path) })), rpos, marks, true);
+  if (S.routesOn) drawRouteArrows(routes.map(r => ({ key: r.key, steps: pathSteps(r.path).filter(x => inRng(x.t)) })), rpos, marks, true);   // an arrow arrives in a turn shown: it starts at the turn before
 }
 /* eliminated / escaped badge on a player's icon in the strip and the sheet */
 function outMark(k) {

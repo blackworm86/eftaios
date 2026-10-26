@@ -28,6 +28,8 @@ const isHost = () => Sync.isHost();
 const orderedIds = () => { const ps = Sync.players || {}, ord = (Sync.settings && Sync.settings.order) || []; const l = ord.filter(u => ps[u]); Object.keys(ps).forEach(u => { if (!l.includes(u)) l.push(u); }); return l; };
 const orderedPlayers = () => orderedIds().map(u => [u, Sync.players[u]]);
 const langSwitch = () => `<div class="lang-switch" role="group" aria-label="Language">${['en', 'it'].map(l => `<button data-act="lang" data-l="${l}" aria-pressed="${LANG === l}">${l.toUpperCase()}</button>`).join('')}</div>`;
+/* the top of the home screen: a small account chip on the left, the language on the right */
+const homeTop = () => `<div class="toprow">${Auth.chip()}${langSwitch()}</div>`;
 const hero = () => `${langSwitch()}<h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>`;
 const QR_ICO = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V6a2 2 0 012-2h3M20 9V6a2 2 0 00-2-2h-3M4 15v3a2 2 0 002 2h3M20 15v3a2 2 0 01-2 2h-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13.5 14.5h2.5v1.5"/></svg>';
 const BACK_ICO = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
@@ -68,7 +70,7 @@ function renderFlow() {
   const st = S.stage;
   if ((!st || st === 'welcome') && Sync.registered && Sync.watchInbox) Sync.watchInbox();
   const ver = document.getElementById('ver'); if (ver) ver.hidden = st !== 'welcome';
-  card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : '');
+  card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : ['friends', 'browse', 'games', 'stats', 'account'].includes(st) ? ' top' : '');
   if (st === 'host') {
     h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${seg('vis', ['public', 'friends'].includes(S.vis) ? S.vis : 'private')}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}${seg('max', String(S.max || 8))}${seg('fill', S.fill || '')}
       <button class="btn primary big wide" data-act="hostcreate">${t('Create game')}</button>${flowStatus()}`;
@@ -95,8 +97,8 @@ function renderFlow() {
   } else if (st === 'lobby') {
     h = lobbyHtml();
   } else {
-    h = `${hero()}
-      ${Auth.bar()}${T.pendingRoom ? '' : inviteCards() + Auth.continueCard()}
+    h = `${homeTop()}<h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>
+      ${T.pendingRoom ? '' : inviteCards() + Auth.continueCard()}
       ${T.pendingRoom ? `<p class="banner">${t('You are invited to game {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${Sync.registered ? '' : nameField()}
       ${T.pendingRoom
         ? `<div class="wacts"><button class="btn primary big wide" data-act="joinroom">${t('Join game {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button></div>`
@@ -112,9 +114,7 @@ function renderFlow() {
             ${Sync.registered
               ? `<button class="btn" data-act="accountgames">${t('My games')}<small>${t('Resume, history')}</small></button><button class="btn" data-act="maps_">${t('Maps')}<small>${t('Browse, create, publish')}</small></button>`
               : `<button class="btn span2" data-act="maps_">${t('Maps')}<small>${t('Browse, create and share')}</small></button>`}
-          </div>
-          ${segRow('Share anonymous results', 'recshare', 'v', Records.on() ? 'on' : 'off', [['on', t('On')], ['off', t('Off')]])}
-          ${Sync.isAdmin ? `<button class="mrow" data-act="adminopen">${t('Admin')}<small>${t('Players, rooms, maps, reports')}</small><i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}`}
+          </div>`}
       ${flowStatus()}`;
   }
   card.innerHTML = h;
@@ -411,6 +411,17 @@ Object.assign(actions, {
   solostart(b) { soloStart(b.dataset.role); },
   scanqr() { scanDlg(); }
 });
+/* the phone's Back button steps back through the app instead of leaving it: one spare history entry is always kept */
+const PARENT = { stats: 'account', account: 'welcome', games: 'welcome', friends: 'welcome', browse: 'welcome', host: 'welcome', hotsetup: 'welcome', solo: 'welcome', auth: 'welcome', admin: 'welcome', maps: 'welcome' };
+function handleBack() {
+  if (dlg.open) { closeDlg(); return true; }
+  const g = document.getElementById('gallery'); if (g) { g.remove(); return true; }
+  if (S.stage === 'game') { if (S.tab !== 'play') { setTab('play'); render(); } return true; }
+  if (S.stage === 'lobby') { actions.leavelobby(); return true; }
+  if (PARENT[S.stage]) { S.stage = PARENT[S.stage]; T.authMsg = ''; save(); renderFlow(); return true; }
+  return false;   // the home screen: let the browser leave
+}
+try { history.pushState({ eftaios: 1 }, ''); window.addEventListener('popstate', () => { if (handleBack()) history.pushState({ eftaios: 1 }, ''); else { toast(t('Press Back again to leave the app.')); setTimeout(() => { try { history.pushState({ eftaios: 1 }, ''); } catch (_) { /* noop */ } }, 2500); } }); } catch (_) { /* no history */ }
 Object.assign(actions, Auth.actions, window.Admin ? Admin.actions : {});
 
 /* join by scanning the table's QR code with the camera (the decoder is loaded the first time it is needed) */

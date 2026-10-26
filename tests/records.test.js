@@ -4,7 +4,8 @@ const {assert,setup}=require('./helpers');
   const {b,pages,errs}=await setup(1);const [P]=pages;
   await P.goto('http://localhost:8123/');
   assert(await P.evaluate(()=>Records.on()),'sharing is on by default');
-  assert(await P.locator('[data-act=recshare][data-v=off]').count()===1,'the start screen has the switch');
+  await P.evaluate(async()=>{await Sync.ensure();Sync.profile={handle:'tester',name:'Tester'};S.stage='account';renderFlow()});await P.waitForSelector('[data-act=recshare]');
+  assert(await P.locator('[data-act=recshare][data-v=off]').count()===1,'the account screen has the switch');
   await P.click('[data-act=recshare][data-v=off]');assert(!await P.evaluate(()=>Records.on()),'the player can turn sharing off');
   await P.click('[data-act=recshare][data-v=on]');
   // a pass-and-play game with bots: the record has seats and routes by number, no names

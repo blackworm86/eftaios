@@ -15,6 +15,16 @@ const Auth = (() => {
     if (/network/.test(c)) return t('Network error. Try again.');
     return c.slice(0, 90) || t('Something went wrong.');
   };
+  /* the account chip on the home screen: one small pill, the name when signed in */
+  const chip = () => {
+    const u = Sync.user, p = Sync.profile;
+    if (!Sync.enabled) return '<span></span>';
+    const pill = (cls, ini, label) => `<button class="acctchip${cls}" data-act="account" title="${esc(label)}"><i class="av" aria-hidden="true">${esc(ini)}</i><span>${esc(label)}</span></button>`;
+    if (p) return pill('', (p.name || p.handle || '?').slice(0, 1).toUpperCase(), p.name || p.handle);
+    /* a signed-in account whose profile has not arrived yet is not a new account: never ask it to finish its profile */
+    if (u && !u.isAnonymous && (Sync.profileLoading || Sync.profileError)) return pill(' guest', '…', t(Sync.profileLoading ? 'Loading your account…' : 'Your profile could not be loaded'));
+    return pill(' guest', '?', t(u && !u.isAnonymous ? 'Finish your account' : 'Sign in'));
+  };
   const bar = () => {
     const u = Sync.user, p = Sync.profile;
     if (!Sync.enabled) return '';
@@ -56,7 +66,9 @@ const Auth = (() => {
       ${p.handle ? `<dl class="kv"><dt>${t('Handle')}</dt><dd>@${esc(p.handle)}</dd><dt>${t('Email')}</dt><dd>${esc(u.email || '—')}</dd></dl>
         <label class="field"><span>${t('Display name')}</span><input id="a-name" maxlength="20" value="${esc(p.name || '')}"></label>
         <button class="btn primary wide" data-act="accountsave">${t('Save')}</button>
-        <div class="row two acctnav"><button class="btn" data-act="accountgames">${t('My games')}</button><button class="btn" data-act="accountstats">${t('Statistics')}</button></div>
+        <div class="acctnav"><button class="btn wide" data-act="accountstats">${t('Statistics')}</button></div>
+        ${segRow('Share anonymous results', 'recshare', 'v', Records.on() ? 'on' : 'off', [['on', t('On')], ['off', t('Off')]])}
+        ${Sync.isAdmin ? `<button class="mrow" data-act="adminopen">${t('Admin')}<small>${t('Players, rooms, maps, reports')}</small><i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}
         <div class="acctend"><button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>
         <button class="btn danger wide" data-act="accountdelete">${t('Delete my account')}</button></div>`
       : Sync.profileLoading ? `<p class="dim" role="status">${t('Loading…')}</p>`
@@ -180,6 +192,6 @@ const Auth = (() => {
     try { await fn(); }
     catch (e) { T.authMsg = msg(e); renderFlow(); }
   }
-  return { html, bar, actions: acts, guard, loadGames, continueCard };
+  return { html, bar, chip, actions: acts, guard, loadGames, continueCard };
 })();
 window.Auth = Auth;

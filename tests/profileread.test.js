@@ -32,7 +32,7 @@ const { assert, setup } = require('./helpers');
   assert(none === null, 'without a handle of its own, nothing is invented');
   /* the start screen never says "finish your account" while the profile is loading or failed */
   await P.evaluate(() => { Sync.user = { uid: Sync.uid, isAnonymous: false, email: 'a@b.c' }; Sync.registered = false; Sync.profile = null; Sync.profileLoading = false; Sync.profileError = 'PERMISSION_DENIED'; S.stage = 'welcome'; save(); boot(); });
-  const row = await P.evaluate(() => document.querySelector('.idrow').textContent);
+  const row = await P.evaluate(() => document.querySelector('.acctchip').textContent);
   assert(!/Finish your account/.test(row) && /could not be loaded/.test(row), 'the start screen says the profile could not be loaded, not "finish your account"');
   assert(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
   await b.close();

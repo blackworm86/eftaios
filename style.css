@@ -1102,5 +1102,24 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 .steps{display:flex;gap:6px;margin:0 0 12px}.steps b{flex:1;text-align:center;font:700 11px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);border-bottom:3px solid var(--line);padding-bottom:6px}.steps b.on{color:var(--amber);border-color:var(--amber)}.steps b.ok{color:var(--pod);border-color:var(--pod)}
 /* a short phone: the home screen fits without scrolling */
 @media (max-height:700px){.setup-card.home h1{margin-bottom:12px}.setup-card.home .wacts{gap:8px;margin-bottom:10px}.setup-card.home .wgrid{gap:8px;margin-bottom:10px}.wgrid .btn{min-height:56px;padding:6px 10px}}
-@media (max-height:700px){#f-map-text{display:none}.setup-card .field{margin-bottom:10px}}
-@media (max-height:700px){.setup-card .mapcard .mapprev{max-height:70px}}
+@media (max-height:700px){.setup-card .field{margin-bottom:10px}}
+@media (max-height:700px){.setup-card .mapcard .mapprev{max-height:44px}}
+
+/* home top row: account chip + language; sub-screens start at the top with room to breathe */
+.toprow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-6px 0 12px}
+.toprow .lang-switch{margin:0}
+.acctchip{display:flex;align-items:center;gap:8px;min-height:44px;max-width:60%;padding:4px 14px 4px 5px;border-radius:999px;border:1px solid var(--line);background:var(--bg2);color:var(--text);font:600 14px var(--font)}
+.acctchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acctchip .av{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 14px var(--font);font-style:normal;background:var(--amber);color:#1a1200}
+.acctchip.guest{border-color:var(--amber)}.acctchip.guest .av{background:var(--panel2);color:var(--amber)}
+.setup-card.top{align-self:start;margin-top:0}
+.setup-card.top .fhead{margin:-6px 0 18px -6px}
+.setup-card.top .joinrow{margin:0 0 16px}
+.setup-card.top h3{margin:18px 0 10px}
+.setup-card.top .plist{margin:0 0 14px}
+.setup-card.top .hintline,.setup-card.top>p.dim{margin:0 0 16px}
+.setup-card.top .row.two{margin-top:12px;gap:10px}
+.setup-card.top .btn.big+.row.two{margin-top:10px}
+.acctnav{margin:18px 0 12px}
+.setup-card.top .btn.big.wide+.row.two{margin-top:10px}
+.setup-card.top .setrow,.setup-card.top .mrow{margin:0 0 10px}

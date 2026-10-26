@@ -821,6 +821,7 @@ const IT = {
 "Empty seats are filled with Hard bots when the game starts.": "I posti liberi vengono riempiti con bot Difficili all'avvio.",
 "Bots": "Bot",
 "Fill to {n} players": "Fino a {n} giocatori",
+"Press Back again to leave the app.": "Premi Indietro ancora per uscire dall'app.",
 "Games as Human": "Partite da Umano",
 "Games as Alien": "Partite da Alieno",
 "Best win streak": "Miglior serie di vittorie",

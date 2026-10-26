@@ -1,0 +1,148 @@
+"""The one program that runs the whole network project on your PC. Start it with NN.bat (double-click) and choose from the menu.
+You can also use it from a terminal:  python nnctl.py train | status | publish | token | stop | check
+"""
+import os
+import subprocess
+import sys
+import time
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+RUN = os.path.join(ROOT, "runs", "main")
+STOP = os.path.join(RUN, "STOP")
+sys.path.insert(0, ROOT)
+
+PROBE = "import torch, sys; x = torch.ones(64, 64, device='cuda'); y = (x @ x).sum(); torch.cuda.synchronize(); sys.exit(0 if float(y) == 64 * 64 * 64 else 3)"
+
+
+def say(*a):
+    print(*a, flush=True)
+
+
+def torch_ok():
+    return subprocess.run([sys.executable, "-c", "import torch"], capture_output=True).returncode == 0
+
+
+def ensure_torch():
+    """PyTorch with a working GPU if there is one (installs the right build on the first run), the CPU build otherwise."""
+    if torch_ok() and (subprocess.run([sys.executable, "-c", PROBE], capture_output=True).returncode == 0 or not __import__("shutil").which("nvidia-smi")):
+        return True
+    say("Installing PyTorch (about 2 GB, a few minutes, only the first time)...")
+    from eftaios_rl import torchsetup
+    return torchsetup.main() == 0
+
+
+def running():
+    log = os.path.join(RUN, "train.log")
+    return os.path.exists(log) and time.time() - os.path.getmtime(log) < 300
+
+
+def cmd_train():
+    from eftaios_rl import publish
+    if not ensure_torch():
+        return 1
+    if not publish.token():
+        say("NOTE: no GitHub token saved, so progress will NOT be sent to the repository. Choose 'Save the GitHub token' in the menu when you can.\n")
+    if running():
+        say("A training seems to be running already (its log changed in the last 5 minutes). Close that window first, or choose 'Stop'.")
+        return 1
+    os.makedirs(RUN, exist_ok=True)
+    if os.path.exists(STOP):
+        os.remove(STOP)
+    say("Training started. It keeps going until you choose 'Stop' in a second window (or close this window). Progress is saved after every iteration.\n")
+    while True:
+        rc = subprocess.call([sys.executable, "-m", "eftaios_rl.train", "--run", "main"], cwd=ROOT)
+        if rc == 0 or os.path.exists(STOP):
+            break
+        say("\nThe training stopped by itself (error %s). Restarting in 30 seconds; close this window to quit." % rc)
+        time.sleep(30)
+    say("\nTraining stopped.")
+    return 0
+
+
+def cmd_status():
+    from eftaios_rl import report
+    say(report.summary(RUN))
+    say("The training is %s." % ("RUNNING" if running() else "not running"))
+    return 0
+
+
+def cmd_publish():
+    from eftaios_rl import publish
+    if not os.path.exists(os.path.join(RUN, "latest.pt")):
+        say("There is no trained network yet: start the training first.")
+        return 1
+    if not ensure_torch():
+        return 1
+    for line in publish.publish_now(RUN):
+        say(line)
+    return 0
+
+
+def cmd_token():
+    from eftaios_rl import publish
+    say("Paste the GitHub token (it starts with github_pat_) and press Enter. It is saved only on this PC, in the settings folder.")
+    v = input("Token: ").strip()
+    if not v.startswith(("github_pat_", "ghp_")):
+        say("That does not look like a GitHub token. Nothing was saved.")
+        return 1
+    publish.save_token(v)
+    st, res = publish._call("GET", "/repos/%s" % publish.REPO)
+    if st == 200 and res.get("permissions", {}).get("push"):
+        say("Token saved, and it can write to %s. All good." % publish.REPO)
+        return 0
+    say("Token saved, but GitHub says it cannot write to %s (answer %d). Check that the token is limited to this repository with Contents: Read and write." % (publish.REPO, st))
+    return 1
+
+
+def cmd_stop():
+    os.makedirs(RUN, exist_ok=True)
+    open(STOP, "w").close()
+    say("Stop requested. The training window closes its work after the current iteration (about a minute) and sends the last progress.")
+    return 0
+
+
+def cmd_check():
+    if not ensure_torch():
+        return 1
+    steps = [("rules of the game", ["tests/test_engine.py"]), ("same rules as the app", ["tests/test_conformance.py"]), ("what a player sees", ["tests/test_env.py"]),
+             ("sending to GitHub", ["tests/test_publish.py"]), ("a short training run", ["-m", "eftaios_rl.train", "--run", "check", "--smoke"])]
+    bad = 0
+    for name, args in steps:
+        say("Checking: %s ..." % name)
+        r = subprocess.run([sys.executable] + args, cwd=ROOT, capture_output=True, text=True)
+        say("   " + ("OK" if r.returncode == 0 else "FAILED"))
+        if r.returncode:
+            bad += 1
+            say("\n".join((r.stdout + r.stderr).splitlines()[-12:]))
+    say("\nEverything works." if not bad else "\n%d check(s) failed: copy the text above and send it to the developer." % bad)
+    return 1 if bad else 0
+
+
+MENU = [("1", "Start or resume the training", cmd_train), ("2", "Show progress", cmd_status), ("3", "Send the network and progress to GitHub now", cmd_publish),
+        ("4", "Save the GitHub token (once)", cmd_token), ("5", "Stop the training (use this in a second window)", cmd_stop), ("6", "Check that everything works", cmd_check)]
+
+
+def main():
+    if len(sys.argv) > 1:
+        fn = {"train": cmd_train, "status": cmd_status, "publish": cmd_publish, "token": cmd_token, "stop": cmd_stop, "check": cmd_check}.get(sys.argv[1])
+        return fn() if fn else (say(__doc__) or 1)
+    while True:
+        say("\n=== EFTAIOS network trainer ===")
+        for k, text, _ in MENU:
+            say("  %s  %s" % (k, text))
+        say("  0  Quit")
+        c = input("Your choice: ").strip()
+        if c == "0":
+            return 0
+        for k, _, fn in MENU:
+            if c == k:
+                try:
+                    fn()
+                except KeyboardInterrupt:
+                    say("\nInterrupted.")
+                except Exception as e:  # keep the menu alive whatever happens
+                    say("Something went wrong: %s" % e)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -18,6 +18,7 @@ import torch
 from torch.distributions import Categorical
 
 from . import maps as maps_mod
+from . import publish
 from . import rollout
 from .model import BoardCache, Net, pack
 
@@ -25,7 +26,7 @@ DEFAULT = dict(
     hid=64, layers=4, players=[3, 4, 5, 6, 7, 8], gamma=0.99, lam=0.95,
     workers=0,                # 0 = number of CPU cores - 1
     decisions_per_iter=24000, epochs=3, minibatch=256, lr=3e-4, clip=0.2, vf=0.5, ent=0.01, ent_end=0.003, ent_iters=400,
-    bc_iters=12, bc_epochs=2, bc_lr=1e-3, lr_after_bc=1e-4, p_scripted=0.35, p_pool=0.25, pool_every=10, pool_size=8, eval_every=10, eval_games=240, max_iters=0,
+    bc_iters=12, bc_epochs=2, bc_lr=1e-3, lr_after_bc=1e-4, p_scripted=0.35, p_pool=0.25, pool_every=10, pool_size=8, eval_every=10, eval_games=240, max_iters=0, publish_hours=3,
 )
 
 
@@ -220,8 +221,18 @@ def main(argv=None):
                     it, pct("human"), pct("base_human"), pct("alien"), pct("base_alien")))
                 with open(os.path.join(run_dir, "eval.csv"), "a") as f:
                     f.write("%d,%.1f,%.1f,%.1f,%.1f\n" % (it, pct("human"), pct("base_human"), pct("alien"), pct("base_alien")))
+            try:
+                for line in publish.maybe_publish(run_dir, cfg):
+                    log(run_dir, "publish: " + line)
+            except Exception as e:
+                log(run_dir, "publish failed: %s" % e)
     finally:
         pool.terminate()
+        try:
+            for line in publish.maybe_publish(run_dir, cfg, final=True):
+                log(run_dir, "publish: " + line)
+        except Exception as e:
+            log(run_dir, "publish failed: %s" % e)
     log(run_dir, "stopped after %d iterations (%.0f minutes this session)" % (it, (time.time() - t_start) / 60))
     return 0
 

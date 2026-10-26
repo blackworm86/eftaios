@@ -1,1 +1,1 @@
-The trained network for the bot level `nn` goes here as `net.json` (exported by `rl/export_network.bat`). The app loads it only for tables with `nn` bots.
+Written by the network trainer on the owner's PC (`rl/NN.bat`, see `rl/HOWTO.md`): `net.json` is the trained network (bot level `nn`), `status.md` the progress report, `eval.csv` the evaluation history.

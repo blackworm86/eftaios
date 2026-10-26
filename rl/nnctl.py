@@ -119,6 +119,26 @@ def cmd_token():
     return 1
 
 
+def cmd_samples():
+    """Plays 12 games with the current network and sends them to the repository, for the game viewer in the app."""
+    from eftaios_rl import publish
+    if not os.path.exists(os.path.join(RUN, "latest.pt")):
+        say("There is no trained network yet: start the training first.")
+        return 1
+    if not ensure_torch():
+        return 1
+    from eftaios_rl import samples
+    say("Playing 12 games with the network (a few minutes)...")
+    path, data = samples.make(RUN, 12)
+    say("Saved %s (%d games)." % (path, len(data["games"])))
+    if not publish.token():
+        say("No GitHub token saved: the games were not sent (menu item 'Save the GitHub token').")
+        return 0
+    ok, text = publish.put_file("nn/games.json", open(path, "rb").read(), "Sample games of the network for the game viewer")
+    say(("OK  " if ok else "FAILED  ") + text)
+    return 0 if ok else 1
+
+
 def cmd_stop():
     os.makedirs(RUN, exist_ok=True)
     open(STOP, "w").close()
@@ -144,12 +164,13 @@ def cmd_check():
 
 
 MENU = [("1", "Start or resume the training", cmd_train), ("2", "Show progress", cmd_status), ("3", "Send the network and progress to GitHub now", cmd_publish),
-        ("4", "Save the GitHub token (once)", cmd_token), ("5", "Stop the training (use this in a second window)", cmd_stop), ("6", "Check that everything works", cmd_check)]
+        ("4", "Save the GitHub token (once)", cmd_token), ("5", "Stop the training (use this in a second window)", cmd_stop), ("6", "Check that everything works", cmd_check),
+        ("7", "Record sample games for the game viewer and send them", cmd_samples)]
 
 
 def main():
     if len(sys.argv) > 1:
-        fn = {"train": cmd_train, "status": cmd_status, "publish": cmd_publish, "token": cmd_token, "stop": cmd_stop, "check": cmd_check}.get(sys.argv[1])
+        fn = {"train": cmd_train, "status": cmd_status, "publish": cmd_publish, "token": cmd_token, "stop": cmd_stop, "check": cmd_check, "samples": cmd_samples}.get(sys.argv[1])
         return fn() if fn else (say(__doc__) or 1)
     while True:
         say("\n=== EFTAIOS network trainer ===")

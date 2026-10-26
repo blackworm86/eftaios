@@ -38,6 +38,7 @@ A black window with a menu appears:
   4  Save the GitHub token (once)
   5  Stop the training (use this in a second window)
   6  Check that everything works
+  7  Record sample games for the game viewer and send them
   0  Quit
 ```
 
@@ -63,6 +64,10 @@ GitHub and stops. You can also simply close the training window: the next start 
 **What is sent to GitHub, and when.** Automatically every 3 hours while it runs, and once more when it stops: the folder `nn` in the repository gets
 `status.md` (the report), `eval.csv` (the evaluation history) and `net.json` (the network). You can send right away with menu item `3`.
 You do not have to tell me: when you say there is new data, I read it from the repository.
+
+**Watch the network play (item 7):** press `7` in the menu (a few minutes). It plays 12 games with the current network, every seat played by the network,
+and sends them to the repository. In the app, sign in as admin, open **Admin > Games** and choose "Network sample games": you see every game's map with the
+players' real routes, their roles and the result, and a slider to replay it turn by turn.
 
 ## 5. How to read the progress report
 

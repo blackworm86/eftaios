@@ -22,10 +22,11 @@ const Admin = (() => {
   function html() {
     if (!Sync.isAdmin) return `<header class="fhead"><button class="icon-btn" data-act="adminclose" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${t('Admin')}</h2></header><p class="dim">${t('This account is not an administrator.')}</p>`;
     const head = `<header class="fhead"><button class="icon-btn" data-act="adminclose" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${t('Admin')}</h2></header>`;
-    const tabs = `<div class="seg adm-tabs" role="tablist">${[['users', 'Players'], ['rooms', 'Rooms'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit'], ['bots', 'Bot tests']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
+    const tabs = `<div class="seg adm-tabs" role="tablist">${[['users', 'Players'], ['rooms', 'Rooms'], ['maps', 'Maps'], ['reports', 'Reports'], ['audit', 'Audit'], ['bots', 'Bot tests'], ['games', 'Games']].map(([k, l]) => `<button role="tab" data-act="admintab" data-k="${k}" aria-checked="${tab() === k}">${t(l)}</button>`).join('')}</div>`;
     /* the page that always shows the rules deployed with the site, ready to copy into the Firebase console */
     const tools = `<div class="row two"><a class="btn" href="firebase-rules.html" target="_blank" rel="noopener">${t('Database rules')}</a>${tab() === 'audit' ? `<button class="btn danger" data-act="adminnuke">${t('Nuke the app')}</button>` : ''}</div>`;
     if (tab() === 'bots') return `${head}${tabs}${botTests()}`;
+    if (tab() === 'games') return `${head}${tabs}${Viewer.html()}`;
     if (!T.admin) return `${head}${tabs}<p class="dim">${t('Loading…')}</p>${tools}`;
     if (T.admin.error) return `${head}${tabs}<p class="dim">${t('Could not load the admin data')}: ${esc(T.admin.error)}</p>${tools}`;
     return `${head}${tabs}${T.admin[tab() === 'audit' ? 'log' : tab()] === undefined ? '' : roster(tab())}${tools}`;
@@ -305,6 +306,7 @@ const Admin = (() => {
       await act('resolve-report', b.dataset.id);
     }
   };
+  Object.assign(actions, Viewer.actions);
   return { html, actions, load, ratePanel };
 })();
 window.Admin = Admin;

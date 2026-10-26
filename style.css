@@ -1167,3 +1167,17 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 }
 #flow[hidden]~#tabbar{display:none}   /* in a game the four tabs give way to the game's own bar */
 #flow-card>.btn.primary.wide+.setrow{margin-top:18px}
+
+/* game viewer (Admin > Games) */
+.vw-svg{width:100%;height:auto;background:#0b1120;border-radius:12px;display:block}
+.vw-n{fill:#fff;font:700 13px var(--font);text-anchor:middle;pointer-events:none}
+.vw-t,.vw-x{font:700 11px var(--font);text-anchor:middle;pointer-events:none}
+.vw-x{fill:#fff}
+.vw-noise{fill:none;stroke:#fff;stroke-width:2;opacity:.85}
+.vw-att{fill:none;stroke:#ff3b30;stroke-width:3}
+.vw-bar{display:flex;gap:8px;align-items:center;margin:8px 0}
+.vw-bar input[type=range]{flex:1;min-height:44px}
+.vw-dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.vw-ev{list-style:none;padding:0;margin:0;font-size:13px}
+.vw-ev li{padding:3px 0}
+.vw-file{cursor:pointer;text-align:center}

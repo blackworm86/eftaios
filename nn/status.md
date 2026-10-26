@@ -1,29 +1,29 @@
 # Network training status
 
-Updated 2026-10-26 20:44.
+Updated 2026-10-26 21:53.
 
-- Iteration: **1062**
-- Speed: 2491 seconds per iteration (1 per hour)
+- Iteration: **1113**
+- Speed: 81 seconds per iteration (44 per hour)
 - Network: 64 hidden units, 4 layers; 15 game workers
 
 ## Evaluation against simple rule-based players (average of the last 15 evaluations)
 
 | | network | rule-based players | change since the 15 before |
 |---|---|---|---|
-| Humans (team win %) | 62.4 | 70.9 | +0.8 |
-| Aliens (team win %) | 76.4 | 28.2 | -1.0 |
+| Humans (team win %) | 61.6 | 72.5 | -0.5 |
+| Aliens (team win %) | 76.1 | 27.9 | -2.1 |
 
 Verdict: flat: it has stopped getting better with this setup
 
 ## Last log lines
 
 ```
-2026-10-26 07:18:23 it 1060: 25923 decisions in 275 games (42s collect, 38s train), aliens won 71%, loss pol -0.005 val 0.096 ent 0.83
-2026-10-26 07:19:14 EVAL it 1060 vs rule-based players: as Humans the team wins 67% (rule-based Humans: 72%); as Aliens 75% (rule-based Aliens: 20%)
-2026-10-26 07:20:31 it 1061: 26418 decisions in 311 games (38s collect, 39s train), aliens won 72%, loss pol -0.001 val 0.108 ent 0.73
-2026-10-26 07:20:31 STOP file found: finishing
-2026-10-26 07:20:32 stopped after 1061 iterations (1458 minutes this session)
-2026-10-26 20:43:03 resumed from iteration 1061
-2026-10-26 20:43:03 device cuda, 15 workers, 91461 parameters
-2026-10-26 20:44:25 it 1062: 25585 decisions in 300 games (43s collect, 39s train), aliens won 66%, loss pol -0.006 val 0.114 ent 0.74
+2026-10-26 21:45:50 it 1108: 25037 decisions in 289 games (38s collect, 38s train), aliens won 67%, loss pol -0.007 val 0.105 ent 0.72
+2026-10-26 21:47:04 it 1109: 25333 decisions in 253 games (36s collect, 38s train), aliens won 67%, loss pol 0.001 val 0.109 ent 0.78
+2026-10-26 21:48:21 it 1110: 25743 decisions in 278 games (38s collect, 39s train), aliens won 66%, loss pol 0.002 val 0.107 ent 0.72
+2026-10-26 21:49:08 EVAL it 1110 vs rule-based players: as Humans the team wins 65% (rule-based Humans: 75%); as Aliens 75% (rule-based Aliens: 28%)
+2026-10-26 21:50:26 it 1111: 25758 decisions in 271 games (40s collect, 38s train), aliens won 69%, loss pol -0.002 val 0.099 ent 0.79
+2026-10-26 21:51:43 it 1112: 25611 decisions in 260 games (39s collect, 38s train), aliens won 68%, loss pol 0.003 val 0.100 ent 0.77
+2026-10-26 21:53:04 it 1113: 26133 decisions in 287 games (42s collect, 39s train), aliens won 70%, loss pol -0.019 val 0.101 ent 0.75
+2026-10-26 21:53:04 STOP file found: finishing
 ```

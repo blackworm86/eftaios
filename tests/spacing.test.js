@@ -10,7 +10,7 @@ const {assert,setup,measureGaps:measure}=require('./helpers');
     T.myGames=[['KEMQC6',{state:'playing',mine:true,host:true,turn:4}],['ZZZZ11',{state:'lobby',host:false}],['OLD111',{state:'over'}]];
     T.stats={s:{games:5,wins:3,humans:2,winsHuman:1,aliens:3,winsAlien:2,escapes:1,streak:1,bestStreak:2,botGames:2,botWins:1,c_Pilot:3,cw_Pilot:2},games:[{result:'win',role:'human',chars:'Pilot',map:'galilei',at:1}]};
     T.homeGames=[['KEMQC6',{state:'playing',mine:true,turn:4}]];});
-  const screens=[['home',()=>{S.stage='welcome'}],['host',()=>{S.stage='host'}],['hotsetup',()=>{S.stage='hotsetup'}],['solo',()=>{S.stage='solo'}],['friends',()=>{S.stage='friends'}],['browse',()=>{S.stage='browse'}],['games',()=>{S.stage='games'}],['stats',()=>{S.stage='stats'}],['account',()=>{S.stage='account'}],['auth',()=>{Sync.registered=false;Sync.profile=null;S.stage='auth'}]];
+  const screens=[['home',()=>{S.stage='welcome'}],['host',()=>{S.stage='host'}],['hotsetup',()=>{S.stage='hotsetup'}],['solo',()=>{S.stage='solo'}],['friends',()=>{S.stage='friends'}],['browse',()=>{S.stage='games';T.gamesView='open'}],['library',()=>{S.stage='library';T.libStats={games:5,wins:3,bestStreak:2}}],['games',()=>{S.stage='games';T.gamesView='mine'}],['stats',()=>{S.stage='stats'}],['account',()=>{S.stage='account'}],['auth',()=>{Sync.registered=false;Sync.profile=null;S.stage='auth'}]];
   for(const [vp,w,h] of [['phone',390,844],['small phone',360,640]]){
     await P.setViewportSize({width:w,height:h});
     for(const [name,set] of screens){

@@ -20,7 +20,7 @@ const { assert, setup } = require('./helpers');
     assert(!m.over, vp + ': nothing sticks out sideways');
   }
   await P.click('[data-act=authback]');
-  assert(await P.evaluate(() => S.stage) === 'account', 'back returns to the account screen');
+  assert(await P.evaluate(() => S.stage) === 'library', 'back returns to the Library tab');
   assert(errs.length === 0, 'no page errors');
   await b.close();
 })();

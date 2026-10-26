@@ -12,15 +12,15 @@ const { assert, setup } = require('./helpers');
     await P.waitForTimeout(200);
     const m = await P.evaluate(() => {
       const c = document.querySelector('#flow-card'), r = e => e.getBoundingClientRect();
-      const q = s => c.querySelector(s), save = q('[data-act=accountsave]'), nav = q('.acctnav'), end = q('.acctend');
+      const q = s => c.querySelector(s), save = q('[data-act=accountsave]'), nav = q('.setrow'), end = q('.acctend');
       const out = q('[data-act=accountsignout]'), del = q('[data-act=accountdelete]');
-      return { save: r(save), nav: r(nav), end: r(end), out: r(out), del: r(del), navBtns: [...nav.querySelectorAll('.btn')].map(e => r(e).height), saveH: r(save).height, delH: r(del).height,
+      return { save: r(save), nav: r(nav), end: r(end), out: r(out), del: r(del), saveH: r(save).height, delH: r(del).height,
         scrollW: document.documentElement.scrollWidth, innerW: innerWidth, card: r(c), dd: [...c.querySelectorAll('.kv dd')].map(e => r(e).right <= r(c).right + 1) };
     });
-    assert(m.nav.top - m.save.bottom >= 16, vp + ': the shortcuts are set apart from Save (' + Math.round(m.nav.top - m.save.bottom) + 'px)');
-    assert(m.end.top - m.nav.bottom >= 18, vp + ': sign out and delete are set apart from the shortcuts (' + Math.round(m.end.top - m.nav.bottom) + 'px)');
+    assert(m.nav.top - m.save.bottom >= 16, vp + ': the settings row is set apart from Save (' + Math.round(m.nav.top - m.save.bottom) + 'px)');
+    assert(m.end.top - m.nav.bottom >= 18, vp + ': sign out and delete are set apart from the settings (' + Math.round(m.end.top - m.nav.bottom) + 'px)');
     assert(m.del.top - m.out.bottom >= 8, vp + ': sign out and delete do not touch (' + Math.round(m.del.top - m.out.bottom) + 'px)');
-    assert(m.navBtns.every(h => Math.abs(h - m.saveH) < 1) && Math.abs(m.delH - m.saveH) < 1, vp + ': every button on the screen has the same height');
+    assert(Math.abs(m.delH - m.saveH) < 1, vp + ': Save and Delete are the same height');
     assert(m.scrollW <= m.innerW + 1 && m.dd.every(Boolean), vp + ': a long email stays inside the card');
   }
   assert(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.join(' | ') : ''));

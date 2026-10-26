@@ -320,3 +320,9 @@ One family drawn on a 24px grid with 2.2px round strokes: close, check, up, down
 - Play panel: character chip, turn/total, cards. The end-of-turn result and its tick sit on the map beside my sector.
 - Table tabs: Log (default), Sheet, Status. Log highlights each player's last action; clickable items are underlined.
 - Slider: closing it saves the number of turns (0 = all).
+
+## Start screens: four tabs
+- Play, Friends, Games, Library. A bottom bar on a phone (active tab in an amber pill, a red count badge on Friends for invitations and requests); a left rail from 900 px wide. The bar is hidden on set-up screens and during a game.
+- Play: live-game card and invitations, Quick match (amber hero), Create a game, join by code or QR, Pass and play and Companion under "On this device". Games: My games / Open games switch. Library: your numbers, Statistics, Maps, How to play, Account.
+- Icons are rounded-hexagon badges (the game's own shape) with an outline symbol: amber = playing, blue = people, slate = on this device, green = library.
+- Back (the phone's button too) steps Library -> Statistics/Account, any tab -> Play.

@@ -1136,3 +1136,34 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 #flow-card>.lobbyhint{margin:0 0 12px}
 #flow-card>.row.lobbyact{margin-top:12px}
 #panel-body .legendtoggle{margin-top:8px}
+/* ---- the four tabs: a bottom bar on a phone, a left rail on a wide screen ---- */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;height:calc(68px + env(safe-area-inset-bottom));padding:6px 4px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);background:#0a1120;border-top:1px solid var(--line)}
+.tabbar .brand{display:none}
+.tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;background:none;color:#8c9bb8;font:700 11px var(--font);letter-spacing:.05em;text-transform:uppercase;min-height:48px}
+.tabbar .ti{position:relative;width:56px;height:30px;border-radius:15px;display:grid;place-items:center}.tabbar .ti svg{display:block}
+.tabbar button.on{color:var(--amber)}.tabbar button.on .ti{background:#ffb41f26}.tabbar button.on svg{stroke-width:2.4}
+.tabbar .nb{position:absolute;top:-2px;right:6px;min-width:18px;height:18px;border-radius:9px;padding:0 5px;background:#ff3b30;color:#fff;font:800 11px/18px var(--font);font-style:normal;text-align:center}
+#flow.hasnav{padding-bottom:calc(68px + 16px + env(safe-area-inset-bottom))}
+.tabtitle{font-size:24px;margin:2px 0 14px}
+.hxb{position:relative;display:inline-grid;place-items:center;flex:none}.hxb>svg{position:absolute;inset:0}.hxb i{position:relative;display:grid;place-items:center;font-style:normal}
+.herobtn,.rowbtn,.minibtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border-radius:14px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--text)}
+.herobtn{padding:14px;margin:0 0 10px;background:var(--amber);border-color:var(--amber);color:#1a1200}
+.herobtn .t b{display:block;font:700 20px var(--font)}.herobtn .t small{font:600 13px var(--font);color:#3b2a00}
+.rowbtn{padding:10px 12px;margin:0 0 10px;min-height:64px}.rowbtn .t{flex:1;min-width:0}.rowbtn .t b{display:block;font:700 16px var(--font)}.rowbtn .t small{display:block;color:var(--dim);font:500 13px var(--font)}.rowbtn .chev{color:var(--dim);line-height:0}
+.minis{display:grid;grid-template-columns:1fr 1fr;gap:10px}.minibtn{padding:10px;gap:8px;min-height:60px}.minibtn b{font:700 14px var(--font)}
+.slabel{font:700 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:18px 2px 8px;display:flex;align-items:center;gap:8px}.slabel::after{content:"";flex:1;height:1px;background:var(--line)}
+.setup-card.tab .joinrow{margin:0 0 6px}
+.seg2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg2);margin:0 0 14px}
+.seg2 button{border:0;background:none;height:44px;font:700 13px var(--font);color:var(--dim)}.seg2 button[aria-selected=true]{background:#2a2008;color:var(--amber);box-shadow:inset 0 -3px var(--amber)}
+.verline{color:var(--dim);font:600 11px var(--mono);letter-spacing:.1em;text-align:center;margin:18px 0 0}
+.stgrid .stc{min-width:0}
+@media (min-width:900px){
+  .tabbar{top:0;right:auto;bottom:0;width:200px;height:auto;display:flex;flex-direction:column;gap:6px;padding:18px 12px;border-top:0;border-right:1px solid var(--line)}
+  .tabbar .brand{display:block;font:700 15px var(--font-head);letter-spacing:.1em;text-transform:uppercase;margin:0 8px 14px;line-height:1.2}.tabbar .brand em{color:var(--alien);font-style:normal}
+  .tabbar button{flex-direction:row;justify-content:flex-start;gap:12px;height:46px;border-radius:12px;padding:0 12px}
+  .tabbar button.on{background:#ffb41f1f}.tabbar button.on .ti{background:none}.tabbar .ti{width:24px;height:24px}
+  .tabbar .nb{top:-6px;right:-8px}
+  #flow.hasnav{padding-left:224px;padding-bottom:16px}
+}
+#flow[hidden]~#tabbar{display:none}   /* in a game the four tabs give way to the game's own bar */
+#flow-card>.btn.primary.wide+.setrow{margin-top:18px}

@@ -13,7 +13,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
     const over=[...f.querySelectorAll('button,input,a,[data-act],label')].filter(e=>{const r=e.getBoundingClientRect();return r.width&&r.height&&vr&&r.left<vr.right&&r.right>vr.left&&r.top<vr.bottom&&r.bottom>vr.top}).map(e=>e.dataset.act||e.tagName);
     return {top:c.top,below:innerHeight-c.bottom,fits:c.height<=innerHeight-8,hscroll:document.documentElement.scrollWidth>innerWidth+1,over}});
    if(!r){assert(false,name+' '+label+': a start screen is shown');continue}
-   if(r.fits)assert(Math.abs(r.top-r.below)<=60,name+' '+label+': the card is centred, not pushed to an edge (above '+Math.round(r.top)+', below '+Math.round(r.below)+')');
+   if(r.fits&&label!=='welcome')assert(Math.abs(r.top-r.below)<=60,name+' '+label+': the card is centred, not pushed to an edge (above '+Math.round(r.top)+', below '+Math.round(r.below)+')');
    assert(!r.hscroll,name+' '+label+': no sideways scroll');
    assert(!r.over.length,name+' '+label+': the version line is not over a control'+(r.over.length?' ('+r.over+')':''));
   }

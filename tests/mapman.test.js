@@ -4,7 +4,7 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
 (async()=>{const b=await chromium.launch();const errs=[];
  const p=await (await b.newContext({viewport:{width:390,height:800},serviceWorkers:'block'})).newPage();p.on('pageerror',e=>errs.push(e.message));
  await p.goto('http://localhost:8123/');
- await p.click('[data-act=maps_]');await p.waitForSelector('#mapman .gcard');
+ await p.click('#tabbar [data-act=library]');await p.click('[data-act=maps_]');await p.waitForSelector('#mapman .gcard');
  assert(await p.locator('#mapman .gcard').count()>=3,'splash lists the official maps');
  await p.click('#mapman .gcard');
  assert(await p.locator('[data-act=mmedit],[data-act=mmdel]').count()===0&&await p.locator('[data-act=mmcopy]').count()===1,'official map: no edit/delete, only copy');

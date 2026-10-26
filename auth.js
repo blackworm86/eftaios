@@ -25,20 +25,10 @@ const Auth = (() => {
     if (u && !u.isAnonymous && (Sync.profileLoading || Sync.profileError)) return pill(' guest', '…', t(Sync.profileLoading ? 'Loading your account…' : 'Your profile could not be loaded'));
     return pill(' guest', '?', t(u && !u.isAnonymous ? 'Finish your account' : 'Sign in'));
   };
-  const bar = () => {
-    const u = Sync.user, p = Sync.profile;
-    if (!Sync.enabled) return '';
-    const chev = `<i class="go" aria-hidden="true">${ico('next', 18)}</i>`;
-    if (p) return `<button class="idrow" data-act="account"><span class="who"><b>${esc(p.name)}</b><small>@${esc(p.handle)}</small></span><span class="tag">${t('Account')}</span>${chev}</button>`;
-    /* a signed-in account whose profile has not arrived yet is not a new account: never ask it to finish its profile */
-    if (u && !u.isAnonymous && (Sync.profileLoading || Sync.profileError)) return `<button class="idrow guest" data-act="account"><span class="who"><b>${t(Sync.profileLoading ? 'Loading your account…' : 'Your profile could not be loaded')}</b><small>${esc(u.email || '')}</small></span>${Sync.profileError ? `<span class="tag">${t('Try again')}</span>` : ''}${chev}</button>`;
-    return `<button class="idrow guest" data-act="account"><span class="who"><b>${u && !u.isAnonymous ? t('Finish your account') : t('Playing as a guest')}</b><small>${t('Sign in to keep your games')}</small></span><span class="tag">${t('Sign in')}</span>${chev}</button>`;
-  };
   const head = title => `<header class="fhead"><button class="icon-btn" data-act="authback" aria-label="${t('Back')}">${'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>'}</button><h2>${title}</h2></header>`;
 
   function html() {
     if (S.stage === 'account') return accountHtml();
-    if (S.stage === 'games') return gamesHtml();
     if (S.stage === 'stats') return statsHtml();
     return signInHtml();
   }
@@ -66,7 +56,6 @@ const Auth = (() => {
       ${p.handle ? `<dl class="kv"><dt>${t('Handle')}</dt><dd>@${esc(p.handle)}</dd><dt>${t('Email')}</dt><dd>${esc(u.email || '—')}</dd></dl>
         <label class="field"><span>${t('Display name')}</span><input id="a-name" maxlength="20" value="${esc(p.name || '')}"></label>
         <button class="btn primary wide" data-act="accountsave">${t('Save')}</button>
-        <div class="acctnav"><button class="btn wide" data-act="accountstats">${t('Statistics')}</button></div>
         ${segRow('Share anonymous results', 'recshare', 'v', Records.on() ? 'on' : 'off', [['on', t('On')], ['off', t('Off')]])}
         ${Sync.isAdmin ? `<button class="mrow" data-act="adminopen">${t('Admin')}<small>${t('Players, rooms, maps, reports')}</small><i aria-hidden="true">${ico('next', 18)}</i></button>` : ''}
         <div class="acctend"><button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>
@@ -82,11 +71,11 @@ const Auth = (() => {
         <button class="btn link wide" data-act="accountsignout">${t('Sign out')}</button>`}
       ${T.authMsg ? `<p class="dim hintline" role="status">${esc(T.authMsg)}</p>` : ''}`;
   }
-  function gamesHtml() {
-    if (!T.myGames) return `${head(t('My games'))}<p class="dim">${t('Loading…')}</p>`;
+  function gamesBody() {
+    if (!T.myGames) return `<p class="dim">${t('Loading…')}</p>`;
     const tab = T.gamesTab === 'over' ? 'over' : 'active', all = T.myGames, list = all.filter(([, g]) => (g.state === 'over') === (tab === 'over'));
     const tabs = `<div class="gtabs" role="tablist"><button role="tab" data-act="gamestab" data-k="active" aria-selected="${tab === 'active'}">${t('Active')} · ${all.filter(([, g]) => g.state !== 'over').length}</button><button role="tab" data-act="gamestab" data-k="over" aria-selected="${tab === 'over'}">${t('Finished')}</button></div>`;
-    if (!all.length) return `${head(t('My games'))}<p class="dim hintline">${t('No games yet. Create a game to start one.')}</p><button class="btn primary wide" data-act="hostsetup">${t('Create a game')}</button>`;
+    if (!all.length) return `<p class="dim hintline">${t('No games yet. Create a game to start one.')}</p><button class="btn primary wide" data-act="hostsetup">${t('Create a game')}</button>`;
     const per = 5, pages = Math.max(1, Math.ceil(list.length / per));
     const page = Math.min(Math.max(T.gamesPage || 0, 0), pages - 1);
     T.gamesPage = page;
@@ -94,7 +83,7 @@ const Auth = (() => {
     const pager = pages > 1
       ? `<div class="pager"><button class="prev" data-act="gamespage" data-d="-1" ${page === 0 ? 'disabled' : ''} aria-label="${t('Previous')}">${ico('next', 16)}</button><span>${page + 1} / ${pages}</span><button data-act="gamespage" data-d="1" ${page === pages - 1 ? 'disabled' : ''} aria-label="${t('Next')}">${ico('next', 16)}</button></div>`
       : '';
-    return `${head(t('My games'))}${tabs}${list.length ? `<ul class="plist glist">${rows}</ul>` : `<p class="dim hintline">${t('Nothing here.')}</p>`}${pager}`;
+    return `${tabs}${list.length ? `<ul class="plist glist">${rows}</ul>` : `<p class="dim hintline">${t('Nothing here.')}</p>`}${pager}`;
   }
 
   async function open(stage) { S.stage = stage; save(); renderFlow(); if (stage === 'auth') Sync.preloadSignIn(); }
@@ -147,7 +136,7 @@ const Auth = (() => {
   const acts = {
     async accountretry() { T.authMsg = ''; await Sync.retryProfile(); renderFlow(); },
     account() { T.authMsg = ''; open(Sync.registered ? 'account' : (Sync.user && !Sync.user.isAnonymous ? 'account' : 'auth')); },
-    authback() { S.stage = S.stage === 'stats' ? 'account' : 'welcome'; T.authMsg = ''; T.authReason = ''; save(); renderFlow(); },
+    authback() { S.stage = PARENT[S.stage] || 'welcome'; T.authMsg = ''; T.authReason = ''; save(); renderFlow(); },
     authgoogle() { guard(async () => { await Sync.signInGoogle(); T.authMsg = ''; postSignIn(); }); },
     authsignin() { guard(async () => { const email = $('#a-email').value.trim(), pass = $('#a-pass').value; await Sync.signInEmail(email, pass); postSignIn(); }); },
     authsignup() { guard(async () => { const email = $('#a-email').value.trim(), pass = $('#a-pass').value; await Sync.signUpEmail(email, pass, S.name); postSignIn(); }); },
@@ -157,7 +146,7 @@ const Auth = (() => {
     accountcreate() { guard(async () => { await Sync.saveProfile({ handle: $('#a-handle').value, name: $('#a-name').value }); T.authMsg = t('Account ready.'); postSignIn(); }); },
     accountsave() { guard(async () => { await Sync.renameMe($('#a-name').value); T.authMsg = t('Saved.'); renderFlow(); }); },
     gamestab(b) { T.gamesTab = b.dataset.k; T.gamesPage = 0; renderFlow(); },
-    accountgames() { S.stage = 'games'; T.gamesPage = 0; save(); loadGames(); },
+    accountgames() { S.stage = 'games'; T.gamesView = 'mine'; T.gamesPage = 0; save(); loadGames(); },
     gamespage(b) { T.gamesPage = Math.max(0, (T.gamesPage || 0) + Number(b.dataset.d)); renderFlow(); },
     accountstats() { S.stage = 'stats'; T.stats = null; save(); renderFlow(); },
     accountsignout() { guard(async () => { await Sync.signOut(); S.stage = 'welcome'; T.authMsg = ''; save(); renderFlow(); }); },
@@ -192,6 +181,6 @@ const Auth = (() => {
     try { await fn(); }
     catch (e) { T.authMsg = msg(e); renderFlow(); }
   }
-  return { html, bar, chip, actions: acts, guard, loadGames, continueCard };
+  return { html, chip, actions: acts, guard, loadGames, continueCard, gamesBody };
 })();
 window.Auth = Auth;

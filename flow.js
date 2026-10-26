@@ -69,8 +69,9 @@ function renderFlow() {
   if (S.stage === 'auth' && window.Sync && Sync.preloadSignIn) Sync.preloadSignIn();   // so the Google window opens on the first tap, even on Safari
   const st = S.stage;
   if ((!st || st === 'welcome') && Sync.registered && Sync.watchInbox) Sync.watchInbox();
-  const ver = document.getElementById('ver'); if (ver) ver.hidden = st !== 'welcome';
-  card.className = 'setup-card' + (st === 'welcome' || !st ? ' home' : ['friends', 'browse', 'games', 'stats', 'account'].includes(st) ? ' top' : '');
+  const ver = document.getElementById('ver'); if (ver) ver.hidden = true;   // the version shows at the foot of the Library tab
+  const tab = TAB_OF[st || 'welcome'];
+  card.className = 'setup-card' + (tab ? ' top tab' : ['stats', 'account'].includes(st) ? ' top' : '');
   if (st === 'host') {
     h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${seg('vis', ['public', 'friends'].includes(S.vis) ? S.vis : 'private')}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}${seg('max', String(S.max || 8))}${seg('fill', S.fill || '')}
       <button class="btn primary big wide" data-act="hostcreate">${t('Create game')}</button>${flowStatus()}`;
@@ -88,37 +89,21 @@ function renderFlow() {
       ${T.hotBots.some(Boolean) && T.hotBots.every(Boolean) ? `<p class="dim hintline">${t('At least one seat must be a person.')}</p>` : ''}
       ${mapSelect(T.maps, S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}
       <button class="btn primary big wide" data-act="hotstart">${t('Start game')}</button>`;
-  } else if (st === 'auth' || st === 'account' || st === 'games' || st === 'stats' || st === 'admin') {
+  } else if (st === 'auth' || st === 'account' || st === 'stats' || st === 'admin') {
     h = (st === 'admin' && window.Admin) ? Admin.html() : Auth.html();
-  } else if (st === 'browse') {
-    h = browseHtml();
+  } else if (st === 'games' || st === 'browse') {
+    h = gamesTabHtml();
   } else if (st === 'friends') {
     h = friendsHtml();
+  } else if (st === 'library') {
+    h = libraryHtml();
   } else if (st === 'lobby') {
     h = lobbyHtml();
   } else {
-    h = `${homeTop()}<h1>${t('Escape from the')}<br><span class="red">${t('Aliens')}</span> ${t('in Outer Space')}</h1>
-      ${T.pendingRoom ? '' : inviteCards() + Auth.continueCard()}
-      ${T.pendingRoom ? `<p class="banner">${t('You are invited to game {c}.', { c: esc(T.pendingRoom) })}</p>` : ''}${Sync.registered ? '' : nameField()}
-      ${T.pendingRoom
-        ? `<div class="wacts"><button class="btn primary big wide" data-act="joinroom">${t('Join game {c}', { c: esc(T.pendingRoom) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button></div>`
-        : `<div class="wacts">
-            ${Sync.registered ? `<button class="btn primary big wide" data-act="hostsetup">${t('Create a game')}</button>` : ''}
-            <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Game code')}" aria-label="${t('Game code')}"><button class="btn${Sync.registered ? '' : ' primary'}" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a QR code')}" title="${t('Scan a QR code')}">${QR_ICO}</button></div>
-            ${Sync.registered ? '' : `<button class="btn wide hostbtn" data-act="hostsetup">${t('Create a game')}<small>${t('Account required')}</small></button>`}
-          </div>
-          <div class="wgrid">
-            ${Sync.registered ? `<button class="btn" data-act="friends">${t('Friends')}<small>${friendsHint()}</small></button>` : ''}<button class="btn${Sync.registered ? '' : ' span2'}" data-act="browse">${t('Online lobby')}<small>${t('Open games')}</small></button>
-            <button class="btn" data-act="hotsetup">${t('Pass and play')}<small>${t('One device')}</small></button>
-            <button class="btn" data-act="solo">${t('Companion')}<small>${t('Paper sheet, real cards')}</small></button>
-            ${Sync.registered
-              ? `<button class="btn" data-act="accountgames">${t('My games')}<small>${t('Resume, history')}</small></button><button class="btn" data-act="maps_">${t('Maps')}<small>${t('Browse, create, publish')}</small></button>`
-              : `<button class="btn span2" data-act="maps_">${t('Maps')}<small>${t('Browse, create and share')}</small></button>`}
-          </div>`}
-      ${flowStatus()}`;
+    h = playHtml();
   }
   card.innerHTML = h;
-  if (ver && !ver.hidden) { const fl = $('#flow'); ver.hidden = fl.scrollHeight > fl.clientHeight + 1; }   // a page that scrolls would slide its last controls under the fixed version line
+  const bar = $('#tabbar'); if (bar) { bar.hidden = !tab; if (tab) bar.innerHTML = tabbarHtml(tab); } $('#flow').classList.toggle('hasnav', !!tab);
   const fm = $('#f-map');
   const upd = () => {
     if (fm && $('#f-map-prev')) { const m = T.maps.find(x => x.id === fm.value); $('#f-map-prev').innerHTML = mapPreview(m); $('#f-map-name').textContent = m ? m.name : ''; $('#f-map-desc').textContent = m ? mapInfo(m) : ''; $('#f-map-text').textContent = m && m.description ? t(m.description) : ''; }
@@ -139,7 +124,6 @@ function flowStatus() { return FLOW_MSG[Sync.status] ? `<p class="dim" role="sta
 
 /* friends: invitations on the home screen, the friends list, adding by handle, inviting from the game page */
 const inbox = () => Sync.inbox || { invites: [], requests: 0 };
-const friendsHint = () => { const n = inbox().requests, i = inbox().invites.length; return n || i ? [i ? t('{n} invitations', { n: i }) : '', n ? t('{n} requests', { n }) : ''].filter(Boolean).join(' · ') : t('Invite and play together'); };
 function inviteCards() {
   return inbox().invites.slice(0, 2).map(i => `<div class="livecard"><div class="top"><b>${t('{n} invites you to a game', { n: esc(i.name) })}</b></div><small>${esc(i.map || '')} · ${t('Game {c}', { c: esc(i.code) })}</small><div class="row two"><button class="btn primary" data-act="joininvite" data-c="${esc(i.code)}" data-f="${esc(i.from)}">${t('Join')}</button><button class="btn" data-act="skipinvite" data-f="${esc(i.from)}">${t('Not now')}</button></div></div>`).join('');
 }
@@ -150,7 +134,7 @@ function friendsHtml() {
   const body = !L ? `<p class="dim">${t('Loading…')}</p>` : `
     ${L.requests.length ? `<h3>${t('Requests')}</h3><ul class="plist glist">${L.requests.map(r => `<li class="grow"><span class="pname">@${esc(r.handle)}<small>${esc(r.name || '')}</small></span><button class="btn primary" data-act="friendok" data-u="${esc(r.uid)}" data-h="${esc(r.handle)}">${t('Accept')}</button><button class="x" data-act="friendno" data-u="${esc(r.uid)}" aria-label="${t('Decline')}">${ico('close', 16)}</button></li>`).join('')}</ul>` : ''}
     ${L.requests.length ? `<h3>${t('Friends')}</h3>` : ''}${L.friends.length ? `<ul class="plist glist">${L.friends.map(f => `<li class="grow"><span class="pname">@${esc(f.handle)}<small>${f.mutual ? t('Friends') : t('Waiting for them to accept')}</small></span><button class="x" data-act="friendrm" data-u="${esc(f.uid)}" aria-label="${t('Remove')}">${ico('close', 16)}</button></li>`).join('')}</ul>` : `<p class="dim hintline">${t('No friends yet. Add one by their handle.')}</p>`}`;
-  return `${fhead(t('Friends'))}
+  return `${tabTop(t('Friends'))}${inviteCards()}
     <div class="inline joinrow"><input id="friend-handle" type="text" maxlength="17" autocapitalize="off" autocomplete="off" placeholder="${t('Friend handle')}" aria-label="${t('Friend handle')}"><button class="btn primary" data-act="friendadd">${t('Add')}</button></div>
     ${T.friendMsg ? `<p class="dim hintline" role="status">${t(T.friendMsg)}</p>` : ''}${body}`;
 }
@@ -164,14 +148,54 @@ async function inviteDlg() {
   dlg.innerHTML = `<h2>${t('Invite a friend')}</h2>${ok.length ? `<ul class="plist">${ok.map(f => `<li class="grow"><span class="pname">@${esc(f.handle)}</span><button class="btn${sent[f.uid] ? '' : ' primary'}" data-act="sendinvite" data-u="${esc(f.uid)}" ${sent[f.uid] ? 'disabled' : ''}>${sent[f.uid] ? t('Invited') : t('Invite')}</button></li>`).join('')}</ul>` : `<p class="dim">${t('No friends yet. Add one by their handle.')}</p>`}<div class="row"><button class="btn" id="d-no">${t('Close')}</button></div>`;
   if (!dlg.open) dlg.showModal(); $('#d-no').onclick = closeDlg;
 }
+/* ---- the four tabs: Play, Friends, Games, Library (a bottom bar on a phone, a rail on a wide screen) ---- */
+const TAB_OF = { welcome: 'play', friends: 'friends', games: 'games', browse: 'games', library: 'library' };
+const tabTop = title => `${homeTop()}${title ? `<h2 class="tabtitle">${title}</h2>` : ''}`;
+function tabbarHtml(on) {
+  const n = inbox().requests + inbox().invites.length;
+  const item = (k, ic, label, act) => `<button role="tab" data-act="${act}" aria-selected="${on === k}" class="${on === k ? 'on' : ''}"><span class="ti">${ico(ic, 24)}${k === 'friends' && n ? `<em class="nb" aria-label="${n}">${n}</em>` : ''}</span><span class="tl">${t(label)}</span></button>`;
+  return `<b class="brand" aria-hidden="true">${t('Escape from the')} <em>${t('Aliens')}</em></b>` + item('play', 'play', 'Play', 'home') + item('friends', 'friends', 'Friends', 'friends') + item('games', 'stack', 'Games', 'accountgames') + item('library', 'book', 'Library', 'library');
+}
+const AMBER = '#ffb41f', BLUE = '#2f7dff', GREEN = '#1e8a4f', SLATE = '#59627a';
+const CHEV = `<span class="chev" aria-hidden="true">${ico('next', 18)}</span>`;
+const rowBtn = (act, icon, col, title, sub, ink) => `<button class="rowbtn" data-act="${act}">${hexBadge(icon, col, 44, ink || '#fff')}<span class="t"><b>${title}</b><small>${sub}</small></span>${CHEV}</button>`;
+function playHtml() {
+  const pending = T.pendingRoom;
+  return `${tabTop('')}${pending ? '' : inviteCards() + Auth.continueCard()}
+    ${pending ? `<p class="banner">${t('You are invited to game {c}.', { c: esc(pending) })}</p>` : ''}${Sync.registered ? '' : nameField()}
+    ${pending
+      ? `<div class="wacts"><button class="btn primary big wide" data-act="joinroom">${t('Join game {c}', { c: esc(pending) })}</button><button class="btn link wide" data-act="ignoreinvite">${t('Not now')}</button></div>`
+      : `<button class="herobtn" data-act="quickmatch">${hexBadge('bolt', '#1a1200', 52, AMBER)}<span class="t"><b>${t('Quick match')}</b><small>${t('Join the fullest open game')}</small></span></button>
+        ${rowBtn('hostsetup', 'plus', AMBER, t('Create a game'), t(Sync.registered ? 'Private, friends or public' : 'Account required'), '#1a1200')}
+        <div class="inline joinrow"><input id="join-code" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="${t('Game code')}" aria-label="${t('Game code')}"><button class="btn" data-act="joinroom">${t('Join')}</button><button class="btn scanbtn" data-act="scanqr" aria-label="${t('Scan a game QR code')}">${QR_ICO}</button></div>
+        <h3 class="slabel">${t('On this device')}</h3>
+        <div class="minis"><button class="minibtn" data-act="hotsetup">${hexBadge('swap', SLATE, 38)}<b>${t('Pass and play')}</b></button><button class="minibtn" data-act="solo">${hexBadge('sheet', SLATE, 38)}<b>${t('Companion')}</b></button></div>`}
+    ${flowStatus()}`;
+}
+function gamesTabHtml() {
+  const open = T.gamesView === 'open';
+  return `${tabTop(t('Games'))}<div class="seg2" role="tablist"><button role="tab" data-act="accountgames" aria-selected="${!open}">${t('My games')}</button><button role="tab" data-act="browse" aria-selected="${open}">${t('Open games')}</button></div>${open ? browseBody() : Auth.gamesBody()}`;
+}
+function libraryHtml() {
+  if (Sync.registered && T.libStats === undefined && !T.libLoading) { T.libLoading = true; Sync.readStats().then(s => { T.libStats = s || {}; }).catch(() => { T.libStats = {}; }).then(() => { T.libLoading = false; if (S.stage === 'library') renderFlow(); }); }
+  const s = T.libStats, pc = (n, d) => d ? Math.round(n / d * 100) + '%' : '–', card = (l, v) => `<div class="stc"><b>${v}</b><span>${l}</span></div>`;
+  const ver = (document.getElementById('ver') || {}).textContent || '';
+  return `${tabTop(t('Library'))}
+    ${Sync.registered && s && s.games > 0 ? `<h3 class="slabel">${t('Your numbers')}</h3><div class="stgrid">${card(t('Games'), s.games)}${card(t('Win rate'), pc(s.wins || 0, s.games))}${card(t('Best win streak'), s.bestStreak || 0)}</div>` : ''}
+    <h3 class="slabel">${t('Browse')}</h3>
+    ${Sync.registered ? rowBtn('accountstats', 'chart', GREEN, t('Statistics'), t('By role, Character and map')) : ''}${rowBtn('maps_', 'map', GREEN, t('Maps'), t('Browse, create, publish'))}${rowBtn('rules', 'book', GREEN, t('How to play'), t('The rules in short'))}
+    <h3 class="slabel">${t('Account')}</h3>
+    ${rowBtn('account', 'user', SLATE, t(Sync.registered ? 'Your account' : 'Sign in'), t(Sync.registered ? 'Name, sharing, sign out' : 'Keep your games and statistics'))}
+    ${ver ? `<p class="verline">${esc(ver)}</p>` : ''}`;
+}
 /* the Online lobby: public games that are gathering players right now */
-function browseHtml() {
-  if (T.pubList === undefined && !T.pubLoading) { T.pubLoading = true; Sync.browse().then(l => { T.pubList = l; }).catch(() => { T.pubList = []; }).then(() => { T.pubLoading = false; if (S.stage === 'browse') renderFlow(); }); }
+function browseBody() {
+  if (T.pubList === undefined && !T.pubLoading) { T.pubLoading = true; Sync.browse().then(l => { T.pubList = l; }).catch(() => { T.pubList = []; }).then(() => { T.pubLoading = false; if (S.stage === 'games' || S.stage === 'browse') renderFlow(); }); }
   const list = T.pubList, mapName = id => { const m = (T.maps || []).find(x => x.id === id); return m ? m.name : id; };
   const rows = (list || []).map(([code, g]) => `<li class="grow"><span class="pname">${esc(mapName(g.map))}<small>${esc(g.name || '')} · ${t(MODES[modeOf(g.mode)][0])} · ${g.n}/${g.max}</small></span><button class="btn primary" data-act="joinpub" data-c="${esc(code)}">${t('Join')}</button></li>`).join('');
-  return `${fhead(t('Online lobby'))}${Sync.registered ? '' : nameField()}
+  return `${Sync.registered ? '' : nameField()}
     ${list === undefined || T.pubLoading ? `<p class="dim">${t('Loading…')}</p>` : list.length ? `<ul class="plist glist">${rows}</ul>` : `<p class="dim hintline">${t('No open games right now. Create one and make it Public.')}</p>`}
-    <button class="btn primary big wide" data-act="quickmatch">${t('Quick match')}<small>${t('Join the fullest open game')}</small></button><div class="row two"><button class="btn" data-act="browse">${t('Refresh')}</button><button class="btn" data-act="hostsetup">${t('Create a game')}</button></div>${flowStatus()}`;
+    <div class="row two"><button class="btn" data-act="browse">${t('Refresh')}</button><button class="btn" data-act="hostsetup">${t('Create a game')}</button></div>${flowStatus()}`;
 }
 function lobbyHtml() {
   const st = Sync.settings || {}, host = isHost(), players = orderedPlayers();
@@ -340,7 +364,9 @@ Object.assign(actions, {
   async sendinvite(b) { const st = Sync.settings || {}; await Sync.invite(b.dataset.u, Sync.code, tableMapOf(st).name).catch(() => {}); (T.invited = T.invited || {})[b.dataset.u] = 1; inviteDlg(); },
   async joininvite(b) { await Sync.dismissInvite(b.dataset.f); const ok = await Sync.join(b.dataset.c, { name: readName() }); if (!ok) renderFlow(); },
   skipinvite(b) { Sync.dismissInvite(b.dataset.f); },
-  browse() { S.stage = 'browse'; T.pubList = undefined; renderFlow(); },
+  browse() { S.stage = 'games'; T.gamesView = 'open'; T.pubList = undefined; renderFlow(); },
+  home() { S.stage = 'welcome'; T.homeGames = undefined; renderFlow(); },
+  library() { S.stage = 'library'; T.libStats = undefined; renderFlow(); },
   async joinpub(b) { const ok = await Sync.join(b.dataset.c, { name: readName() }); if (!ok) { T.pubList = undefined; renderFlow(); } },
   async joinroom() {
     const name = readName(), code = T.pendingRoom || ($('#join-code') || {}).value || '';
@@ -412,10 +438,11 @@ Object.assign(actions, {
   scanqr() { scanDlg(); }
 });
 /* the phone's Back button steps back through the app instead of leaving it: one spare history entry is always kept */
-const PARENT = { stats: 'account', account: 'welcome', games: 'welcome', friends: 'welcome', browse: 'welcome', host: 'welcome', hotsetup: 'welcome', solo: 'welcome', auth: 'welcome', admin: 'welcome', maps: 'welcome' };
+const PARENT = { stats: 'library', account: 'library', games: 'welcome', friends: 'welcome', library: 'welcome', browse: 'welcome', host: 'welcome', hotsetup: 'welcome', solo: 'welcome', auth: 'welcome', admin: 'welcome', maps: 'welcome' };
 function handleBack() {
   if (dlg.open) { closeDlg(); return true; }
   const g = document.getElementById('gallery'); if (g) { g.remove(); return true; }
+  const ov = document.getElementById('overlay'); if (ov) { ov.remove(); return true; }
   if (S.stage === 'game') { if (S.tab !== 'play') { setTab('play'); render(); } return true; }
   if (S.stage === 'lobby') { actions.leavelobby(); return true; }
   if (PARENT[S.stage]) { S.stage = PARENT[S.stage]; T.authMsg = ''; save(); renderFlow(); return true; }

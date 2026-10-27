@@ -1450,10 +1450,7 @@ const RULES = [
   ['Goal', ['<b>Humans</b> reach an Escape Pod. <b>Aliens</b> hunt every Human down.', 'The game ends after 40 rounds, or when the last Human escapes or is killed. Humans still aboard after 40 rounds are eliminated.', '<b>Basic game:</b> your first game. No Items and no Character abilities; Item cards count as Silence. <b>Ultimate game:</b> the complete rules.']],
   ['Your turn', ['<b>Move</b> (mandatory, never ending where you started). Humans 1 sector. Aliens 1–2 sectors, or 1–3 after feeding.', '<b>Secure sector:</b> declare "Silent Sector". Your turn is over.', '<b>Dangerous sector:</b> draw a card: Noise in your sector, Noise in any sector, Silence or an Item (announce Silence).', '<b>Alien attack:</b> after moving, announce the attack instead of drawing. Anyone there (Human or Alien) is killed and reveals their card.']],
   ['Killed', ['A killed <b>Human</b> restarts from the Alien Sector as an Alien, with no abilities or items. A killed <b>Alien</b> is out of the game.']],
-  ['Sectors', ['Dangerous: draw a card. Secure: nothing happens.', 'Human and Alien start sectors: nobody may enter or cross them.', 'Escape Pods: Humans only.']],
-  ['Escape Pods', ['Declare which pod you reached, draw an Escape Pod card and reveal it.', '<b>Red:</b> the pod is damaged and closed for everyone. You stay there, cannot be attacked, and must leave on your next turn. <b>Green:</b> you escaped and the pod is used.', 'If every pod is closed, the remaining Humans are eliminated.']],
-  ['Items (Ultimate)', ['Silence and Item cards are kept face down. Only Humans use Items; Aliens collect them to look like Humans. Each item is used once.', '<b>Attack</b> as an Alien would. <b>Teleport</b> to the Human sector, plus your normal move. <b>Sedatives</b> no card this turn. <b>Spotlight</b> name a sector: it and its 6 neighbours announce exact coordinates. <b>Sensor</b> one player announces exact coordinates. <b>Adrenaline</b> one extra sector. <b>Cat</b> announce two noises. <b>Mutation</b> become an Alien. <b>Defense</b> survive an attack. <b>Clone</b> survive an attack and restart from the Human sector.']],
-  ['Character abilities (Ultimate)', ['Each Character has an ability, some usable only once. Humans: Captain, Pilot, Psychologist, Soldier, Executive Officer, Co-pilot, Engineer, Medic. Aliens: Blink, Silent, Surge, Brute, Invisible, Lurking, Fast, Psychic.']]
+  ['Sectors', ['Dangerous: draw a card. Secure: nothing happens.', 'Human and Alien start sectors: nobody may enter or cross them.', 'Escape Pods: Humans only.']]
 ];
 /* full-screen sheet for long content (rules, map list): read without squeezing it into the panel */
 function overlay(title, html) {
@@ -1462,8 +1459,24 @@ function overlay(title, html) {
   g.innerHTML = `<header><h2>${esc(title)}</h2><button class="icon-btn" data-act="ovclose" aria-label="${t('Close')}">${ico('close')}</button></header><div class="gbody">${html}</div>`;
   document.body.appendChild(g); g.querySelector('[data-act=ovclose]').focus();
 }
-const rulesHtml = () => `<div class="rules">${RULES.map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}
+/* a list of rules with their printed icon: [icon, title, text, tag] */
+const RULE_CARDS = [['noise-here', 'Noise in your sector', 'Announce the sector you are in.'], ['noise-any', 'Noise in any sector', 'Announce any sector you like: a bluff is allowed.'], ['silence', 'Silence', 'Announce nothing.'], ['silent', 'Silent Sector', 'A safe sector: you announce "Silent Sector" and no card is drawn.'], ['claws', 'Alien attack', 'After moving, an Alien may announce an attack instead of drawing a card. Everybody in that sector is killed.']];
+const RULE_PODS = [['pod-green', 'Green pod', 'You escape and the pod is used up.'], ['pod-red', 'Red pod', 'The pod is damaged and closes for everyone. You stay inside, safe from attacks, and must leave next turn.']];
+const RULE_ITEM_MORE = { attack: 'Announce it after moving, instead of drawing a card. Everybody in the sector is killed unless they survive with Defense or Clone.', teleport: 'Play it at the start of your turn: you appear in the Human sector, then move as usual.', adrenaline: 'Play it at the start of your turn: you may move one sector more than usual.', sedatives: 'Play it in a Dangerous Sector: you draw no card this turn.', spotlight: 'Play it after moving. Every player in the named sector or next to it announces their exact sector.', defense: 'Kept face down. If an Alien attacks your sector you survive and the card is used up.', clone: 'If you are attacked you survive, restart from the Human sector and the card is used up.', sensor: 'Pick another player: they must announce their exact sector.', mutation: 'From then on you move and attack as an Alien.', cat: 'Play it when you draw a Noise card: announce a noise in two sectors.' };
+const iconList = rows => `<ul class="icol">${rows.map(([ic, title, text, tag]) => `<li>${gico(ic, 40)}<div><b>${t(title)}</b>${tag ? ` <em>${tag}</em>` : ''}<p>${Array.isArray(text) ? text.map(x => t(x)).join(' ') : t(text)}</p></div></li>`).join('')}</ul>`;
+const rulesHtml = () => {
+  const items = Object.keys(ITEMS).map(k => [k, ITEMS[k][0], RULE_ITEM_MORE[k], t('{n} in the deck', { n: ITEM_COUNTS[k] }) + (['defense', 'clone'].includes(k) ? ' · ' + t('Played automatically') : '')]);
+  const chars = role => CHARS[role].map(c => [CHAR_ICON[c] || c, c, ABILITIES[c], UNIQUE_ABIL.includes(c) ? t('Once per game') : '']);
+  const sect = (h, intro, list) => `<h4>${t(h)}</h4>${intro ? `<p class="dim">${t(intro)}</p>` : ''}${list}`;
+  return `<div class="rules">${RULES.slice(0, 2).map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}
+  ${sect('Dangerous Sector cards', '', iconList(RULE_CARDS))}
+  ${RULES.slice(2, 4).map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}
+  ${sect('Escape Pods', 'Declare which pod you reached, draw an Escape Pod card and reveal it. If every pod is closed, the remaining Humans are eliminated.', iconList(RULE_PODS))}
+  ${sect('Items (Ultimate)', 'Silence and Item cards are kept face down. Only Humans use Items; Aliens collect them to look like Humans. Each item is used once.', iconList(items))}
+  ${sect('Human Characters', 'Ultimate game only. Each player is dealt one secret Character with a special ability. A Human killed and reborn as an Alien loses it.', iconList(chars('human')))}
+  ${sect('Alien Characters', '', iconList(chars('alien')))}
   <p class="dim fine2">${t('A summary of the official rulebook. The rulebook is authoritative.')} ${t('Unofficial fan companion for Escape from the Aliens in Outer Space.')}</p></div>`;
+};
 const mapsHtml = () => `<div class="ggrid">${T.maps.map(m => `<button class="gcard" data-act="map" data-id="${esc(m.id)}" aria-pressed="${m.id === T.map.id}">${mapPreview(m)}<b>${esc(m.name)}</b></button>`).join('')}</div>`;
 const segRow = (label_, act, key, cur, opts) => `<div class="setrow"><span>${t(label_)}</span><div class="seg" role="radiogroup" aria-label="${t(label_)}">${opts.map(([v, l]) => `<button role="radio" data-act="${act}" data-${key}="${v}" aria-checked="${cur === v}">${l}</button>`).join('')}</div></div>`;
 function morePanel() {

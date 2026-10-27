@@ -1201,3 +1201,10 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 #flow-card .roomcard .row .btn{flex:1 1 0;min-height:44px;padding:8px 6px;font-size:14px}
 .botbar{display:flex;gap:10px;align-items:stretch;margin:0 0 10px}
 .botbar .seg{flex:1 1 auto}.botbar .seg button{min-height:44px;font-size:13px}.botbar>.btn{flex:none;min-height:44px;padding:8px 16px;font-size:14px}
+/* how to play: rules with their printed icons */
+.icol{list-style:none;margin:6px 0 14px;padding:0;display:grid;gap:8px}
+.icol li{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg2)}
+.icol li>.gi,.icol li>.hxb{flex:none;margin-top:2px}
+.icol b{font:700 15px var(--font)}.icol em{font:700 11px var(--font);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:1px 8px;margin-left:6px;white-space:nowrap}
+.icol p{margin:3px 0 0;color:#c4cde0;font-size:14px;line-height:1.4}
+.rules>p.dim{margin:2px 0 8px}

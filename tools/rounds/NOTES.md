@@ -423,3 +423,7 @@ Full tables: `nn-v2-matrix.report.txt` (the network decides everything it was tr
 - As Humans it plays at about Easy level: against Hard Aliens it escapes 31 / 20 / 15% at 4 / 6 / 8 players, Hard Humans 42 / 33 / 29%, Easy Humans 24 / 25 / 21%.
 - Letting the Hard rules decide its attacks makes the Aliens passive (0.03 attacks per turn) and weaker than Easy Aliens: Humans escape 55-72% against them. Its moves were learned together with its own attacks.
 - Python rule-based players (the training yardstick) are much simpler than the app's Hard bot, so "61% against rule-based Humans" did not mean "as good as Hard".
+
+## Network distilled from the Hard bot (nn/net.json after NN.bat item 9; 40 epochs, 60% same move as Hard on unseen games)
+72 games per cell, rolemix, seed 4402; full table in `distil1.report.txt` (Human escape % / Alien team win %). Attacks per Alien turn: network 0.09-0.16 (Hard 0.14-0.17; the first network 0.9).
+- Network Humans vs Hard Aliens escape 35 / 30 / 30% at 4 / 6 / 8 players (Hard Humans 42 / 33 / 29%): about Hard level. Network Aliens vs Hard Humans win 40 / 28 / 40% (Hard Aliens about 49-51%): below Hard.

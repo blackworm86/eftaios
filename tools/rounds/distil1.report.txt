@@ -1,0 +1,24 @@
+
+4 players: Human escape % / Alien team win %
+H=nn A=easy: 81% / 19%  (atk 0.03)
+H=nn A=normal: 53% / 39%  (atk 0.06)
+H=nn A=hard: 35% / 56%  (atk 0.16)
+H=easy A=nn: 43% / 54%  (atk 0.13)
+H=normal A=nn: 59% / 32%  (atk 0.14)
+H=hard A=nn: 52% / 40%  (atk 0.15)
+
+6 players: Human escape % / Alien team win %
+H=nn A=easy: 65% / 33%  (atk 0.03)
+H=nn A=normal: 44% / 36%  (atk 0.06)
+H=nn A=hard: 30% / 53%  (atk 0.11)
+H=easy A=nn: 34% / 71%  (atk 0.11)
+H=normal A=nn: 63% / 19%  (atk 0.15)
+H=hard A=nn: 56% / 28%  (atk 0.15)
+
+8 players: Human escape % / Alien team win %
+H=nn A=easy: 51% / 51%  (atk 0.04)
+H=nn A=normal: 39% / 47%  (atk 0.06)
+H=nn A=hard: 30% / 39%  (atk 0.09)
+H=easy A=nn: 31% / 69%  (atk 0.12)
+H=normal A=nn: 42% / 46%  (atk 0.15)
+H=hard A=nn: 44% / 40%  (atk 0.15)

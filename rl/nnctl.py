@@ -36,8 +36,8 @@ LOCK = os.path.join(RUN, "training.lock")
 
 def pid_alive(pid):
     if os.name == "nt":  # os.kill would end the process on Windows, so ask the task list
-        out = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH"], capture_output=True, text=True).stdout
-        return str(pid) in out
+        out = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH", "/FO", "CSV"], capture_output=True, text=True).stdout
+        return '"%d"' % pid in out  # exact PID column, not a number that merely appears in the memory column
     try:
         os.kill(pid, 0)
         return True

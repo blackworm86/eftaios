@@ -139,6 +139,21 @@ def cmd_samples():
     return 0 if ok else 1
 
 
+def cmd_update():
+    """Brings this program up to date from GitHub (no git needed). Your training and token stay as they are."""
+    from eftaios_rl import publish
+    if running():
+        say("A training is running: stop it first (menu item 5), then update.")
+        return 1
+    try:
+        n = publish.download_update(ROOT)
+    except Exception as e:
+        say("The update failed: %s\nIf the repository is private, save the GitHub token first (menu item 4)." % e)
+        return 1
+    say("Updated %d files. Close this window and double-click NN.bat again to use the new version." % n)
+    return 0
+
+
 def cmd_stop():
     os.makedirs(RUN, exist_ok=True)
     open(STOP, "w").close()
@@ -165,12 +180,13 @@ def cmd_check():
 
 MENU = [("1", "Start or resume the training", cmd_train), ("2", "Show progress", cmd_status), ("3", "Send the network and progress to GitHub now", cmd_publish),
         ("4", "Save the GitHub token (once)", cmd_token), ("5", "Stop the training (use this in a second window)", cmd_stop), ("6", "Check that everything works", cmd_check),
-        ("7", "Record sample games for the game viewer and send them", cmd_samples)]
+        ("7", "Record sample games for the game viewer and send them", cmd_samples),
+        ("8", "Update this program from GitHub", cmd_update)]
 
 
 def main():
     if len(sys.argv) > 1:
-        fn = {"train": cmd_train, "status": cmd_status, "publish": cmd_publish, "token": cmd_token, "stop": cmd_stop, "check": cmd_check, "samples": cmd_samples}.get(sys.argv[1])
+        fn = {"train": cmd_train, "status": cmd_status, "publish": cmd_publish, "token": cmd_token, "stop": cmd_stop, "check": cmd_check, "samples": cmd_samples, "update": cmd_update}.get(sys.argv[1])
         return fn() if fn else (say(__doc__) or 1)
     while True:
         say("\n=== EFTAIOS network trainer ===")

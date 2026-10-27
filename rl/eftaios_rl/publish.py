@@ -57,6 +57,26 @@ def put_file(repo_path, data, message):
     return False, "GitHub answered %d %s %s" % (st, why, res.get("message", ""))
 
 
+def download_update(root):
+    """Replaces the program's own files (this rl folder) with the ones on GitHub's main branch. Your runs, settings and Python environment are never touched.
+    Returns the number of files written."""
+    import io
+    import zipfile
+    req = urllib.request.Request(API + "/repos/%s/zipball/main" % REPO, headers={"Authorization": "Bearer " + token(), "User-Agent": "eftaios-nn"} if token() else {"User-Agent": "eftaios-nn"})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        z = zipfile.ZipFile(io.BytesIO(r.read()))
+    n = 0
+    for name in z.namelist():
+        parts = name.split("/", 2)  # <repo-and-commit>/rl/<file>
+        if len(parts) < 3 or parts[1] != "rl" or name.endswith("/") or parts[2].split("/")[0] in ("runs", "settings", ".venv", "__pycache__"):
+            continue
+        dest = os.path.join(root, *parts[2].split("/"))
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        open(dest, "wb").write(z.read(name))
+        n += 1
+    return n
+
+
 def _net_bytes(run_dir):
     import torch  # only needed here
     s = torch.load(os.path.join(run_dir, "latest.pt"), map_location="cpu")

@@ -39,6 +39,7 @@ A black window with a menu appears:
   5  Stop the training (use this in a second window)
   6  Check that everything works
   7  Record sample games for the game viewer and send them
+  8  Update this program from GitHub
   0  Quit
 ```
 
@@ -68,6 +69,9 @@ You do not have to tell me: when you say there is new data, I read it from the r
 **Watch the network play (item 7):** press `7` in the menu (a few minutes). It plays 12 games with the current network, every seat played by the network,
 and sends them to the repository. In the app, sign in as admin, open **Admin > Games** and choose "Network sample games": you see every game's map with the
 players' real routes, their roles and the result, and a slider to replay it turn by turn.
+
+**Update the program (item 8):** when I tell you there is a new version, stop the training (`5`), press `8` in the menu, close the window and
+double-click `NN.bat` again. It replaces the program's files with the ones on GitHub and never touches your training, settings or token.
 
 ## 5. How to read the progress report
 

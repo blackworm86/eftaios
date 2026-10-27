@@ -25,6 +25,12 @@ class Stub(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        if "/zipball/" in self.path:
+            data = FILES["zip"]
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            return self.wfile.write(data)
         path = self.path.split("?")[0].split("/contents/")[-1]
         CALLS.append(("GET", path))
         self._send(200, {"sha": "sha-of-" + path}) if path in FILES else self._send(404, {"message": "Not Found"})
@@ -39,11 +45,34 @@ class Stub(http.server.BaseHTTPRequestHandler):
         self._send(200 if body.get("sha") else 201, {"ok": 1})
 
 
+def test_update():
+    import io
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("blackworm86-eftaios-abc123/rl/nnctl.py", "new")
+        z.writestr("blackworm86-eftaios-abc123/rl/eftaios_rl/samples.py", "samples")
+        z.writestr("blackworm86-eftaios-abc123/rl/runs/main/latest.pt", "must not be written")
+        z.writestr("blackworm86-eftaios-abc123/index.html", "not in rl")
+    FILES["zip"] = buf.getvalue()
+    srv = http.server.HTTPServer(("127.0.0.1", 0), Stub)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    from eftaios_rl import publish
+    publish.API = "http://127.0.0.1:%d" % srv.server_port
+    root = tempfile.mkdtemp()
+    os.makedirs(os.path.join(root, "settings"))
+    open(os.path.join(root, "settings", "keep.txt"), "w").write("mine")
+    assert publish.download_update(root) == 2
+    assert open(os.path.join(root, "nnctl.py")).read() == "new" and os.path.exists(os.path.join(root, "eftaios_rl", "samples.py"))
+    assert not os.path.exists(os.path.join(root, "runs")) and open(os.path.join(root, "settings", "keep.txt")).read() == "mine"
+    srv.shutdown()
+
+
 def test_everything():
     srv = http.server.HTTPServer(("127.0.0.1", 0), Stub)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
-    os.environ["EFTAIOS_API"] = "http://127.0.0.1:%d" % srv.server_port
     from eftaios_rl import publish, report
+    publish.API = "http://127.0.0.1:%d" % srv.server_port
     d = tempfile.mkdtemp()
     publish.TOKEN_FILE = os.path.join(d, "token.txt")
     assert publish.token() == ""
@@ -64,7 +93,7 @@ def test_everything():
     text = report.summary(run)
     assert "Iteration: **40**" in text and "60 seconds per iteration" in text and "still improving" in text, text
     out = publish.publish_now(run, with_network=False)
-    assert all(l.startswith("OK") for l in out) and set(FILES) == {"nn/status.md", "nn/eval.csv"}, out
+    assert all(l.startswith("OK") for l in out) and set(FILES) - {"zip"} == {"nn/status.md", "nn/eval.csv"}, out
     assert ("PUT", "nn/status.md", None) in CALLS  # first time: created
     publish.publish_now(run, with_network=False)
     assert ("PUT", "nn/status.md", "sha-of-nn/status.md") in CALLS  # second time: replaced, with the sha
@@ -78,5 +107,6 @@ def test_everything():
 
 
 if __name__ == "__main__":
+    test_update()
     test_everything()
     print("ok publish")

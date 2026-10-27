@@ -1,29 +1,21 @@
 # Network training status
 
-Updated 2026-10-27 07:06.
+Updated 2026-10-27 19:42.
 
-- Iteration: **248**
-- Speed: 78 seconds per iteration (46 per hour)
-- Network: 64 hidden units, 4 layers; 15 game workers
+- Iteration: **0**
+- Network: 64 hidden units, 4 layers; 0 game workers
 
-## Evaluation against simple rule-based players (average of the last 15 evaluations)
-
-| | network | rule-based players | change since the 15 before |
-|---|---|---|---|
-| Humans (team win %) | 65.1 | 70.6 | -5.5 |
-| Aliens (team win %) | 62.2 | 28.9 | +20.5 |
-
-Verdict: still improving
+Not enough evaluations yet (one is made every 10 iterations).
 
 ## Last log lines
 
 ```
-2026-10-27 06:59:09 it 242: 25889 decisions in 199 games (38s collect, 38s train), aliens won 62%, loss pol -0.004 val 0.092 ent 1.08
-2026-10-27 07:00:22 it 243: 24937 decisions in 176 games (37s collect, 36s train), aliens won 67%, loss pol -0.003 val 0.085 ent 1.14
-2026-10-27 07:01:40 it 244: 26534 decisions in 208 games (39s collect, 39s train), aliens won 63%, loss pol -0.011 val 0.086 ent 1.01
-2026-10-27 07:02:58 it 245: 25994 decisions in 221 games (40s collect, 38s train), aliens won 63%, loss pol -0.000 val 0.079 ent 1.12
-2026-10-27 07:04:13 it 246: 25753 decisions in 198 games (37s collect, 38s train), aliens won 64%, loss pol -0.005 val 0.089 ent 1.10
-2026-10-27 07:05:32 it 247: 25804 decisions in 194 games (40s collect, 38s train), aliens won 63%, loss pol -0.004 val 0.094 ent 0.96
-2026-10-27 07:06:51 it 248: 26802 decisions in 173 games (39s collect, 40s train), aliens won 66%, loss pol -0.004 val 0.084 ent 1.08
-2026-10-27 07:06:51 STOP file found: finishing
+2026-10-27 19:34:58 epoch 34/40: cross-entropy 0.778 (check games 0.973); same action as the Hard bot on unseen games: moves 60%, attacks 91%, decoys 23% (77s)
+2026-10-27 19:36:15 epoch 35/40: cross-entropy 0.775 (check games 0.966); same action as the Hard bot on unseen games: moves 61%, attacks 91%, decoys 23% (77s)
+2026-10-27 19:37:32 epoch 36/40: cross-entropy 0.772 (check games 0.966); same action as the Hard bot on unseen games: moves 60%, attacks 91%, decoys 25% (77s)
+2026-10-27 19:38:48 epoch 37/40: cross-entropy 0.769 (check games 0.959); same action as the Hard bot on unseen games: moves 60%, attacks 91%, decoys 24% (77s)
+2026-10-27 19:40:05 epoch 38/40: cross-entropy 0.766 (check games 0.964); same action as the Hard bot on unseen games: moves 60%, attacks 91%, decoys 23% (77s)
+2026-10-27 19:41:21 epoch 39/40: cross-entropy 0.764 (check games 0.966); same action as the Hard bot on unseen games: moves 60%, attacks 91%, decoys 24% (77s)
+2026-10-27 19:42:38 epoch 40/40: cross-entropy 0.762 (check games 0.965); same action as the Hard bot on unseen games: moves 60%, attacks 91%, decoys 24% (77s)
+2026-10-27 19:42:38 distillation finished
 ```

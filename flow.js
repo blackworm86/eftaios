@@ -205,16 +205,19 @@ function lobbyHtml() {
     <span class="ctl"><span class="pst">${p.bot ? (host ? `<select data-botlvl="${esc(id)}" aria-label="${t('Bot level')}">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${p.bot === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>` : t(BOTSEL.find(x => x[0] === p.bot)[1])) : p.ready ? ico('check', 14) + ' ' + t('Ready') : ''}</span>
     ${host && p.bot ? `<button class="x" data-act="delbot" data-u="${esc(id)}" aria-label="${t('Remove')}">${ico('close', 16)}</button>` : ''}
     ${host ? `<span class="mv"><button data-act="mvup" data-u="${esc(id)}" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>${ico('up')}</button><button data-act="mvdown" data-u="${esc(id)}" aria-label="${t('Move down')}" ${i === players.length - 1 ? 'disabled' : ''}>${ico('down')}</button></span>` : ''}</span></li>`).join('');
-  const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[modeOf(st.mode)][0])}</dd><dt>${t('Who can join')}</dt><dd>${t(st.pub ? 'Public' : 'Private')} · ${st.max || 8} ${t('Players')}</dd>${st.fill ? `<dt>${t('Bots')}</dt><dd>${t('Fill to {n} players', { n: st.max || 8 })} · ${t(FILL[st.fill][0])}</dd>` : ''}</dl>`;
+  const kv = `<dl class="kv"><dt>${t('Map')}</dt><dd>${esc(map.name)}</dd><dt>${t('Rules')}</dt><dd>${t(MODES[modeOf(st.mode)][0])}</dd><dt>${t('Who can join')}</dt><dd>${t(st.pub ? 'Public' : 'Private')}</dd><dt>${t('Seats')}</dt><dd>${t(st.shuffle ? 'Drawn at the start' : 'In this order')}</dd>${st.fill ? `<dt>${t('Bots')}</dt><dd>${t('Fill to {n} players', { n: st.max || 8 })} · ${t(FILL[st.fill][0])}</dd>` : ''}</dl>`;
+  const lvl = S.botLevel || 'normal', canBot = host && players.length < (st.max || 8);
+  const levels = [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']];
   return `${fhead(t('Game'), 'leavelobby')}
     <div class="steps"><b class="on">1 · ${t('Gathering')}</b><b>2 · ${t('Playing')}</b><b>3 · ${t('Result')}</b></div>
-    <div class="roomcard"><div><small>${t('Game code')}</small><b>${esc(Sync.code || S.room || '')}</b><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
-      <button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button></div>
-    ${host && Sync.registered ? `<button class="btn wide" data-act="invitefriend">${t('Invite a friend')}</button>` : ''}
+    <div class="roomcard"><div class="rc-top"><div><small>${t('Game code')}</small><b>${esc(Sync.code || S.room || '')}</b></div><span class="stat-line ${Sync.status}">${t(SYNC_MSG[Sync.status] || 'Online')}</span></div>
+      <div class="row"><button class="btn" data-act="qr">${t('QR code')}</button><button class="btn" data-act="share">${t('Share')}</button>${host && Sync.registered ? `<button class="btn" data-act="invitefriend">${t('Invite')}</button>` : ''}</div></div>
     <div class="setcard">${host ? `<input type="hidden" id="f-map" value="${esc(map.id)}"><button type="button" class="mapcard mini" data-act="mapgallery" aria-label="${t('Map')}: ${esc(map.name)}. ${t('Tap to choose another map')}"><span class="prevbox">${mapPreview(map)}</span></button>` : `<span class="prevbox">${mapPreview(map)}</span>`}
       ${kv}${host ? `<button class="btn edit" data-act="lobbyopts" aria-label="${t('Game options')}">${ico('pencil', 20)}</button>` : ''}</div>
-    <h3>${t('Turn order')} ${host ? `<button class="mini-link" data-act="shuffleorder">${t('Shuffle')}</button>${players.length < (st.max || 8) ? `<button class="mini-link" data-act="addlobbybot">+ ${t('Add bot')}</button>` : ''}` : ''}</h3>
+    <h3>${t('Players')} ${players.length}/${st.max || 8}</h3>
     <ul class="plist">${rows}</ul>
+    ${host ? `${canBot ? `<div class="botbar"><div class="seg" role="radiogroup" aria-label="${t('Bot level')}">${levels.map(([v, l]) => `<button role="radio" data-act="botlevel" data-v="${v}" aria-checked="${lvl === v}">${t(l)}</button>`).join('')}</div><button class="btn" data-act="addlobbybot">+ ${t('Add bot')}</button></div>` : ''}
+      ${segRow('Shuffle seats at start', 'shuffleopt', 'v', st.shuffle ? 'on' : 'off', [['on', t('On')], ['off', t('Off')]])}` : ''}
     <p class="dim hintline lobbyhint">${t('Roles and cards are dealt when the game starts.')}</p>
     <div class="row lobbyact"><button class="btn big ${S.ready ? 'ok' : host ? '' : 'primary'}" data-act="ready">${S.ready ? ico('check') + ' ' + t('Ready') : t("I'm ready")}</button>
     ${host ? `<button class="btn primary big startbtn" data-act="startgame" ${allReady ? '' : 'disabled'}>${t('Start game')}<small>${t('{n}/{m} ready', { n: nReady, m: players.length })}</small></button>` : ''}</div>
@@ -298,7 +301,9 @@ async function startTable() {
     if (order.length < 2) return;
     for (let i = 0; i < 40 && !order.every(u => (Sync.players || {})[u]); i++) await new Promise(r => setTimeout(r, 50));   // the seats arrive from the database
   }
-  Online.hostStart(order, first);
+  let who = first;
+  if (st.shuffle) { for (let i = order.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [order[i], order[j]] = [order[j], order[i]]; } who = ((Sync.players || {})[order[0]] || {}).name || first; await Sync.updateSettings({ order }); }   // the seats are drawn at the start, and the table keeps that order
+  Online.hostStart(order, who);
 }
 
 Object.assign(actions, {
@@ -309,7 +314,7 @@ Object.assign(actions, {
     const ps = Sync.players || {}; if (Object.keys(ps).length >= ((Sync.settings || {}).max || 8)) return;
     const used = new Set(Object.values(ps).map(p => p.name)); let n = 1; while (used.has(t('Bot {n}', { n }))) n++;
     const id = 'bot_' + Math.random().toString(36).slice(2, 8);
-    Sync.set('players/' + id, { name: t('Bot {n}', { n }), ready: true, bot: 'normal' }).catch(rulesError);
+    Sync.set('players/' + id, { name: t('Bot {n}', { n }), ready: true, bot: S.botLevel || 'normal' }).catch(rulesError);
   },
   delbot(b) { Sync.del('players/' + b.dataset.u).catch(() => {}); },
   seg(b) {
@@ -408,7 +413,8 @@ Object.assign(actions, {
   },
   mvup(b) { reorder(b.dataset.u, -1); },
   mvdown(b) { reorder(b.dataset.u, 1); },
-  shuffleorder() { const ids = orderedIds(); for (let i = ids.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [ids[i], ids[j]] = [ids[j], ids[i]]; } Sync.updateSettings({ order: ids }); },
+  shuffleopt(b) { Sync.updateSettings({ shuffle: b.dataset.v === 'on' }); },
+  botlevel(b) { S.botLevel = b.dataset.v; save(); renderFlow(); },
   startgame: startTable,
   leavelobby() { confirmDlg(t('Leave this game?'), t('You will stop receiving announcements.'), leaveToWelcome); },
   leavetable() {

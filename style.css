@@ -1133,7 +1133,7 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 #flow-card>.setcard{margin:0 0 14px}
 #flow-card>h3{margin:14px 0 8px}
 #flow-card>.plist{margin:0 0 10px}
-#flow-card>.lobbyhint{margin:0 0 12px}
+#flow-card>.lobbyhint{margin:10px 0 12px}
 #flow-card>.row.lobbyact{margin-top:12px}
 #panel-body .legendtoggle{margin-top:8px}
 /* ---- the four tabs: a bottom bar on a phone, a left rail on a wide screen ---- */
@@ -1193,3 +1193,11 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 .vw-ev{font-size:14px}
 .vw-ev li{padding:5px 0;border-bottom:1px solid #ffffff10}
 .vw-file{cursor:pointer;text-align:center}
+/* game page: the code card holds the three actions in one even row; bots and shuffle sit under the players */
+#flow-card .roomcard{display:block;padding:12px 14px}
+#flow-card .roomcard .rc-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#flow-card .roomcard .rc-top b{font-size:28px;margin:0 0 2px}
+#flow-card .roomcard .row{margin-top:12px;gap:10px;flex-wrap:nowrap}
+#flow-card .roomcard .row .btn{flex:1 1 0;min-height:44px;padding:8px 6px;font-size:14px}
+.botbar{display:flex;gap:10px;align-items:stretch;margin:0 0 10px}
+.botbar .seg{flex:1 1 auto}.botbar .seg button{min-height:44px;font-size:13px}.botbar>.btn{flex:none;min-height:44px;padding:8px 16px;font-size:14px}

@@ -84,6 +84,37 @@ def cmd_train():
     return 0
 
 
+def cmd_distil():
+    """Teaches a fresh network to play like the app's Hard bot (from data/teacher/), then sends it to GitHub. The old training is kept aside."""
+    from eftaios_rl import publish
+    if not ensure_torch():
+        return 1
+    if running():
+        say("A training is running: stop it first (menu item 5).")
+        return 1
+    if not __import__("glob").glob(os.path.join(ROOT, "data", "teacher", "*.jsonl.gz")):
+        say("There are no teacher recordings yet. Use menu item 8 to update this program first.")
+        return 1
+    if os.path.exists(os.path.join(RUN, "latest.pt")):
+        aside = RUN + "-before-distil-" + time.strftime("%Y%m%d-%H%M")
+        os.replace(RUN, aside)
+        say("Your previous training was kept in %s" % aside)
+    os.makedirs(RUN, exist_ok=True)
+    open(LOCK, "w").write(str(os.getpid()))
+    say("Learning from the Hard bot. It stops by itself after 40 rounds over the recordings (item 5 stops it earlier).\n")
+    try:
+        rc = subprocess.call([sys.executable, "-m", "eftaios_rl.distill", "--run", "main"], cwd=ROOT)
+    finally:
+        try:
+            os.remove(LOCK)
+        except OSError:
+            pass
+    if rc == 0 and os.path.exists(os.path.join(RUN, "latest.pt")):
+        for line in publish.publish_now(RUN):
+            say(line)
+    return rc
+
+
 def cmd_status():
     from eftaios_rl import report
     say(report.summary(RUN))
@@ -181,7 +212,7 @@ def cmd_check():
 MENU = [("1", "Start or resume the training", cmd_train), ("2", "Show progress", cmd_status), ("3", "Send the network and progress to GitHub now", cmd_publish),
         ("4", "Save the GitHub token (once)", cmd_token), ("5", "Stop the training (use this in a second window)", cmd_stop), ("6", "Check that everything works", cmd_check),
         ("7", "Record sample games for the game viewer and send them", cmd_samples),
-        ("8", "Update this program from GitHub", cmd_update)]
+        ("8", "Update this program from GitHub", cmd_update), ("9", "Learn from the Hard bot (teacher recordings), then send the network", cmd_distil)]
 
 
 def main():

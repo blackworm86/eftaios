@@ -62,3 +62,5 @@ Method: learn from the real teacher first, then improve beyond it.
 | 3 | Full rules in the training engine (stage B) with the Humans' counter-play, and Item / power decisions recorded from the teacher and distilled too | Claude |
 | 4 | Improve beyond the teacher: self-play and league training with the full rules, the distilled-Hard network as a frozen sparring partner, evaluated against the real Hard bot every few hundred iterations | owner runs; Claude measures |
 | 5 | Levels and replacement of the hand-built bots (stages D and E) | both |
+
+**Step 1 done (2026-10-27):** `tools/sim.js --teach` records the real Hard bot (hook in `bot.js` `teach()`, same inputs as `nn.js`); `rl/data/teacher/hard-a.jsonl.gz` holds 164,658 decisions from 1,512 all-Hard games (18 maps, tables of 2-8). Step 2 is menu item 9 of NN.bat (`eftaios_rl/distill.py`).

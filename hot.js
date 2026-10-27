@@ -144,7 +144,7 @@ const Hot = (() => {
     isOver: () => !!(H && H.result),
     /* everything about the game, for the saved log: every seat's real route, role, items, and the shared log */
     dump() { if (!H) return null; return { mode: H.mode, map: H.mapId, turn: H.turn, result: H.result, hatches: H.hatches, decksLeft: counts(), log: H.log,
-      seats: H.seats.map((s, i) => { const st = i === H.cur ? S : s.state; return { id: s.id, name: s.name, bot: s.bot || null, role0: s.role0, role: st.role, char: st.char || '', reborn: !!st.reborn, over: st.over || null, items: st.items, ab: st.ab, path: st.path }; }) }; },
+      seats: H.seats.map((s, i) => { const st = i === H.cur ? S : s.state; return { id: s.id, name: s.name, bot: s.bot || null, role0: s.role0, role: st.role, char: st.char || '', reborn: !!st.reborn, fed: !!st.fed, over: st.over || null, items: st.items, ab: st.ab, path: st.path }; }) }; },
     /* every seat's real route and final role — only once the game is over */
     routes() { if (!H || !H.result) return {}; const o = {}; H.seats.forEach((s, i) => { const st = i === H.cur ? S : s.state; o[s.id] = { path: st.path || [], role: st.role }; }); return o; },
     result: () => (H && H.result) || {},

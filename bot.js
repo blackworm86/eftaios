@@ -469,6 +469,24 @@ const Bot = (() => {
   }
 
   /* ---------- one full turn ---------- */
+  /* teacher recorder (tools/sim.js --teach): what the network would see at this decision, with the action the Hard rules took.
+     Rows: seat, phase, role, own cell, action (cell, or 0/1 for an attack), turn; sparse = the public channels 0-26 as [index, value] pairs
+     (channels 27-28 are distances, rebuilt in Python); glob; priv = the truth about the other seats for the critic. */
+  function teach(ctx, st, phase, action) {
+    const H = ctx.H, idx = ctx.idx, x = NN.fromApp(H, idx, st, phase, st.role); if (!x) return;
+    const bd = x.bd, o = x.obs, N = bd.N, sparse = [];
+    for (let i = 0; i < 27 * N; i++) if (o.dyn[i]) sparse.push(i, o.dyn[i]);
+    const dist = new Int16Array(N).fill(99); dist[o.me] = 0; const q = [o.me];
+    for (let h = 0; h < q.length; h++) for (const j of bd.nb[q[h]]) if (dist[j] === 99 && bd.kind[j] !== 'x') { dist[j] = dist[q[h]] + 1; q.push(j); }
+    const n = H.seats.length, priv = new Array(40).fill(0), sts = Hot.dump().seats;
+    sts.forEach((t, j) => {
+      if (j === idx) return;
+      const p = (t.path || []).filter(e => e.note !== 'reborn'), c = p.length ? NN.cellOf(p[p.length - 1].pos) : o.me, d = dist[c], sl = ((j - idx - 1) % n + n) % n;
+      priv.splice(sl * 5, 5, +(t.role === 'alien'), +!!t.reborn, Math.min(d, 20) / 20, +(d <= 3), +!!t.fed);
+    });
+    priv[35] = sts.filter(t => t.role === 'alien' && !t.over).length / n; priv[36] = sts.filter(t => t.role === 'human' && !t.over).length / n;
+    window.__teach.push({ seat: idx, map: T.map.id, n, ph: o.phase, role: st.role === 'human' ? 0 : 1, me: o.me, a: action, t: H.turn, d: sparse, g: Array.from(o.glob, v => +v.toFixed(4)), p: priv.map(v => +v.toFixed(4)), full: window.__teach.full ? Array.from(o.dyn) : undefined });
+  }
   async function turn(ctx) {
     const H = ctx.H, idx = ctx.idx, me = ctx.me, st = me.state, lvl = LEVELS.includes(me.bot) ? me.bot : 'normal', sk = skill(lvl);
     const adv = H.mode !== 'basic', ab = abilOf(st, H.mode);
@@ -530,7 +548,11 @@ const Bot = (() => {
     // the trained network, when this seat is one (null answers fall back to the rules)
     const useNN = lvl === 'nn' && (NN.ready() || await NN.load());
     const nnRole = () => (human ? 'human' : 'alien');
-    const decoy = () => (useNN && NN.decoy(H, idx, st, nnRole(), 1)) || chooseDecoy(ctx, st, W, me, lvl);
+    const decoy = () => {
+      const id = (useNN && NN.decoy(H, idx, st, nnRole(), 1)) || chooseDecoy(ctx, st, W, me, lvl);
+      if (window.__teach && lvl === 'hard') teach(ctx, st, 'decoy', NN.cellOf(id));
+      return id;
+    };
     // move
     const stayOk = human && useCap && canPower('Executive Officer') && ['.', 's'].includes(at(T.map, st.pos));
     let choice = human ? humanMove(W, st, st.adr ? 2 : 1, stayOk) : alienMove(ctx, W, st, B, st.adr ? 1 : 0);
@@ -543,6 +565,7 @@ const Bot = (() => {
       const here0 = alienAttackValue(ctx, W, st, myCell());
       if (here0 >= W.sk.attackAt && here0 > alienAttackValue(ctx, W, st, choice.cell)) { lurk = true; st.path.push({ turn: H.turn, pos: st.pos }); usePower('Lurking Alien'); }
     }
+    if (window.__teach && lvl === 'hard' && choice && !choice.stay && !lurk) teach(ctx, st, 'move', NN.cellOf(choice.id));
     if (choice && choice.stay) { st.path.push({ turn: H.turn, pos: st.pos, star: 1 }); usePower('Executive Officer'); }
     else if (choice && !lurk) { st.pos = choice.id; st.path.push({ turn: H.turn, pos: choice.id }); if (!human && ab === 'Fast Alien' && st.path.length === 2 && g.dA[g.idx.get(st.path[0].pos)][choice.cell] > 2) usePower('Fast Alien'); }
     st.adr = false;
@@ -559,6 +582,7 @@ const Bot = (() => {
     // Tried: the Hard rules deciding attacks for the network's moves. The Aliens then attack 0.03 times per turn and are weaker than Easy (see tools/rounds/NOTES.md), so the network decides.
     const nnAttack = useNN && !human && !lurk ? NN.attack(H, idx, st, 'alien', 1) : null;
     const worth = !human && (lurk || (nnAttack !== null ? nnAttack : attackWorth(ctx, W, st, lvl)));
+    if (window.__teach && lvl === 'hard' && !human && !lurk) teach(ctx, st, 'attack', worth ? 1 : 0);
     if (window.__trace && !human && window.Hot && Hot.dump) {   // benchmark hook: what the tracker believed here against who really stands here
       const c0 = g.idx.get(st.pos); let truth = 0, aliens = 0;
       Hot.dump().seats.forEach(x => { if (x.id === me.id || x.over) return; const p = (x.path || []).filter(q => q.note !== 'reborn'); if (p.length && p[p.length - 1].pos === st.pos) { if (x.role === 'human') truth++; else aliens++; } });

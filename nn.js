@@ -205,7 +205,7 @@ const NN = (() => {
   const move = (H, idx, st, role, temp) => { const a = decide(H, idx, st, 'move', role, temp); return a === null ? null : idOf(boardOf(T.map), a); };
   const attack = (H, idx, st, role, temp) => { const a = decide(H, idx, st, 'attack', role, temp); return a === null ? null : a === 1; };
   const decoy = (H, idx, st, role, temp) => { const a = decide(H, idx, st, 'decoy', role, temp); return a === null ? null : idOf(boardOf(T.map), a); };
-  return { load, use, ready, boardOf, observe, forward, move, attack, decoy, fromApp };
+  return { load, use, ready, boardOf, cellOf: id => cellOf(boardOf(T.map), id), observe, forward, move, attack, decoy, fromApp };
 })();
 if (typeof window !== 'undefined') window.NN = NN;
 if (typeof module !== 'undefined') module.exports = NN;

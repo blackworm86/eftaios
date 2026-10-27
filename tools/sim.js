@@ -19,6 +19,8 @@ const MIX = arg('mix', '');       // a mixed table, e.g. 'hard:1,easy:5': the se
 const ROLEMIX = arg('rolemix', '');   // levels by role, e.g. 'human:easy,alien:normal' (with --players): every Human seat plays at one level, every Alien seat at the other
 const SKILL = arg('skill', '');   // JSON overrides per level, e.g. '{"hard":{"humanCal":0.6}}' (the tuning hook)
 const SEED = +arg('seed', 1);
+const TEACH = arg('teach', '');   // file for the teacher recording (see rl/HOWTO.md): the Hard bot's decisions in the network's input format, gzipped JSON lines
+const teachRows = [];
 const WORKERS = Math.max(1, +arg('workers', 1));
 const POSITIONS = !has('no-positions');
 const NO_TRACE = has('no-trace');   // suite runs do not need the per-move trace; it calls Hot.dump on every move and is slow
@@ -116,10 +118,10 @@ async function open(n) {
     const ctx = await b.browser.newContext({ viewport: { width: 900, height: 800 }, locale: 'en-US', serviceWorkers: 'block' });
     await ctx.addInitScript(o => {
       const trace = !o.noTrace;
-      window.__botPace = 0; window.__turnMs = []; window.__trace = trace ? [] : null; window.__moves = trace ? [] : null;
+      window.__botPace = 0; window.__teach = o.teach ? [] : null; if (o.teachFull) window.__teachFull = true; window.__turnMs = []; window.__trace = trace ? [] : null; window.__moves = trace ? [] : null;
       window.__mkRng = a => { a = a >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
       if (o.skill) window.__skill = JSON.parse(o.skill);
-    }, { noTrace: NO_TRACE, skill: SKILL });
+    }, { noTrace: NO_TRACE, skill: SKILL, teach: !!TEACH, teachFull: has('teach-full') });
     const p = await ctx.newPage();
     p.on('pageerror', e => errs.push(e.message));
     p.on('crash', () => { dead = true; console.log('page crashed'); });
@@ -181,12 +183,15 @@ async function main() {
             window.__rng = window.__mkRng(a.seed);
             if (window.__trace) window.__trace = [];
             if (window.__moves) window.__moves = [];
-            window.__turnMs = [];
+            window.__turnMs = []; if (window.__teach) { window.__teach = []; window.__teach.full = !!window.__teachFull; }
             let bots = a.bots, setup;
             if (a.rm) { setup = dealRoles(a.names.length); bots = setup.map(d => a.rm[d.role]); }   // roles first, then each seat's level by its role
             await Hot.start(a.names, a.map, a.mode, 'auto', bots, setup);
-            const d = Hot.dump(); d.trace = window.__trace; d.moves = window.__moves; d.turnMs = window.__turnMs; return d;
+            const d = Hot.dump(); d.trace = window.__trace; d.moves = window.__moves; d.turnMs = window.__turnMs;
+            if (window.__teach) d.teach = window.__teach.map(r => Object.assign(r, { ret: (d.seats[r.seat].role === 'alien') === !!d.result.aliensWin ? 1 : -1 }));
+            return d;
           }, { names: NAMES.slice(0, task.n), map: task.map, mode: MODE, bots: task.bots, rm: task.rm, seed: task.seed });
+          if (d && d.teach) teachRows.push(...d.teach.map(r => Object.assign(r, { game: i + 1 })));
           if (!d || !d.result) out[i] = { map: task.map, players: task.n, level: task.lvl, seed: task.seed, error: 'no result' };
           else out[i] = summarize(d, task.n, { level: task.lvl, game: task.game, bots: task.bots, seed: task.seed, trace: d.trace, moves: d.moves });
         } catch (e) {
@@ -204,6 +209,11 @@ async function main() {
     pending = pending.filter(i => !out[i] || (out[i].error && /closed|crash|disconnected/i.test(out[i].error)));
     pending.forEach(i => { out[i] = undefined; });
     if (pending.length && attempt >= 4) console.log(`${pending.length} games still unfinished after ${attempt} attempts`);
+  }
+  if (TEACH) {
+    fs.mkdirSync(path.dirname(path.resolve(TEACH)), { recursive: true });
+    fs.writeFileSync(TEACH, require('zlib').gzipSync(teachRows.map(r => JSON.stringify(r)).join('\n') + '\n'));
+    console.log('teacher rows', teachRows.length, 'written to', TEACH);
   }
   const games = out.filter(Boolean);
   fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), mode: MODE, seed: SEED, workers: WORKERS, games, maps: boards, errors: errs }, null, 1));

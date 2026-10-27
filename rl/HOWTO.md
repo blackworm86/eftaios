@@ -40,6 +40,7 @@ A black window with a menu appears:
   6  Check that everything works
   7  Record sample games for the game viewer and send them
   8  Update this program from GitHub
+  9  Learn from the Hard bot (teacher recordings), then send the network
   0  Quit
 ```
 
@@ -69,6 +70,12 @@ You do not have to tell me: when you say there is new data, I read it from the r
 **Watch the network play (item 7):** press `7` in the menu (a few minutes). It plays 12 games with the current network, every seat played by the network,
 and sends them to the repository. In the app, sign in as admin, open **Admin > Games** and choose "Network sample games": you see every game's map with the
 players' real routes, their roles and the result, and a slider to replay it turn by turn.
+
+**Learn from the Hard bot (item 9):** I record the app's real Hard bot playing full games (everything it decides, in the network's input format) into
+`rl\data\teacher\`; the files arrive with item 8. Press `9`: a fresh network is taught to choose what the Hard bot chose, round after round (40 rounds;
+about 10 to 40 minutes on the GPU). Each line shows how often the network picks the Hard bot's action on games it has not seen (moves, attacks, decoys).
+Your previous training is kept in a folder named `runs\main-before-distil-...`. When it ends, the new network is sent to GitHub by itself, and I measure it.
+Do not start the normal training (`1`) until I say so: after this step it continues from the new network.
 
 **Update the program (item 8):** when I tell you there is a new version, stop the training (`5`), press `8` in the menu, close the window and
 double-click `NN.bat` again. It replaces the program's files with the ones on GitHub and never touches your training, settings or token.

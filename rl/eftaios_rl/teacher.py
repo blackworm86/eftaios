@@ -1,98 +1,115 @@
-"""The teacher recordings: decisions of the app's Hard bot (tools/sim.js --teach), stored in the network's input format.
+"""The teacher recordings: decisions of the app's Hard bot (tools/sim.js --teach), turned into training rows by replaying every game in the Python rules.
 
-A file is gzipped JSON lines, one decision each: seat, map, n, ph (0 move, 1 attack, 2 decoy), role (0 human, 1 alien), me (cell), a (action: a cell,
-or 0/1 for an attack), t (turn), d (public channels 0-26 as flat [index, value] pairs), g (global vector), p (critic-only vector), ret (+1/-1 for the seat's side).
-Channels 27 and 28 are distances and are rebuilt here, so the files stay small.
+Each row is what the seat could see at one decision (observation), the action the Hard bot took there, and the final result for the seat's side.
+Moves, Alien attacks, decoys, and the new decisions of the full rules: playing an Item or a power before the move or after it, and its targets.
+The big distance channels (27, 28) are not stored; they are rebuilt per batch.
 """
+import glob as globmod
 import gzip
 import json
+import os
+
+import pickle
 
 import numpy as np
 
+from . import engine, replay
 from . import env as env_mod
 from . import maps as maps_mod
 
 N_CELLS = 322
+KEEP = [c for c in range(env_mod.D_DYN) if c not in (27, 28)]
+
+
+def code_version():
+    """The rules and the observation layout, so a cache made by older code is not trusted."""
+    return (env_mod.D_DYN, env_mod.G_DIM, os.path.getsize(replay.__file__), os.path.getsize(env_mod.__file__), os.path.getsize(engine.__file__))
 
 
 class Teacher:
-    def __init__(self, paths, ids, log=None):
+    def __init__(self, paths, ids, log=None, cache=None):
+        """cache: a file where the replayed rows are kept (replaying takes minutes), valid while the recordings are unchanged."""
+        paths = [paths] if isinstance(paths, str) else list(paths)
+        stamp = [(os.path.basename(p), os.path.getsize(p)) for p in paths] + [code_version()]
+        if cache and os.path.exists(cache):
+            try:
+                with open(cache, "rb") as f:
+                    saved = pickle.load(f)
+                if saved["stamp"] == stamp and saved["ids"] == ids:
+                    self.__dict__.update(saved["state"])
+                    return
+            except Exception:
+                pass
+        self._build(paths, ids, log)
+        if cache:
+            with open(cache + ".tmp", "wb") as f:
+                pickle.dump({"stamp": stamp, "ids": ids, "state": self.__dict__}, f, protocol=4)
+            os.replace(cache + ".tmp", cache)
+
+    def _build(self, paths, ids, log):
         self.ids = ids
-        self.boards = {i: maps_mod.get(i) for i in ids}
-        self.sp = []      # per decision: (flat indexes, values) of the public channels
-        self.maps, self.me, self.game = [], [], []
-        cols = {k: [] for k in ("ph", "role", "a", "ret", "g", "p")}
-        for fi, path in enumerate([paths] if isinstance(paths, str) else paths):
-            with gzip.open(path, "rt") as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    r = json.loads(line)
-                    d = r["d"]
-                    self.sp.append((np.array(d[0::2], np.int32), np.array(d[1::2], np.uint8)))
-                    self.maps.append(r["map"])
-                    self.me.append(r["me"])
-                    self.game.append(fi * 100000 + r.get("game", 0))   # decisions of one game share an id
-                    for k in cols:
-                        cols[k].append(r[k])
-        n = len(self.sp)
-        self.map = np.array([ids.index(m) for m in self.maps])
-        self.me = np.array(self.me)
-        self.game = np.array(self.game)
-        self.phase, self.role, self.action = (np.array(cols[k]) for k in ("ph", "role", "a"))
-        self.ret = np.array(cols["ret"], np.float32)
-        self.glob = np.array(cols["g"], np.float32)
-        self.priv = np.array(cols["p"], np.float32)
-        self.extra = np.zeros((n, 2, N_CELLS), np.uint8)   # channels 27, 28
-        for k in range(n):
-            self.extra[k] = self._dist(k)
-            if log and k and k % 50000 == 0:
-                log("prepared %d of %d decisions" % (k, n))
+        self.sp, self.extra, self.mask_bits = [], [], []
+        cols = {k: [] for k in ("map", "phase", "me", "role", "action", "game", "glob", "priv", "seat", "ret")}
+        for fi, path in enumerate(paths):
+            for gi, rec in enumerate(replay.read(path)):
+                self._add(rec, fi * 100000 + gi, cols, ids)
+                if log and gi and gi % 500 == 0:
+                    log("replayed %d games (%d decisions)" % (gi, len(self.sp)))
+        for k, v in cols.items():
+            setattr(self, k, np.array(v, np.float32 if k in ("ret",) else (np.float16 if k in ("glob", "priv") else np.int64)))
+        self.ret = self.ret.astype(np.float32)
+
+    def _add(self, rec, game_id, cols, ids):
+        first = len(self.sp)
+        seen = {}
+
+        def on(g, phase, action):
+            e = seen.get("env")
+            if e is None:
+                e = seen["env"] = env_mod.Env.wrap(g)
+            seat, ob = e.decision()
+            dyn = ob["dyn"]
+            flat = dyn[KEEP].reshape(-1)
+            idx = np.flatnonzero(flat)
+            self.sp.append((idx.astype(np.int32), flat[idx]))
+            self.extra.append(dyn[27:29].copy())
+            m = np.zeros(N_CELLS, bool)
+            m[:len(ob["mask"])] = ob["mask"]
+            self.mask_bits.append(np.packbits(m))
+            if phase == "target_seat":
+                action = (action - seat - 1) % g.n    # slot, as the environment counts them
+            cols["map"].append(ids.index(rec["map"]))
+            cols["phase"].append(ob["phase"])
+            cols["me"].append(ob["me"])
+            cols["role"].append(ob["role"])
+            cols["action"].append(int(action))
+            cols["game"].append(game_id)
+            cols["glob"].append(ob["glob"])
+            cols["priv"].append(ob["priv"])
+            cols["seat"].append(seat)
+
+        g = replay.play(rec, on)
+        aw = g.result["aliens_win"]
+        for k in range(first, len(self.sp)):
+            cols["ret"].append(1.0 if (g.seats[cols["seat"][k]].role == "alien") == aw else -1.0)
 
     def __len__(self):
         return len(self.sp)
 
-    def _sparse(self, k):
-        dyn = np.zeros((env_mod.D_DYN, N_CELLS), np.uint8)
-        i, v = self.sp[k]
-        dyn.reshape(-1)[i] = v
-        return dyn
-
-    def _dist(self, k):
-        b = self.boards[self.maps[k]]
-        dyn = self._sparse(k)
-        open_pods = {int(b.kind[c]) for c in np.flatnonzero(dyn[2])}
-        pd = np.full(b.n, 40, np.int32)
-        q = [b.pod_cell[n] for n in open_pods]
-        for c in q:
-            pd[c] = 0
-        for c in q:
-            for nb in b.neighbors[c]:
-                if pd[nb] == 40 and b.kind[nb] not in "xHA1234":
-                    pd[nb] = pd[c] + 1
-                    q.append(nb)
-        out = np.zeros((2, b.n), np.uint8)
-        out[0] = (np.clip(1.0 - pd / 30.0, 0, 1) * (b.kind != "x") * 255).astype(np.uint8)
-        for cell, steps in b.reachable(int(self.me[k]), 99, "human" if self.role[k] == 0 else "alien", open_pods).items():
-            out[1, cell] = int(max(0.0, 1.0 - steps / 20.0) * 255)
-        return out
-
     def dyn(self, k):
-        d = self._sparse(k)
+        d = np.zeros((env_mod.D_DYN, N_CELLS), np.uint8)
+        i, v = self.sp[k]
+        part = np.zeros(len(KEEP) * N_CELLS, np.uint8)
+        part[i] = v
+        d[KEEP] = part.reshape(len(KEEP), N_CELLS)
         d[27:29] = self.extra[k]
         return d
 
     def mask(self, k):
-        m = np.zeros(N_CELLS, bool)
-        if self.phase[k] == 1:
-            m[:2] = True
-        elif self.phase[k] == 2:
-            m[:] = self.boards[self.maps[k]].kind != "x"
-        else:
-            m[self._sparse(k)[1] > 0] = True
-        return m
+        return np.unpackbits(self.mask_bits[k])[:N_CELLS].astype(bool)
 
     def batch(self, idx):
         """Arrays for the network, in the order bc_update reads them."""
-        return {"dyn": np.stack([self.dyn(k) for k in idx]), "glob": self.glob[idx], "priv": self.priv[idx], "phase": self.phase[idx], "me": self.me[idx],
-                "mask": np.stack([self.mask(k) for k in idx]), "action": self.action[idx], "ret": self.ret[idx], "map": self.map[idx]}
+        return {"dyn": np.stack([self.dyn(k) for k in idx]), "glob": self.glob[idx].astype(np.float32), "priv": self.priv[idx].astype(np.float32),
+                "phase": self.phase[idx], "me": self.me[idx], "mask": np.stack([self.mask(k) for k in idx]), "action": self.action[idx],
+                "ret": self.ret[idx], "map": self.map[idx]}

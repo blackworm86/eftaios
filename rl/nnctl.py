@@ -101,7 +101,7 @@ def cmd_distil():
         say("Your previous training was kept in %s" % aside)
     os.makedirs(RUN, exist_ok=True)
     open(LOCK, "w").write(str(os.getpid()))
-    say("Learning from the Hard bot. It stops by itself after 40 rounds over the recordings (item 5 stops it earlier).\n")
+    say("Learning from the Hard bot. The first start replays the recordings (about 10 minutes, once); then it makes 20 rounds over them (item 5 stops it earlier).\n")
     try:
         rc = subprocess.call([sys.executable, "-m", "eftaios_rl.distill", "--run", "main"], cwd=ROOT)
     finally:

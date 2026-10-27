@@ -72,8 +72,8 @@ and sends them to the repository. In the app, sign in as admin, open **Admin > G
 players' real routes, their roles and the result, and a slider to replay it turn by turn.
 
 **Learn from the Hard bot (item 9):** I record the app's real Hard bot playing full games (everything it decides, in the network's input format) into
-`rl\data\teacher\`; the files arrive with item 8. Press `9`: a fresh network is taught to choose what the Hard bot chose, round after round (40 rounds;
-about 10 to 40 minutes on the GPU). Each line shows how often the network picks the Hard bot's action on games it has not seen (moves, attacks, decoys).
+`rl\data\teacher\`; the files arrive with item 8. Press `9`: the recordings are replayed once in the full rules (about 10 minutes; kept for next time), then a fresh network is taught to choose what the Hard bot chose,
+round after round (20 rounds, about 1 to 2 hours on the GPU). Each line shows how often the network picks the Hard bot's action on games it has not seen: moves, attacks, decoys, Items and powers, and their targets.
 Your previous training is kept in a folder named `runs\main-before-distil-...`. When it ends, the new network is sent to GitHub by itself, and I measure it.
 Do not start the normal training (`1`) until I say so: after this step it continues from the new network.
 

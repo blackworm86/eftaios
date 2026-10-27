@@ -20,10 +20,9 @@ import torch
 from . import maps as maps_mod
 from . import teacher as teacher_mod
 from .model import BoardCache, Net
-from .train import DEFAULT, log
+from .train import DEFAULT, cpu_weights, log
 
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "teacher")
-KINDS = ["move", "attack", "decoy"]
 
 
 def tensors(batch, device):
@@ -42,7 +41,7 @@ def run_batches(net, T, rows, boards, ids, device, mb, opt=None, shuffle=True):
     if shuffle:
         random.shuffle(batches)
     ce_sum = v_sum = n = 0
-    hits, tot = np.zeros(3), np.zeros(3)
+    hits, tot = np.zeros(7), np.zeros(7)
     for m, idx in batches:
         stat, adj = boards.get(ids[m])
         dyn, glob, priv, phase, me, mask, act, ret = tensors(T.batch(idx), device)
@@ -56,7 +55,7 @@ def run_batches(net, T, rows, boards, ids, device, mb, opt=None, shuffle=True):
                 torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
                 opt.step()
         ok = (logits.argmax(1) == act).cpu().numpy()
-        for k in range(3):
+        for k in range(7):
             sel = T.phase[idx] == k
             hits[k] += ok[sel].sum()
             tot[k] += sel.sum()
@@ -71,7 +70,7 @@ def main(argv=None):
     ap.add_argument("--run", default="main")
     ap.add_argument("--runs-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "runs"))
     ap.add_argument("--data", default=DATA)
-    ap.add_argument("--epochs", type=int, default=40)
+    ap.add_argument("--epochs", type=int, default=20)
     ap.add_argument("--batch", type=int, default=256)
     ap.add_argument("--lr", type=float, default=1e-3)
     args = ap.parse_args(argv)
@@ -96,7 +95,7 @@ def main(argv=None):
     ids = maps_mod.official_ids()
     log(run_dir, "reading %d teacher file(s)" % len(files))
     t0 = time.time()
-    T = teacher_mod.Teacher(files, ids, log=lambda s: log(run_dir, s))
+    T = teacher_mod.Teacher(files, ids, log=lambda s: log(run_dir, s), cache=os.path.join(os.path.dirname(run_dir), "teacher-cache.pkl"))
     games = np.unique(T.game)
     rng = np.random.RandomState(7)
     held = set(rng.choice(games, max(1, len(games) // 20), replace=False).tolist())
@@ -121,10 +120,12 @@ def main(argv=None):
         net.eval()
         tce, tvl, th, tn = run_batches(net, T, test_rows, boards, ids, device, args.batch, None, False)
         acc = th / np.maximum(tn, 1)
-        log(run_dir, "epoch %d/%d: cross-entropy %.3f (check games %.3f); same action as the Hard bot on unseen games: moves %.0f%%, attacks %.0f%%, decoys %.0f%% (%.0fs)" % (
-            ep, args.epochs, ce, tce, 100 * acc[0], 100 * acc[1], 100 * acc[2], time.time() - t1))
+        both = lambda a, b: (th[a] + th[b]) / max(1, tn[a] + tn[b])   # Item / power decisions before and after the move; targets of Spotlight, Sensor, Medic
+        log(run_dir, "epoch %d/%d: cross-entropy %.3f (check games %.3f); same action as the Hard bot on unseen games: moves %.0f%%, attacks %.0f%%, decoys %.0f%%, Items and powers %.0f%%, their targets %.0f%% (%.0fs)" % (
+            ep, args.epochs, ce, tce, 100 * acc[0], 100 * acc[1], 100 * acc[2], 100 * both(3, 4), 100 * both(5, 6), time.time() - t1))
         torch.save({"net": net.state_dict(), "opt": opt.state_dict(), "it": 0, "cfg": cfg}, os.path.join(run_dir, "latest.pt.tmp"))
         os.replace(os.path.join(run_dir, "latest.pt.tmp"), os.path.join(run_dir, "latest.pt"))
+    torch.save(cpu_weights(net), os.path.join(run_dir, "pool", "teacher.pt"))   # stays among the sparring partners of the training that follows
     log(run_dir, "distillation finished")
     return 0
 

@@ -9,13 +9,15 @@ import numpy as np
 from . import engine
 from . import maps as maps_mod
 
-D_DYN = 29   # per-cell dynamic channels, uint8: 0 me, 1 legal targets, 2 open pods, 3-18 announcement heat, 19-25 per-player traces, 26 my path, 27 walk to a pod, 28 walk from me
+D_DYN = 37   # per-cell dynamic channels, uint8: 0 me, 1 legal targets, 2 open pods, 3-18 announcement heat, 19-25 per-player traces, 26 my path, 27 walk to a pod, 28 walk from me, 29-36 Spotlight / Sensor reveal heat
 D_STAT = 9   # per-cell static channels: wall, dangerous, secure, H, A, pod1-4
-G_DIM = 96   # global vector
+G_DIM = 260  # global vector: 0-93 as before, 96-105 my items, 106-121 my Character, 122-125 power used / Adrenaline / Cat / noises still to name, 127+ seven slots of 19 (known side, cards played, known Character)
 P_DIM = 40   # critic-only privileged vector
 SLOTS = 7    # other seats, in turn order after this one
 AGES = 8     # turns of announcement history kept as heat maps
-PHASES = {"move": 0, "attack": 1, "decoy": 2}
+PHASES = {"move": 0, "attack": 1, "decoy": 2, "pre": 3, "post": 4, "target_cell": 5, "target_seat": 6}
+ITEMS = ["adrenaline", "sedatives", "attack", "cat", "spotlight", "teleport", "defense", "clone", "sensor", "mutation"]
+CHARS = engine.HUMAN_CHARS + engine.ALIEN_CHARS
 KIND_IDX = {"noise": 0, "attack": 1, "silence-secure": 2, "silence": 3}
 
 REWARD = {"escape": 0.5, "kill": 0.2, "friendly": -0.3, "win": 1.0, "progress": 0.05}  # progress: per step a Human gets nearer to an open pod (and minus per step further)
@@ -30,10 +32,20 @@ def static_channels(board):
 class Env:
     """One game. Call decision() to see whose turn it is and what they see, then act(action)."""
 
-    def __init__(self, map_id, n, seed=None, ultimate=True, roles=None):
-        self.g = engine.Game(map_id, n, seed=seed, ultimate=ultimate, roles=roles)
-        self.n = n
-        self.board = self.g.board
+    def __init__(self, map_id, n, seed=None, ultimate=True, roles=None, full=True):
+        self._setup(engine.Game(map_id, n, seed=seed, ultimate=ultimate, roles=roles, full=full))
+
+    @classmethod
+    def wrap(cls, game):
+        """An Env around a game that already exists (the teacher recordings replay one)."""
+        e = cls.__new__(cls)
+        e._setup(game)
+        return e
+
+    def _setup(self, g):
+        self.g = g
+        self.n = g.n
+        self.board = g.board
         self._log_seen = 0
         self._pod_dist_cache = {}
 
@@ -59,6 +71,16 @@ class Env:
             return m
         if g.phase == "decoy":
             return self.board.kind != "x"
+        if g.phase in ("pre", "post"):
+            m = np.zeros(self.board.n, bool)
+            m[g.acts()] = True
+            return m
+        if g.phase == "target_cell":
+            return self.board.kind != "x"
+        if g.phase == "target_seat":
+            m = np.zeros(self.board.n, bool)
+            m[[self._slot_of(g.cur, j) for j in g.target_seats()]] = True
+            return m
         return np.ones(2, bool)
 
     def act(self, action):
@@ -71,16 +93,25 @@ class Env:
             g.step_move(int(action))
         elif g.phase == "attack":
             g.step_attack(bool(action))
+        elif g.phase in ("pre", "post"):
+            g.step_act(int(action))
+        elif g.phase == "target_cell":
+            g.step_target_cell(int(action))
+        elif g.phase == "target_seat":
+            g.step_target_seat((me + 1 + int(action)) % self.n)   # the action is the slot: seats counted on from this one
         else:
             g.step_decoy(int(action))
         r = 0.0
         if d0 is not None and g.seats[me].over is None:  # a step nearer to a pod is rewarded, a step away is not (it adds up to nothing over a round trip)
             r += REWARD["progress"] * (d0 - self.pod_distance(g.seats[me].pos))
-        for e in g.log[before_log:]:
-            if e["kind"] == "out" and e["text"].startswith("killed|human") and e["seat"] != me and g.seats[me].role == "alien":
-                r += REWARD["kill"]
-            elif e["kind"] == "out" and e["text"].startswith("killed|alien") and e["seat"] != me:
-                r += REWARD["friendly"]
+        new = g.log[before_log:]
+        hit = any(e["kind"] == "attack" and e["seat"] == me for e in new)   # kills in this step are the actor's own attack
+        mine = "alien" if g.seats[me].role0 == "alien" or g.seats[me].reborn else "human"
+        for e in new:
+            if e["kind"] == "out" and e["text"].startswith("killed|human") and e["seat"] != me and hit:
+                r += REWARD["kill"] if mine == "alien" else REWARD["friendly"]
+            elif e["kind"] == "out" and e["text"].startswith("killed|alien") and e["seat"] != me and hit:
+                r += REWARD["friendly"] if mine == "alien" else REWARD["kill"]
             elif e["kind"] == "out" and e["text"].startswith("escaped") and e["seat"] == me:
                 r += REWARD["escape"]
         return r
@@ -132,7 +163,7 @@ class Env:
         dyn = np.zeros((D_DYN, N), np.float32)
         dyn[0, s.pos] = 1
         mask = self.legal_mask()
-        if g.phase != "attack":
+        if g.phase in ("move", "decoy", "target_cell"):
             dyn[1, mask] = 1
         for n_, cell in b.pod_cell.items():
             if n_ in g.open_pods:
@@ -142,13 +173,16 @@ class Env:
         for age, e in self._events():
             if e["cell"] is not None and e["kind"] in ("noise", "attack") and age < AGES:
                 dyn[3 + age if e["kind"] == "noise" else 11 + age, e["cell"]] += 1
-            if e["seat"] != me and e["cell"] is not None and e["kind"] in ("noise", "attack"):
+            if e["kind"] == "reveal" and e["cell"] is not None and age < AGES:
+                dyn[29 + age, e["cell"]] += 1
+            if e["seat"] != me and e["cell"] is not None and e["kind"] in ("noise", "attack", "reveal"):
                 sl = self._slot_of(me, e["seat"])
                 slot_trace[sl, e["cell"]] = max(slot_trace[sl, e["cell"]], 0.75 ** age)
             if e["seat"] != me and e["kind"] in ("noise", "attack", "silence"):
                 key = "silence-secure" if (e["kind"] == "silence" and e["text"] == "secure") else e["kind"]
                 last[e["seat"]] = (age, key)
         dyn[3:19] = np.minimum(dyn[3:19], 1)
+        dyn[29:37] = np.minimum(dyn[29:37], 1)
         dyn[19:19 + SLOTS] = slot_trace
         for k, (_, pos, _) in enumerate(reversed(s.path[-6:])):
             dyn[26, pos] = max(dyn[26, pos], 0.8 ** k)
@@ -184,6 +218,38 @@ class Env:
                 glob[base + 8] = 1
             glob[base + 9] = sum(1 for e in g.log if e["seat"] == j and e["kind"] == "attack") > 0  # attacked: an Alien
             glob[base + 10] = sum(1 for e in g.log if e["seat"] == j and e["cell"] is not None) / 10
+        for k, name in enumerate(ITEMS):
+            glob[96 + k] = s.items.count(name) / engine.ITEM_COUNTS[name]
+        if s.ability in CHARS:
+            glob[106 + CHARS.index(s.ability)] = 1
+        glob[122] = float(s.ability in s.used or (s.ability == "Captain" and s.captain_used))
+        glob[123], glob[124], glob[125] = float(s.adr), float(s.cat), g.decoys_left / 2
+        known_role, known_char, played = {}, {}, {}
+        for e in g.log:
+            j, t = e["seat"], e["text"]
+            if e["kind"] == "reveal" and t.startswith("Id|"):
+                _, role, ch = t.split("|")
+                known_role[j], known_char[j] = role, ch
+            elif e["kind"] == "reveal" and t in ("Brute Alien", "Invisible Alien"):
+                known_role[j], known_char[j] = "alien", t
+            elif e["kind"] == "out":
+                why, role, ch = t.split("|")
+                known_role[j] = "alien" if why == "killed" and role == "human" else role
+                if ch:
+                    known_char[j] = ch
+            elif e["kind"] == "item":
+                played[j] = played.get(j, 0) + 1
+        for j in range(self.n):
+            if j == me:
+                continue
+            base = 127 + self._slot_of(me, j) * 19
+            if known_role.get(j) == "human":
+                glob[base] = 1
+            elif known_role.get(j) == "alien" or g.seats[j].reborn:
+                glob[base + 1] = 1
+            glob[base + 2] = min(played.get(j, 0), 3) / 3
+            if known_char.get(j) in CHARS:
+                glob[base + 3 + CHARS.index(known_char[j])] = 1
         priv = np.zeros(P_DIM, np.float32)
         dist = self._dist_from(s.pos)
         for j, o in enumerate(g.seats):

@@ -14,6 +14,8 @@ class Scripted:
         g, b = env.g, env.board
         me = g.cur
         s = g.seats[me]
+        if g.phase in ("pre", "post"):
+            return 0   # the rule-based sparring partners play no Items or powers
         if g.phase == "attack":
             return int(self._attack(env))
         if g.phase == "decoy":

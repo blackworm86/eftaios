@@ -20,7 +20,7 @@ class Net(nn.Module):
         self.hid, self.nlayers = hid, layers
         self.inp = nn.Linear(env_mod.D_STAT + env_mod.D_DYN, hid)
         self.gproj = nn.Linear(env_mod.G_DIM, hid)
-        self.phase_emb = nn.Embedding(3, hid)
+        self.phase_emb = nn.Embedding(7, hid)
         self.lins = nn.ModuleList([nn.Linear(hid, hid) for _ in range(layers)])
         self.norms = nn.ModuleList([nn.LayerNorm(hid) for _ in range(layers)])
         # whole-board attention: every sector looks at every other sector (the graph layers only pass information along the 6 neighbours, one step per layer)
@@ -30,6 +30,9 @@ class Net(nn.Module):
         self.move_head = nn.Linear(2 * hid, 1)
         self.decoy_head = nn.Linear(2 * hid, 1)
         self.attack_head = nn.Sequential(nn.Linear(3 * hid, hid), nn.ReLU(), nn.Linear(hid, 2))
+        self.act_head = nn.Sequential(nn.Linear(3 * hid, hid), nn.ReLU(), nn.Linear(hid, 12))     # Items and powers: engine.N_ACTS
+        self.seat_head = nn.Sequential(nn.Linear(3 * hid, hid), nn.ReLU(), nn.Linear(hid, 7))     # Sensor / Medic: which of the other seats
+        self.target_head = nn.Linear(2 * hid, 1)                                                  # Spotlight: which sector
         self.value_head = nn.Sequential(nn.Linear(2 * hid + env_mod.P_DIM, hid), nn.ReLU(), nn.Linear(hid, 1))
 
     def forward(self, dyn, stat, adj, glob, priv, phase, me, mask):
@@ -56,11 +59,19 @@ class Net(nn.Module):
         decoy = self.decoy_head(nodes).squeeze(-1)
         h_me = h[torch.arange(B, device=h.device), me]
         att = self.attack_head(torch.cat([gemb, h_me, g], 1))  # (B, 2)
+        small = torch.cat([gemb, h_me, g], 1)
         att_full = torch.full_like(move, NEG)
         att_full[:, :2] = att
+        act_full = torch.full_like(move, NEG)
+        act_full[:, :12] = self.act_head(small)
+        seat_full = torch.full_like(move, NEG)
+        seat_full[:, :7] = self.seat_head(small)
         ph = phase.unsqueeze(1)
         logits = torch.where(ph == 2, decoy, move)
+        logits = torch.where(ph == 5, self.target_head(nodes).squeeze(-1), logits)
         logits = torch.where(ph == 1, att_full, logits)
+        logits = torch.where((ph == 3) | (ph == 4), act_full, logits)
+        logits = torch.where(ph == 6, seat_full, logits)
         logits = logits.masked_fill(~mask, NEG)
         value = self.value_head(torch.cat([gemb, h_me, priv], 1)).squeeze(-1)
         return logits, value

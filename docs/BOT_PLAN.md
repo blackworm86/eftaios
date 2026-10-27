@@ -64,3 +64,5 @@ Method: learn from the real teacher first, then improve beyond it.
 | 5 | Levels and replacement of the hand-built bots (stages D and E) | both |
 
 **Step 1 done (2026-10-27):** `tools/sim.js --teach` records the real Hard bot (hook in `bot.js` `teach()`, same inputs as `nn.js`); `rl/data/teacher/hard-a.jsonl.gz` holds 164,658 decisions from 1,512 all-Hard games (18 maps, tables of 2-8). Step 2 is menu item 9 of NN.bat (`eftaios_rl/distill.py`).
+
+**Steps 3 and part of 2 redone for the full rules (2026-10-27):** the Python engine plays all 10 Items and 16 Character powers (`engine.py`; `replay.py` plays recorded app games back and the announcements match the app on 1,260 games), the network sees held cards, its Character, who has revealed what, and Spotlight/Sensor reveals, and decides Item/power use and targets (7 phases, `model.py`, `nn.js`, parity tested). Teacher: `rl/data/teacher/hard-b.jsonl.gz`, 4,536 Hard-bot games, replayed into rows by `teacher.py`. Next: menu item 9 distils it, then RL (train.py) continues from that network with the distilled copy kept as a sparring partner.

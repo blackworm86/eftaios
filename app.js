@@ -1313,7 +1313,8 @@ const actions = {
   addplayer() { const n = (prompt(t('Player name')) || '').trim().slice(0, 20); if (!n) return; S.extraPlayers = (S.extraPlayers || []).concat([n]); T.markKey = 'n:' + n.toLowerCase(); save(); render(); paintOverlay(); },
   noteedit(b) { $('#inspect').hidden = true; noteDlg(b.dataset.s); },
   tsec(b) { T.tableSec = b.dataset.k; render(); },
-  rules() { overlay(t('How to play'), rulesHtml()); },
+  rules() { overlay(t('How to play'), rulesHtml()); const q = $('#rules-q'); if (q) q.oninput = rulesSearch; },
+  rulesall(b) { const open = b.getAttribute('aria-pressed') !== 'true'; document.querySelectorAll('#overlay .rsec').forEach(d => { d.open = open; d.dataset.was = open ? '1' : ''; }); b.setAttribute('aria-pressed', open); b.textContent = t(open ? 'Collapse all' : 'Expand all'); },
   maps() { overlay(t('Map'), mapsHtml()); },
   ovclose() { const o = $('#overlay'); if (o) o.remove(); },
   revealview(b) { T.showAnn = b.dataset.v === 'ann'; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', x === b)); paintOverlay(); },
@@ -1467,16 +1468,33 @@ const iconList = rows => `<ul class="icol">${rows.map(([ic, title, text, tag]) =
 const rulesHtml = () => {
   const items = Object.keys(ITEMS).map(k => [k, ITEMS[k][0], RULE_ITEM_MORE[k], t('{n} in the deck', { n: ITEM_COUNTS[k] }) + (['defense', 'clone'].includes(k) ? ' · ' + t('Played automatically') : '')]);
   const chars = role => CHARS[role].map(c => [CHAR_ICON[c] || c, c, ABILITIES[c], UNIQUE_ABIL.includes(c) ? t('Once per game') : '']);
-  const sect = (h, intro, list) => `<h4>${t(h)}</h4>${intro ? `<p class="dim">${t(intro)}</p>` : ''}${list}`;
-  return `<div class="rules">${RULES.slice(0, 2).map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}
-  ${sect('Dangerous Sector cards', '', iconList(RULE_CARDS))}
-  ${RULES.slice(2, 4).map(([h, li]) => `<h4>${t(h)}</h4><ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`).join('')}
-  ${sect('Escape Pods', 'Declare which pod you reached, draw an Escape Pod card and reveal it. If every pod is closed, the remaining Humans are eliminated.', iconList(RULE_PODS))}
-  ${sect('Items (Ultimate)', 'Silence and Item cards are kept face down. Only Humans use Items; Aliens collect them to look like Humans. Each item is used once.', iconList(items))}
-  ${sect('Human Characters', 'Ultimate game only. Each player is dealt one secret Character with a special ability. A Human killed and reborn as an Alien loses it.', iconList(chars('human')))}
-  ${sect('Alien Characters', '', iconList(chars('alien')))}
+  const bullets = ([h, li]) => [h, '', `<ul>${li.map(x => `<li>${t(x)}</li>`).join('')}</ul>`];
+  const secs = [bullets(RULES[0]), bullets(RULES[1]), ['Dangerous Sector cards', '', iconList(RULE_CARDS)], bullets(RULES[2]), bullets(RULES[3]),
+    ['Escape Pods', 'Declare which pod you reached, draw an Escape Pod card and reveal it. If every pod is closed, the remaining Humans are eliminated.', iconList(RULE_PODS)],
+    ['Items (Ultimate)', 'Silence and Item cards are kept face down. Only Humans use Items; Aliens collect them to look like Humans. Each item is used once.', iconList(items)],
+    ['Human Characters', 'Ultimate game only. Each player is dealt one secret Character with a special ability. A Human killed and reborn as an Alien loses it.', iconList(chars('human'))],
+    ['Alien Characters', '', iconList(chars('alien'))]];
+  return `<div class="rules"><div class="rtools"><input id="rules-q" type="search" autocomplete="off" placeholder="${t('Search the rules')}" aria-label="${t('Search the rules')}"><button class="btn" data-act="rulesall" id="rules-all" aria-pressed="false">${t('Expand all')}</button></div>
+  <p class="dim rnone" id="rules-none" hidden>${t('Nothing found.')}</p>
+  ${secs.map(([h, intro, body], n) => `<details class="rsec"${n < 2 ? ' open' : ''}><summary>${t(h)}</summary>${intro ? `<p class="dim">${t(intro)}</p>` : ''}${body}</details>`).join('')}
   <p class="dim fine2">${t('A summary of the official rulebook. The rulebook is authoritative.')} ${t('Unofficial fan companion for Escape from the Aliens in Outer Space.')}</p></div>`;
 };
+/* search: hide what does not match, open the sections that have a match; clearing it puts the sections back as they were */
+const norm = x => String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+function rulesSearch() {
+  const q = $('#rules-q'); if (!q) return;
+  const secs = [...document.querySelectorAll('#overlay .rsec')], asked = norm(q.value.trim());
+  secs.forEach(d => { if (d.dataset.was === undefined) d.dataset.was = d.open ? '1' : ''; });
+  let any = false;
+  secs.forEach(d => {
+    const rows = [...d.querySelectorAll('li')], title = norm(d.querySelector('summary').textContent), whole = !asked || title.includes(asked);
+    let hit = whole;
+    rows.forEach(li => { const m = whole || norm(li.textContent).includes(asked); li.hidden = !m; if (m) hit = true; });
+    d.hidden = !hit; if (hit) any = true;
+    d.open = asked ? hit : d.dataset.was === '1';
+  });
+  $('#rules-none').hidden = any;
+}
 const mapsHtml = () => `<div class="ggrid">${T.maps.map(m => `<button class="gcard" data-act="map" data-id="${esc(m.id)}" aria-pressed="${m.id === T.map.id}">${mapPreview(m)}<b>${esc(m.name)}</b></button>`).join('')}</div>`;
 const segRow = (label_, act, key, cur, opts) => `<div class="setrow"><span>${t(label_)}</span><div class="seg" role="radiogroup" aria-label="${t(label_)}">${opts.map(([v, l]) => `<button role="radio" data-act="${act}" data-${key}="${v}" aria-checked="${cur === v}">${l}</button>`).join('')}</div></div>`;
 function morePanel() {

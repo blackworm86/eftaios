@@ -19,7 +19,8 @@ TEXT_KINDS = ("out", "item", "reveal", "silence")
 
 def read(path):
     with gzip.open(path, "rt") as f:
-        return [json.loads(line) for line in f if line.strip()]
+        recs = [json.loads(line) for line in f if line.strip()]
+    return [r for r in recs if "tr" in r]   # a file from the first recorder (rows, not games) is skipped
 
 
 def start(rec):

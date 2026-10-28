@@ -78,6 +78,8 @@ def main(argv=None):
     if os.path.exists(os.path.join(run_dir, "latest.pt")):  # a distillation always starts from nothing; the old run is kept aside
         shutil.move(run_dir, run_dir + "-before-distil-" + time.strftime("%Y%m%d-%H%M"))
     os.makedirs(os.path.join(run_dir, "pool"), exist_ok=True)
+    if os.path.exists(os.path.join(run_dir, "STOP")):   # left over from an earlier stop
+        os.remove(os.path.join(run_dir, "STOP"))
     cfg = dict(DEFAULT)
     json.dump(cfg, open(os.path.join(run_dir, "config.json"), "w"), indent=1)
     files = sorted(glob.glob(os.path.join(args.data, "*.jsonl.gz")))

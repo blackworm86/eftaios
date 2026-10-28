@@ -46,6 +46,9 @@ const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else cons
  assert(await p.evaluate(()=>S.hot)===true,'pass-and-play survives a reload');
  // game over: kill all humans
  const over=await p.evaluate(()=>{const H=JSON.parse(localStorage.getItem('eftaios.hot'));return H.result});
+ // the last Human must stand in a Dangerous sector: start sectors and pods are safe zones where an attack harms nobody
+ await p.evaluate(()=>{const H=JSON.parse(localStorage.getItem('eftaios.hot'));const h=H.seats.find(x=>x.role0==='human'&&!x.state.over);if(!h)return;const map=T.maps.find(m=>m.id===H.mapId);let id=null;for(let r=0;r<map.rows&&!id;r++)for(let c=0;c<map.cols&&!id;c++)if(map.grid[r][c]==='.')id=cid(c,r);h.state.pos=id;localStorage.setItem('eftaios.hot',JSON.stringify(H))});
+ await p.reload();await p.waitForTimeout(400);
  const hpos=await p.evaluate(()=>{const H=JSON.parse(localStorage.getItem('eftaios.hot'));const h=H.seats.find(x=>x.role0==='human'&&!x.state.over);return h&&h.id!==H.seats[H.cur].id?h.state.pos:null});
  if(hpos){await p.evaluate(()=>{if(!document.querySelector('#pass').hidden)Hot.go();closeDlg()});await p.evaluate(h=>{S.pos=h;return Hot.attack(h)},hpos);await p.evaluate(()=>render());
   assert(await p.evaluate(()=>Hot.isOver()&&Hot.result().aliensWin),'last human eliminated: Aliens win');

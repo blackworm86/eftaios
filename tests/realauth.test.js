@@ -4,6 +4,7 @@ const {chromium}=require('/opt/node22/lib/node_modules/playwright');const fs=req
 const assert=(c,m)=>{if(!c){console.error('FAIL',m);process.exitCode=1}else console.log('ok  ',m)};
 (async()=>{const b=await chromium.launch();
  const ctx=await b.newContext({viewport:{width:390,height:844},serviceWorkers:'block',userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'});
+ await ctx.addInitScript(()=>{window.__REAL_FB=true});   // this test is about the real sign-in code (it never writes a game)
  await ctx.route('https://www.gstatic.com/firebasejs/*/*.js',r=>{const f='node_modules/firebase/'+r.request().url().split('/').pop();fs.existsSync(f)?r.fulfill({status:200,contentType:'text/javascript',body:fs.readFileSync(f)}):r.abort()});
  const p=await ctx.newPage();await p.goto('http://localhost:8123/');await p.waitForFunction(()=>window.Sync&&Sync.enabled,null,{timeout:10000});
  const r=await p.evaluate(async()=>{const t0=Date.now();let up='';try{await Promise.race([Sync.ensure(true),new Promise((_,j)=>setTimeout(()=>j(new Error('hung')),9000))]);up='ready'}catch(e){up=e.message}

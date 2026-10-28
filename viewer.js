@@ -236,7 +236,7 @@ const Viewer = (() => {
     const S_ = stats(g);
     return `<ul class="vw-pl">${g.seats.map((s, i) => {
       const p = S_.per[i], items = Object.entries(p.items).map(([k, n]) => `${k}${n > 1 ? ' ×' + n : ''}`).join(', '), left = (s.items || []).join(', '), pw = Object.entries(s.ab || {}).map(([k, n]) => `${k}${n > 1 ? ' ×' + n : ''}`).join(', ');
-      return `<li class="vw-p${focus === i ? ' on' : ''}" data-act="vwfocus" data-i="${i}" role="button" tabindex="0">${dot(i)}<b>${i + 1}</b> ${esc(s.name)}${s.kind === 'person' ? ' <span class="vw-badge people">person</span>' : s.bot ? ` <span class="vw-badge">${esc(s.bot)}</span>` : ''}
+      return `<li class="vw-p${focus === i ? ' on' : ''}" data-act="vwfocus" data-i="${i}" role="button" tabindex="0">${dot(i)}<b>${i + 1}</b> ${esc(s.name)}${s.kind === 'person' ? ` <span class="vw-badge people">person</span>${p.steps === 0 && !p.noise && !p.attack ? ' <span class="vw-badge t-test">never moved</span>' : ''}` : s.bot ? ` <span class="vw-badge">${esc(s.bot)}</span>` : ''}
         <br><small class="${s.role === 'alien' ? 'vw-al' : ''}">${esc(seatRole(s))} · ${seatResult(s)}</small>
         <small class="vw-nums">${p.steps} moves · ${p.sectors} sectors · ${p.noise} noises${p.bluff ? ` (${p.bluff} decoys)` : ''}${p.attack ? ` · ${p.attack} attacks, ${p.kills} kills${p.friendly ? ` (${p.friendly} friendly)` : ''}` : ''}${p.secure ? ` · ${p.secure} turns in a secure sector` : ''}
         ${items ? '<br>cards played: ' + esc(items) : ''}${left ? '<br>cards kept: ' + esc(left) : ''}${pw ? '<br>powers: ' + esc(pw) : ''}</small></li>`;

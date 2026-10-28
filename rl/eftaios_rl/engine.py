@@ -222,7 +222,7 @@ class Game:
         self._emit(i, "attack", s.pos)
         fed = False
         for j, o in enumerate(self.seats):
-            if j == i or o.over is not None or o.pos != s.pos or self.board.kind[o.pos] in "1234":
+            if j == i or o.over is not None or o.pos != s.pos or self.board.kind[o.pos] in "1234HA":   # start sectors and pods are safe zones
                 continue
             if o.role == "alien" and o.ability == "Brute Alien":
                 self._emit(j, "reveal", None, "Brute Alien")

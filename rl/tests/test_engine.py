@@ -122,6 +122,15 @@ def test_time_limit():
     assert g.result and g.result["reason"] in ("time", "escape", "eliminated")
 
 
+def test_start_sectors_and_pods_are_safe_zones():
+    g = engine.Game("galilei", 4, seed=1, roles=["alien", "alien", "human", "human"], chars=["Lurking Alien", "Fast Alien", "Soldier", "Captain"])
+    g.phase = "attack"
+    g.cur = 0
+    assert g.seats[0].pos == g.seats[1].pos == g.board.start_a   # both start in the Alien sector
+    g.step_attack(True)
+    assert g.seats[1].over is None, "an Alien in the Alien sector cannot be attacked"
+
+
 if __name__ == "__main__":
     for k, v in sorted(globals().items()):
         if k.startswith("test_"):

@@ -1186,6 +1186,7 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 .vw-x{fill:#fff}
 .vw-bar{display:flex;gap:8px;align-items:center;margin:0}
 .vw-bar .btn{min-width:46px;padding:0 10px}
+.vw-off{opacity:.55}.vw-stepbar{margin-top:2px}.vw-steplab{font-size:15px;margin:2px 0 8px}
 .vw-bar input[type=range]{flex:1;min-height:44px}
 .vw-turn{margin:2px 0 8px;font-size:18px;text-align:center}
 .vw-lay{margin:6px 0}.vw-lay summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:700}

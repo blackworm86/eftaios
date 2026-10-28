@@ -51,7 +51,7 @@ const ALIEN_ITEM = { 'Blink Alien': 'teleport', 'Silent Alien': 'sedatives', 'Su
    Returns { immune } (not hit), { def } / { clone } (survived), { reveal } (Brute: survives but is revealed), or { killed, conv } */
 function resolveHit(st, mode, turn) {
   const map = T.map;
-  if ('1234'.includes(at(map, st.pos))) return { immune: 1 };   // a damaged Escape Pod: nobody can attack there
+  if ('1234HA'.includes(at(map, st.pos))) return { immune: 1 };   // the start sectors and the Escape Pods are safe zones: nobody can be attacked there
   const ab = abilOf(st, mode);
   if (st.role === 'alien' && ab === 'Brute Alien') return { reveal: 1, role: st.role, char: st.char };
   const info = { role: st.role, char: st.reborn ? '' : (st.char || '') };

@@ -34,11 +34,19 @@ const {assert,setup}=require('./helpers');
   assert(d.hex===d.cells,'the map is drawn with all '+d.cells+' sectors');
   assert(d.lines>=1&&d.tabs===5,'routes are drawn and there are five analysis tabs');
   // cards and powers on the map: a played card and a power, put in by hand
-  const tags=await P.evaluate(()=>{const g=Viewer.state().cur;g._st=null;g.log.push({turn:2,seat:0,kind:'item',cell:null,text:'spotlight'},{turn:2,seat:0,kind:'reveal',cell:g.seats[0].route[2].cell,text:'Spotlight'});
+  const tags=await P.evaluate(()=>{const g=Viewer.state().cur;g._st=null;g._steps=null;g.log.push({turn:2,seat:0,kind:'item',cell:null,text:'spotlight'},{turn:2,seat:0,kind:'reveal',cell:g.seats[0].route[2].cell,text:'Spotlight'});
     g.seats[1].route.find(p=>p.turn===2).star=1;Viewer.setTurn(2);
     const on=document.querySelectorAll('#vw-svg .vw-pill').length;const cb=document.querySelector('[data-vwl=cards]');cb.checked=false;cb.dispatchEvent(new Event('change',{bubbles:true}));
     const off=document.querySelectorAll('#vw-svg .vw-pill').length;cb.checked=true;cb.dispatchEvent(new Event('change',{bubbles:true}));return {on,off,txt:document.getElementById('vw-g').textContent}});
   assert(tags.on>tags.off&&/Spo/.test(tags.txt)&&/★/.test(tags.txt),'a played card (Spo) and a power (★) show on the map, and the layer can be switched off ('+tags.on+' tags)');
+  // one player's turn at a time: the steps follow the turn order, and from one step to the next only the player who acted moves
+  const stp=await P.evaluate(()=>{const g=Viewer.state().cur,st=Viewer.steps(g);const ordered=st.every((x,k)=>k===0||x.ord>st[k-1].ord);const seen=[];let worst=0,prev=null;
+    for(let k=0;k<st.length;k++){Viewer.setStep(k);const now=new Set([...document.querySelectorAll('#vw-svg .vw-m')].map(c=>c.getAttribute('cx')+','+c.getAttribute('cy')));
+      if(prev){let d=0;for(const x of now)if(!prev.has(x))d++;for(const x of prev)if(!now.has(x))d++;worst=Math.max(worst,d)}prev=now}
+    Viewer.setStep(3);const lab=document.getElementById('vw-sl').textContent,mode=Viewer.state().mode;const ev=document.querySelectorAll('#vw-ev li').length;Viewer.setTurn(2);
+    return {n:st.length,ordered,worst,lab,mode,after:Viewer.state().mode,hasStepSlider:!!document.getElementById('vw-step')}});
+  assert(stp.n>=6&&stp.ordered&&stp.hasStepSlider,'there is a step slider and the steps are in turn order ('+stp.n+' steps)');
+  assert(stp.worst<=4&&/player/.test(stp.lab)&&stp.mode==='step'&&stp.after==='round','each step changes the map for the acting player only ('+stp.worst+' markers differ at most; "'+stp.lab+'")');
   const tabs=await P.evaluate(()=>{const out={};for(const k of ['players','stats','time','log']){Viewer.actions.vwtab({dataset:{k}});out[k]=document.getElementById('vw-panel').innerHTML.length}
     Viewer.actions.vwtab({dataset:{k:'stats'}});out.rows=document.querySelectorAll('.vw-tab tbody tr').length;Viewer.actions.vwtab({dataset:{k:'time'}});out.tl=document.querySelectorAll('.vw-tl').length;
     Viewer.actions.vwtab({dataset:{k:'log'}});out.log=document.querySelectorAll('.vw-log li').length;Viewer.actions.vwtab({dataset:{k:'turn'}});return out});

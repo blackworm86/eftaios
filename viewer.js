@@ -11,7 +11,7 @@ const Viewer = (() => {
     defense: ['Def', '#34d399'], clone: ['Clo', '#2dd4bf'], sensor: ['Sen', '#60a5fa'], mutation: ['Mut', '#fb7185'] };
   const NOTE = { t: 'Teleport', s: 'Stayed (Executive Officer)', l: 'Lurked: attacked without moving', m: 'Mutated into an Alien', r: 'Killed: restarted as an Alien', c: 'Clone: restarted at the Human sector' };
   let all = [], loading = false, error = '', f = { src: 'all', res: '', n: '', map: '', sort: 'new', page: 0 };
-  let ratio = 23 / 14, cur = null, turn = 0, focus = -1, vb = { x: 0, y: 0, w: 1, h: 1 }, tab = 'turn', pub = false, scope = 'turn', play = null, logF = { seat: -1, kind: '' };
+  let ratio = 23 / 14, mode = 'round', step = 0, cur = null, turn = 0, focus = -1, vb = { x: 0, y: 0, w: 1, h: 1 }, tab = 'turn', pub = false, scope = 'turn', play = null, logF = { seat: -1, kind: '' };
   const layers = { routes: true, noise: true, cards: true, reveals: true, pods: true, names: false, lies: false };
   const mapOf = id => (typeof T !== 'undefined' ? T.maps : []).find(m => m.id === id);
   const cellOf = (map, id) => { const q = id ? parseId(id) : null; return q ? q[1] * map.cols + q[0] : null; };
@@ -74,21 +74,47 @@ const Viewer = (() => {
   }
 
   /* ---------- what happened, worked out from the log ---------- */
-  const posAt = (g, i, t) => { let p = null; for (const q of g.seats[i].route) { if (q.turn <= t) p = q.cell; else break; } return p; };
-  function seatAt(g, i, T_) {   // where the seat is at the end of turn T_, and whether it is out of the game by then
+  /* Every route point and announcement gets an order number, turn * 100 + seat, so the game can be read one player's turn at a time.
+     What happens to someone during another player's turn (killed, saved by a card, shown by a Spotlight) counts at that other player's turn. */
+  function prep(g) {
+    if (g._steps) return g._steps;
+    const own = new Set(), lastAtk = {}, lastCast = {}, ord = (t, i) => t * 100 + i;
+    g.log.forEach((e, k) => {
+      const a = k > 0 ? g.log[k - 1] : null;
+      if (e.kind === 'attack') lastAtk[e.turn] = e;
+      if (e.kind === 'item' && (e.text === 'spotlight' || e.text === 'sensor')) lastCast[e.turn] = e;
+      let by = e.seat;
+      if ((e.kind === 'out' && e.text.startsWith('killed')) || (e.kind === 'item' && (e.text === 'defense' || e.text === 'clone')) || (e.kind === 'reveal' && e.text === 'Brute Alien')) by = lastAtk[e.turn] ? lastAtk[e.turn].seat : by;
+      else if (e.kind === 'reveal' && (e.text === 'Spotlight' || e.text === 'Sensor' || e.text === 'Invisible Alien')) by = lastCast[e.turn] ? lastCast[e.turn].seat : by;
+      else if (e.kind === 'reveal' && e.text.startsWith('Id|') && a && a.turn === e.turn && a.kind === 'reveal' && a.text.startsWith('Id|') && a.seat !== e.seat) by = a.seat;   // the Medic's target
+      e.ord = ord(e.turn, by);
+      if (['noise', 'silence', 'attack', 'hatch'].includes(e.kind) || (e.kind === 'item' && e.text !== 'defense' && e.text !== 'clone') || (e.kind === 'out' && !e.text.startsWith('killed'))) own.add(e.ord);
+    });
+    g.seats.forEach((s, i) => s.route.forEach((p, k) => {
+      if (p.turn === 0) { p.ord = -1; return; }
+      p.ord = ord(p.turn, i);
+      if (p.note === 'r' || p.note === 'c') { const prev = s.route[k - 1], hit = prev && g.log.find(e => e.kind === 'attack' && e.turn === p.turn && e.cell === prev.cell); if (hit) p.ord = ord(p.turn, hit.seat); }
+      else own.add(p.ord);
+    }));
+    return (g._steps = [{ t: 0, i: -1, ord: -1 }, ...[...own].sort((a, b) => a - b).filter(o => o >= 100 && o < 4100).map(o => ({ t: Math.floor(o / 100), i: o % 100, ord: o }))]);
+  }
+  const cutoff = g => { const st = prep(g); return mode === 'step' ? st[Math.min(step, st.length - 1)].ord : turn * 100 + 99; };
+  const stepLabel = g => { const st = prep(g), k = Math.min(step, st.length - 1), x = st[k]; return `Step <b>${k}</b> / ${st.length - 1}` + (x.i < 0 ? ': the start' : `: turn ${x.t}, player <b>${x.i + 1}</b> ${esc(g.seats[x.i].name)}`); };
+  const posAt = (g, i, o) => { let p = null; for (const q of g.seats[i].route) { if (q.ord <= o) p = q.cell; else break; } return p; };
+  function seatAt(g, i, C) {   // where the seat is when the game has got as far as order number C, and whether it is out of the game by then
     let pos = null, conv = false;
-    for (const p of g.seats[i].route) { if (p.turn <= T_) { pos = p.cell; if ((p.note === 'r' || p.note === 'm') && p.turn > 0) conv = true; } else break; }
-    const out = g.log.find(e => e.seat === i && e.kind === 'out' && !/^killed\|human/.test(e.text) && e.turn <= T_);
+    for (const p of g.seats[i].route) { if (p.ord <= C) { pos = p.cell; if ((p.note === 'r' || p.note === 'm') && p.turn > 0) conv = true; } else break; }
+    const out = g.log.find(e => e.seat === i && e.kind === 'out' && !/^killed\|human/.test(e.text) && e.ord <= C);
     return { pos, conv, out: out ? out.text.split('|')[0] : '' };
   }
   const side = (g, i, t) => (g.seats[i].role0 === 'alien' || g.seats[i].route.some(p => (p.note === 'r' || p.note === 'm') && p.turn > 0 && p.turn <= t) ? 'alien' : 'human');
   function stats(g) {
-    if (g._st) return g._st;
+    if (g._st) return g._st; prep(g);
     const per = g.seats.map(() => ({ noise: 0, bluff: 0, silence: 0, secure: 0, attack: 0, kills: 0, friendly: 0, saved: 0, items: {}, powers: 0, ids: 0 })), tot = { noise: 0, attack: 0, kills: 0, friendly: 0, items: {}, reveals: 0, pods: [] }, turns = {};
     const row = t => turns[t] || (turns[t] = { noise: 0, attack: 0, item: 0, reveal: 0, out: 0, esc: 0 });
     g.log.forEach((e, k) => {
       const p = per[e.seat]; if (!p) return;
-      if (e.kind === 'noise') { p.noise++; tot.noise++; row(e.turn).noise++; const at = posAt(g, e.seat, e.turn); if (e.cell !== null && at !== null && at !== e.cell) p.bluff++; }
+      if (e.kind === 'noise') { p.noise++; tot.noise++; row(e.turn).noise++; const at = posAt(g, e.seat, e.ord); if (e.cell !== null && at !== null && at !== e.cell) p.bluff++; }
       else if (e.kind === 'silence') { p.silence++; if (e.text === 'secure') p.secure++; }
       else if (e.kind === 'attack') {
         p.attack++; tot.attack++; row(e.turn).attack++;
@@ -121,9 +147,9 @@ const Viewer = (() => {
   }
   const pill = (x, y, txt, col, op = 1, dark = true) => { const w = txt.length * HEX * 0.3 + HEX * 0.28; return `<g opacity="${op}"><rect x="${(x - w / 2).toFixed(1)}" y="${(y - HEX * 0.24).toFixed(1)}" width="${w.toFixed(1)}" height="${(HEX * 0.48).toFixed(1)}" rx="${(HEX * 0.2).toFixed(1)}" fill="${col}" stroke="#000" stroke-opacity=".55" stroke-width=".8"/><text x="${x.toFixed(1)}" y="${(y + HEX * 0.12).toFixed(1)}" class="vw-pill" style="font-size:${(HEX * 0.34).toFixed(1)}px" fill="${dark ? '#111' : '#fff'}">${esc(txt)}</text></g>`; };
   function svgInner(g, T_) {
-    const map = mapOf(g.map), P = (c, r) => hexPos(map, c, r), full = dims(map).W, zoomed = vb.w < full * 0.55, at = i => P(i % map.cols, Math.floor(i / map.cols));
+    const C = cutoff(g), map = mapOf(g.map), P = (c, r) => hexPos(map, c, r), full = dims(map).W, zoomed = vb.w < full * 0.55, at = i => P(i % map.cols, Math.floor(i / map.cols));
     const col = i => PALETTE[i % PALETTE.length][0], dimmed = i => focus >= 0 && focus !== i;
-    const inScope = e => (scope === 'turn' ? e.turn === T_ : e.turn <= T_), fade = e => (scope === 'turn' ? 1 : Math.max(0.25, 1 - (T_ - e.turn) * 0.15));
+    const inScope = e => (scope === 'turn' ? (mode === 'step' ? e.ord === C : e.turn === T_) : e.ord <= C), fade = e => (scope === 'turn' ? 1 : Math.max(0.25, 1 - (C - e.ord) / 100 * 0.15));
     let s = '';
     for (let r = 0; r < map.rows; r++) for (let c = 0; c < map.cols; c++) {
       const ty = map.grid[r][c]; if (ty === 'x') continue; const { x, y } = P(c, r);
@@ -132,29 +158,29 @@ const Viewer = (() => {
       else if (zoomed || layers.names) s += `<text x="${x}" y="${y + 3}" class="vw-id">${cid(c, r)}</text>`;
     }
     const ev = g.log.filter(e => inScope(e));
-    if (layers.pods) for (const e of g.log) if (e.kind === 'hatch' && e.turn <= T_ && e.cell !== null) { const p = at(e.cell), ok = e.text === 'ok'; s += `<circle cx="${p.x}" cy="${p.y}" r="${HEX * 0.82}" fill="none" stroke="${ok ? '#34d399' : '#ef4444'}" stroke-width="3"/>${pill(p.x, p.y + HEX * 0.95, ok ? 'out' : 'dead', ok ? '#34d399' : '#ef4444')}`; }
+    if (layers.pods) for (const e of g.log) if (e.kind === 'hatch' && e.ord <= C && e.cell !== null) { const p = at(e.cell), ok = e.text === 'ok'; s += `<circle cx="${p.x}" cy="${p.y}" r="${HEX * 0.82}" fill="none" stroke="${ok ? '#34d399' : '#ef4444'}" stroke-width="3"/>${pill(p.x, p.y + HEX * 0.95, ok ? 'out' : 'dead', ok ? '#34d399' : '#ef4444')}`; }
     // announcements: a ring in the announcer's colour, numbered; a dashed line to the announcer's real sector when it was a decoy
     for (const e of ev) {
       if (e.cell === null || dimmed(e.seat)) continue; const p = at(e.cell), o = fade(e);
       if (layers.noise && (e.kind === 'noise' || e.kind === 'attack')) {
         s += `<circle cx="${p.x}" cy="${p.y}" r="${HEX * (e.kind === 'attack' ? 0.95 : 0.8)}" fill="${e.kind === 'attack' ? '#ef444430' : 'none'}" stroke="${e.kind === 'attack' ? '#ff3b30' : col(e.seat)}" stroke-width="${e.kind === 'attack' ? 3.5 : 2.5}" ${e.kind === 'noise' ? 'stroke-dasharray="5 3"' : ''} opacity="${o}"/>`;
         s += `<text x="${p.x.toFixed(1)}" y="${(p.y - HEX * 0.5).toFixed(1)}" class="vw-lab" fill="${col(e.seat)}" opacity="${o}">${e.seat + 1}</text>`;
-        const real = posAt(g, e.seat, e.turn);
+        const real = posAt(g, e.seat, e.ord);
         if (layers.lies && e.kind === 'noise' && real !== null && real !== e.cell && !pub) { const q = at(real); s += `<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" stroke="${col(e.seat)}" stroke-width="1.6" stroke-dasharray="2 4" opacity="${o}"/>`; }
       }
       if (layers.reveals && e.kind === 'reveal' && (e.text === 'Spotlight' || e.text === 'Sensor')) s += `<circle cx="${p.x}" cy="${p.y}" r="${HEX * 1.05}" fill="${e.text === 'Spotlight' ? '#fde04730' : 'none'}" stroke="${e.text === 'Spotlight' ? '#fde047' : '#60a5fa'}" stroke-width="3" stroke-dasharray="2 3" opacity="${o}"/>${pill(p.x, p.y + HEX * 0.1, e.text === 'Spotlight' ? 'spot ' + (e.seat + 1) : 'sens ' + (e.seat + 1), e.text === 'Spotlight' ? '#fde047' : '#60a5fa', o)}`;
     }
     if (!pub) {
       if (layers.routes) g.seats.forEach((seat, i) => {
-        const pts = seat.route.filter(p => p.turn <= T_ && p.cell !== null);
+        const pts = seat.route.filter(p => p.ord <= C && p.cell !== null);
         for (let k = 1; k < pts.length; k++) {
-          const a = at(pts[k - 1].cell), b = at(pts[k].cell), recent = pts[k].turn > T_ - 3, tp = pts[k].note === 't';
+          const a = at(pts[k - 1].cell), b = at(pts[k].cell), recent = pts[k].turn > T_ - 3 && (mode === 'round' || pts[k].ord > C - 300), tp = pts[k].note === 't';
           s += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${tp ? '#22d3ee' : col(i)}" stroke-width="${recent ? 4.5 : 2.5}" stroke-linecap="round" ${tp ? 'stroke-dasharray="6 5"' : ''} opacity="${dimmed(i) ? 0.12 : recent ? 0.95 : 0.4}"/>`;
         }
       });
       // markers: seats on the same sector are spread around its middle
       const byCell = new Map();
-      g.seats.forEach((seat, i) => { const fi = seatAt(g, i, T_); if (fi.pos === null) return; fi.i = i; (byCell.get(fi.pos) || byCell.set(fi.pos, []).get(fi.pos)).push(fi); });
+      g.seats.forEach((seat, i) => { const fi = seatAt(g, i, C); if (fi.pos === null) return; fi.i = i; (byCell.get(fi.pos) || byCell.set(fi.pos, []).get(fi.pos)).push(fi); });
       for (const [cell, list] of byCell) {
         const q = at(cell), k = list.length, ring = k === 1 ? 0 : HEX * (k <= 3 ? 0.42 : 0.55), rad = k === 1 ? HEX * 0.52 : HEX * (k <= 3 ? 0.36 : 0.3);
         list.forEach((fi, n) => {
@@ -167,12 +193,12 @@ const Viewer = (() => {
     // Item cards and Character powers: a tag beside the sector where the player ended the turn, stacked when there are several
     if (layers.cards) {
       const tags = new Map(), put = (cell, label, color, o, dark, tip) => { if (cell === null) return; const l = tags.get(cell) || tags.set(cell, []).get(cell); l.push({ label, color, o, dark, tip }); };
-      for (const e of g.log) if (e.kind === 'item' && inScope(e) && !dimmed(e.seat)) put(posAt(g, e.seat, e.turn), ITEM[e.text] ? ITEM[e.text][0] : e.text, ITEM[e.text] ? ITEM[e.text][1] : '#ccc', fade(e), true);
+      for (const e of g.log) if (e.kind === 'item' && inScope(e) && !dimmed(e.seat)) put(posAt(g, e.seat, e.ord), ITEM[e.text] ? ITEM[e.text][0] : e.text, ITEM[e.text] ? ITEM[e.text][1] : '#ccc', fade(e), true);
       g.seats.forEach((seat, i) => seat.route.forEach(p => {
         if (!inScope(p) || p.cell === null || dimmed(i) || p.turn === 0) return;
         if (p.star) put(p.cell, '★', '#facc15', fade(p), true); else if (p.note === 's' || p.note === 'l') put(p.cell, p.note === 's' ? 'stay' : 'lurk', '#c4b5fd', fade(p), true);
       }));
-      for (const e of g.log) if (inScope(e) && !dimmed(e.seat) && e.kind === 'reveal' && (e.text.startsWith('Id|') || e.text === 'Brute Alien' || e.text === 'Invisible Alien')) put(posAt(g, e.seat, e.turn), e.text.startsWith('Id|') ? 'ID ' + (e.text.split('|')[2] || '').slice(0, 3) : e.text.slice(0, 5), '#e5e7eb', fade(e), true);
+      for (const e of g.log) if (inScope(e) && !dimmed(e.seat) && e.kind === 'reveal' && (e.text.startsWith('Id|') || e.text === 'Brute Alien' || e.text === 'Invisible Alien')) put(posAt(g, e.seat, e.ord), e.text.startsWith('Id|') ? 'ID ' + (e.text.split('|')[2] || '').slice(0, 3) : e.text.slice(0, 5), '#e5e7eb', fade(e), true);
       for (const [cell, list] of tags) { const q = at(cell); list.forEach((t, n) => { s += pill(q.x + HEX * 0.7, q.y - HEX * 0.7 - n * HEX * 0.55, t.label, t.color, t.o, t.dark); }); }
     }
     return s;
@@ -180,7 +206,7 @@ const Viewer = (() => {
   const vbText = () => `${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`;
   function eventText(g, e) {
     const map = mapOf(g.map), cell = e.cell !== null && map ? idOf(map, e.cell) : '';
-    if (e.kind === 'noise') { const real = posAt(g, e.seat, e.turn); return `noise in ${cell}` + (real !== null && e.cell !== null && real !== e.cell ? ` (really in ${idOf(map, real)})` : ''); }
+    if (e.kind === 'noise') { const real = posAt(g, e.seat, e.ord); return `noise in ${cell}` + (real !== null && e.cell !== null && real !== e.cell ? ` (really in ${idOf(map, real)})` : ''); }
     if (e.kind === 'attack') return `attack in ${cell}`;
     if (e.kind === 'silence') return e.text === 'secure' ? 'silent sector' : 'silence';
     if (e.kind === 'hatch') return 'escape pod ' + (e.text === 'damaged' ? 'damaged' : e.text === 'ok' ? 'worked' : '');
@@ -194,10 +220,10 @@ const Viewer = (() => {
   const seatResult = s => (s.over === 'escaped' ? 'escaped' : s.over === 'trapped' ? 'trapped' : s.over === 'dead' ? 'killed' : s.role0 !== s.role ? 'became an Alien' : 'in the game at the end');
 
   /* ---------- the side panels ---------- */
-  const eventsHtml = (g, t) => g.log.filter(e => e.turn === t && (focus < 0 || e.seat === focus)).map(e => `<li>${dot(e.seat)}<b>${e.seat + 1}</b> ${esc(eventText(g, e))}</li>`).join('') || '<li class="dim">Nothing announced.</li>';
+  const eventsHtml = (g, t) => g.log.filter(e => (mode === 'step' ? e.ord === cutoff(g) : e.turn === t) && (focus < 0 || e.seat === focus)).map(e => `<li>${dot(e.seat)}<b>${e.seat + 1}</b> ${esc(eventText(g, e))}</li>`).join('') || '<li class="dim">Nothing announced.</li>';
   function turnPanel(g, t) {
-    const where = g.seats.map((s, i) => { const fi = seatAt(g, i, t); return `<span class="vw-chip${focus === i ? ' on' : ''}" data-act="vwfocus" data-i="${i}" role="button" tabindex="0">${dot(i)}${i + 1} ${fi.pos === null ? '–' : fi.out ? (fi.out === 'escaped' ? '✓' : '✕') : idOf(mapOf(g.map), fi.pos)}</span>`; }).join('');
-    return `<p class="dim vw-note">Where everybody is at the end of the turn (tap to follow one player):</p><div class="vw-chips">${where}</div><h4>Turn ${t}</h4><ul class="vw-ev">${eventsHtml(g, t)}</ul>`;
+    const where = g.seats.map((s, i) => { const fi = seatAt(g, i, cutoff(g)); return `<span class="vw-chip${focus === i ? ' on' : ''}" data-act="vwfocus" data-i="${i}" role="button" tabindex="0">${dot(i)}${i + 1} ${fi.pos === null ? '–' : fi.out ? (fi.out === 'escaped' ? '✓' : '✕') : idOf(mapOf(g.map), fi.pos)}</span>`; }).join('');
+    return `<p class="dim vw-note">Where everybody is ${mode === 'step' ? 'after this step' : 'at the end of the turn'} (tap to follow one player):</p><div class="vw-chips">${where}</div><h4>${mode === 'step' ? stepLabel(g) : 'Turn ' + t}</h4><ul class="vw-ev">${eventsHtml(g, t)}</ul>`;
   }
   function playersPanel(g) {
     const S_ = stats(g);
@@ -267,8 +293,10 @@ const Viewer = (() => {
     return `<div class="vw-top"><button class="btn" data-act="vwback">← All games (${filtered().length})</button><button class="btn" data-act="vwcopy">Copy summary</button></div>
       <h3>#${g.no} ${esc(g.title)}</h3><p class="dim vw-meta">${meta}<br><b class="${g.result && g.result.aliensWin ? 'vw-al' : 'vw-hu'}">${esc(nameOfResult(g))}</b></p>
       <div class="vw-main"><div class="vw-stage">
-        <div class="vw-bar"><button class="btn" data-act="vwstep" data-d="-1" aria-label="Previous turn">◀</button><button class="btn" data-act="vwplay" id="vw-playb" aria-label="Play">${play ? '❚❚' : '▶▶'}</button><input id="vw-turn" type="range" min="0" max="${max}" value="${tt}" aria-label="Turn"><button class="btn" data-act="vwstep" data-d="1" aria-label="Next turn">▶</button></div>
+        <div class="vw-bar" id="vw-roundbar"><button class="btn" data-act="vwstep" data-d="-1" aria-label="Previous turn">◀</button><button class="btn" data-act="vwplay" id="vw-playb" aria-label="Play">${play ? '❚❚' : '▶▶'}</button><input id="vw-turn" type="range" min="0" max="${max}" value="${tt}" aria-label="Turn"><button class="btn" data-act="vwstep" data-d="1" aria-label="Next turn">▶</button></div>
         <p class="vw-turn">Turn <b id="vw-tn">${tt}</b> / ${max}</p>
+        <div class="vw-bar vw-stepbar"><button class="btn" data-act="vwsstep" data-d="-1" aria-label="Previous step">◀</button><input id="vw-step" type="range" min="0" max="${prep(g).length - 1}" value="${Math.min(step, prep(g).length - 1)}" aria-label="Step: one player's turn at a time"><button class="btn" data-act="vwsstep" data-d="1" aria-label="Next step">▶</button></div>
+        <p class="vw-turn vw-steplab" id="vw-sl">${stepLabel(g)}</p>
         <div class="vw-wrap" id="vw-map"><svg id="vw-svg" class="vw-svg" style="aspect-ratio:${ratio}" viewBox="${vbText()}" role="img" aria-label="Map of the game"><g id="vw-g">${svgInner(g, tt)}</g></svg>
           <div class="vw-zoom"><button class="btn" data-act="vwzoom" data-f="0.6" aria-label="Zoom in">+</button><button class="btn" data-act="vwzoom" data-f="1.6" aria-label="Zoom out">−</button><button class="btn" data-act="vwfit" data-w="0" aria-label="Fit the routes">⤢</button><button class="btn" data-act="vwfit" data-w="1" aria-label="Whole map">▦</button></div></div>
         <details class="vw-lay"><summary>Layers and view options</summary><div class="vw-layers">${tg('routes', 'Routes')}${tg('noise', 'Announcements')}${tg('cards', 'Cards &amp; powers')}${tg('reveals', 'Spotlight / Sensor')}${tg('pods', 'Escape pods')}${tg('names', 'Sector names')}${tg('lies', 'Decoy lines')}
@@ -282,17 +310,20 @@ const Viewer = (() => {
     const g = cur; if (!g) return; const max = Math.min(g.turns, 40), tt = Math.min(turn, max), el = id => document.getElementById(id);
     if (el('vw-g')) el('vw-g').innerHTML = svgInner(g, tt); if (el('vw-svg')) el('vw-svg').setAttribute('viewBox', vbText());
     if (el('vw-tn')) el('vw-tn').textContent = tt; if (el('vw-turn')) el('vw-turn').value = tt; if (el('vw-panel')) el('vw-panel').innerHTML = panel(g);
+    if (el('vw-step')) el('vw-step').value = Math.min(step, prep(g).length - 1); if (el('vw-sl')) el('vw-sl').innerHTML = stepLabel(g);
+    const rb = el('vw-roundbar'), sb = document.querySelector('.vw-stepbar'); if (rb) rb.classList.toggle('vw-off', mode === 'step'); if (sb) sb.classList.toggle('vw-off', mode !== 'step');
     const pb = el('vw-playb'); if (pb) pb.textContent = play ? '❚❚' : '▶▶';
   }
   const stop = () => { if (play) { clearInterval(play); play = null; } };
-  function setTurn(n) { const g = cur; if (!g) return; turn = Math.max(0, Math.min(Math.min(g.turns, 40), n)); paint(); }
+  function setTurn(n) { const g = cur; if (!g) return; mode = 'round'; turn = Math.max(0, Math.min(Math.min(g.turns, 40), n)); const st = prep(g); step = Math.max(0, st.reduce((a, x, k) => (x.t <= turn ? k : a), 0)); paint(); }
+  function setStep(k) { const g = cur; if (!g) return; const st = prep(g); mode = 'step'; step = Math.max(0, Math.min(st.length - 1, k)); turn = st[step].t; paint(); }
   function zoom(k, cx, cy) {   // k < 1 zooms in; (cx, cy) in map units stays where it is
     const g = cur; if (!g) return; const { W } = dims(mapOf(g.map)), r = vb.h / vb.w, nw = Math.min(W, Math.max(W / 12, vb.w * k)), nh = nw * r;
     cx = cx === undefined ? vb.x + vb.w / 2 : cx; cy = cy === undefined ? vb.y + vb.h / 2 : cy;
     vb = { x: cx - (cx - vb.x) * nw / vb.w, y: cy - (cy - vb.y) * nh / vb.h, w: nw, h: nh }; clampBox(g); paint();
   }
   function clampBox(g) { const { W, H } = dims(mapOf(g.map)); vb.x = Math.min(Math.max(vb.x, -HEX), W - vb.w + HEX); vb.y = Math.min(Math.max(vb.y, -HEX), H - vb.h + HEX); }
-  function open(g) { stop(); ratio = innerWidth < 700 ? 1 : 23 / 14; cur = g; turn = g.turns; focus = -1; tab = 'turn'; logF = { seat: -1, kind: '' }; vb = fitBox(g, false); renderFlow(); }
+  function open(g) { stop(); ratio = innerWidth < 700 ? 1 : 23 / 14; cur = g; mode = 'round'; turn = g.turns; step = prep(g).length - 1; focus = -1; tab = 'turn'; logF = { seat: -1, kind: '' }; vb = fitBox(g, false); renderFlow(); }
   const actions = {
     vwsrc(b) { f.src = b.dataset.s; f.page = 0; renderFlow(); },
     vwpage(b) { f.page = Math.max(0, f.page + Number(b.dataset.d)); renderFlow(); },
@@ -300,8 +331,9 @@ const Viewer = (() => {
     vwopen(b) { const g = all.find(x => x.no === +b.dataset.no); if (g) open(g); },
     vwback() { stop(); cur = null; renderFlow(); },
     vwstep(b) { stop(); setTurn(turn + Number(b.dataset.d)); },
+    vwsstep(b) { stop(); setStep(step + Number(b.dataset.d)); },
     vwgo(b) { stop(); setTurn(+b.dataset.t); },
-    vwplay() { if (play) { stop(); paint(); return; } const max = Math.min(cur.turns, 40); if (turn >= max) turn = 0; play = setInterval(() => { if (turn >= max) { stop(); paint(); return; } setTurn(turn + 1); }, 900); paint(); },
+    vwplay() { if (play) { stop(); paint(); return; } if (mode === 'step') { const n = prep(cur).length - 1; if (step >= n) step = 0; play = setInterval(() => { if (step >= n) { stop(); paint(); return; } setStep(step + 1); }, 600); } else { const max = Math.min(cur.turns, 40); if (turn >= max) turn = 0; play = setInterval(() => { if (turn >= max) { stop(); paint(); return; } setTurn(turn + 1); }, 900); } paint(); },
     vwzoom(b) { zoom(Number(b.dataset.f)); },
     vwfit(b) { if (cur) { vb = fitBox(cur, b.dataset.w === '1'); paint(); } },
     vwfocus(b) { focus = focus === +b.dataset.i ? -1 : +b.dataset.i; paint(); },
@@ -322,8 +354,8 @@ const Viewer = (() => {
   const end = e => { ptrs.delete(e.pointerId); last = null; };
   document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
   document.addEventListener('wheel', e => { const s = onMap(e); if (!s || !cur) return; e.preventDefault(); const c = toMap(e, s); zoom(e.deltaY < 0 ? 0.85 : 1.18, c.x, c.y); }, { passive: false });
-  document.addEventListener('keydown', e => { if (!cur || !document.getElementById('vw-svg') || /INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) return; if (e.key === 'ArrowLeft') { stop(); setTurn(turn - 1); } else if (e.key === 'ArrowRight') { stop(); setTurn(turn + 1); } });
-  document.addEventListener('input', e => { if (e.target && e.target.id === 'vw-turn') { stop(); setTurn(+e.target.value); } });
+  document.addEventListener('keydown', e => { if (!cur || !document.getElementById('vw-svg') || /INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) return; if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { stop(); const d = e.key === 'ArrowLeft' ? -1 : 1; if (mode === 'step') setStep(step + d); else setTurn(turn + d); } });
+  document.addEventListener('input', e => { if (e.target && e.target.id === 'vw-turn') { stop(); setTurn(+e.target.value); } else if (e.target && e.target.id === 'vw-step') { stop(); setStep(+e.target.value); } });
   document.addEventListener('change', e => {
     const t = e.target; if (!t) return;
     const file = t.id === 'vw-file' && t.files[0]; if (file) { file.text().then(tx => useFile(tx, file.name)); return; }
@@ -332,6 +364,6 @@ const Viewer = (() => {
     else if (t.id === 'vw-pub') { pub = t.checked; paint(); } else if (t.id === 'vw-scope') { scope = t.checked ? 'all' : 'turn'; paint(); }
     else if (t.id === 'vw-lf-seat') { logF.seat = +t.value; paint(); } else if (t.id === 'vw-lf-kind') { logF.kind = t.value; paint(); }
   });
-  return { html, actions, useFile, setTurn, zoom, fromDump, fromRecord, fromNet, parseAny, stats, state: () => ({ all, cur, turn, vb, focus, tab, f }) };
+  return { html, actions, useFile, setTurn, setStep, steps: g => prep(g), zoom, fromDump, fromRecord, fromNet, parseAny, stats, state: () => ({ all, cur, turn, mode, step, vb, focus, tab, f }) };
 })();
 if (typeof window !== 'undefined') window.Viewer = Viewer;

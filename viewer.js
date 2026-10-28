@@ -87,7 +87,7 @@ const Viewer = (() => {
       if ((e.kind === 'out' && e.text.startsWith('killed')) || (e.kind === 'item' && (e.text === 'defense' || e.text === 'clone')) || (e.kind === 'reveal' && e.text === 'Brute Alien')) by = lastAtk[e.turn] ? lastAtk[e.turn].seat : by;
       else if (e.kind === 'reveal' && (e.text === 'Spotlight' || e.text === 'Sensor' || e.text === 'Invisible Alien')) by = lastCast[e.turn] ? lastCast[e.turn].seat : by;
       else if (e.kind === 'reveal' && e.text.startsWith('Id|') && a && a.turn === e.turn && a.kind === 'reveal' && a.text.startsWith('Id|') && a.seat !== e.seat) by = a.seat;   // the Medic's target
-      e.ord = ord(e.turn, by);
+      e.ord = ord(e.turn, by); if (by !== e.seat && e.kind === 'out') e.atk = by;
       if (['noise', 'silence', 'attack', 'hatch'].includes(e.kind) || (e.kind === 'item' && e.text !== 'defense' && e.text !== 'clone') || (e.kind === 'out' && !e.text.startsWith('killed'))) own.add(e.ord);
     });
     g.seats.forEach((s, i) => s.route.forEach((p, k) => {
@@ -161,6 +161,7 @@ const Viewer = (() => {
     if (layers.pods) for (const e of g.log) if (e.kind === 'hatch' && e.ord <= C && e.cell !== null) { const p = at(e.cell), ok = e.text === 'ok'; s += `<circle cx="${p.x}" cy="${p.y}" r="${HEX * 0.82}" fill="none" stroke="${ok ? '#34d399' : '#ef4444'}" stroke-width="3"/>${pill(p.x, p.y + HEX * 0.95, ok ? 'out' : 'dead', ok ? '#34d399' : '#ef4444')}`; }
     // announcements: a ring in the announcer's colour, numbered; a dashed line to the announcer's real sector when it was a decoy
     for (const e of ev) {
+    if (e.kind === 'out' && e.text.startsWith('killed')) { const w = posAt(g, e.seat, e.ord - 1); if (w !== null && !dimmed(e.seat)) { const q = at(w); s += `<g opacity="${fade(e)}"><line x1="${q.x - HEX * .5}" y1="${q.y - HEX * .5}" x2="${q.x + HEX * .5}" y2="${q.y + HEX * .5}" stroke="#ff3b30" stroke-width="4"/><line x1="${q.x + HEX * .5}" y1="${q.y - HEX * .5}" x2="${q.x - HEX * .5}" y2="${q.y + HEX * .5}" stroke="#ff3b30" stroke-width="4"/></g>${pill(q.x, q.y + HEX * 0.75, 'killed ' + (e.seat + 1), '#ff3b30', fade(e), false)}`; } }
       if (e.cell === null || dimmed(e.seat)) continue; const p = at(e.cell), o = fade(e);
       if (layers.noise && (e.kind === 'noise' || e.kind === 'attack')) {
         s += `<circle cx="${p.x}" cy="${p.y}" r="${HEX * (e.kind === 'attack' ? 0.95 : 0.8)}" fill="${e.kind === 'attack' ? '#ef444430' : 'none'}" stroke="${e.kind === 'attack' ? '#ff3b30' : col(e.seat)}" stroke-width="${e.kind === 'attack' ? 3.5 : 2.5}" ${e.kind === 'noise' ? 'stroke-dasharray="5 3"' : ''} opacity="${o}"/>`;
@@ -210,7 +211,12 @@ const Viewer = (() => {
     if (e.kind === 'attack') return `attack in ${cell}`;
     if (e.kind === 'silence') return e.text === 'secure' ? 'silent sector' : 'silence';
     if (e.kind === 'hatch') return 'escape pod ' + (e.text === 'damaged' ? 'damaged' : e.text === 'ok' ? 'worked' : '');
-    if (e.kind === 'out') { const [why, role] = e.text.split('|'); return `${why === 'escaped' ? 'escaped' : why === 'trapped' ? 'trapped' : 'killed'} (${role})`; }
+    if (e.kind === 'out') {
+      const [why, role] = e.text.split('|');
+      if (why !== 'killed') return `${why === 'escaped' ? 'escaped' : 'trapped'} (${role})`;
+      const where = posAt(g, e.seat, e.ord - 1);   // where the victim stood when the attack came, before any restart
+      return `killed (${role}) ${where !== null && map ? 'in ' + idOf(map, where) : ''}${e.atk !== undefined ? ' by ' + (e.atk + 1) : ''}${role === 'human' ? ' → restarts as an Alien in the Alien sector' : ''}`;
+    }
     if (e.kind === 'item') return `plays ${e.text}`;
     if (e.kind === 'reveal') return e.text.startsWith('Id|') ? 'identity revealed: ' + e.text.slice(3).replace('|', ', ') : e.text === 'Spotlight' || e.text === 'Sensor' ? `${e.text}: position shown (${cell})` : e.text;
     return `${e.kind} ${e.text || ''}`;

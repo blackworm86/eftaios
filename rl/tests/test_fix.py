@@ -26,6 +26,10 @@ def _cfg():
     return cfg
 
 
+def test_the_hard_copy_file_is_inside_the_trainer_folder():
+    assert os.path.exists(hardcopy.FILE) and os.path.abspath(hardcopy.FILE).startswith(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))   # the PC holds only rl/
+
+
 def test_pull_is_zero_for_the_same_network_and_positive_for_another():
     w = hardcopy.weights("/nonexistent")
     net, ref = Net(64, 4), Net(64, 4)

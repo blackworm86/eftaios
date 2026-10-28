@@ -52,7 +52,13 @@ class Teacher:
         cols = {k: [] for k in ("map", "phase", "me", "role", "action", "game", "glob", "priv", "seat", "ret")}
         for fi, path in enumerate(paths):
             for gi, rec in enumerate(replay.read(path)):
-                self._add(rec, fi * 100000 + gi, cols, ids)
+                n0 = len(self.sp)
+                try:
+                    self._add(rec, fi * 100000 + gi, cols, ids)
+                except AssertionError:   # a game the rules cannot follow (the bot once used a Medic on a player already out): left out whole
+                    for lst in (self.sp, self.extra, self.mask_bits, *cols.values()):
+                        del lst[n0:]
+                    self.skipped = getattr(self, "skipped", 0) + 1
                 if log and gi and gi % 500 == 0:
                     log("replayed %d games (%d decisions)" % (gi, len(self.sp)))
         for k, v in cols.items():

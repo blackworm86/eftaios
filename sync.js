@@ -6,7 +6,10 @@
    credential to the same uid, so rooms, vault and stats survive registration. */
 (function () {
   const V = '10.12.2', B = `https://www.gstatic.com/firebasejs/${V}/`;
-  const cfg = window.FIREBASE_CONFIG || {};
+  /* A browser driven by a script (the tests, the simulator, screenshots: headless, or on localhost) never talks to the real database: its games would be
+     stored as if people had played them. Tests use the fake database (window.__FAKE_FB); a tool that really must use the live one sets window.__REAL_FB first. */
+  const scripted = navigator.webdriver || /HeadlessChrome/.test(navigator.userAgent) || ['localhost', '127.0.0.1', '[::1]', ''].includes(location.hostname);
+  const cfg = (scripted && !window.__FAKE_FB && !window.__REAL_FB) ? {} : (window.FIREBASE_CONFIG || {});
   const Sync = window.Sync = {
     gen: 0, enabled: !!(window.__FAKE_FB || (cfg.apiKey && cfg.databaseURL)),
     skew: 0, now() { return Date.now() + this.skew; },

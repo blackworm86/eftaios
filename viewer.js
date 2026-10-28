@@ -6,7 +6,7 @@
      seats: [{ name, kind: person|bot|network, bot, role0, role, char, over, items, ab, route: [{ turn, cell, note, star }] }],
      log: [{ turn, seat, kind, cell, text }] } with cell = row * columns + column. */
 const Viewer = (() => {
-  const PAGE = 15, SRC = [['all', 'All'], ['players', 'Players'], ['test', 'Bot tests'], ['network', 'Network'], ['file', 'Files']];
+  const PAGE = 15, SRC = [['all', 'All'], ['players', 'Players'], ['auto', 'Automated'], ['test', 'Bot tests'], ['network', 'Network'], ['file', 'Files']];
   const ITEM = { adrenaline: ['Adr', '#f59e0b'], sedatives: ['Sed', '#a78bfa'], attack: ['Atk', '#ef4444'], cat: ['Cat', '#f472b6'], spotlight: ['Spo', '#fde047'], teleport: ['Tel', '#22d3ee'],
     defense: ['Def', '#34d399'], clone: ['Clo', '#2dd4bf'], sensor: ['Sen', '#60a5fa'], mutation: ['Mut', '#fb7185'] };
   const NOTE = { t: 'Teleport', s: 'Stayed (Executive Officer)', l: 'Lurked: attacked without moving', m: 'Mutated into an Alien', r: 'Killed: restarted as an Alien', c: 'Clone: restarted at the Human sector' };
@@ -35,9 +35,10 @@ const Viewer = (() => {
         route: (s.path || []).map(p => ({ turn: p.turn, cell: cellOf(map, p.pos), note: (p.note || '')[0] || '', star: p.star ? 1 : 0 })) })),
       log: d.log.slice().reverse().filter(e => e.by in idx).map(e => ({ turn: e.turn, seat: idx[e.by], kind: e.kind, cell: e.sector ? cellOf(map, e.sector) : null, text: e.kind === 'hatch' ? (e.ok ? 'ok' : 'damaged') : String(e.text || '') })) };
   }
-  function fromRecord(r, title) {   // the anonymous game records (records.js)
+  function fromRecord(r, title, id) {   // the anonymous game records (records.js)
     const g = JSON.parse(r.game), map = mapOf(g.map); if (!map) return null;
-    return { title, kind: 'players', at: r.at || null, build: r.build, map: g.map, turns: g.turns, mode: g.mode || r.mode, result: g.result ? { aliensWin: !!g.result.aliensWin, reason: g.result.reason, escaped: g.result.escaped || [] } : null,
+    return { title, kind: 'players', dbpath: id ? 'gameRecords/' + id : '', auto: !r.build, at: r.at || null, build: r.build,   // no build number: stored by a script (a test run), not by a person
+       map: g.map, turns: g.turns, mode: g.mode || r.mode, result: g.result ? { aliensWin: !!g.result.aliensWin, reason: g.result.reason, escaped: g.result.escaped || [] } : null,
       seats: g.seats.map((s, i) => ({ name: (s.kind === 'human' ? 'Person ' : s.kind[0].toUpperCase() + s.kind.slice(1) + ' bot ') + (i + 1), kind: s.kind === 'human' ? 'person' : 'bot', bot: s.kind === 'human' ? '' : s.kind,
         optout: !!s.optout, role0: s.role0 || '?', role: s.role || '?', char: s.char, over: s.over, items: s.items || [], ab: s.ab || {},
         route: String(s.route || '').split(',').filter(Boolean).map(x => { const [turn, pos, note = ''] = x.split(':'); return { turn: +turn, cell: cellOf(map, pos), note: note.replace('*', ''), star: note.includes('*') ? 1 : 0 }; }) })),
@@ -51,18 +52,18 @@ const Viewer = (() => {
     return [];
   }
   const people = g => g.seats.filter(s => s.kind === 'person').length;
-  const typeOf = g => (g.kind === 'players' ? (people(g) ? 'People' : 'Bots only') : g.kind === 'test' ? 'Test' : g.kind === 'network' ? 'Network' : 'File');
+  const typeOf = g => (g.kind === 'players' ? (g.auto ? 'Automated' : people(g) ? 'People' : 'Bots only') : g.kind === 'test' ? 'Test' : g.kind === 'network' ? 'Network' : 'File');
   /* oldest = 1, so a newer game always has the bigger number */
   function number() { [...all].sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((g, i) => { g.no = i + 1; }); }
 
   /* ---------- loading ---------- */
   async function load() {
     loading = true; error = ''; all = []; cur = null; renderFlow();
-    const add = (name, fn) => fn().then(r => { all.push(...r.filter(Boolean)); }, e => { if (name !== 'net') error += (error ? ' ' : '') + `${name}: ${e.message || e}`; });
+    const add = (name, fn) => fn().then(r => { all.push(...r.filter(g => g && g.seats)); }, e => { if (name !== 'net') error += (error ? ' ' : '') + `${name}: ${e.message || e}`; });
     await Promise.all([
       add('net', async () => { const r = await fetch('nn/games.json', { cache: 'no-cache' }); return r.ok ? parseAny(await r.json(), 'Network') : []; }),
       add('Bot tests', async () => Object.values(await Sync.adminList('bottests')).map(r => fromDump(JSON.parse(r.game), `${r.test} (${r.rating}/5)`, 'test', r.at))),
-      add('Players\' games', async () => Object.values(await Sync.adminList('gameRecords')).map((r, k) => fromRecord(r, 'Game ' + (k + 1))))
+      add('Players\' games', async () => Object.entries(await Sync.adminList('gameRecords')).map(([id, r], k) => fromRecord(r, 'Game ' + (k + 1), id)))
     ]);
     number(); all.forEach(g => { if (g.kind === 'players') g.title = 'Game ' + g.no; else if (g.kind === 'network') g.title = 'Network game ' + g.no; });
     loading = false; renderFlow();
@@ -269,13 +270,13 @@ const Viewer = (() => {
 
   /* ---------- the list ---------- */
   function filtered() {
-    let l = all.filter(g => (f.src === 'all' || g.kind === f.src) && (!f.res || (g.result ? (g.result.aliensWin ? 'aliens' : 'humans') : 'none') === f.res) && (!f.n || String(g.seats.length) === f.n) && (!f.map || g.map === f.map));
+    let l = all.filter(g => (f.src === 'all' || (f.src === 'auto' ? g.auto : f.src === 'players' ? g.kind === 'players' && !g.auto : g.kind === f.src)) && (!f.res || (g.result ? (g.result.aliensWin ? 'aliens' : 'humans') : 'none') === f.res) && (!f.n || String(g.seats.length) === f.n) && (!f.map || g.map === f.map));
     const by = { new: (a, b) => (b.at || 0) - (a.at || 0) || b.no - a.no, old: (a, b) => (a.at || 0) - (b.at || 0) || a.no - b.no, long: (a, b) => b.turns - a.turns, short: (a, b) => a.turns - b.turns, big: (a, b) => b.seats.length - a.seats.length };
     return l.sort(by[f.sort]);
   }
   function listHtml() {
     const list = filtered(), pages = Math.max(1, Math.ceil(list.length / PAGE)); f.page = Math.min(f.page, pages - 1);
-    const count = k => all.filter(g => k === 'all' || g.kind === k).length, sel = (id, cur, opts, label) => `<label class="vw-sel"><small>${label}</small><select data-vwf="${id}">${opts.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${l}</option>`).join('')}</select></label>`;
+    const count = k => all.filter(g => k === 'all' || (k === 'auto' ? g.auto : k === 'players' ? g.kind === 'players' && !g.auto : g.kind === k)).length, sel = (id, cur, opts, label) => `<label class="vw-sel"><small>${label}</small><select data-vwf="${id}">${opts.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${l}</option>`).join('')}</select></label>`;
     const maps = [...new Set(all.map(g => g.map))].sort(), sizes = [...new Set(all.map(g => g.seats.length))].sort((a, b) => a - b);
     const chips = SRC.map(([k, l]) => `<button class="btn${f.src === k ? ' primary' : ''}" data-act="vwsrc" data-s="${k}">${l} <small>${count(k)}</small></button>`).join('');
     const filters = `<div class="vw-filters">${sel('sort', f.sort, [['new', 'Newest first'], ['old', 'Oldest first'], ['long', 'Longest'], ['short', 'Shortest'], ['big', 'Most players']], 'Sort')}${sel('res', f.res, [['', 'Any'], ['humans', 'Humans win'], ['aliens', 'Aliens win'], ['none', 'Unfinished']], 'Result')}
@@ -283,7 +284,8 @@ const Viewer = (() => {
     const rows = list.slice(f.page * PAGE, (f.page + 1) * PAGE).map(g => `<li class="adm-row vw-row" data-act="vwopen" data-no="${g.no}" role="button" tabindex="0"><span class="vw-no">#${g.no}</span><span class="who"><b>${esc(g.title)}</b> <span class="vw-badge t-${g.kind}">${typeOf(g)}</span>
       <small>${esc(day(g.at))}</small><small>${esc(mapName(g.map))} · ${g.seats.length} players${people(g) ? ` (${people(g)} ${people(g) === 1 ? 'person' : 'people'})` : ''} · ${g.turns} turns</small><small class="${g.result ? (g.result.aliensWin ? 'vw-al' : 'vw-hu') : ''}">${esc(nameOfResult(g))}</small></span></li>`).join('');
     const pager = pages > 1 ? `<div class="vw-pager"><button class="btn" data-act="vwpage" data-d="-1"${f.page === 0 ? ' disabled' : ''}>◀</button><span>Page ${f.page + 1} of ${pages} · ${list.length} games</span><button class="btn" data-act="vwpage" data-d="1"${f.page >= pages - 1 ? ' disabled' : ''}>▶</button></div>` : `<p class="dim vw-note">${list.length} games</p>`;
-    return `<div class="vw-chips src">${chips}</div>${filters}${rows ? `<ul class="plist adm-list">${rows}</ul>` : '<p class="dim">No games match.</p>'}${pager}`;
+    const bulk = f.src === 'auto' && list.length ? `<p class="dim vw-note">These records were stored by scripts (tests and tools), not by people: they have no build number. They are safe to delete.</p><button class="btn danger wide" data-act="vwdelall">Delete all ${list.length} automated records</button>` : '';
+    return `<div class="vw-chips src">${chips}</div>${bulk}${filters}${rows ? `<ul class="plist adm-list">${rows}</ul>` : '<p class="dim">No games match.</p>'}${pager}`;
   }
 
   /* ---------- the screen ---------- */
@@ -296,7 +298,7 @@ const Viewer = (() => {
   function analysisHtml(g) {
     const max = Math.min(g.turns, 40), tt = Math.min(turn, max), tg = (k, l) => `<label class="vw-tg"><input type="checkbox" data-vwl="${k}"${layers[k] ? ' checked' : ''}><span>${l}</span></label>`;
     const meta = `<span class="vw-badge t-${g.kind}">${typeOf(g)}</span> ${esc(day(g.at))} · ${esc(mapName(g.map))} · ${g.seats.length} players${people(g) ? ` (${people(g)} ${people(g) === 1 ? 'person' : 'people'})` : ''} · ${g.turns} turns${g.mode ? ' · ' + esc(g.mode) : ''}${g.build ? ' · build ' + esc(g.build) : ''}${g.note ? '<br>' + esc(g.note) : ''}`;
-    return `<div class="vw-top"><button class="btn" data-act="vwback">← All games (${filtered().length})</button><button class="btn" data-act="vwcopy">Copy summary</button></div>
+    return `<div class="vw-top"><button class="btn" data-act="vwback">← All games (${filtered().length})</button><button class="btn" data-act="vwcopy">Copy summary</button>${g.dbpath ? '<button class="btn danger" data-act="vwdel">Delete</button>' : ''}</div>
       <h3>#${g.no} ${esc(g.title)}</h3><p class="dim vw-meta">${meta}<br><b class="${g.result && g.result.aliensWin ? 'vw-al' : 'vw-hu'}">${esc(nameOfResult(g))}</b></p>
       <div class="vw-main"><div class="vw-stage">
         <div class="vw-bar" id="vw-roundbar"><button class="btn" data-act="vwstep" data-d="-1" aria-label="Previous turn">◀</button><button class="btn" data-act="vwplay" id="vw-playb" aria-label="Play">${play ? '❚❚' : '▶▶'}</button><input id="vw-turn" type="range" min="0" max="${max}" value="${tt}" aria-label="Turn"><button class="btn" data-act="vwstep" data-d="1" aria-label="Next turn">▶</button></div>
@@ -344,6 +346,8 @@ const Viewer = (() => {
     vwfit(b) { if (cur) { vb = fitBox(cur, b.dataset.w === '1'); paint(); } },
     vwfocus(b) { focus = focus === +b.dataset.i ? -1 : +b.dataset.i; paint(); },
     vwtab(b) { tab = b.dataset.k; renderFlow(); },
+    async vwdel() { const g = cur; if (!g || !g.dbpath || !confirm('Delete this game record for good?')) return; try { await Sync.setPath(g.dbpath, null); all = all.filter(x => x !== g); cur = null; renderFlow(); } catch (e) { toast('Could not delete: ' + (e.code || e.message) + ' (deploy the new database rules first)'); } },
+    async vwdelall() { const l = filtered().filter(g => g.dbpath); if (!l.length || !confirm(`Delete ${l.length} automated game records for good?`)) return; let n = 0; try { for (const g of l) { await Sync.setPath(g.dbpath, null); all = all.filter(x => x !== g); n++; } } catch (e) { toast(`Deleted ${n}, then: ${e.code || e.message} (deploy the new database rules first)`); } renderFlow(); },
     vwcopy() { try { navigator.clipboard.writeText(summary(cur)); toast('Summary copied'); } catch (_) { toast('Could not copy'); } }
   };
   /* moving the picture: one finger or the mouse drags, two fingers pinch, the wheel zooms */

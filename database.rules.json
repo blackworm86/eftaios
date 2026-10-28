@@ -258,6 +258,7 @@
     },
     "gameRecords": {
       ".read": "auth != null && auth.token.admin === true",
+      ".write": "auth != null && auth.token.admin === true",
       "$id": {
         ".write": "auth != null && root.child('bans').child(auth.uid).val() !== true && !data.exists() && $id.matches(/^[A-Za-z0-9_]{6,40}$/)",
         ".validate": "newData.hasChildren(['v', 'at', 'n', 'game'])",

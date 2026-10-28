@@ -22,6 +22,7 @@ const check = (ok, label, extra) => { console.log((ok ? 'ok   ' : 'FAIL ') + lab
   const errs = [];
   const mk = async () => {
     const c = await b.browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', locale: 'en-US' });
+    await c.addInitScript(() => { window.__REAL_FB = true; });   // this tool really uses the live database
     const p = await c.newPage();
     p.on('pageerror', e => errs.push('page: ' + e.message));
     p.on('console', m => { const t = m.text(); if (/Content Security Policy|Refused to/i.test(t)) errs.push('csp: ' + t.slice(0, 160)); });

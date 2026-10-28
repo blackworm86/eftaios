@@ -41,6 +41,7 @@ A black window with a menu appears:
   7  Record sample games for the game viewer and send them
   8  Update this program from GitHub
   9  Learn from the Hard bot (teacher recordings), then send the network
+  10 Restart the training from the Hard copy, kept close to it
   0  Quit
 ```
 
@@ -76,6 +77,12 @@ players' real routes, their roles and the result, and a slider to replay it turn
 round after round (20 rounds, about 1 to 2 hours on the GPU). Each line shows how often the network picks the Hard bot's action on games it has not seen: moves, attacks, decoys, Items and powers, and their targets.
 Your previous training is kept in a folder named `runs\main-before-distil-...`. When it ends, the new network is sent to GitHub by itself, and I measure it.
 Do not start the normal training (`1`) until I say so: after this step it continues from the new network.
+
+**Restart the training from the Hard copy (item 10):** the training that follows item 9 slowly drifted away from the Hard bot (the Humans got weaker, the Aliens attacked
+more). Item 10 starts a new one that stays close to it: the network is pulled towards the Hard copy, it plays against the Hard copy and its own recent versions
+(no more simple scripted players), it learns more gently, and for the first 15 iterations only its judgement of positions learns. Every 20 iterations it plays 240
+games per side against the Hard copy; the log says "EVAL ... against the Hard copy: as Humans the team wins X% (the Hard copy: Y%) ...". Only the **best** network so far
+is sent to GitHub, so the file the app uses cannot get worse. Your previous run is kept in `runs\main-before-fix-...`. Stop the training with item 5 first.
 
 **Update the program (item 8):** when I tell you there is a new version, stop the training (`5`), press `8` in the menu, close the window and
 double-click `NN.bat` again. It replaces the program's files with the ones on GitHub and never touches your training, settings or token.

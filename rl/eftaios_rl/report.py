@@ -56,7 +56,19 @@ def summary(run_dir):
         out.append("- Speed: %.0f seconds per iteration (%.0f per hour)" % (sp, 3600 / sp))
     if cfg:
         out.append("- Network: %s hidden units, %s layers; %s game workers" % (cfg.get("hid"), cfg.get("layers"), cfg.get("workers")))
-    if len(ev) >= 4:
+    if cfg.get("kl") is not None and ev:   # the training that is checked against the Hard copy
+        last = ev[-5:]
+        gain = _avg(last, 1) - _avg(last, 2) + _avg(last, 3) - _avg(last, 4)
+        out += ["", "## Evaluation against the Hard copy (average of the last %d checks, 240 games per side each)" % len(last), "",
+                "| | network | the Hard copy |", "|---|---|---|",
+                "| Humans (team win %%) | %.1f | %.1f |" % (_avg(last, 1), _avg(last, 2)), "| Aliens (team win %%) | %.1f | %.1f |" % (_avg(last, 3), _avg(last, 4))]
+        out += ["", "Gain over the Hard copy, both sides added: **%+.1f points**. Verdict: %s" % (gain, "better than the Hard copy" if gain > 5 else "level with the Hard copy" if gain > -5 else "worse than the Hard copy: the training is drifting")]
+        try:
+            b = json.load(open(os.path.join(run_dir, "best.json")))
+            out.append("The network sent to the repository is the best one so far: iteration %d (gain %+.1f)." % (b["it"], b["avg"]))
+        except (OSError, ValueError):
+            pass
+    elif len(ev) >= 4:
         last, prev = ev[-15:], ev[-30:-15]
         out += ["", "## Evaluation against simple rule-based players (average of the last %d evaluations)" % len(last), "",
                 "| | network | rule-based players | change since the 15 before |", "|---|---|---|---|"]

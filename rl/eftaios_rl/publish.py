@@ -79,7 +79,8 @@ def download_update(root):
 
 def _net_bytes(run_dir):
     import torch  # only needed here
-    s = torch.load(os.path.join(run_dir, "latest.pt"), map_location="cpu")
+    best = os.path.join(run_dir, "best.pt")   # the best network so far, once there is one (new runs); else the latest
+    s = torch.load(best if os.path.exists(best) else os.path.join(run_dir, "latest.pt"), map_location="cpu")
     state = s["net"]
     blob = {"format": 1, "hid": s["cfg"]["hid"], "layers": s["cfg"]["layers"], "iteration": s.get("it", 0),
             "weights": {k: {"shape": list(v.shape), "data": [round(float(x), 6) for x in v.flatten().tolist()]} for k, v in state.items()}}

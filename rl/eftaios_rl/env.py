@@ -20,7 +20,7 @@ ITEMS = ["adrenaline", "sedatives", "attack", "cat", "spotlight", "teleport", "d
 CHARS = engine.HUMAN_CHARS + engine.ALIEN_CHARS
 KIND_IDX = {"noise": 0, "attack": 1, "silence-secure": 2, "silence": 3}
 
-REWARD = {"escape": 0.5, "kill": 0.2, "friendly": -0.3, "win": 1.0, "progress": 0.05}  # progress: per step a Human gets nearer to an open pod (and minus per step further)
+REWARD = {"escape": 0.5, "kill": 0.05, "friendly": -0.3, "win": 1.0, "progress": 0.05}  # progress: per step a Human gets nearer to an open pod (and minus per step further)
 
 
 def static_channels(board):

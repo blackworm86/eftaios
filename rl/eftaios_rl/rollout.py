@@ -40,21 +40,23 @@ def net_act(net, ob, sample=True):
     return int(a.item()), float(d.log_prob(a).item()), float(value.item())
 
 
-def _choose_mode(rng, cfg, has_pool):
+def _choose_mode(rng, cfg, has_pool):   # has_pool: kept for the callers; the Hard copy is always there
     r = rng.random()
     if r < cfg["p_scripted"]:
         return "scripted"
-    if has_pool and r < cfg["p_scripted"] + cfg["p_pool"]:
+    if r < cfg["p_scripted"] + cfg["p_pool"]:
         return "pool"
     return "self"
 
 
 def collect(job):
-    """job = (cfg, weights, pool_weights, target_decisions, seed). Returns arrays for training and some statistics."""
-    cfg, weights, pool_w, target, seed = job
+    """job = (cfg, weights, pool_weights, teacher_weights, target_decisions, seed). Returns arrays for training and some statistics.
+    Opponents in a game against others: the Hard copy (cfg teacher_share of the time) or one of the saved checkpoints."""
+    cfg, weights, pool_w, teacher_w, target, seed = job
     rng = random.Random(seed)
     cur = _net(cfg, weights)
     pool = [_net(cfg, w) for w in pool_w]
+    teacher = _net(cfg, teacher_w)
     ids = maps_mod.official_ids()
     rows = {k: [] for k in ("dyn", "glob", "priv", "phase", "me", "mask", "map", "action", "logp", "adv", "ret")}
     stats = {"games": 0, "aliens_win": 0, "decisions": 0, "escaped": 0, "players": 0}
@@ -68,7 +70,7 @@ def collect(job):
             if mode == "self":
                 who.append("cur")
             elif mode == "pool":
-                who.append("cur" if rng.random() < 0.5 else ("pool", rng.choice(pool)))
+                who.append("cur" if rng.random() < 0.5 else ("pool", teacher if (not pool or rng.random() < cfg["teacher_share"]) else rng.choice(pool)))
             else:
                 who.append("cur" if rng.random() < 0.5 else "script")
         if "cur" not in who:
@@ -173,6 +175,31 @@ def evaluate(job):
                         env.act(net_act(net, ob)[0])
                     else:
                         env.act(scr[seat].act(env))
+                aw = env.g.result["aliens_win"]
+                res[key][0] += 1
+                res[key][1] += int(aw if side == "alien" else not aw)
+    return res
+
+
+def evaluate_net(job):
+    """job = (cfg, weights, opponent_weights, n_games, seed). The learner plays one side against the opponent network on the other, and the opponent plays
+    both sides on the same deals as a baseline. Returns {key: [games, wins]} for keys human, alien, base_human, base_alien ('wins' = that side's team won)."""
+    cfg, weights, opp_w, n_games, seed = job
+    rng = random.Random(seed)
+    net, opp = _net(cfg, weights), _net(cfg, opp_w)
+    ids = maps_mod.official_ids()
+    res = {"human": [0, 0], "alien": [0, 0], "base_human": [0, 0], "base_alien": [0, 0]}
+    for _ in range(n_games):
+        n = rng.choice(cfg["players"])
+        mid = rng.choice(ids)
+        s = rng.getrandbits(32)
+        for side in ("human", "alien"):
+            for use_net, key in ((True, side), (False, "base_" + side)):
+                env = env_mod.Env(mid, n, seed=s)
+                while not env.done:
+                    seat, ob = env.decision()
+                    mine = use_net and env.g.seats[seat].role0 == side
+                    env.act(net_act(net if mine else opp, ob)[0])
                 aw = env.g.result["aliens_win"]
                 res[key][0] += 1
                 res[key][1] += int(aw if side == "alien" else not aw)

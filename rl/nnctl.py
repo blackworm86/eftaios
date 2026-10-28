@@ -56,7 +56,7 @@ def running():
     return os.path.exists(log) and time.time() - os.path.getmtime(log) < 300
 
 
-def cmd_train():
+def cmd_train(extra=()):
     from eftaios_rl import publish
     if not ensure_torch():
         return 1
@@ -71,7 +71,7 @@ def cmd_train():
     open(LOCK, "w").write(str(os.getpid()))  # written before anything else starts, so a second start sees it
     say("Training started. It keeps going until you choose 'Stop' in a second window (or close this window). Progress is saved after every iteration.\n")
     while True:
-        rc = subprocess.call([sys.executable, "-m", "eftaios_rl.train", "--run", "main"], cwd=ROOT)
+        rc = subprocess.call([sys.executable, "-m", "eftaios_rl.train", "--run", "main", *extra], cwd=ROOT)
         if rc == 0 or os.path.exists(STOP):
             break
         say("\nThe training stopped by itself (error %s). Restarting in 30 seconds; close this window to quit." % rc)
@@ -82,6 +82,26 @@ def cmd_train():
         pass
     say("\nTraining stopped.")
     return 0
+
+
+def cmd_restart():
+    """A new training that starts from the Hard copy and stays close to it (see HOWTO). The current run is kept aside."""
+    if not ensure_torch():
+        return 1
+    if running():
+        say("A training is running: stop it first (menu item 5).")
+        return 1
+    if os.path.exists(os.path.join(RUN, "latest.pt")):
+        aside = RUN + "-before-fix-" + time.strftime("%Y%m%d-%H%M")
+        os.replace(RUN, aside)
+        say("Your previous training was kept in %s" % aside)
+        try:   # the Hard copy made by item 9 is still wanted: take it along
+            os.makedirs(os.path.join(RUN, "pool"), exist_ok=True)
+            import shutil
+            shutil.copy(os.path.join(aside, "pool", "teacher.pt"), os.path.join(RUN, "pool", "teacher.pt"))
+        except OSError:
+            pass
+    return cmd_train(["--init-hardcopy"])
 
 
 def cmd_distil():
@@ -212,7 +232,8 @@ def cmd_check():
 MENU = [("1", "Start or resume the training", cmd_train), ("2", "Show progress", cmd_status), ("3", "Send the network and progress to GitHub now", cmd_publish),
         ("4", "Save the GitHub token (once)", cmd_token), ("5", "Stop the training (use this in a second window)", cmd_stop), ("6", "Check that everything works", cmd_check),
         ("7", "Record sample games for the game viewer and send them", cmd_samples),
-        ("8", "Update this program from GitHub", cmd_update), ("9", "Learn from the Hard bot (teacher recordings), then send the network", cmd_distil)]
+        ("8", "Update this program from GitHub", cmd_update), ("9", "Learn from the Hard bot (teacher recordings), then send the network", cmd_distil),
+        ("10", "Restart the training from the Hard copy, kept close to it", cmd_restart)]
 
 
 def main():

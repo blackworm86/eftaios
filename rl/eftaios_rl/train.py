@@ -17,6 +17,7 @@ import numpy as np
 import torch
 from torch.distributions import Categorical
 
+from . import hardcopy, report
 from . import maps as maps_mod
 from . import publish
 from . import rollout
@@ -25,8 +26,10 @@ from .model import BoardCache, Net, pack
 DEFAULT = dict(
     hid=64, layers=4, players=[3, 4, 5, 6, 7, 8], gamma=0.99, lam=0.95,
     workers=0,                # 0 = number of CPU cores - 1
-    decisions_per_iter=24000, epochs=3, minibatch=256, lr=3e-4, clip=0.2, vf=0.5, ent=0.01, ent_end=0.003, ent_iters=400,
-    bc_iters=12, bc_epochs=2, bc_lr=1e-3, lr_after_bc=1e-4, p_scripted=0.35, p_pool=0.25, pool_every=10, pool_size=8, eval_every=10, eval_games=240, max_iters=0, publish_hours=3,
+    decisions_per_iter=24000, epochs=2, minibatch=256, lr=3e-5, clip=0.1, vf=0.5, ent=0.002, ent_end=0.002, ent_iters=400,
+    bc_iters=12, bc_epochs=2, bc_lr=1e-3, lr_after_bc=1e-4, p_scripted=0.0, p_pool=0.5, teacher_share=0.6, pool_every=10, pool_size=4, eval_every=20, eval_games=240, max_iters=0, publish_hours=3,
+    kl=0.1, kl_end=0.02, kl_iters=500,   # the pull towards the Hard copy, and how fast it relaxes
+    value_warmup=15,                     # iterations at the start in which only the critic learns
 )
 
 
@@ -41,11 +44,11 @@ def cpu_weights(net):
     return {k: v.detach().cpu() for k, v in net.state_dict().items()}
 
 
-def update(net, opt, data, boards, ids, device, cfg, ent_coef):
+def update(net, opt, data, boards, ids, device, cfg, ent_coef, ref=None, beta=0.0, value_only=False):
     adv = data["adv"].astype(np.float32)
     adv = (adv - adv.mean()) / (adv.std() + 1e-8)
     T = len(adv)
-    stats = {"pol": 0.0, "val": 0.0, "ent": 0.0, "n": 0}
+    stats = {"pol": 0.0, "val": 0.0, "ent": 0.0, "kl": 0.0, "n": 0}
     for _ in range(cfg["epochs"]):
         batches = []
         for m in np.unique(data["map"]):
@@ -72,17 +75,31 @@ def update(net, opt, data, boards, ids, device, cfg, ent_coef):
             pol = -torch.min(ratio * a, torch.clamp(ratio, 1 - cfg["clip"], 1 + cfg["clip"]) * a).mean()
             val = 0.5 * ((value - ret) ** 2).mean()
             ent = dist.entropy().mean()
-            loss = pol + cfg["vf"] * val - ent_coef * ent
+            kl = kl_to(logits, ref, dyn, stat, adj, glob, priv, phase, me, mask) if ref is not None else torch.zeros((), device=device)
+            loss = cfg["vf"] * val if value_only else pol + cfg["vf"] * val - ent_coef * ent + beta * kl
             opt.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
+            if value_only:   # only the critic's own layers learn: the shared layers (and so the policy) stay exactly as they are
+                for name, p_ in net.named_parameters():
+                    if not name.startswith("value_head"):
+                        p_.grad = None
+            torch.nn.utils.clip_grad_norm_([p_ for p_ in net.parameters() if p_.grad is not None], 0.5)
             opt.step()
             stats["pol"] += float(pol.detach())
             stats["val"] += float(val.detach())
             stats["ent"] += float(ent.detach())
+            stats["kl"] += float(kl.detach())
             stats["n"] += 1
     n = max(1, stats["n"])
-    return {k: stats[k] / n for k in ("pol", "val", "ent")}
+    return {k: stats[k] / n for k in ("pol", "val", "ent", "kl")}
+
+
+def kl_to(logits, ref, dyn, stat, adj, glob, priv, phase, me, mask):
+    """KL(current policy || the reference policy) on these positions, summed over the legal actions, averaged over the batch."""
+    with torch.no_grad():
+        ref_logits, _ = ref(dyn, stat, adj, glob, priv, phase, me, mask)
+    lp, rp = torch.log_softmax(logits, 1), torch.log_softmax(ref_logits, 1)
+    return torch.where(mask, lp.exp() * (lp - rp), torch.zeros_like(lp)).sum(1).mean()
 
 
 def bc_update(net, opt, data, boards, ids, device, cfg):
@@ -120,6 +137,7 @@ def main(argv=None):
     ap.add_argument("--smoke", action="store_true", help="tiny settings, to check that everything works")
     ap.add_argument("--workers", type=int, default=0)
     ap.add_argument("--max-iters", type=int, default=0)
+    ap.add_argument("--init-hardcopy", action="store_true", help="a new run starts from the Hard copy (no imitation of the rule-based players)")
     args = ap.parse_args(argv)
 
     run_dir = os.path.abspath(os.path.join(args.runs_dir, args.run))
@@ -161,6 +179,23 @@ def main(argv=None):
         it = s["it"]
         log(run_dir, "resumed from iteration %d" % it)
     fresh = not os.path.exists(ck)
+    teacher_w = hardcopy.weights(run_dir)
+    ref = Net(cfg["hid"], cfg["layers"]).to(device)   # the Hard copy, frozen: the network is pulled towards it, and checked against it
+    ref.load_state_dict(teacher_w)
+    ref.eval()
+    for p_ in ref.parameters():
+        p_.requires_grad_(False)
+    if fresh and args.init_hardcopy:
+        net.load_state_dict(teacher_w)
+        torch.save(teacher_w, os.path.join(run_dir, "pool", "teacher.pt"))
+        torch.save({"net": teacher_w, "it": 0, "cfg": cfg}, os.path.join(run_dir, "best.pt"))
+        json.dump({"avg": 0.0, "it": 0}, open(os.path.join(run_dir, "best.json"), "w"))
+        fresh = False
+        log(run_dir, "a new run, starting from the Hard copy (the pull towards it starts at %.2f, only the critic learns for %d iterations)" % (cfg["kl"], cfg["value_warmup"]))
+    try:
+        best = json.load(open(os.path.join(run_dir, "best.json")))
+    except (OSError, ValueError):
+        best = {"avg": 0.0, "it": 0}
     log(run_dir, "device %s, %d workers, %d parameters" % (device, cfg["workers"], sum(p.numel() for p in net.parameters())))
 
     ctx = mp.get_context("spawn")
@@ -188,11 +223,10 @@ def main(argv=None):
                 break
             t0 = time.time()
             weights = cpu_weights(net)
-            pool_w = []
-            for f in sorted(os.listdir(os.path.join(run_dir, "pool")))[-cfg["pool_size"]:]:
-                pool_w.append(torch.load(os.path.join(run_dir, "pool", f), map_location="cpu"))
+            ckpts = sorted(f for f in os.listdir(os.path.join(run_dir, "pool")) if f.startswith("ckpt_"))
+            pool_w = [torch.load(os.path.join(run_dir, "pool", f), map_location="cpu") for f in ckpts[-(cfg["pool_size"] - 1):]]
             per = max(1, cfg["decisions_per_iter"] // cfg["workers"])
-            jobs = [(cfg, weights, pool_w, per, random.getrandbits(32)) for _ in range(cfg["workers"])]
+            jobs = [(cfg, weights, pool_w, teacher_w, per, random.getrandbits(32)) for _ in range(cfg["workers"])]
             results = pool.map(rollout.collect, jobs)
             data = {k: np.concatenate([r[0][k] for r in results]) for k in results[0][0]}
             st = {k: sum(r[1][k] for r in results) for k in results[0][1]}
@@ -200,27 +234,36 @@ def main(argv=None):
             frac = min(1.0, it / max(1, cfg["ent_iters"]))
             ent_coef = cfg["ent"] + (cfg["ent_end"] - cfg["ent"]) * frac
             net.train()
-            ls = update(net, opt, data, boards, ids, device, cfg, ent_coef)
+            beta = cfg["kl"] + (cfg["kl_end"] - cfg["kl"]) * min(1.0, it / max(1, cfg["kl_iters"]))
+            ls = update(net, opt, data, boards, ids, device, cfg, ent_coef, ref=ref, beta=beta, value_only=it < cfg["value_warmup"])
             net.eval()
             it += 1
             torch.save({"net": net.state_dict(), "opt": opt.state_dict(), "it": it, "cfg": cfg}, ck + ".tmp")
             os.replace(ck + ".tmp", ck)
             if it % cfg["pool_every"] == 0:
                 torch.save(cpu_weights(net), os.path.join(run_dir, "pool", "ckpt_%06d.pt" % it))
-                for f in sorted(os.listdir(os.path.join(run_dir, "pool")))[:-cfg["pool_size"]]:
+                for f in sorted(f for f in os.listdir(os.path.join(run_dir, "pool")) if f.startswith("ckpt_"))[:-(cfg["pool_size"] - 1)]:
                     os.remove(os.path.join(run_dir, "pool", f))
-            log(run_dir, "it %d: %d decisions in %d games (%.0fs collect, %.0fs train), aliens won %.0f%%, loss pol %.3f val %.3f ent %.2f" % (
-                it, len(data["adv"]), st["games"], t1 - t0, time.time() - t1, 100 * st["aliens_win"] / max(1, st["games"]), ls["pol"], ls["val"], ls["ent"]))
+            log(run_dir, "it %d: %d decisions in %d games (%.0fs collect, %.0fs train), aliens won %.0f%%, loss pol %.3f val %.3f ent %.2f, kl to the Hard copy %.3f%s" % (
+                it, len(data["adv"]), st["games"], t1 - t0, time.time() - t1, 100 * st["aliens_win"] / max(1, st["games"]), ls["pol"], ls["val"], ls["ent"], ls["kl"], " (critic only)" if it <= cfg["value_warmup"] else ""))
             if it % cfg["eval_every"] == 0:
                 w = cpu_weights(net)
                 per_w = max(1, cfg["eval_games"] // cfg["workers"])
-                rs = pool.map(rollout.evaluate, [(cfg, w, per_w, random.getrandbits(32)) for _ in range(cfg["workers"])])
+                rs = pool.map(rollout.evaluate_net, [(cfg, w, teacher_w, per_w, random.getrandbits(32)) for _ in range(cfg["workers"])])
                 tot = {k: [sum(r[k][0] for r in rs), sum(r[k][1] for r in rs)] for k in rs[0]}
                 pct = lambda k: 100 * tot[k][1] / max(1, tot[k][0])
-                log(run_dir, "EVAL it %d vs rule-based players: as Humans the team wins %.0f%% (rule-based Humans: %.0f%%); as Aliens %.0f%% (rule-based Aliens: %.0f%%)" % (
-                    it, pct("human"), pct("base_human"), pct("alien"), pct("base_alien")))
                 with open(os.path.join(run_dir, "eval.csv"), "a") as f:
                     f.write("%d,%.1f,%.1f,%.1f,%.1f\n" % (it, pct("human"), pct("base_human"), pct("alien"), pct("base_alien")))
+                rows = report.evals(run_dir)[-3:]
+                avg = sum((r[1] - r[2]) + (r[3] - r[4]) for r in rows) / max(1, len(rows))
+                log(run_dir, "EVAL it %d against the Hard copy: as Humans the team wins %.0f%% (the Hard copy: %.0f%%); as Aliens %.0f%% (the Hard copy: %.0f%%); gain over the last %d checks %+.1f points" % (
+                    it, pct("human"), pct("base_human"), pct("alien"), pct("base_alien"), len(rows), avg))
+                if len(rows) >= 3 and avg > best["avg"] + 1.0:   # three checks smooth the noise of 240 games
+                    best = {"avg": avg, "it": it}
+                    torch.save({"net": w, "it": it, "cfg": cfg}, os.path.join(run_dir, "best.pt.tmp"))
+                    os.replace(os.path.join(run_dir, "best.pt.tmp"), os.path.join(run_dir, "best.pt"))
+                    json.dump(best, open(os.path.join(run_dir, "best.json"), "w"))
+                    log(run_dir, "new best network: iteration %d (gain %+.1f points over the Hard copy)" % (it, avg))
             try:
                 for line in publish.maybe_publish(run_dir, cfg):
                     log(run_dir, "publish: " + line)

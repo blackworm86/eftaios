@@ -263,6 +263,7 @@ const NN = (() => {
     if (!net) return null;
     if ((phase === 'pre' || phase === 'post' || phase === 'target_cell' || phase === 'target_seat') && !net.w['act_head.0.weight']) return null;   // a network from before the full rules
     const x = fromApp(H, idx, st, phase, role, extra); if (!x) return null;
+    if (phase === 'pre' || phase === 'post') { const on = [...x.obs.mask.subarray(0, 12)].reduce((a, v, i) => (v ? a.concat(i) : a), []); if (on.length === 1) return on[0]; }   // nothing to choose
     return pick(forward(x.obs, x.bd), temp) | 0;
   };
   /* each returns null when the network cannot play this position (the caller then uses the rules) */

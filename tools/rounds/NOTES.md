@@ -427,3 +427,8 @@ Full tables: `nn-v2-matrix.report.txt` (the network decides everything it was tr
 ## Network distilled from the Hard bot (nn/net.json after NN.bat item 9; 40 epochs, 60% same move as Hard on unseen games)
 72 games per cell, rolemix, seed 4402; full table in `distil1.report.txt` (Human escape % / Alien team win %). Attacks per Alien turn: network 0.09-0.16 (Hard 0.14-0.17; the first network 0.9).
 - Network Humans vs Hard Aliens escape 35 / 30 / 30% at 4 / 6 / 8 players (Hard Humans 42 / 33 / 29%): about Hard level. Network Aliens vs Hard Humans win 40 / 28 / 40% (Hard Aliens about 49-51%): below Hard.
+
+## Network v3 (full rules; distilled from 4,534 Hard games, 20 epochs; plays Items and powers itself)
+72 games per cell, rolemix, seed 4402; table in `distil2.report.txt` (Human escape % / Alien team win %). Same cells as `distil1.report.txt` (movement-only network, Items by the Hard rules).
+- Network Humans vs Hard Aliens escape 28 / 30 / 29% at 4 / 6 / 8 players (Hard Humans 42 / 33 / 29%); network Aliens vs Hard Humans win 32 / 39 / 51% (distil1: 40 / 28 / 40%). Differences to distil1 are inside the +-10 point noise: letting the network choose Items and powers neither helped nor hurt.
+- Bot turn time on a desktop: 150-190 ms on average, 440 ms at most.

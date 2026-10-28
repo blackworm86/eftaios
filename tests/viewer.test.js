@@ -13,7 +13,7 @@ const {assert,setup}=require('./helpers');
     const rows=[...document.querySelectorAll('.vw-row')];
     return {n:rows.length,first:rows[0].textContent,pager:document.querySelector('.vw-pager').textContent,total:Viewer.state().all.length,nos:Viewer.state().all.map(g=>g.no).sort((a,b)=>a-b).slice(-2)};
   });
-  assert(await P.locator('[data-act=vwsrc]').count()===5,'the Games tab offers the five source filters');
+  assert(await P.locator('[data-act=vwsrc]').count()===6,'the Games tab offers the six source filters');
   assert(list.n===15,'the list shows 15 games a page ('+list.n+')');
   assert(/Page 1 of 2/.test(list.pager)&&list.total===20,'there is a second page ('+list.pager+')');
   assert(/Network/.test(list.first)||/File/.test(list.first)||/Test/.test(list.first),'each game says what kind it is');

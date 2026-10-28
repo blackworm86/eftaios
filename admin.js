@@ -307,6 +307,6 @@ const Admin = (() => {
     }
   };
   Object.assign(actions, Viewer.actions);
-  return { html, actions, load, ratePanel };
+  return { html, actions, load, ratePanel, putFile, hasToken: () => !!btToken() };
 })();
 window.Admin = Admin;

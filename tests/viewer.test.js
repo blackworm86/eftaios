@@ -25,6 +25,14 @@ const {assert,setup}=require('./helpers');
   await P.evaluate(()=>{const s=document.querySelector('[data-vwf=n]');s.value='3';s.dispatchEvent(new Event('change',{bubbles:true}))});
   const three=await P.evaluate(()=>[...document.querySelectorAll('.vw-row')].every(r=>/3 players/.test(r.textContent)));
   assert(three,'the table size filter works');
+  // saving the games shown (for sending them to the developer), and opening such a file again
+  const sv=await P.evaluate(async()=>{const g=Viewer.state().all.find(x=>x.kind==='network');const rec=[{id:'abc12345',v:1,at:Date.UTC(2026,9,28,8,17),build:'',mode:'ultimate',n:3,game:{map:g.map,turns:5,mode:'ultimate',result:{aliensWin:true,reason:'time',escaped:[]},
+      seats:[{kind:'human',role0:'human',role:'human',char:'',over:null,items:[],ab:{},route:'0:L08,1:L09'},{kind:'hard',role0:'alien',role:'alien',char:'',over:null,items:[],ab:{},route:'0:L06,1:L05'},{kind:'nn',role0:'alien',role:'alien',char:'',over:null,items:[],ab:{},route:'0:L06,1:K06'}],log:[{t:1,s:1,k:'noise',x:'any',c:'L05'}]}}];
+    const before=Viewer.state().all.length;Viewer.useFile(JSON.stringify(rec),'saved.json');const x=Viewer.state().all.find(q=>q.title.startsWith('saved.json'));
+    return {added:Viewer.state().all.length-before,auto:x&&x.auto,kinds:x&&x.seats.map(s=>s.kind+':'+(s.bot||'')),raw:!!(x&&x.raw)}});
+  assert(sv.added===1&&sv.auto===true&&sv.raw,'a downloaded records file opens again; a record with no build number is marked automated ('+JSON.stringify(sv)+')');
+  await P.evaluate(()=>{Viewer.actions.vwback();Viewer.actions.vwsrc({dataset:{s:'auto'}})});
+  assert(/Download these 1 games/.test(await P.textContent('.setup-card')),'the games shown can be downloaded or sent to the repo');
   // the analysis screen
   await P.evaluate(()=>{Viewer.actions.vwsrc({dataset:{s:'all'}});const s=document.querySelector('[data-vwf=n]');s.value='';s.dispatchEvent(new Event('change',{bubbles:true}));const r=document.querySelector('[data-vwf=res]');r.value='';r.dispatchEvent(new Event('change',{bubbles:true}))});
   const opened=await P.evaluate(()=>{const g=Viewer.state().all.find(x=>x.kind==='network'&&x.seats.length===3);Viewer.actions.vwopen({dataset:{no:g.no}});return {no:g.no,svg:!!document.querySelector('#vw-svg')}});

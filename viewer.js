@@ -37,7 +37,7 @@ const Viewer = (() => {
   }
   function fromRecord(r, title, id) {   // the anonymous game records (records.js)
     const g = JSON.parse(r.game), map = mapOf(g.map); if (!map) return null;
-    return { title, kind: 'players', dbpath: id ? 'gameRecords/' + id : '', auto: !r.build, at: r.at || null, build: r.build,   // no build number: stored by a script (a test run), not by a person
+    return { title, kind: 'players', dbpath: id ? 'gameRecords/' + id : '', raw: { id: id || '', v: r.v, at: r.at, build: r.build || '', mode: r.mode || '', n: r.n, game: g }, auto: !r.build, at: r.at || null, build: r.build,   // no build number: stored by a script (a test run), not by a person
        map: g.map, turns: g.turns, mode: g.mode || r.mode, result: g.result ? { aliensWin: !!g.result.aliensWin, reason: g.result.reason, escaped: g.result.escaped || [] } : null,
       seats: g.seats.map((s, i) => ({ name: (s.kind === 'human' ? 'Person ' : s.kind[0].toUpperCase() + s.kind.slice(1) + ' bot ') + (i + 1), kind: s.kind === 'human' ? 'person' : 'bot', bot: s.kind === 'human' ? '' : s.kind,
         optout: !!s.optout, role0: s.role0 || '?', role: s.role || '?', char: s.char, over: s.over, items: s.items || [], ab: s.ab || {},
@@ -46,6 +46,7 @@ const Viewer = (() => {
   }
   /* whatever a file holds: a list of games */
   function parseAny(j, name) {
+    if (Array.isArray(j) && j.length && j[0].game && j[0].game.seats && j[0].game.log) return j.map((x, k) => fromRecord({ game: JSON.stringify(x.game), at: x.at, build: x.build, mode: x.mode, v: x.v, n: x.n }, name + ' ' + (k + 1), x.id)).filter(Boolean);   // a file saved by "Download these games"
     if (j && j.format === 1 && Array.isArray(j.games)) return j.games.map((g, k) => fromNet(g, k, j.source, j.made));
     if (j && j.game && typeof j.game === 'object' && j.game.seats) return [fromDump(j.game, name + (j.test ? ': ' + j.test : ''), 'file', j.at)].filter(Boolean);   // tests/play-logs files
     if (j && j.seats && j.log) return [fromDump(j, name, 'file')].filter(Boolean);
@@ -284,7 +285,8 @@ const Viewer = (() => {
     const rows = list.slice(f.page * PAGE, (f.page + 1) * PAGE).map(g => `<li class="adm-row vw-row" data-act="vwopen" data-no="${g.no}" role="button" tabindex="0"><span class="vw-no">#${g.no}</span><span class="who"><b>${esc(g.title)}</b> <span class="vw-badge t-${g.kind}">${typeOf(g)}</span>
       <small>${esc(day(g.at))}</small><small>${esc(mapName(g.map))} · ${g.seats.length} players${people(g) ? ` (${people(g)} ${people(g) === 1 ? 'person' : 'people'})` : ''} · ${g.turns} turns</small><small class="${g.result ? (g.result.aliensWin ? 'vw-al' : 'vw-hu') : ''}">${esc(nameOfResult(g))}</small></span></li>`).join('');
     const pager = pages > 1 ? `<div class="vw-pager"><button class="btn" data-act="vwpage" data-d="-1"${f.page === 0 ? ' disabled' : ''}>◀</button><span>Page ${f.page + 1} of ${pages} · ${list.length} games</span><button class="btn" data-act="vwpage" data-d="1"${f.page >= pages - 1 ? ' disabled' : ''}>▶</button></div>` : `<p class="dim vw-note">${list.length} games</p>`;
-    const bulk = f.src === 'auto' && list.length ? `<p class="dim vw-note">These records were stored by scripts (tests and tools), not by people: they have no build number. They are safe to delete.</p><button class="btn danger wide" data-act="vwdelall">Delete all ${list.length} automated records</button>` : '';
+    const rawN = list.filter(g => g.raw).length, save = rawN ? `<div class="row two"><button class="btn" data-act="vwsave">Download these ${rawN} games</button><button class="btn" data-act="vwsend">Send these ${rawN} games to the repo</button></div><p class="dim vw-note" id="vw-status" role="status">One file in the format of the records on the server. To send to the repo, a GitHub token must be saved (Bot tests tab).</p>` : '';
+    const bulk = save + (f.src === 'auto' && list.length ? `<p class="dim vw-note">These records were stored by scripts (tests and tools), not by people: they have no build number. They are safe to delete.</p><button class="btn danger wide" data-act="vwdelall">Delete all ${list.length} automated records</button>` : '');
     return `<div class="vw-chips src">${chips}</div>${bulk}${filters}${rows ? `<ul class="plist adm-list">${rows}</ul>` : '<p class="dim">No games match.</p>'}${pager}`;
   }
 
@@ -348,6 +350,18 @@ const Viewer = (() => {
     vwtab(b) { tab = b.dataset.k; renderFlow(); },
     async vwdel() { const g = cur; if (!g || !g.dbpath || !confirm('Delete this game record for good?')) return; try { await Sync.setPath(g.dbpath, null); all = all.filter(x => x !== g); cur = null; renderFlow(); } catch (e) { toast('Could not delete: ' + (e.code || e.message) + ' (deploy the new database rules first)'); } },
     async vwdelall() { const l = filtered().filter(g => g.dbpath); if (!l.length || !confirm(`Delete ${l.length} automated game records for good?`)) return; let n = 0; try { for (const g of l) { await Sync.setPath(g.dbpath, null); all = all.filter(x => x !== g); n++; } } catch (e) { toast(`Deleted ${n}, then: ${e.code || e.message} (deploy the new database rules first)`); } renderFlow(); },
+    vwsave() {
+      const l = filtered().filter(g => g.raw).map(g => g.raw), a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(l)], { type: 'application/json' })); a.download = `eftaios-games-${f.src}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}-${l.length}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    },
+    async vwsend() {
+      const l = filtered().filter(g => g.raw).map(g => g.raw), st = document.getElementById('vw-status'), say = m => { if (st) st.textContent = m; };
+      if (!window.Admin || !Admin.hasToken()) return say('Save a GitHub token first (Admin > Bot tests).');
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'); let sent = 0;
+      try { for (let i = 0; i < l.length; i += 100) { say(`Sending ${Math.min(i + 100, l.length)} of ${l.length}…`); await Admin.putFile(`data/game-records/${f.src}-${stamp}-${i / 100 + 1}.json`, JSON.stringify(l.slice(i, i + 100))); sent = Math.min(i + 100, l.length); } say(`Sent ${sent} games to data/game-records/.`); }
+      catch (e) { say(`Sent ${sent}, then failed: ${e.message || e}`); }
+    },
     vwcopy() { try { navigator.clipboard.writeText(summary(cur)); toast('Summary copied'); } catch (_) { toast('Could not copy'); } }
   };
   /* moving the picture: one finger or the mouse drags, two fingers pinch, the wheel zooms */

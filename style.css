@@ -1215,7 +1215,7 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 .vw-tl.on{border-color:var(--amber,#ffb41f);background:#ffb41f1f}.vw-tl b{min-width:26px}.vw-tl span{display:flex;flex-wrap:wrap;gap:4px}
 .vw-tl i{font-style:normal;font-size:12px;padding:1px 7px;border-radius:999px;background:#ffffff1a}.vw-tl .a{background:#ef444455}.vw-tl .c{background:#f59e0b55}.vw-tl .r{background:#fde04755}.vw-tl .o{background:#111}.vw-tl .e{background:#34d39955}
 .vw-badge{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:#ffffff1f;vertical-align:middle;letter-spacing:.03em}
-.vw-row .who .vw-badge{display:inline-block;width:auto}
+.vw-row .who .vw-badge{display:inline-block;width:fit-content;align-self:flex-start;margin:2px 0}
 .vw-badge.people,.vw-badge.t-players{background:#22c55e44}.vw-badge.t-test{background:#f59e0b44}.vw-badge.t-network{background:#60a5fa44}.vw-badge.t-file{background:#a78bfa44}
 .vw-filters{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0 10px}
 @media (min-width:700px){.vw-filters{grid-template-columns:repeat(4,1fr)}}

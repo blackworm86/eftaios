@@ -46,7 +46,7 @@ const Viewer = (() => {
   }
   /* whatever a file holds: a list of games */
   function parseAny(j, name) {
-    if (Array.isArray(j) && j.length && j[0].game && j[0].game.seats && j[0].game.log) return j.map((x, k) => fromRecord({ game: JSON.stringify(x.game), at: x.at, build: x.build, mode: x.mode, v: x.v, n: x.n }, name + ' ' + (k + 1), x.id)).filter(Boolean);   // a file saved by "Download these games"
+    if (Array.isArray(j) && j.length && j[0].game && j[0].game.seats && j[0].game.log) return j.map((x, k) => fromRecord({ game: JSON.stringify(x.game), at: x.at, build: x.build, mode: x.mode, v: x.v, n: x.n }, x.label ? `${x.label} (${k + 1})` : name + ' ' + (k + 1), x.id)).filter(Boolean);   // a file saved by "Download these games"
     if (j && j.format === 1 && Array.isArray(j.games)) return j.games.map((g, k) => fromNet(g, k, j.source, j.made));
     if (j && j.game && typeof j.game === 'object' && j.game.seats) return [fromDump(j.game, name + (j.test ? ': ' + j.test : ''), 'file', j.at)].filter(Boolean);   // tests/play-logs files
     if (j && j.seats && j.log) return [fromDump(j, name, 'file')].filter(Boolean);
@@ -62,11 +62,11 @@ const Viewer = (() => {
     loading = true; error = ''; all = []; cur = null; renderFlow();
     const add = (name, fn) => fn().then(r => { all.push(...r.filter(g => g && g.seats)); }, e => { if (name !== 'net') error += (error ? ' ' : '') + `${name}: ${e.message || e}`; });
     await Promise.all([
-      add('net', async () => { const r = await fetch('nn/games.json', { cache: 'no-cache' }); return r.ok ? parseAny(await r.json(), 'Network') : []; }),
+      add('net', async () => { const r = await fetch('nn/games.json', { cache: 'no-cache' }); return r.ok ? parseAny(await r.json(), 'Network').map(g => Object.assign(g, { kind: 'network', auto: false, dbpath: '', raw: null })) : []; }),
       add('Bot tests', async () => Object.values(await Sync.adminList('bottests')).map(r => fromDump(JSON.parse(r.game), `${r.test} (${r.rating}/5)`, 'test', r.at))),
       add('Players\' games', async () => Object.entries(await Sync.adminList('gameRecords')).map(([id, r], k) => fromRecord(r, 'Game ' + (k + 1), id)))
     ]);
-    number(); all.forEach(g => { if (g.kind === 'players') g.title = 'Game ' + g.no; else if (g.kind === 'network') g.title = 'Network game ' + g.no; });
+    number(); all.forEach(g => { if (g.kind === 'players') g.title = 'Game ' + g.no; else if (g.kind === 'network' && /^Network game/.test(g.title)) g.title = 'Network game ' + g.no; });
     loading = false; renderFlow();
   }
   function useFile(text, name) {

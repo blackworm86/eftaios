@@ -49,3 +49,6 @@ suite runs always pass it. Raw JSON stays in `tools/rounds/` and is gitignored; 
 paired A/B comparisons and keep the map split fixed.
 
 `node tools/yardstick.js out.json... --out report.txt` is the Phase 0 report (per size and level, cards played, ladder, bunching, turn time).
+
+## nn-games.js
+`node tools/serve.js &  node tools/nn-games.js` plays 30 games with the network bots (nn/net.json) in the real app and writes them to `nn/games.json`, which Admin > Games > Network shows (all seats network, network Humans against Hard Aliens, Hard Humans against network Aliens).

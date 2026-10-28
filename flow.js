@@ -71,7 +71,7 @@ function renderFlow() {
   if ((!st || st === 'welcome') && Sync.registered && Sync.watchInbox) Sync.watchInbox();
   const ver = document.getElementById('ver'); if (ver) ver.hidden = true;   // the version shows at the foot of the Library tab
   const tab = TAB_OF[st || 'welcome'];
-  card.className = 'setup-card' + (tab ? ' top tab' : ['stats', 'account'].includes(st) ? ' top' : '');
+  card.className = 'setup-card' + (tab ? ' top tab' : ['stats', 'account'].includes(st) ? ' top' : '') + (st === 'admin' && T.adminTab === 'games' ? ' wide' : '');
   if (st === 'host') {
     h = `${fhead(t('Create a game'))}${Sync.registered ? '' : nameField()}${seg('vis', ['public', 'friends'].includes(S.vis) ? S.vis : 'private')}${mapSelect(tableMaps(), S.mapId || 'galilei')}${seg('mode', modeOf(S.mode))}${seg('max', String(S.max || 8))}${seg('fill', S.fill || '')}
       <button class="btn primary big wide" data-act="hostcreate">${t('Create game')}</button>${flowStatus()}`;

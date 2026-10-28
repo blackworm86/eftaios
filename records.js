@@ -20,7 +20,7 @@ const Records = (() => {
   function build(g) {
     const idx = Object.fromEntries(g.seats.map((s, i) => [s.id, i])), out = new Set(g.seats.map((s, i) => (s.share === false ? i : -1)).filter(i => i >= 0));
     const seats = g.seats.map(s => s.share === false ? { kind: 'human', optout: 1 } : { kind: s.bot || 'human', role0: s.role0, role: s.role, char: s.char || '', over: s.over || null, items: s.items || [], ab: s.ab || {},
-      route: (s.path || []).map(p => p.turn + ':' + p.pos + (p.note ? ':' + p.note[0] : '')).join(',') });
+      route: (s.path || []).map(p => p.turn + ':' + p.pos + (p.note || p.star ? ':' + (p.note ? p.note[0] : '') + (p.star ? '*' : '') : '')).join(',') });   // * = a Character power was used here
     const log = (g.log || []).slice().reverse().filter(e => e.kind !== 'info' && !out.has(idx[e.by])).map(e => ({ t: e.turn, s: idx[e.by] === undefined ? -1 : idx[e.by], k: e.kind, x: String(e.text || ''), c: e.sector || '', n: e.n || 0, ok: e.ok ? 1 : 0 }));
     const r = g.result, result = r && { aliensWin: !!r.aliensWin, reason: r.reason, escaped: (r.escaped || []).map(n => g.seats.findIndex(s => s.name === n || s.id === n)).filter(i => i >= 0) };   // who escaped, by seat number
     return { mode: g.mode, map: g.map, turns: g.turn, result: result || null, seats, log };

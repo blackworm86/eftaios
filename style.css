@@ -1169,29 +1169,59 @@ ul.log li u,.sheet .c[data-act]{text-decoration:underline;text-decoration-thickn
 #flow-card>.btn.primary.wide+.setrow{margin-top:18px}
 
 /* game viewer (Admin > Games) */
+.setup-card.wide{width:min(1180px,100%)}
+.vw-top{display:flex;gap:8px;margin-bottom:6px}.vw-top .btn{flex:1}
+.vw-meta{line-height:1.5;font-size:14px}
+.vw-hu{color:#7dd3a8}.vw-al{color:#ff7a70}
+.vw-main{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){.vw-main{grid-template-columns:minmax(0,1.5fr) minmax(330px,1fr);align-items:start}.vw-stage{position:sticky;top:0}}
 .vw-wrap{position:relative;border-radius:12px;overflow:hidden;background:#0b1120}
-.vw-svg{width:100%;height:auto;aspect-ratio:23/14;display:block;touch-action:none;cursor:grab;user-select:none}
+.vw-svg{width:100%;height:auto;display:block;touch-action:none;cursor:grab;user-select:none}
 .vw-zoom{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px}
 .vw-zoom .btn{min-height:40px;min-width:40px;padding:0;font-size:20px;line-height:1}
 .vw-n{fill:#fff;font:700 14px var(--font);text-anchor:middle;pointer-events:none}
 .vw-id{fill:#000;opacity:.55;font:600 6.5px var(--mono);text-anchor:middle;pointer-events:none}
-.vw-t,.vw-x{font-family:var(--font);font-weight:700;text-anchor:middle;pointer-events:none}
+.vw-t,.vw-x,.vw-pill,.vw-lab{font-family:var(--font);font-weight:700;text-anchor:middle;pointer-events:none}
+.vw-lab{font-size:9px;paint-order:stroke;stroke:#000;stroke-width:2px}
 .vw-x{fill:#fff}
-.vw-noise{fill:none;stroke:#fff;stroke-width:2.5;opacity:.9}
-.vw-att{fill:none;stroke:#ff3b30;stroke-width:3.5}
-.vw-bar{display:flex;gap:8px;align-items:center;margin:8px 0 0}
+.vw-bar{display:flex;gap:8px;align-items:center;margin:0}
+.vw-bar .btn{min-width:46px;padding:0 10px}
 .vw-bar input[type=range]{flex:1;min-height:44px}
 .vw-turn{margin:2px 0 8px;font-size:18px;text-align:center}
-.vw-key{font-size:13px;line-height:1.45}
+.vw-lay{margin:6px 0}.vw-lay summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:700}
+.vw-layers{display:flex;flex-wrap:wrap;gap:4px 14px;margin:4px 0}
+.vw-tg{display:flex;align-items:center;gap:6px;font-size:14px;min-height:36px;cursor:pointer}
+.vw-tg input{width:20px;height:20px}
+.vw-legend{font-size:13px;line-height:1.7;margin:4px 0}.vw-legend summary{cursor:pointer;min-height:36px;display:flex;align-items:center;color:var(--dim)}
+.vw-key{display:inline-block;padding:0 6px;border-radius:6px;color:#111;font-weight:700;font-size:12px}
 .vw-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.vw-tabs{margin-bottom:10px;overflow-x:auto}.vw-tabs button{flex:1 0 auto}
 .vw-pl,.vw-ev{list-style:none;padding:0;margin:0}
-.vw-pl{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.vw-p{padding:8px 10px;border:1.5px solid var(--line,#2a3550);border-radius:10px;font-size:15px;cursor:pointer;line-height:1.35}
-.vw-p.on{border-color:var(--amber,#ffb41f);background:#ffb41f1f}
-.vw-p small{color:var(--dim);font-size:12.5px}
-.vw-al{color:#ff7a70!important}
-.vw-ev{font-size:14px}
-.vw-ev li{padding:5px 0;border-bottom:1px solid #ffffff10}
+.vw-pl{display:grid;gap:6px}
+.vw-p{padding:8px 10px;border:1.5px solid var(--line,#2a3550);border-radius:10px;font-size:15px;cursor:pointer;line-height:1.4}
+.vw-p.on,.vw-chip.on{border-color:var(--amber,#ffb41f);background:#ffb41f1f}
+.vw-p small{color:var(--dim);font-size:12.5px}.vw-nums{display:block;margin-top:2px}
+.vw-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.vw-chip{display:inline-flex;align-items:center;padding:6px 10px;border:1.5px solid var(--line,#2a3550);border-radius:999px;font-size:14px;cursor:pointer;min-height:36px}
+.vw-chips.src .btn{min-height:40px;padding:6px 12px}.vw-chips.src small{opacity:.7;margin-left:4px}
+.vw-note{font-size:13px;margin:4px 0 8px}
+.vw-ev{font-size:14px}.vw-ev li{padding:6px 0;border-bottom:1px solid #ffffff10}
+.vw-log{max-height:60vh;overflow:auto}.vw-log li{cursor:pointer}.vw-log small{color:var(--dim);display:inline-block;min-width:34px}
+.vw-dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px;margin:0 0 12px}.vw-dl dt{color:var(--dim)}.vw-dl dd{margin:0}
+.vw-scroll{overflow-x:auto}.vw-tab{border-collapse:collapse;width:100%;font-size:13.5px}.vw-tab th,.vw-tab td{padding:6px 8px;text-align:left;border-bottom:1px solid #ffffff14;white-space:nowrap}.vw-tab tr.on{background:#ffb41f1f}.vw-tab tbody tr{cursor:pointer}
+.vw-tls{display:grid;gap:4px;max-height:60vh;overflow:auto}
+.vw-tl{display:flex;gap:10px;align-items:center;min-height:40px;padding:4px 10px;border:1px solid var(--line,#2a3550);border-radius:10px;background:none;color:var(--text);text-align:left;cursor:pointer}
+.vw-tl.on{border-color:var(--amber,#ffb41f);background:#ffb41f1f}.vw-tl b{min-width:26px}.vw-tl span{display:flex;flex-wrap:wrap;gap:4px}
+.vw-tl i{font-style:normal;font-size:12px;padding:1px 7px;border-radius:999px;background:#ffffff1a}.vw-tl .a{background:#ef444455}.vw-tl .c{background:#f59e0b55}.vw-tl .r{background:#fde04755}.vw-tl .o{background:#111}.vw-tl .e{background:#34d39955}
+.vw-badge{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:#ffffff1f;vertical-align:middle;letter-spacing:.03em}
+.vw-row .who .vw-badge{display:inline-block;width:auto}
+.vw-badge.people,.vw-badge.t-players{background:#22c55e44}.vw-badge.t-test{background:#f59e0b44}.vw-badge.t-network{background:#60a5fa44}.vw-badge.t-file{background:#a78bfa44}
+.vw-filters{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0 10px}
+@media (min-width:700px){.vw-filters{grid-template-columns:repeat(4,1fr)}}
+.vw-sel{display:flex;flex-direction:column;gap:2px}.vw-sel small{color:var(--dim);font-size:12px}.vw-sel select{min-height:42px}
+.vw-row{cursor:pointer;display:flex;align-items:center;gap:12px}.vw-row .who{flex:1;min-width:0}.vw-row small{display:block}
+.vw-no{font:700 15px var(--mono);color:var(--dim);min-width:44px}
+.vw-pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}.vw-pager .btn{min-width:48px}
 .vw-file{cursor:pointer;text-align:center}
 /* game page: the code card holds the three actions in one even row; bots and shuffle sit under the players */
 #flow-card .roomcard{display:block;padding:12px 14px}

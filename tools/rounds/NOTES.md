@@ -435,3 +435,6 @@ Full tables: `nn-v2-matrix.report.txt` (the network decides everything it was tr
 
 ## RL from the distilled network, iteration 234 (72 games per cell, rolemix, seed 4402; `rl234.report.txt`)
 Network Humans vs Hard Aliens escape 22 / 22 / 20% at 4 / 6 / 8 players (distilled: 28 / 30 / 29); network Aliens vs Hard Humans win 38 / 50 / 81% (distilled: 32 / 39 / 51) but attack 0.67 / 0.31 / 0.07 per turn (distilled 0.17 / 0.12 / 0.09). The RL is drifting: Humans weaker, Aliens attacking more at 4 players.
+
+## RL with the pull towards the Hard copy, best network at iteration 250 (72 games per cell, rolemix, seed 4402; `rl250.report.txt`)
+Network Humans vs Hard Aliens escape 34 / 28 / 33% at 4 / 6 / 8 players (distilled copy: 28 / 30 / 29; the drifted run at iteration 234: 22 / 22 / 20); network Aliens vs Hard Humans win 39 / 32 / 69% (distilled: 32 / 39 / 51), attacks 0.21 / 0.08 / 0.05 per turn (the drifted run: 0.67 / 0.31 / 0.07). No drift; any gain is inside the +-10 point noise. In training the check against the Python Hard copy said +17.9 points, far more than the real Hard bot shows: part of that may be the network exploiting the Python copy.

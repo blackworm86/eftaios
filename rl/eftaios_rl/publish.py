@@ -65,7 +65,7 @@ def download_update(root):
     req = urllib.request.Request(API + "/repos/%s/zipball/main" % REPO, headers={"Authorization": "Bearer " + token(), "User-Agent": "eftaios-nn"} if token() else {"User-Agent": "eftaios-nn"})
     with urllib.request.urlopen(req, timeout=120) as r:
         z = zipfile.ZipFile(io.BytesIO(r.read()))
-    n = 0
+    n, kept = 0, set()
     for name in z.namelist():
         parts = name.split("/", 2)  # <repo-and-commit>/rl/<file>
         if len(parts) < 3 or parts[1] != "rl" or name.endswith("/") or parts[2].split("/")[0] in ("runs", "settings", ".venv", "__pycache__"):
@@ -73,7 +73,12 @@ def download_update(root):
         dest = os.path.join(root, *parts[2].split("/"))
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         open(dest, "wb").write(z.read(name))
+        kept.add(os.path.abspath(dest))
         n += 1
+    for folder, _, names in os.walk(os.path.join(root, "data")):   # a recording or data file removed on GitHub must not stay behind (the trainer reads every file in data/teacher)
+        for f in names:
+            if os.path.abspath(os.path.join(folder, f)) not in kept:
+                os.remove(os.path.join(folder, f))
     return n
 
 

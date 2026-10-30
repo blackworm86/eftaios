@@ -43,6 +43,22 @@ def test_final_rewards_follow_the_rules():
     assert e.final_rewards() == [1.0, -1.0, -1.0, 1.0], e.final_rewards()
 
 
+def test_a_killed_human_is_closed_with_a_loss():
+    segs = {1: [[{"r": 0.1}, {"r": 0.2}]], 2: [[{"r": 0.3}]]}
+    log = [{"kind": "out", "seat": 1, "text": "killed|human|Medic"}, {"kind": "out", "seat": 2, "text": "killed|alien|Fast Alien"}, {"kind": "noise", "seat": 1, "text": ""}]
+    assert rollout._close_killed(log, 0, segs) == 3
+    assert [x["r"] for x in segs[1][0]] == [0.1, 0.2 - 1.0] and segs[1][1] == [], segs[1]   # the loss lands on the last Human decision; an Alien list follows
+    assert segs[2] == [[{"r": 0.3}]]   # an Alien killed by another Alien is not a Human's death
+    assert rollout._close_killed(log, 3, segs) == 3 and len(segs[1]) == 2   # nothing is counted twice
+
+
+def test_games_with_kills_train_without_error():
+    cfg, w = _cfg(), hardcopy.weights("/nonexistent")
+    rollout.init_worker()
+    data, st = rollout.collect((cfg, w, [], w, 600, 11))
+    assert st["games"] > 0 and len(data["adv"]) > 0 and np.isfinite(data["adv"]).all() and np.isfinite(data["ret"]).all()
+
+
 def test_pull_is_zero_for_the_same_network_and_positive_for_another():
     w = hardcopy.weights("/nonexistent")
     net, ref = Net(64, 4), Net(64, 4)

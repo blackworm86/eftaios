@@ -49,6 +49,17 @@ def _choose_mode(rng, cfg, has_pool):   # has_pool: kept for the callers; the Ha
     return "self"
 
 
+def _close_killed(log, seen, segs):
+    """A Human killed by the Aliens has lost, whatever the Aliens do next: its last Human decision gets the loss and the seat goes on as an Alien in a new list.
+    Looks at the log entries from `seen` on; returns the new `seen`."""
+    for e in log[seen:]:
+        j = e["seat"]
+        if e["kind"] == "out" and e["text"].startswith("killed|human") and j in segs and segs[j][-1]:
+            segs[j][-1][-1]["r"] -= env_mod.REWARD["win"]
+            segs[j].append([])
+    return len(log)
+
+
 def collect(job):
     """job = (cfg, weights, pool_weights, teacher_weights, target_decisions, seed). Returns arrays for training and some statistics.
     Opponents in a game against others: the Hard copy (cfg teacher_share of the time) or one of the saved checkpoints."""
@@ -89,12 +100,7 @@ def collect(job):
                 env.act(scr[seat].act(env))
             else:
                 env.act(net_act(c[1], ob)[0])
-            for e in env.g.log[seen:]:
-                j = e["seat"]
-                if e["kind"] == "out" and e["text"].startswith("killed|human") and j in segs and segs[j][-1]:
-                    segs[j][-1][-1]["r"] -= env_mod.REWARD["win"]   # killed by the Aliens: this Human has lost, whatever the Aliens do next
-                    segs[j].append([])
-            seen = len(env.g.log)
+            seen = _close_killed(env.g.log, seen, segs)
         fr = env.final_rewards()
         stats["games"] += 1
         stats["aliens_win"] += int(env.g.result["aliens_win"])

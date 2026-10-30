@@ -523,14 +523,15 @@ const Bot = (() => {
       let best = null; for (let c = 0; c < g.N; c++) { if (g.isHatch(c) || g.isStart(c)) continue; let s = W.alienOcc[c]; g.nb[c].forEach(j => { s += W.alienOcc[j]; }); if (!best || s > best.s) best = { c, s }; }
       if (best && best.s >= sk.spotAt) { tr({ k: 'spot', c: g.ids[best.c] }); useItem('spotlight'); await ctx.spotlight(g.ids[best.c]); refresh(); }
     }
+    const gone = id => H.log.some(e => e.kind === 'out' && e.by === id && !String(e.text).startsWith('killed|human'));   // out of the game: no use as a target
     // Sensor on the player most likely to be an Alien whose whereabouts are least clear
     if (human && useCap && ctx.sensor && st.items.includes('sensor') && (lvl === 'hard' || rnd() < 0.5)) {
-      let best = null; W.live.forEach(b => { const v = b.pA * (1 - Math.max(...b.dA)); if (!best || v > best.v) best = { b, v }; });
+      let best = null; W.live.filter(b => !gone(b.id)).forEach(b => { const v = b.pA * (1 - Math.max(...b.dA)); if (!best || v > best.v) best = { b, v }; });
       if (best && best.v >= sk.sensorAt) { tr({ k: 'sens', j: seatOf(best.b.id) }); useItem('sensor'); await ctx.sensor(best.b.id); refresh(); }
     }
     // Medic: make the most doubtful player show who they are (and show who I am)
     if (human && useCap && ctx.medic && canPower('Medic') && H.turn >= 3 && (lvl === 'hard' || rnd() < 0.5)) {
-      let best = null; W.live.forEach(b => { const v = Math.min(b.pA, 1 - b.pA); if (!best || v > best.v) best = { b, v }; });
+      let best = null; W.live.filter(b => !gone(b.id)).forEach(b => { const v = Math.min(b.pA, 1 - b.pA); if (!best || v > best.v) best = { b, v }; });
       if (best && best.v >= 0.3) { tr({ k: 'med', j: seatOf(best.b.id) }); usePower('Medic'); say({ kind: 'reveal', text: 'Id|' + st.role + '|' + (st.char || '') }); await ctx.medic(best.b.id); refresh(); }
     }
     // the trained network, when this seat is one (null answers fall back to the rules)

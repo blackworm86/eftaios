@@ -76,7 +76,7 @@ players' real routes, their roles and the result, and a slider to replay it turn
 `rl\data\teacher\`; the files arrive with item 8. Press `9`: the recordings are replayed once in the full rules (about 10 minutes; kept for next time), then a fresh network is taught to choose what the Hard bot chose,
 round after round (20 rounds, about 1 to 2 hours on the GPU). Each line shows how often the network picks the Hard bot's action on games it has not seen: moves, attacks, decoys, Items and powers, and their targets.
 Your previous training is kept in a folder named `runs\main-before-distil-...`. When it ends, the new network is sent to GitHub by itself, and I measure it.
-Do not start the normal training (`1`) until I say so: after this step it continues from the new network.
+When it ends, press `1`: the training continues from the new network, kept close to it (see item 10).
 
 **Restart the training from the Hard copy (item 10):** the training that follows item 9 slowly drifted away from the Hard bot (the Humans got weaker, the Aliens attacked
 more). Item 10 starts a new one that stays close to it: the network is pulled towards the Hard copy, it plays against the Hard copy and its own recent versions

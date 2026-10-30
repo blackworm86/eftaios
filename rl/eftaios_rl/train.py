@@ -159,10 +159,11 @@ def main(argv=None):
     if fresh:   # a new run always starts from the Hard copy
         net.load_state_dict(teacher_w)
         torch.save(teacher_w, os.path.join(run_dir, "pool", "teacher.pt"))
-        torch.save({"net": teacher_w, "it": 0, "cfg": cfg}, os.path.join(run_dir, "best.pt"))
-        json.dump({"avg": 0.0, "it": 0}, open(os.path.join(run_dir, "best.json"), "w"))
         fresh = False
         log(run_dir, "a new run, starting from the Hard copy (the pull towards it starts at %.2f, only the critic learns for %d iterations)" % (cfg["kl"], cfg["value_warmup"]))
+    if not os.path.exists(os.path.join(run_dir, "best.pt")):   # the network sent to the repository can never be worse than where this run started
+        torch.save({"net": cpu_weights(net), "it": it, "cfg": cfg}, os.path.join(run_dir, "best.pt"))
+        json.dump({"avg": 0.0, "it": it}, open(os.path.join(run_dir, "best.json"), "w"))
     try:
         best = json.load(open(os.path.join(run_dir, "best.json")))
     except (OSError, ValueError):

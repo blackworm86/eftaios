@@ -1,8 +1,0 @@
-lane2 skill {"hard":{"laneW":2}}
-┌─────────┬────────┬───────┬──────────┬────────────┬────────┬────────┬─────────┬──────────────┬───────────────┬───────────────┬────────────┬────────────┬──────────────┬──────────────┐
-│ (index) │ level  │ games │ alienWin │ escapeRate │ turns  │ kills  │ attacks │ alienHitRate │ alienMoveRate │ humanMoveRate │ alienCycle │ humanCycle │ alienMaxStay │ humanMaxStay │
-├─────────┼────────┼───────┼──────────┼────────────┼────────┼────────┼─────────┼──────────────┼───────────────┼───────────────┼────────────┼────────────┼──────────────┼──────────────┤
-│ 0       │ 'hard' │ 32    │ '50.0%'  │ '41.4%'    │ '20.3' │ '3.03' │ '13.19' │ '22.7%'      │ '100.0%'      │ '100.0%'      │ '0.8%'     │ '2.6%'     │ '0.0'        │ '0.0'        │
-└─────────┴────────┴───────┴──────────┴────────────┴────────┴────────┴─────────┴──────────────┴───────────────┴───────────────┴────────────┴────────────┴──────────────┴──────────────┘
-cycle = share of moves that go back to the sector of two moves before (A-B-A shuffling); target: low
-maxStay = longest run of turns in the same sector; compare with humanMaxStay (secure sectors are fine)

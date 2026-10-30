@@ -116,7 +116,7 @@ class Teacher:
         return np.unpackbits(self.mask_bits[k])[:N_CELLS].astype(bool)
 
     def batch(self, idx):
-        """Arrays for the network, in the order bc_update reads them."""
+        """Arrays for the network, in the order distill.py reads them."""
         return {"dyn": np.stack([self.dyn(k) for k in idx]), "glob": self.glob[idx].astype(np.float32), "priv": self.priv[idx].astype(np.float32),
                 "phase": self.phase[idx], "me": self.me[idx], "mask": np.stack([self.mask(k) for k in idx]), "action": self.action[idx],
                 "ret": self.ret[idx], "map": self.map[idx]}

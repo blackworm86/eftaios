@@ -68,18 +68,8 @@ def summary(run_dir):
             out.append("The network sent to the repository is the best one so far: iteration %d (gain %+.1f)." % (b["it"], b["avg"]))
         except (OSError, ValueError):
             pass
-    elif len(ev) >= 4:
-        last, prev = ev[-15:], ev[-30:-15]
-        out += ["", "## Evaluation against simple rule-based players (average of the last %d evaluations)" % len(last), "",
-                "| | network | rule-based players | change since the 15 before |", "|---|---|---|---|"]
-        for name, c in (("Humans (team win %)", 1), ("Aliens (team win %)", 3)):
-            d = "%+.1f" % (_avg(last, c) - _avg(prev, c)) if prev else "n/a"
-            out.append("| %s | %.1f | %.1f | %s |" % (name, _avg(last, c), _avg(last, c + 1), d))
-        if prev:
-            moved = abs(_avg(last, 1) - _avg(prev, 1)) + abs(_avg(last, 3) - _avg(prev, 3))
-            out += ["", "Verdict: " + ("still improving" if moved > 4 else "flat: it has stopped getting better with this setup")]
     else:
-        out += ["", "Not enough evaluations yet (one is made every %s iterations)." % cfg.get("eval_every", 10)]
+        out += ["", "Not enough evaluations yet (one is made every %s iterations)." % cfg.get("eval_every", 20)]
     tail = _read(os.path.join(run_dir, "train.log")).splitlines()[-8:]
     out += ["", "## Last log lines", "", "```"] + tail + ["```"]
     return "\n".join(out) + "\n"

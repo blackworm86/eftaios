@@ -1,7 +1,0 @@
-pot=2
-alien moves 5303  avg options 8.4
-a Human stands in some option: 16.3% (the ceiling)
-random option holds a Human:   2.5%
-chosen option holds a Human:   3.7%
-best-by-belief (pred) option:   6.2%
-best-by-next (humans arriving) option: 2.1%

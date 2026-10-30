@@ -101,7 +101,7 @@ def cmd_restart():
             shutil.copy(os.path.join(aside, "pool", "teacher.pt"), os.path.join(RUN, "pool", "teacher.pt"))
         except OSError:
             pass
-    return cmd_train(["--init-hardcopy"])
+    return cmd_train()
 
 
 def cmd_distil():

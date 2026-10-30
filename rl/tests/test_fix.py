@@ -105,7 +105,7 @@ def test_the_check_against_the_hard_copy_runs():
 
 def test_a_small_run_from_the_hard_copy():
     d = tempfile.mkdtemp()
-    rc = train.main(["--run", "t", "--runs-dir", d, "--smoke", "--init-hardcopy", "--max-iters", "3"])
+    rc = train.main(["--run", "t", "--runs-dir", d, "--smoke", "--max-iters", "3"])
     run = os.path.join(d, "t")
     log = open(os.path.join(run, "train.log")).read()
     assert rc == 0 and os.path.exists(os.path.join(run, "best.pt")) and "starting from the Hard copy" in log and "kl to the Hard copy" in log and "EVAL it" in log, log[-600:]

@@ -1,9 +1,0 @@
-[
-  { "tag": "base", "skill": {} },
-  { "tag": "hc1.0_cap2", "skill": { "hard": { "humanCal": 1.0, "allyCap": 2 } } },
-  { "tag": "hc1.0_cap3", "skill": { "hard": { "humanCal": 1.0, "allyCap": 3 } } },
-  { "tag": "hc1.0_cap5", "skill": { "hard": { "humanCal": 1.0, "allyCap": 5 } } },
-  { "tag": "hc1.2_cap3", "skill": { "hard": { "humanCal": 1.2, "allyCap": 3 } } },
-  { "tag": "hc1.2_cap5", "skill": { "hard": { "humanCal": 1.2, "allyCap": 5 } } },
-  { "tag": "hc1.0_cap3_atk1.2", "skill": { "hard": { "humanCal": 1.0, "allyCap": 3, "attackAt": 1.2 } } }
-]

@@ -1,4 +1,4 @@
-"""Autonomous self-play training (PPO with a centralised critic).
+"""Autonomous training from the Hard copy (PPO with a centralised critic, kept close to the Hard copy by a KL penalty).
 
     python -m eftaios_rl.train --run main            # start or resume (runs until a file named STOP appears in runs/main/)
     python -m eftaios_rl.train --run test --smoke    # a tiny end-to-end check (a few minutes at most)
@@ -27,7 +27,7 @@ DEFAULT = dict(
     hid=64, layers=4, players=[3, 4, 5, 6, 7, 8], gamma=0.99, lam=0.95,
     workers=0,                # 0 = number of CPU cores - 1
     decisions_per_iter=24000, epochs=2, minibatch=256, lr=3e-5, clip=0.1, vf=0.5, ent=0.002, ent_end=0.002, ent_iters=400,
-    bc_iters=12, bc_epochs=2, bc_lr=1e-3, lr_after_bc=1e-4, p_scripted=0.0, p_pool=0.5, teacher_share=0.6, pool_every=10, pool_size=4, eval_every=20, eval_games=240, max_iters=0, publish_hours=3,
+    p_pool=0.5, teacher_share=0.6, pool_every=10, pool_size=4, eval_every=20, eval_games=240, max_iters=0, publish_hours=3,
     kl=0.1, kl_end=0.02, kl_iters=500,   # the pull towards the Hard copy, and how fast it relaxes
     value_warmup=15,                     # iterations at the start in which only the critic learns
 )
@@ -102,34 +102,6 @@ def kl_to(logits, ref, dyn, stat, adj, glob, priv, phase, me, mask):
     return torch.where(mask, lp.exp() * (lp - rp), torch.zeros_like(lp)).sum(1).mean()
 
 
-def bc_update(net, opt, data, boards, ids, device, cfg):
-    """Imitate the rule-based players: cross-entropy on their actions, plus the critic on the final results."""
-    tot = {"ce": 0.0, "acc": 0.0, "n": 0}
-    for _ in range(cfg["bc_epochs"]):
-        batches = []
-        for m in np.unique(data["map"]):
-            idx = np.flatnonzero(data["map"] == m)
-            np.random.shuffle(idx)
-            batches += [(int(m), idx[i:i + cfg["minibatch"]]) for i in range(0, len(idx), cfg["minibatch"])]
-        random.shuffle(batches)
-        for m, idx in batches:
-            stat, adj = boards.get(ids[m])
-            t = lambda k, dt=None: (torch.from_numpy(data[k][idx]).to(device) if dt is None else torch.from_numpy(data[k][idx]).to(device).to(dt))
-            logits, value = net(t("dyn").float() / 255.0, stat, adj, t("glob"), t("priv"), t("phase", torch.long), t("me", torch.long), t("mask"))
-            act = t("action", torch.long)
-            ce = torch.nn.functional.cross_entropy(logits, act)
-            loss = ce + 0.5 * ((value - t("ret").float()) ** 2).mean()
-            opt.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
-            opt.step()
-            tot["ce"] += float(ce.detach())
-            tot["acc"] += float((logits.argmax(1) == act).float().mean().detach())
-            tot["n"] += 1
-    n = max(1, tot["n"])
-    return tot["ce"] / n, tot["acc"] / n
-
-
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="main")
@@ -137,14 +109,13 @@ def main(argv=None):
     ap.add_argument("--smoke", action="store_true", help="tiny settings, to check that everything works")
     ap.add_argument("--workers", type=int, default=0)
     ap.add_argument("--max-iters", type=int, default=0)
-    ap.add_argument("--init-hardcopy", action="store_true", help="a new run starts from the Hard copy (no imitation of the rule-based players)")
     args = ap.parse_args(argv)
 
     run_dir = os.path.abspath(os.path.join(args.runs_dir, args.run))
     os.makedirs(os.path.join(run_dir, "pool"), exist_ok=True)
     cfg = dict(DEFAULT)
     if args.smoke:
-        cfg.update(bc_iters=1, decisions_per_iter=600, epochs=1, minibatch=64, eval_every=2, eval_games=2, max_iters=2, pool_every=1, players=[3, 4])
+        cfg.update(decisions_per_iter=600, epochs=1, minibatch=64, eval_every=2, eval_games=2, max_iters=2, pool_every=1, players=[3, 4])
     cfg_path = os.path.join(run_dir, "config.json")
     if os.path.exists(cfg_path):  # a resumed run keeps its own settings
         cfg.update(json.load(open(cfg_path)))
@@ -185,7 +156,7 @@ def main(argv=None):
     ref.eval()
     for p_ in ref.parameters():
         p_.requires_grad_(False)
-    if fresh and args.init_hardcopy:
+    if fresh:   # a new run always starts from the Hard copy
         net.load_state_dict(teacher_w)
         torch.save(teacher_w, os.path.join(run_dir, "pool", "teacher.pt"))
         torch.save({"net": teacher_w, "it": 0, "cfg": cfg}, os.path.join(run_dir, "best.pt"))
@@ -202,19 +173,6 @@ def main(argv=None):
     pool = ctx.Pool(cfg["workers"], initializer=rollout.init_worker)
     t_start = time.time()
     try:
-        if fresh and cfg["bc_iters"] > 0:  # first teach it the rule-based style; self-play then improves on it
-            bc_opt = torch.optim.Adam(net.parameters(), lr=cfg["bc_lr"])
-            for k in range(cfg["bc_iters"]):
-                t0 = time.time()
-                per = max(1, cfg["decisions_per_iter"] // cfg["workers"])
-                parts = pool.map(rollout.collect_bc, [(cfg, per, random.getrandbits(32)) for _ in range(cfg["workers"])])
-                data = {key: np.concatenate([p_[key] for p_ in parts]) for key in parts[0]}
-                net.train()
-                ce, acc = bc_update(net, bc_opt, data, boards, ids, device, cfg)
-                net.eval()
-                log(run_dir, "imitation %d/%d: %d decisions, cross-entropy %.3f, same action as the rule-based player %.0f%% (%.0fs)" % (k + 1, cfg["bc_iters"], len(data["action"]), ce, 100 * acc, time.time() - t0))
-            for g in opt.param_groups:
-                g["lr"] = cfg["lr_after_bc"]
         while True:
             if os.path.exists(os.path.join(run_dir, "STOP")):
                 log(run_dir, "STOP file found: finishing")

@@ -1,6 +1,6 @@
 """Self-play game collection (runs in worker processes, CPU only).
 
-Each game is played by the current policy, older checkpoints and rule-based players in a mix; only the decisions of seats played by the
+Each game is played by the current policy, the Hard copy and older checkpoints in a mix; only the decisions of seats played by the
 current policy are kept for training. Advantages are worked out per seat at the end of each game (GAE).
 """
 import random
@@ -11,7 +11,6 @@ from torch.distributions import Categorical
 
 from . import env as env_mod
 from . import maps as maps_mod
-from . import scripted
 from .model import BoardCache, Net, pack
 
 _W = {}
@@ -41,12 +40,7 @@ def net_act(net, ob, sample=True):
 
 
 def _choose_mode(rng, cfg, has_pool):   # has_pool: kept for the callers; the Hard copy is always there
-    r = rng.random()
-    if r < cfg["p_scripted"]:
-        return "scripted"
-    if r < cfg["p_scripted"] + cfg["p_pool"]:
-        return "pool"
-    return "self"
+    return "pool" if rng.random() < cfg["p_pool"] else "self"
 
 
 def _close_killed(log, seen, segs):
@@ -76,17 +70,14 @@ def collect(job):
         mid = rng.choice(ids)
         env = env_mod.Env(mid, n, seed=rng.getrandbits(32))
         mode = _choose_mode(rng, cfg, bool(pool))
-        who = []  # per seat: 'cur' | ('pool', net) | 'script'
+        who = []  # per seat: 'cur' | ('pool', net)
         for i in range(n):
             if mode == "self":
                 who.append("cur")
             elif mode == "pool":
                 who.append("cur" if rng.random() < 0.5 else ("pool", teacher if (not pool or rng.random() < cfg["teacher_share"]) else rng.choice(pool)))
-            else:
-                who.append("cur" if rng.random() < 0.5 else "script")
         if "cur" not in who:
             who[0] = "cur"
-        scr = {i: scripted.Scripted(rng.getrandbits(32)) for i in range(n) if who[i] == "script"}
         segs = {i: [[]] for i in range(n) if who[i] == "cur"}   # a seat's decisions; a Human killed by the Aliens starts a new list as an Alien
         seen = 0
         while not env.done:
@@ -96,8 +87,6 @@ def collect(job):
                 a, lp, v = net_act(cur, ob)
                 r = env.act(a)
                 segs[seat][-1].append({"ob": ob, "a": a, "lp": lp, "v": v, "r": r})
-            elif c == "script":
-                env.act(scr[seat].act(env))
             else:
                 env.act(net_act(c[1], ob)[0])
             seen = _close_killed(env.g.log, seen, segs)
@@ -135,64 +124,6 @@ def collect(job):
             stats["decisions"] += len(steps)
     out = {k: (np.stack(v) if k in ("dyn", "glob", "priv", "mask") else np.asarray(v)) for k, v in rows.items()}
     return out, stats
-
-
-def collect_bc(job):
-    """job = (cfg, target_decisions, seed). Rule-based players play every seat; every decision is kept (observation, action taken, final result),
-    to teach the network the rule-based style before self-play starts."""
-    cfg, target, seed = job
-    rng = random.Random(seed)
-    ids = maps_mod.official_ids()
-    rows = {k: [] for k in ("dyn", "glob", "priv", "phase", "me", "mask", "map", "action", "ret")}
-    done = 0
-    while done < target:
-        n = rng.choice(cfg["players"])
-        mid = rng.choice(ids)
-        env = env_mod.Env(mid, n, seed=rng.getrandbits(32))
-        scr = [scripted.Scripted(rng.getrandbits(32)) for _ in range(n)]
-        steps = []
-        while not env.done:
-            seat, ob = env.decision()
-            a = scr[seat].act(env)
-            env.act(a)
-            steps.append((seat, ob, a))
-        fr = env.final_rewards()
-        for seat, ob, a in steps:
-            m = np.zeros(N_CELLS, bool)
-            m[:len(ob["mask"])] = ob["mask"]
-            for k, v in (("dyn", ob["dyn"]), ("glob", ob["glob"]), ("priv", ob["priv"]), ("phase", ob["phase"]), ("me", ob["me"]), ("mask", m),
-                         ("map", ids.index(mid)), ("action", a), ("ret", fr[seat])):
-                rows[k].append(v)
-        done += len(steps)
-    return {k: (np.stack(v) if k in ("dyn", "glob", "priv", "mask") else np.asarray(v)) for k, v in rows.items()}
-
-
-def evaluate(job):
-    """job = (cfg, weights, n_games, seed). The learner plays one side against rule-based players on the other, and the same games are
-    played by rule-based players only. Returns {key: [games, wins]} for keys human, alien, base_human, base_alien ('wins' = that side won)."""
-    cfg, weights, n_games, seed = job
-    rng = random.Random(seed)
-    net = _net(cfg, weights)
-    ids = maps_mod.official_ids()
-    res = {"human": [0, 0], "alien": [0, 0], "base_human": [0, 0], "base_alien": [0, 0]}
-    for _ in range(n_games):
-        n = rng.choice(cfg["players"])
-        mid = rng.choice(ids)
-        s = rng.getrandbits(32)
-        for side in ("human", "alien"):
-            for use_net, key in ((True, side), (False, "base_" + side)):
-                env = env_mod.Env(mid, n, seed=s)
-                scr = {i: scripted.Scripted(rng.getrandbits(32)) for i in range(n)}
-                while not env.done:
-                    seat, ob = env.decision()
-                    if use_net and env.g.seats[seat].role0 == side:
-                        env.act(net_act(net, ob)[0])
-                    else:
-                        env.act(scr[seat].act(env))
-                aw = env.g.result["aliens_win"]
-                res[key][0] += 1
-                res[key][1] += int(aw if side == "alien" else not aw)
-    return res
 
 
 def evaluate_net(job):

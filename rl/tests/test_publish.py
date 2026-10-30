@@ -93,9 +93,9 @@ def test_everything():
         for i in range(1, 41):
             gap = 40000 if i > 20 else 0  # a long stop in the middle of the log must not change the speed
             f.write("%s it %d: 25000 decisions\n" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t + i * 60 + gap)), i))
-    json.dump({"hid": 64, "layers": 4, "workers": 7, "eval_every": 10, "publish_hours": 3}, open(os.path.join(run, "config.json"), "w"))
+    json.dump({"hid": 64, "layers": 4, "workers": 7, "eval_every": 10, "publish_hours": 3, "kl": 0.1}, open(os.path.join(run, "config.json"), "w"))
     text = report.summary(run)
-    assert "Iteration: **40**" in text and "60 seconds per iteration" in text and "still improving" in text, text
+    assert "Iteration: **40**" in text and "60 seconds per iteration" in text and "Gain over the Hard copy" in text and "better than the Hard copy" in text, text
     out = publish.publish_now(run, with_network=False)
     assert all(l.startswith("OK") for l in out) and set(FILES) - {"zip"} == {"nn/status.md", "nn/eval.csv"}, out
     assert ("PUT", "nn/status.md", None) in CALLS  # first time: created

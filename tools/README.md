@@ -52,3 +52,6 @@ paired A/B comparisons and keep the map split fixed.
 
 ## nn-games.js
 `node tools/serve.js &  node tools/nn-games.js` plays 30 games with the network bots (nn/net.json) in the real app and writes them to `nn/games.json`, which Admin > Games > Network shows (all seats network, network Humans against Hard Aliens, Hard Humans against network Aliens).
+
+## rules_audit.py
+`python3 tools/rules_audit.py nn/games.json` checks game records against the rule book (deal, move ranges, start sectors, attacks, safe zones, pods, announcements, end of game) and lists every broken rule. `node tools/nn-games.js out.json --level hard` makes 30 Hard-bot games to audit the app itself.

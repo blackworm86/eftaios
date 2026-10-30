@@ -259,14 +259,16 @@ class Game:
             s.captain_used = True
             self._emit(i, "reveal", None, "Id|human|Captain")
             return self._end_turn()
-        card = (self.script["sector"].pop(0) if self.script else self.sector_deck.draw()) or "silence"
+        raw = self.script["sector"].pop(0) if self.script else self.sector_deck.draw()   # None or "" when the deck is empty
+        card = raw or "silence"
         item = card[5:] if card.startswith("item:") else ""
         if item:
             card = "silence"
         if s.cat:
             item = ""   # a Cat card or the Pilot's power: the item card is lost with the draw
-        if card == "silence" and s.ability == "Psychic Alien":   # also the Silence an Item card counts as
+        if raw == "silence" and s.ability == "Psychic Alien":   # a real Silence card (not an Item card); it goes to the discard pile
             card = "noise-any"
+            self.sector_deck.disc.append("silence")
         if card == "noise-self":
             self.sector_deck.disc.append(card)
             self._emit(i, "noise", s.pos)

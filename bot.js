@@ -619,9 +619,10 @@ const Bot = (() => {
     const cat = netActs ? (post === NN.ACT.CAT ? (canPower('Pilot') ? 'Pilot' : 'cat') : '') : human && useCap && W.risk(here) > (lvl === 'hard' ? 0.1 : 0.16) ? (canPower('Pilot') ? 'Pilot' : may('cat') ? 'cat' : '') : '';
     if (cat) tr({ k: 'cat' });
     if (cat === 'cat') useItem('cat'); else if (cat) usePower('Pilot');
-    let card = ctx.draw('sector') || 'silence'; if (window.__tr) window.__tr.push({ s: idx, k: 'ds', v: card }); const item = card.startsWith('item:') && adv && !cat ? card.slice(5) : '';
+    const drawn = ctx.draw('sector'); let card = drawn || 'silence'; if (window.__tr) window.__tr.push({ s: idx, k: 'ds', v: drawn || '' }); const item = card.startsWith('item:') && adv && !cat ? card.slice(5) : '';
+    // the Psychic Alien: a real Silence card (not an Item card) counts as Noise in Any Sector, and the Silence card goes to the discard pile instead of staying with the player
+    if (!human && adv && ab === 'Psychic Alien' && drawn === 'silence') { card = 'noise-any'; ctx.discard('silence'); usePower('Psychic Alien'); }
     if (card.startsWith('item:')) card = 'silence';
-    if (!human && adv && ab === 'Psychic Alien' && card === 'silence') { card = 'noise-any'; usePower('Psychic Alien'); }   // Silence counts as a noise anywhere
     if (cat && card.startsWith('noise')) {
       const a = card.startsWith('noise-self') ? st.pos : decoy({ cat: true, left: 2 });
       if (!card.startsWith('noise-self')) tr({ k: 'dec', c: a });

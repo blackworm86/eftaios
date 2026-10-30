@@ -30,6 +30,19 @@ def test_the_hard_copy_file_is_inside_the_trainer_folder():
     assert os.path.exists(hardcopy.FILE) and os.path.abspath(hardcopy.FILE).startswith(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))   # the PC holds only rl/
 
 
+def test_final_rewards_follow_the_rules():
+    from eftaios_rl import env as env_mod
+    e = env_mod.Env("galilei", 4, seed=1, roles=["human", "human", "alien", "human"])
+    s = e.g.seats
+    s[0].over = "escaped"                                   # escaped: a winner, even if the Aliens win
+    s[1].role, s[1].reborn = "alien", True                  # killed and now an Alien: plays on with the Aliens (its Human part lost, see rollout.py)
+    e.g.result = {"aliens_win": True, "reason": "eliminated", "escaped": [0]}
+    assert e.final_rewards() == [1.0, 1.0, 1.0, -1.0], e.final_rewards()   # seat 3: a Human still on board at the end has lost
+    e.g.result = {"aliens_win": False, "reason": "escape", "escaped": [0, 3]}
+    s[3].over = "escaped"
+    assert e.final_rewards() == [1.0, -1.0, -1.0, 1.0], e.final_rewards()
+
+
 def test_pull_is_zero_for_the_same_network_and_positive_for_another():
     w = hardcopy.weights("/nonexistent")
     net, ref = Net(64, 4), Net(64, 4)

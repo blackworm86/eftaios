@@ -76,27 +76,35 @@ def collect(job):
         if "cur" not in who:
             who[0] = "cur"
         scr = {i: scripted.Scripted(rng.getrandbits(32)) for i in range(n) if who[i] == "script"}
-        traj = {i: [] for i in range(n) if who[i] == "cur"}
+        segs = {i: [[]] for i in range(n) if who[i] == "cur"}   # a seat's decisions; a Human killed by the Aliens starts a new list as an Alien
+        seen = 0
         while not env.done:
             seat, ob = env.decision()
             c = who[seat]
             if c == "cur":
                 a, lp, v = net_act(cur, ob)
                 r = env.act(a)
-                traj[seat].append({"ob": ob, "a": a, "lp": lp, "v": v, "r": r})
+                segs[seat][-1].append({"ob": ob, "a": a, "lp": lp, "v": v, "r": r})
             elif c == "script":
                 env.act(scr[seat].act(env))
             else:
                 env.act(net_act(c[1], ob)[0])
+            for e in env.g.log[seen:]:
+                j = e["seat"]
+                if e["kind"] == "out" and e["text"].startswith("killed|human") and j in segs and segs[j][-1]:
+                    segs[j][-1][-1]["r"] -= env_mod.REWARD["win"]   # killed by the Aliens: this Human has lost, whatever the Aliens do next
+                    segs[j].append([])
+            seen = len(env.g.log)
         fr = env.final_rewards()
         stats["games"] += 1
         stats["aliens_win"] += int(env.g.result["aliens_win"])
         stats["escaped"] += len(env.g.result["escaped"])
         stats["players"] += n
-        for seat, steps in traj.items():
+        for seat, steps in ((s_, st_) for s_, ss in segs.items() for st_ in ss):
             if not steps:
                 continue
-            steps[-1]["r"] += fr[seat]
+            if steps is segs[seat][-1]:
+                steps[-1]["r"] += fr[seat]
             adv, last = [0.0] * len(steps), 0.0
             for k in range(len(steps) - 1, -1, -1):  # GAE over this seat's own decisions
                 nxt_v = steps[k + 1]["v"] if k + 1 < len(steps) else 0.0

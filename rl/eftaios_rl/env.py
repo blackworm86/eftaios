@@ -138,12 +138,16 @@ class Env:
         return d
 
     def final_rewards(self):
-        """Terminal reward per seat: +1 for the side the seat ends on if it won, -1 otherwise."""
+        """Terminal reward per seat, by the rules: a Human who escaped has won (+1) whatever happens after; a Human still on board at the end has lost
+        (-1); the Aliens, and every seat that ends as an Alien, win together when the last Human on board is eliminated (+1), else lose (-1).
+        A Human killed by the Aliens has lost too: rollout.py ends that seat's Human decisions with -1 when it happens."""
         res = self.g.result
         out = []
         for s in self.g.seats:
-            alien_side = s.role == "alien"
-            out.append(REWARD["win"] if (res["aliens_win"] == alien_side) else -REWARD["win"])
+            if s.role == "alien":
+                out.append(REWARD["win"] if res["aliens_win"] else -REWARD["win"])
+            else:
+                out.append(REWARD["win"] if s.over == "escaped" else -REWARD["win"])
         return out
 
     # ---------------------------------------------------------------- observation

@@ -38,7 +38,7 @@ const ABILITIES = {
   'Invisible Alien': 'Immune to Sensor and Spotlight. Reveals the identity when targeted.',
   'Lurking Alien': 'Can attack in its own sector instead of moving.',
   'Fast Alien': 'Can move up to three sectors on the first move of the game.',
-  'Psychic Alien': 'Draws a Silence card as if it were a Noise in Any Sector.'
+  'Psychic Alien': 'Treats a Silence card as a Noise in Any Sector. The Silence card is discarded.'
 };
 /* the ability a player has right now: none in the Basic game, none for a Human reborn as an Alien */
 const abilOf = (st, mode) => (mode === 'basic' || !st || st.reborn) ? '' : (st.char || '');

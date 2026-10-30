@@ -6,6 +6,7 @@
 const fs = require('fs');
 const B = require('./browser');
 const argv = process.argv.slice(2), OUT = argv[0] && !argv[0].startsWith('--') ? argv[0] : 'nn/games.json', SEED = argv.includes('--seed') ? +argv[argv.indexOf('--seed') + 1] : 1;
+const LEVEL = argv.includes('--level') ? argv[argv.indexOf('--level') + 1] : 'nn';   // another bot level in the place of the network, e.g. hard (for the rules audit)
 const NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], MAPS = ['galilei', 'fermi', 'volta', 'socrates', 'marconi', 'engarde'];
 (async () => {
   const b = await B.launch(), ctx = await b.browser.newContext({ viewport: { width: 900, height: 800 }, serviceWorkers: 'block', locale: 'en-US' });
@@ -15,10 +16,10 @@ const NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], MAPS = ['galilei', 'ferm
   });
   const p = await ctx.newPage(); p.on('pageerror', e => console.log('page error', e.message));
   await p.goto('http://localhost:8123/'); await p.waitForFunction(() => window.Hot && window.NN && T.maps.length > 3);
-  if (!(await p.evaluate(() => NN.load()))) throw new Error('nn/net.json could not be loaded');
+  if (LEVEL === 'nn' && !(await p.evaluate(() => NN.load()))) throw new Error('nn/net.json could not be loaded');
   const plan = [];
-  for (const n of [3, 4, 5, 6, 7, 8]) for (let k = 0; k < 3; k++) plan.push({ n, label: 'every seat is the network', bots: Array(n).fill('nn') });
-  for (const n of [4, 6, 8]) for (let k = 0; k < 2; k++) { plan.push({ n, label: 'network Humans against Hard Aliens', rm: { human: 'nn', alien: 'hard' } }); plan.push({ n, label: 'Hard Humans against network Aliens', rm: { human: 'hard', alien: 'nn' } }); }
+  for (const n of [3, 4, 5, 6, 7, 8]) for (let k = 0; k < 3; k++) plan.push({ n, label: 'every seat is the network', bots: Array(n).fill(LEVEL) });
+  for (const n of [4, 6, 8]) for (let k = 0; k < 2; k++) { plan.push({ n, label: 'network Humans against Hard Aliens', rm: { human: LEVEL, alien: 'hard' } }); plan.push({ n, label: 'Hard Humans against network Aliens', rm: { human: 'hard', alien: LEVEL } }); }
   const out = [];
   for (let i = 0; i < plan.length; i++) {
     const t = plan[i], map = MAPS[(i + SEED) % MAPS.length];

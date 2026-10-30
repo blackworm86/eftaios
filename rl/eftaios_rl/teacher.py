@@ -96,8 +96,9 @@ class Teacher:
 
         g = replay.play(rec, on)
         aw = g.result["aliens_win"]
-        for k in range(first, len(self.sp)):
-            cols["ret"].append(1.0 if (g.seats[cols["seat"][k]].role == "alien") == aw else -1.0)
+        for k in range(first, len(self.sp)):   # the result by the rules, for the side the seat was on at that decision (a killed Human has lost)
+            s = g.seats[cols["seat"][k]]
+            cols["ret"].append((1.0 if aw else -1.0) if cols["role"][k] == 1 else (1.0 if s.over == "escaped" else -1.0))
 
     def __len__(self):
         return len(self.sp)

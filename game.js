@@ -134,7 +134,8 @@ async function drawSector() {
     return pickSector(t('Cat: tap the first sector for your noise'), a => pickSector(t('Cat: tap the second sector'), b => finishTwo(a, b), true), true);
   }
   if (c === 'noise-self') finishCard('noise', S.pos, '', false);
-  else if (c === 'noise-any' || (c === 'silence' && myAbil() === 'Psychic Alien')) pickSector(t('Noise in any sector: tap the sector you announce'), sec => finishCard('noise', sec, '', true), true);
+  else if (rep.card === 'silence' && myAbil() === 'Psychic Alien') { Eng().discard('silence'); pickSector(t('You drew Silence. Psychic Alien: it counts as Noise in Any Sector, and the card is discarded. Tap the sector you announce'), sec => finishCard('noise', sec, '', true), true); }
+  else if (c === 'noise-any') pickSector(t('Noise in any sector: tap the sector you announce'), sec => finishCard('noise', sec, '', true), true);
   else finishCard('silence', null, item, false);
 }
 async function digitalHatch() {

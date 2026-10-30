@@ -438,3 +438,6 @@ Network Humans vs Hard Aliens escape 22 / 22 / 20% at 4 / 6 / 8 players (distill
 
 ## RL with the pull towards the Hard copy, best network at iteration 250 (72 games per cell, rolemix, seed 4402; `rl250.report.txt`)
 Network Humans vs Hard Aliens escape 34 / 28 / 33% at 4 / 6 / 8 players (distilled copy: 28 / 30 / 29; the drifted run at iteration 234: 22 / 22 / 20); network Aliens vs Hard Humans win 39 / 32 / 69% (distilled: 32 / 39 / 51), attacks 0.21 / 0.08 / 0.05 per turn (the drifted run: 0.67 / 0.31 / 0.07). No drift; any gain is inside the +-10 point noise. In training the check against the Python Hard copy said +17.9 points, far more than the real Hard bot shows: part of that may be the network exploiting the Python copy.
+
+## The Hard copy distilled again (item 9 on `hard-c`, corrected Psychic Alien and win/lose scoring; 20 epochs, 63% same move as Hard on unseen games; `hc2.report.txt`)
+Network Humans vs Hard Aliens escape 35 / 27 / 24% at 4 / 6 / 8 players; network Aliens vs Hard Humans win 33 / 31 / 40%, attacks 0.17 / 0.14 / 0.12 per turn. Same level as the first Hard copy (28 / 30 / 29 and 32 / 39 / 51), inside the +-10 point noise. It is now `rl/data/hardcopy.json`.

@@ -61,7 +61,7 @@ def summary(run_dir):
         gain = _avg(last, 1) - _avg(last, 2) + _avg(last, 3) - _avg(last, 4)
         out += ["", "## Evaluation against the Hard copy (average of the last %d checks, 240 games per side each)" % len(last), "",
                 "| | network | the Hard copy |", "|---|---|---|",
-                "| Humans (team win %%) | %.1f | %.1f |" % (_avg(last, 1), _avg(last, 2)), "| Aliens (team win %%) | %.1f | %.1f |" % (_avg(last, 3), _avg(last, 4))]
+                "| Humans (team win %%) | %.1f | %.1f |" % (_avg(last, 1), _avg(last, 2)), "| Aliens (team win %% minus Humans escaped %%) | %.1f | %.1f |" % (_avg(last, 3), _avg(last, 4))]
         out += ["", "Gain over the Hard copy, both sides added: **%+.1f points**. Verdict: %s" % (gain, "better than the Hard copy" if gain > 5 else "level with the Hard copy" if gain > -5 else "worse than the Hard copy: the training is drifting")]
         try:
             b = json.load(open(os.path.join(run_dir, "best.json")))

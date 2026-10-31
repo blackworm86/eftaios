@@ -43,14 +43,20 @@ def _choose_mode(rng, cfg, has_pool):   # has_pool: kept for the callers; the Ha
     return "pool" if rng.random() < cfg["p_pool"] else "self"
 
 
-def _close_killed(log, seen, segs):
-    """A Human killed by the Aliens has lost, whatever the Aliens do next: its last Human decision gets the loss and the seat goes on as an Alien in a new list.
-    Looks at the log entries from `seen` on; returns the new `seen`."""
+def _close_killed(log, seen, segs, roles):
+    """What the log says about a seat, from entry `seen` on; returns the new `seen`.
+    A Human killed by the Aliens has lost, whatever the Aliens do next: its last Human decision gets the loss and the seat goes on as an Alien in a new list.
+    A Human who escapes costs every Alien seat a little (REWARD escape_penalty): its latest decision, whatever the Aliens do later, so that they work to stop escapes
+    and do not only aim at killing the last Human on board. roles: each seat's role now."""
     for e in log[seen:]:
         j = e["seat"]
         if e["kind"] == "out" and e["text"].startswith("killed|human") and j in segs and segs[j][-1]:
             segs[j][-1][-1]["r"] -= env_mod.REWARD["win"]
             segs[j].append([])
+        elif e["kind"] == "out" and e["text"].startswith("escaped|human"):
+            for i, ss in segs.items():
+                if roles[i] == "alien" and ss[-1]:
+                    ss[-1][-1]["r"] -= env_mod.REWARD["escape_penalty"]
     return len(log)
 
 
@@ -89,7 +95,7 @@ def collect(job):
                 segs[seat][-1].append({"ob": ob, "a": a, "lp": lp, "v": v, "r": r})
             else:
                 env.act(net_act(c[1], ob)[0])
-            seen = _close_killed(env.g.log, seen, segs)
+            seen = _close_killed(env.g.log, seen, segs, [s_.role for s_ in env.g.seats])
         fr = env.final_rewards()
         stats["games"] += 1
         stats["aliens_win"] += int(env.g.result["aliens_win"])
@@ -128,7 +134,7 @@ def collect(job):
 
 def evaluate_net(job):
     """job = (cfg, weights, opponent_weights, n_games, seed). The learner plays one side against the opponent network on the other, and the opponent plays
-    both sides on the same deals as a baseline. Returns {key: [games, wins]} for keys human, alien, base_human, base_alien ('wins' = that side's team won)."""
+    both sides on the same deals as a baseline. Returns {key: [games, wins]} for keys human, alien, base_human, base_alien ('wins' = that side's team won; for the Aliens: won, minus the share of Humans that escaped)."""
     cfg, weights, opp_w, n_games, seed = job
     rng = random.Random(seed)
     net, opp = _net(cfg, weights), _net(cfg, opp_w)
@@ -147,5 +153,6 @@ def evaluate_net(job):
                     env.act(net_act(net if mine else opp, ob)[0])
                 aw = env.g.result["aliens_win"]
                 res[key][0] += 1
-                res[key][1] += int(aw if side == "alien" else not aw)
+                esc = len(env.g.result["escaped"]) / max(1, n // 2)
+                res[key][1] += (int(aw) - esc) if side == "alien" else int(not aw)   # the Aliens' score: a win, minus the share of Humans that escaped
     return res

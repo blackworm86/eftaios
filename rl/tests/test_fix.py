@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from eftaios_rl import hardcopy, maps, rollout, train  # noqa: E402
+from eftaios_rl import env as env_mod, hardcopy, maps, rollout, train  # noqa: E402
 from eftaios_rl.model import BoardCache, Net  # noqa: E402
 
 
@@ -45,11 +45,20 @@ def test_final_rewards_follow_the_rules():
 
 def test_a_killed_human_is_closed_with_a_loss():
     segs = {1: [[{"r": 0.1}, {"r": 0.2}]], 2: [[{"r": 0.3}]]}
+    roles = ["alien", "human", "human", "alien"]
     log = [{"kind": "out", "seat": 1, "text": "killed|human|Medic"}, {"kind": "out", "seat": 2, "text": "killed|alien|Fast Alien"}, {"kind": "noise", "seat": 1, "text": ""}]
-    assert rollout._close_killed(log, 0, segs) == 3
+    assert rollout._close_killed(log, 0, segs, roles) == 3
     assert [x["r"] for x in segs[1][0]] == [0.1, 0.2 - 1.0] and segs[1][1] == [], segs[1]   # the loss lands on the last Human decision; an Alien list follows
     assert segs[2] == [[{"r": 0.3}]]   # an Alien killed by another Alien is not a Human's death
-    assert rollout._close_killed(log, 3, segs) == 3 and len(segs[1]) == 2   # nothing is counted twice
+    assert rollout._close_killed(log, 3, segs, roles) == 3 and len(segs[1]) == 2   # nothing is counted twice
+
+
+def test_an_escape_costs_every_alien_seat():
+    segs = {0: [[{"r": 0.0}]], 1: [[{"r": 0.0}]], 3: [[]]}
+    roles = ["alien", "human", "human", "alien"]
+    rollout._close_killed([{"kind": "out", "seat": 1, "text": "escaped|human|Pilot"}], 0, segs, roles)
+    pen = env_mod.REWARD["escape_penalty"]
+    assert segs[0][0][0]["r"] == -pen and segs[1][0][0]["r"] == 0.0 and segs[3] == [[]], segs   # the Alien loses; the Human and a seat with no decision yet do not
 
 
 def test_games_with_kills_train_without_error():

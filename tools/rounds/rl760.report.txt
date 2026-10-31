@@ -1,0 +1,15 @@
+
+4 players: Human escape % / Alien team win %
+network Humans vs Hard Aliens: 34% / 56%  (atk 0.17, 144 games)
+Hard Humans vs network Aliens: 49% / 49%  (atk 0.30, 144 games)
+Hard Humans vs Hard Aliens (reference, 72 games): 42% / 50%
+
+6 players: Human escape % / Alien team win %
+network Humans vs Hard Aliens: 34% / 52%  (atk 0.13, 144 games)
+Hard Humans vs network Aliens: 58% / 58%  (atk 0.16, 144 games)
+Hard Humans vs Hard Aliens (reference, 72 games): 30% / 56%
+
+8 players: Human escape % / Alien team win %
+network Humans vs Hard Aliens: 32% / 40%  (atk 0.12, 144 games)
+Hard Humans vs network Aliens: 69% / 83%  (atk 0.03, 144 games)
+Hard Humans vs Hard Aliens (reference, 72 games): 30% / 53%

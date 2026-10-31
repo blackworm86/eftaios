@@ -6,6 +6,8 @@
 const fs = require('fs');
 const B = require('./browser');
 const argv = process.argv.slice(2), OUT = argv[0] && !argv[0].startsWith('--') ? argv[0] : 'nn/games.json', SEED = argv.includes('--seed') ? +argv[argv.indexOf('--seed') + 1] : 1;
+const PER = argv.includes('--per') ? +argv[argv.indexOf('--per') + 1] : 2;   // games per setup and table size
+const IT = (() => { try { return require('../nn/net.json').iteration; } catch (_) { return '?'; } })();
 const LEVEL = argv.includes('--level') ? argv[argv.indexOf('--level') + 1] : 'nn';   // another bot level in the place of the network, e.g. hard (for the rules audit)
 const NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], MAPS = ['galilei', 'fermi', 'volta', 'socrates', 'marconi', 'engarde'];
 (async () => {
@@ -19,7 +21,8 @@ const NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], MAPS = ['galilei', 'ferm
   if (LEVEL === 'nn' && !(await p.evaluate(() => NN.load()))) throw new Error('nn/net.json could not be loaded');
   const plan = [];
   for (const n of [3, 4, 5, 6, 7, 8]) for (let k = 0; k < 3; k++) plan.push({ n, label: 'every seat is the network', bots: Array(n).fill(LEVEL) });
-  for (const n of [4, 6, 8]) for (let k = 0; k < 2; k++) { plan.push({ n, label: 'network Humans against Hard Aliens', rm: { human: LEVEL, alien: 'hard' } }); plan.push({ n, label: 'Hard Humans against network Aliens', rm: { human: 'hard', alien: LEVEL } }); }
+  for (const n of [4, 6, 8]) for (let k = 0; k < PER; k++) { plan.push({ n, label: 'network Humans against Hard Aliens', rm: { human: LEVEL, alien: 'hard' } }); plan.push({ n, label: 'Hard Humans against network Aliens', rm: { human: 'hard', alien: LEVEL } }); }
+  if (LEVEL === 'nn') for (const n of [4, 6, 8]) for (let k = 0; k < PER; k++) plan.push({ n, label: 'reference: Hard bots only', bots: Array(n).fill('hard') });
   const out = [];
   for (let i = 0; i < plan.length; i++) {
     const t = plan[i], map = MAPS[(i + SEED) % MAPS.length];
@@ -28,8 +31,8 @@ const NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], MAPS = ['galilei', 'ferm
       let bots = a.bots, setup;
       if (a.rm) { setup = dealRoles(a.n); bots = setup.map(d => a.rm[d.role]); }
       await Hot.start(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].slice(0, a.n), a.map, 'ultimate', 'auto', bots, setup);
-      const d = Hot.dump(); return { v: 1, at: Date.now(), build: '', mode: d.mode, n: d.seats.length, label: a.label, game: Records.build(d) };
-    }, { n: t.n, map, seed: SEED * 1000 + i, bots: t.bots, rm: t.rm, label: t.label });
+      const d = Hot.dump(); return { v: 1, at: Date.now(), build: '', mode: d.mode, n: d.seats.length, label: a.label + ' (network iteration ' + a.it + ')', game: Records.build(d) };
+    }, { n: t.n, map, seed: SEED * 1000 + i, bots: t.bots, rm: t.rm, label: t.label, it: IT });
     rec.id = 'nn' + String(i + 1).padStart(3, '0'); out.push(rec);
     console.log(`${i + 1}/${plan.length} ${t.label}, ${t.n} players on ${map}: ${rec.game.result && rec.game.result.aliensWin ? 'Aliens' : 'Humans'} win, ${rec.game.turns} turns`);
   }

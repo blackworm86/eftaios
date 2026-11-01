@@ -74,7 +74,7 @@ players' real routes, their roles and the result, and a slider to replay it turn
 
 **Learn from the Hard bot (item 9):** I record the app's real Hard bot playing full games (everything it decides, in the network's input format) into
 `rl\data\teacher\`; the files arrive with item 8. Press `9`: the recordings are replayed once in the full rules (about 10 minutes; kept for next time), then a fresh network is taught to choose what the Hard bot chose,
-round after round (20 rounds, about 2 to 3 hours on the GPU with the 128-unit network). Each line shows how often the network picks the Hard bot's action on games it has not seen: moves (split into Humans and Aliens), attacks, decoys, Items and powers, and their targets. The network now has 128 hidden units; the first 64-unit one copied the Aliens' moves only about half of the time (44 to 56%) against 79 to 90% for the Humans, which is why the Aliens are weaker than Hard's.
+round after round (20 rounds, about 1.5 to 2 hours on the GPU). Each line shows how often the network picks the Hard bot's action on games it has not seen: moves (split into Humans and Aliens), attacks, decoys, Items and powers, and their targets. The network copies the Hard Humans' moves about 84% of the time and the Hard Aliens' moves only about half of the time (52%): the width of the network does not change that (see tools/rounds/NOTES.md).
 Your previous training is kept in a folder named `runs\main-before-distil-...`. When it ends, the new network is sent to GitHub by itself, and I measure it.
 When it ends, press `1`: the training continues from the new network, kept close to it (see item 10).
 

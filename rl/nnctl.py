@@ -121,9 +121,9 @@ def cmd_distil():
         say("Your previous training was kept in %s" % aside)
     os.makedirs(RUN, exist_ok=True)
     open(LOCK, "w").write(str(os.getpid()))
-    say("Learning from the Hard bot, with a network of 128 hidden units (twice as wide as before). The first start replays the recordings (about 10 minutes, once); then it makes 20 rounds over them (item 5 stops it earlier).\n")
+    say("Learning from the Hard bot. The first start replays the recordings (about 10 minutes, once); then it makes 20 rounds over them (item 5 stops it earlier).\n")
     try:
-        rc = subprocess.call([sys.executable, "-m", "eftaios_rl.distill", "--run", "main", "--hid", "128"], cwd=ROOT)
+        rc = subprocess.call([sys.executable, "-m", "eftaios_rl.distill", "--run", "main"], cwd=ROOT)
     finally:
         try:
             os.remove(LOCK)

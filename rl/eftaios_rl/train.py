@@ -139,10 +139,14 @@ def main(argv=None):
     torch.manual_seed(int(time.time()) % 100000)
     ids = maps_mod.official_ids()
     boards = BoardCache(device)
+    ck = os.path.join(run_dir, "latest.pt")
+    teacher_w = hardcopy.weights(run_dir)
+    if not os.path.exists(ck):   # a new run takes the size of the Hard copy it starts from
+        cfg["hid"], cfg["layers"] = teacher_w["inp.weight"].shape[0], sum(1 for k in teacher_w if k.startswith("lins.") and k.endswith(".weight"))
+        json.dump(cfg, open(cfg_path, "w"), indent=1)
     net = Net(cfg["hid"], cfg["layers"]).to(device)
     opt = torch.optim.Adam(net.parameters(), lr=cfg["lr"])
     it = 0
-    ck = os.path.join(run_dir, "latest.pt")
     if os.path.exists(ck):
         s = torch.load(ck, map_location=device)
         net.load_state_dict(s["net"])
@@ -150,7 +154,6 @@ def main(argv=None):
         it = s["it"]
         log(run_dir, "resumed from iteration %d" % it)
     fresh = not os.path.exists(ck)
-    teacher_w = hardcopy.weights(run_dir)
     ref = Net(cfg["hid"], cfg["layers"]).to(device)   # the Hard copy, frozen: the network is pulled towards it, and checked against it
     ref.load_state_dict(teacher_w)
     ref.eval()

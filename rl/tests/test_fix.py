@@ -1,6 +1,7 @@
 """The training that stays close to the Hard copy: the pull (KL) is exact, the critic-only start leaves the policy alone, the check against the Hard copy runs,
 and a small run from the Hard copy works from start to finish."""
 import copy
+import json
 import os
 import random
 import sys
@@ -66,6 +67,28 @@ def test_games_with_kills_train_without_error():
     rollout.init_worker()
     data, st = rollout.collect((cfg, w, [], w, 600, 11))
     assert st["games"] > 0 and len(data["adv"]) > 0 and np.isfinite(data["adv"]).all() and np.isfinite(data["ret"]).all()
+
+
+def test_a_wider_network_goes_from_distillation_into_training():
+    import shutil
+    from eftaios_rl import distill
+    d, data = tempfile.mkdtemp(), tempfile.mkdtemp()
+    shutil.copy(os.path.join(os.path.dirname(__file__), "replay-sample.jsonl.gz"), os.path.join(data, "a.jsonl.gz"))
+    assert distill.main(["--run", "w", "--runs-dir", d, "--data", data, "--epochs", "1", "--hid", "32"]) == 0
+    run = os.path.join(d, "w")
+    ck = torch.load(os.path.join(run, "latest.pt"), map_location="cpu")
+    assert ck["cfg"]["hid"] == 32 and ck["net"]["inp.weight"].shape[0] == 32, ck["cfg"]["hid"]
+    cfg = json.load(open(os.path.join(run, "config.json")))   # a small iteration; the run's own config says 32 and the Hard copy is its pool/teacher.pt
+    cfg.update(decisions_per_iter=400, players=[3, 4], epochs=1, minibatch=64, eval_every=99, workers=2, max_iters=1, publish_hours=999)
+    json.dump(cfg, open(os.path.join(run, "config.json"), "w"))
+    rc = train.main(["--run", "w", "--runs-dir", d])
+    assert rc == 0 and torch.load(os.path.join(run, "best.pt"), map_location="cpu")["net"]["inp.weight"].shape[0] == 32
+    # a new run (item 10) that finds a 32-wide Hard copy in its pool takes that size, whatever the default is
+    os.makedirs(os.path.join(d, "n", "pool"))
+    shutil.copy(os.path.join(run, "pool", "teacher.pt"), os.path.join(d, "n", "pool", "teacher.pt"))
+    json.dump(dict(cfg, hid=64), open(os.path.join(d, "n", "config.json"), "w"))   # the config says 64 on purpose
+    train.main(["--run", "n", "--runs-dir", d])
+    assert json.load(open(os.path.join(d, "n", "config.json")))["hid"] == 32
 
 
 def test_pull_is_zero_for_the_same_network_and_positive_for_another():

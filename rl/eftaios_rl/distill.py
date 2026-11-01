@@ -41,7 +41,7 @@ def run_batches(net, T, rows, boards, ids, device, mb, opt=None, shuffle=True):
     if shuffle:
         random.shuffle(batches)
     ce_sum = v_sum = n = 0
-    hits, tot = np.zeros(7), np.zeros(7)
+    hits, tot = np.zeros(9), np.zeros(9)   # 0-6 per decision type; 7 and 8: moves of Humans and of Aliens
     for m, idx in batches:
         stat, adj = boards.get(ids[m])
         dyn, glob, priv, phase, me, mask, act, ret = tensors(T.batch(idx), device)
@@ -59,6 +59,10 @@ def run_batches(net, T, rows, boards, ids, device, mb, opt=None, shuffle=True):
             sel = T.phase[idx] == k
             hits[k] += ok[sel].sum()
             tot[k] += sel.sum()
+        for k, role in ((7, 0), (8, 1)):
+            sel = (T.phase[idx] == 0) & (T.role[idx] == role)
+            hits[k] += ok[sel].sum()
+            tot[k] += sel.sum()
         ce_sum += float(ce.detach()) * len(idx)
         v_sum += float(vl.detach()) * len(idx)
         n += len(idx)
@@ -73,6 +77,7 @@ def main(argv=None):
     ap.add_argument("--epochs", type=int, default=20)
     ap.add_argument("--batch", type=int, default=256)
     ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--hid", type=int, default=DEFAULT["hid"], help="hidden units of the network (the training that follows takes the size from the run)")
     args = ap.parse_args(argv)
     run_dir = os.path.abspath(os.path.join(args.runs_dir, args.run))
     if os.path.exists(os.path.join(run_dir, "latest.pt")):  # a distillation always starts from nothing; the old run is kept aside
@@ -80,7 +85,7 @@ def main(argv=None):
     os.makedirs(os.path.join(run_dir, "pool"), exist_ok=True)
     if os.path.exists(os.path.join(run_dir, "STOP")):   # left over from an earlier stop
         os.remove(os.path.join(run_dir, "STOP"))
-    cfg = dict(DEFAULT)
+    cfg = dict(DEFAULT, hid=args.hid)
     json.dump(cfg, open(os.path.join(run_dir, "config.json"), "w"), indent=1)
     files = sorted(glob.glob(os.path.join(args.data, "*.jsonl.gz")))
     if not files:
@@ -123,8 +128,8 @@ def main(argv=None):
         tce, tvl, th, tn = run_batches(net, T, test_rows, boards, ids, device, args.batch, None, False)
         acc = th / np.maximum(tn, 1)
         both = lambda a, b: (th[a] + th[b]) / max(1, tn[a] + tn[b])   # Item / power decisions before and after the move; targets of Spotlight, Sensor, Medic
-        log(run_dir, "epoch %d/%d: cross-entropy %.3f (check games %.3f); same action as the Hard bot on unseen games: moves %.0f%%, attacks %.0f%%, decoys %.0f%%, Items and powers %.0f%%, their targets %.0f%% (%.0fs)" % (
-            ep, args.epochs, ce, tce, 100 * acc[0], 100 * acc[1], 100 * acc[2], 100 * both(3, 4), 100 * both(5, 6), time.time() - t1))
+        log(run_dir, "epoch %d/%d: cross-entropy %.3f (check games %.3f); same action as the Hard bot on unseen games: moves %.0f%% (Humans %.0f%%, Aliens %.0f%%), attacks %.0f%%, decoys %.0f%%, Items and powers %.0f%%, their targets %.0f%% (%.0fs)" % (
+            ep, args.epochs, ce, tce, 100 * acc[0], 100 * acc[7], 100 * acc[8], 100 * acc[1], 100 * acc[2], 100 * both(3, 4), 100 * both(5, 6), time.time() - t1))
         torch.save({"net": net.state_dict(), "opt": opt.state_dict(), "it": 0, "cfg": cfg}, os.path.join(run_dir, "latest.pt.tmp"))
         os.replace(os.path.join(run_dir, "latest.pt.tmp"), os.path.join(run_dir, "latest.pt"))
     torch.save(cpu_weights(net), os.path.join(run_dir, "pool", "teacher.pt"))   # stays among the sparring partners of the training that follows

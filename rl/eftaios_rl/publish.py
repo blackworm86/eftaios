@@ -3,6 +3,7 @@
 The token is read from settings/github-token.txt (a fine-grained token with Contents: read and write on this repository only).
 """
 import base64
+import hashlib
 import json
 import os
 import time
@@ -88,8 +89,8 @@ def _net_bytes(run_dir):
     s = torch.load(best if os.path.exists(best) else os.path.join(run_dir, "latest.pt"), map_location="cpu")
     state = s["net"]
     blob = {"format": 1, "hid": s["cfg"]["hid"], "layers": s["cfg"]["layers"], "iteration": s.get("it", 0),
-            "weights": {k: {"shape": list(v.shape), "data": [round(float(x), 6) for x in v.flatten().tolist()]} for k, v in state.items()}}
-    return json.dumps(blob).encode(), s.get("it", 0)
+            "weights": {k: {"shape": list(v.shape), "data": [round(float(x), 5) for x in v.flatten().tolist()]} for k, v in state.items()}}
+    return json.dumps(blob, separators=(",", ":")).encode(), s.get("it", 0)
 
 
 def publish_now(run_dir, with_network=True):
@@ -102,7 +103,11 @@ def publish_now(run_dir, with_network=True):
     if with_network and os.path.exists(os.path.join(run_dir, "latest.pt")):
         try:
             data, nit = _net_bytes(run_dir)
-            files.append(("nn/net.json", data))
+            sha = hashlib.sha256(data).hexdigest()
+            last = os.path.join(run_dir, "last_net.sha")
+            if not (os.path.exists(last) and open(last).read() == sha):   # the best network is often the same as three hours ago: do not add a copy to the repository history
+                files.append(("nn/net.json", data))
+                open(last, "w").write(sha)
         except Exception as e:  # a half-written checkpoint or a missing PyTorch must not stop the rest
             lines.append("The network could not be exported (%s); sending the report only." % e)
     for path, data in files:

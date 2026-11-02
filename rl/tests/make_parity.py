@@ -28,6 +28,13 @@ for seed, (map_id, n) in enumerate([("galilei", 6), ("fermi", 4), ("volta", 8), 
     e = env_mod.Env(map_id, n, seed=seed)
     k = 0
     while not e.done and k < 600:
+        if k % 3 == 0:   # a picture of the table (as bot.js records it), for a third of the positions: random sparse maps and chances
+            cur = e.g.cur
+            cells = [c for c in range(e.board.n) if e.board.kind[c] != "x"]
+            pic = {name: {c: 8 * rng.randrange(1, 32) for c in rng.sample(cells, 25)} for name in "ha"}
+            e.bel = {cur: dict(pic, p={j: (round(rng.random(), 4) if j != cur else -1) for j in range(n)})}
+        else:
+            e.bel = {}
         seat, ob = e.decision()
         k += 1
         ph = ob["phase"]
@@ -44,6 +51,7 @@ for seed, (map_id, n) in enumerate([("galilei", 6), ("fermi", 4), ("volta", 8), 
                 "role": s.role, "pos": s.pos, "fed": s.fed, "reborn": s.reborn, "ability": s.ability,
                 "items": list(s.items), "power_used": bool(s.ability in s.used or (s.ability == "Captain" and s.captain_used)), "adr": s.adr, "cat": s.cat, "decoys": g.decoys_left,
                 "path": [[t, p] for t, p, _ in s.path], "open_pods": sorted(g.open_pods),
+                "bel": ({"h": [x for c, q in sorted(e.bel[seat]["h"].items()) for x in (c, q)], "a": [x for c, q in sorted(e.bel[seat]["a"].items()) for x in (c, q)], "p": [e.bel[seat]["p"][j] for j in range(n)]} if e.bel.get(seat) else None),
                 "events": [[ev["turn"], ev["seat"], ev["kind"], ev["cell"], ev["text"]] for ev in g.log],
                 "dyn": [[int(c), int(i), int(v)] for c in range(ob["dyn"].shape[0]) for i, v in enumerate(ob["dyn"][c]) if v],
                 "glob": [round(float(x), 6) for x in ob["glob"]],

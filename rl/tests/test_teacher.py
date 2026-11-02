@@ -15,12 +15,14 @@ def test_rows():
     T = teacher.Teacher(PATH, ids)
     assert len(T) > 1000 and set(T.phase.tolist()) == {0, 1, 2, 3, 4, 5, 6}
     assert all(T.mask(k)[T.action[k]] for k in range(len(T)))
+    assert sum(1 for k in range(len(T)) if T.dyn(k)[37].any()) > len(T) // 2, "the Hard bot's picture reaches the rows"
     # the first game again, decision by decision, against the rows
     rec = replay.read(PATH)[0]
     seen, rows = {}, []
 
-    def on(g, phase, action):
+    def on(g, phase, action, bel):
         e = seen.setdefault("e", env_mod.Env.wrap(g))
+        e.bel = bel
         _, ob = e.decision()
         rows.append(ob)
 

@@ -4,7 +4,8 @@ A record is one JSON object per game: map, n, setup [{role, char}], tr (the bots
 result and log (the public announcements the app produced). Replaying checks the Python rules against the app (the announcements must come out the
 same), and gives every decision to a callback, which is how the teacher's training rows are made.
 
-tr entries: s seat, k kind: move c | atk v | tele | adr | spot c | sens j | med j | mut | stay | lurk | hatk | sed | cat | dec c | ds v (sector card) | dh v (pod card).
+tr entries: s seat, k kind: move c | atk v | tele | adr | spot c | sens j | med j | mut | stay | lurk | hatk | sed | cat | dec c | ds v (sector card) | dh v (pod card) |
+bel h a p (the Hard bot's picture of the table for that seat from here on: sparse [cell, 8-255 in steps of 8, ...] maps and each seat's chance of being an Alien).
 """
 import gzip
 import json
@@ -30,20 +31,31 @@ def start(rec):
     return engine.Game(rec["map"], rec["n"], roles=roles, chars=chars, full=True, script=script)
 
 
+def _pairs(l):
+    return {l[i]: l[i + 1] for i in range(0, len(l), 2)}
+
+
 def play(rec, on_decision=None):
-    """Returns the finished Game. on_decision(game, phase, action) is called before each decision is applied; action is what the app's bot did
-    (a cell, 0/1, an act code, or a seat), and the phase is the engine's. Raises AssertionError when the recording does not fit the rules."""
+    """Returns the finished Game. on_decision(game, phase, action, bel) is called before each decision is applied; action is what the app's bot did
+    (a cell, 0/1, an act code, or a seat), the phase is the engine's, and bel is {seat: the Hard bot's picture of the table} as recorded so far.
+    Raises AssertionError when the recording does not fit the rules."""
     g = start(rec)
     b = g.board
     todo = [e for e in rec["tr"] if e["k"] not in ("ds", "dh")]
     k = 0
+    bel = {}
 
     def peek():
+        nonlocal k
+        while k < len(todo) and todo[k]["k"] == "bel":   # a picture is not a decision: it is kept for its seat from here on
+            e = todo[k]
+            bel[e["s"]] = {"h": _pairs(e["h"]), "a": _pairs(e["a"]), "p": {j: v for j, v in enumerate(e["p"])}}
+            k += 1
         return todo[k] if k < len(todo) else None
 
     def say(phase, action):
         if on_decision:
-            on_decision(g, phase, action)
+            on_decision(g, phase, action, bel)
 
     while g.phase != "over":
         e, i, ph = peek(), g.cur, g.phase
@@ -83,6 +95,7 @@ def play(rec, on_decision=None):
         else:
             raise AssertionError("unexpected phase %s" % ph)
         k += 1
+    peek()
     assert k == len(todo), "%d recorded decisions left over: %s" % (len(todo) - k, todo[k])
     return g
 

@@ -55,3 +55,6 @@ paired A/B comparisons and keep the map split fixed.
 
 ## rules_audit.py
 `python3 tools/rules_audit.py nn/games.json` checks game records against the rule book (deal, move ranges, start sectors, attacks, safe zones, pods, announcements, end of game) and lists every broken rule. `node tools/nn-games.js out.json --level hard` makes 30 Hard-bot games to audit the app itself.
+
+## obs-check.js
+`node tools/obs-check.js && python3 rl/tests/check_obs.py`: at every move of 6 live Hard-bot games the network's input (with the Hard bot's picture of the table) built by the app must equal the one built in Python from the recording (480 of 480 equal when I ran it).

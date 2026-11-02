@@ -11,6 +11,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+os.environ["EFTAIOS_BLIND_OK"] = "1"   # these tests train on all-zero pictures of the table
 from eftaios_rl import env as env_mod, hardcopy, maps, rollout, train  # noqa: E402
 from eftaios_rl.model import BoardCache, Net  # noqa: E402
 
@@ -19,6 +20,11 @@ def _batch(cfg, w):
     rollout.init_worker()
     data, _ = rollout.collect((cfg, w, [], w, 400, 3))
     return data
+
+
+def _weights():   # a network of the current input size (the Hard copy file in the repository is replaced after the next item 9)
+    torch.manual_seed(2)
+    return {k: v.clone() for k, v in Net(64, 4).state_dict().items()}
 
 
 def _cfg():
@@ -63,7 +69,7 @@ def test_an_escape_costs_every_alien_seat():
 
 
 def test_games_with_kills_train_without_error():
-    cfg, w = _cfg(), hardcopy.weights("/nonexistent")
+    cfg, w = _cfg(), _weights()
     rollout.init_worker()
     data, st = rollout.collect((cfg, w, [], w, 600, 11))
     assert st["games"] > 0 and len(data["adv"]) > 0 and np.isfinite(data["adv"]).all() and np.isfinite(data["ret"]).all()
@@ -92,7 +98,7 @@ def test_a_wider_network_goes_from_distillation_into_training():
 
 
 def test_pull_is_zero_for_the_same_network_and_positive_for_another():
-    w = hardcopy.weights("/nonexistent")
+    w = _weights()
     net, ref = Net(64, 4), Net(64, 4)
     net.load_state_dict(w)
     ref.load_state_dict(w)
@@ -113,7 +119,7 @@ def test_pull_is_zero_for_the_same_network_and_positive_for_another():
 
 
 def test_critic_only_start_leaves_the_policy_alone():
-    w = hardcopy.weights("/nonexistent")
+    w = _weights()
     net = Net(64, 4)
     net.load_state_dict(w)
     ref = copy.deepcopy(net).eval()
@@ -129,7 +135,7 @@ def test_critic_only_start_leaves_the_policy_alone():
 
 
 def test_the_check_against_the_hard_copy_runs():
-    w = hardcopy.weights("/nonexistent")
+    w = _weights()
     rollout.init_worker()
     r = rollout.evaluate_net((_cfg(), w, w, 1, 5))
     assert set(r) == {"human", "alien", "base_human", "base_alien"} and all(v[0] == 1 for v in r.values())
@@ -137,6 +143,8 @@ def test_the_check_against_the_hard_copy_runs():
 
 def test_a_small_run_from_the_hard_copy():
     d = tempfile.mkdtemp()
+    os.makedirs(os.path.join(d, "t", "pool"))
+    torch.save(_weights(), os.path.join(d, "t", "pool", "teacher.pt"))   # the Hard copy of this run
     rc = train.main(["--run", "t", "--runs-dir", d, "--smoke", "--max-iters", "3"])
     run = os.path.join(d, "t")
     log = open(os.path.join(run, "train.log")).read()

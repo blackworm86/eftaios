@@ -78,6 +78,8 @@ round after round (20 rounds, about 1.5 to 2 hours on the GPU). Each line shows 
 Your previous training is kept in a folder named `runs\main-before-distil-...`. When it ends, the new network is sent to GitHub by itself, and I measure it.
 When it ends, press `1`: the training continues from the new network, kept close to it (see item 10).
 
+**The network that sees the Hard bot's picture of the table (since 2 November):** the Hard bot works out, for every sector, how many Humans and how many Aliens are probably there, and for every other player how likely they are an Alien. The recordings now hold that picture, and the network gets it as an extra input (in the app, from the same calculation). So item 9 teaches the network from the recordings **with** the picture; the log shows how often it picks the Hard bot's move, split into Humans and Aliens. The Python training game cannot compute the picture, so **items 1 and 10 (the reinforcement training) are switched off** for this network. Use item 9 only, and tell me when it is done.
+
 **Restart the training from the Hard copy (item 10):** the training that follows item 9 slowly drifted away from the Hard bot (the Humans got weaker, the Aliens attacked
 more). Item 10 starts a new one that stays close to it: the network is pulled towards the Hard copy, it plays against the Hard copy and its own recent versions
 (no more simple scripted players), it learns more gently, and for the first 15 iterations only its judgement of positions learns. Every 20 iterations it plays 240

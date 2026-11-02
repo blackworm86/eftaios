@@ -478,6 +478,9 @@ const Bot = (() => {
     // teacher recording (tools/sim.js --teach): every decision of this turn, in the order taken; rl/eftaios_rl/replay.py plays it back in the Python rules
     const tr = o => { if (window.__tr) window.__tr.push(Object.assign({ s: idx }, o)); };
     const seatOf = id => H.seats.findIndex(x => x.id === id);
+    // the picture of the table this seat has (who is where, who is an Alien): for the network as input and for the teacher recording
+    const belOf = () => ({ ids: g.ids, h: W.humanCnt, a: W.alienCnt, p: H.seats.map((s, j) => (j !== idx && B[s.id] ? B[s.id].pA : -1)) });
+    const feed = () => { if (window.__tr) { const w = NN.packBel(belOf()); tr({ k: 'bel', h: w.h, a: w.a, p: w.p }); } if (useNN || window.__chk) NN.setBel(idx, belOf()); };
     const useItem = id => { const i = st.items.indexOf(id); if (i < 0) return false; st.items.splice(i, 1); ctx.discard(id); say({ kind: 'item', text: id }); return true; };
     // what this seat may play: Humans every item, an Alien only the one its Character allows
     const may = id => st.items.includes(id) && (human ? id !== 'defense' && id !== 'clone' : !st.reborn && ALIEN_ITEM[ab] === id);
@@ -496,7 +499,8 @@ const Bot = (() => {
     if (human && !hatchCells().length) { if (pause) await pause; if (adv && may('mutation')) mutate(); else { st.over = 'trapped'; st.outSent = true; ctx.out(idx, 'trapped'); return; } }
     let B = beliefs(H, me, lvl), W = world(B, H, idx, lvl, st);
     const myCell = () => g.idx.get(st.pos);
-    const refresh = () => { B = beliefs(H, me, lvl); W = world(B, H, idx, lvl, st); };
+    const refresh = () => { B = beliefs(H, me, lvl); W = world(B, H, idx, lvl, st); feed(); };
+    feed();
     if (pause) await pause;
     const jump = to => { st.pos = to; st.path.push({ turn: H.turn, pos: to, note: 'teleport' }); };
     // Teleport (a card, or the Co-pilot who shows who she is) when the Human sector offers a clearly better move; Blink Aliens too
@@ -574,6 +578,7 @@ const Bot = (() => {
       const here0 = alienAttackValue(ctx, W, st, myCell());
       if (here0 >= W.sk.attackAt && here0 > alienAttackValue(ctx, W, st, choice.cell)) { lurk = true; tr({ k: 'lurk' }); st.path.push({ turn: H.turn, pos: st.pos }); usePower('Lurking Alien'); }
     }
+    if (window.__chk && choice && !choice.stay && !lurk) { const x = NN.fromApp(H, idx, st, 'move', human ? 'human' : 'alien'); if (x) { let h = 0; for (let i = 0; i < x.obs.dyn.length; i++) h = (h * 31 + x.obs.dyn[i]) >>> 0; for (let i = 260; i < 267; i++) h = (h * 31 + Math.round(x.obs.glob[i] * 100)) >>> 0; window.__chk.push(h); } }   // test hook: what the network would see, as a number
     if (choice && choice.stay) tr({ k: 'stay' }); else if (choice && !lurk) tr({ k: 'move', c: choice.id });
     if (choice && choice.stay) { st.path.push({ turn: H.turn, pos: st.pos, star: 1 }); usePower('Executive Officer'); }
     else if (choice && !lurk) { st.pos = choice.id; st.path.push({ turn: H.turn, pos: choice.id }); if (!human && ab === 'Fast Alien' && st.path.length === 2 && g.dA[g.idx.get(st.path[0].pos)][choice.cell] > 2) usePower('Fast Alien'); }

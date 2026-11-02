@@ -17,6 +17,7 @@ import numpy as np
 import torch
 from torch.distributions import Categorical
 
+from . import env as env_mod
 from . import hardcopy, report
 from . import maps as maps_mod
 from . import publish
@@ -110,6 +111,9 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=0)
     ap.add_argument("--max-iters", type=int, default=0)
     args = ap.parse_args(argv)
+    if env_mod.BELIEF_INPUTS and not os.environ.get("EFTAIOS_BLIND_OK"):   # the tests set this: they train on pictures that are all zero
+        print("Reinforcement training is switched off: this network sees the Hard bot's picture of the table, which the Python training game cannot compute. Use menu item 9 only.")
+        return 2
 
     run_dir = os.path.abspath(os.path.join(args.runs_dir, args.run))
     os.makedirs(os.path.join(run_dir, "pool"), exist_ok=True)

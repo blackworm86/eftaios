@@ -4,10 +4,10 @@
    Its inputs are exactly what rl/eftaios_rl/env.py builds (public announcements and the seat's own state); rl/tests/parity.test.js checks both
    the inputs and the outputs against Python. Everything else (Items, Character powers) stays with bot.js. */
 const NN = (() => {
-  const D_DYN = 37, D_STAT = 9, G_DIM = 260, SLOTS = 7, AGES = 8, N_CELLS = 322, PHASE = { move: 0, attack: 1, decoy: 2, pre: 3, post: 4, target_cell: 5, target_seat: 6 };
+  const D_DYN = 39, D_STAT = 9, G_DIM = 267, SLOTS = 7, AGES = 8, N_CELLS = 322, PHASE = { move: 0, attack: 1, decoy: 2, pre: 3, post: 4, target_cell: 5, target_seat: 6 };
   const ITEMS = ['adrenaline', 'sedatives', 'attack', 'cat', 'spotlight', 'teleport', 'defense', 'clone', 'sensor', 'mutation'], ITEM_MAX = [3, 3, 2, 2, 2, 1, 1, 1, 1, 1];
   const charList = () => [...CHARS.human, ...CHARS.alien];   // the 16 Characters, Humans first (rl/eftaios_rl/env.py CHARS)
-  let net = null, loading = null;
+  let net = null, loading = null, belNow = null;   // belNow: the Hard bot's picture of the table for the seat on the move (bot.js sets it)
   const boards = new Map();
 
   /* ---------- the network ---------- */
@@ -137,7 +137,7 @@ const NN = (() => {
   /* ---------- the observation, as env.py decision() ---------- */
   /* ev: public events [{turn, seat, kind, cell|null, text}] (newest last); me: {seat, n, role, pos(cell), fed, reborn, ability, path[[turn, cell]]};
      openPods: array of pod numbers; moves: reachable cells for a move; turn */
-  function observe(bd, ev, me, openPods, turn, phase, legal) {
+  function observe(bd, ev, me, openPods, turn, phase, legal, bel) {
     const N = bd.N, dyn = new Float32Array(D_DYN * N), glob = new Float32Array(G_DIM), mask = new Uint8Array(N);
     const at = (c, i) => c * N + i;
     dyn[at(0, me.pos)] = 1;
@@ -180,6 +180,11 @@ const NN = (() => {
       if (last[j]) { glob[base + 4 + last[j][1]] = 1; glob[base + 8] = Math.min(last[j][0], 8) / 8; } else glob[base + 8] = 1;
       glob[base + 9] = attacked[j] ? 1 : 0; glob[base + 10] = (count[j] || 0) / 10;
     }
+    // the Hard bot's picture of the table (bot.js world()): expected Humans and expected Aliens per sector (channels 37 and 38), and
+    // how likely each other seat is an Alien (glob 260 + slot); all zero when a position comes without it
+    if (bel) {
+      (bel.p || []).forEach((v, j) => { if (j !== me.seat && v >= 0) glob[260 + slotOf(j)] = v; });
+    }
     // my own cards and Character, and what the table has shown about the others (rl/eftaios_rl/env.py)
     ITEMS.forEach((name, k) => { glob[96 + k] = me.items.filter(x => x === name).length / ITEM_MAX[k]; });
     const chars = charList(); if (chars.includes(me.ability)) glob[106 + chars.indexOf(me.ability)] = 1;
@@ -199,6 +204,7 @@ const NN = (() => {
       if (chars.includes(kc[j])) glob[base + 3 + chars.indexOf(kc[j])] = 1;
     }
     const u8 = new Uint8Array(D_DYN * N); for (let i = 0; i < u8.length; i++) u8[i] = Math.floor(dyn[i] * 255);
+    if (bel) ['h', 'a'].forEach((k, c) => { const m = bel[k]; if (m) for (let q = 0; q < m.length; q += 2) u8[(37 + c) * N + m[q]] = m[q + 1]; });   // already 0-255
     return { dyn: u8, glob, phase: PHASE[phase], me: me.pos, mask };
   }
 
@@ -248,7 +254,7 @@ const NN = (() => {
     else if (phase === 'target_seat') legal = others.map(slot);
     const me = { seat: idx, n: H.seats.length, role, pos, fed: !!st.fed, reborn: !!st.reborn, ability: ab, path: st.path.map(p => [p.turn, cellOf(bd, p.pos)]), reach,
       items: st.items.slice(), powerUsed: ONCE.includes(ab) && abUsed(st, ab), adr: !!st.adr, cat: !!extra.cat, decoys: extra.left || 0 };
-    return { bd, obs: observe(bd, ev, me, open, H.turn, phase, legal) };
+    return { bd, obs: observe(bd, ev, me, open, H.turn, phase, legal, belNow && belNow.idx === idx ? belNow.bel : null) };
   }
   function pick(logits, temp) {   // sample from softmax(logits / temp); temp 0 = the best
     let best = 0; for (let i = 1; i < logits.length; i++) if (logits[i] > logits[best]) best = i;
@@ -272,7 +278,15 @@ const NN = (() => {
   const decoy = (H, idx, st, role, temp, extra) => { const a = decide(H, idx, st, 'decoy', role, temp, extra); return a === null ? null : idOf(boardOf(T.map), a); };
   const act = (H, idx, st, phase, role, temp) => decide(H, idx, st, phase, role, temp);   // an ACT code, or null
   const target = (H, idx, st, kind, role, temp) => { const a = decide(H, idx, st, kind, role, temp); return a === null ? null : kind === 'target_cell' ? idOf(boardOf(T.map), a) : (idx + 1 + a) % H.seats.length; };
-  return { load, use, ready, boardOf, observe, forward, move, attack, decoy, act, target, ACT, actsOf, fromApp, hasActs: () => !!(net && net.w['act_head.0.weight']) };
+  /* the Hard bot's picture for the seat on the move, from bot.js: { ids (graph sector ids), h, a (arrays over them), p (per seat: chance of being an Alien, -1 none) } */
+  const setBel = (idx, w) => { belNow = w ? { idx, bel: packBel(w) } : null; };
+  const q8 = v => Math.floor(Math.fround(Math.min(1, Math.max(0, v))) * 255);
+  function packBel(w) {   // sparse [board cell, 0-255, ...] per map, the way the teacher recordings hold it
+    const bd = boardOf(T.map), out = { p: w.p.map(v => (v < 0 ? -1 : Math.round(v * 100) / 100)) };
+    ['h', 'a'].forEach(k => { const l = []; for (let i = 0; i < w.ids.length; i++) { const q = Math.floor(q8(w[k][i]) / 8) * 8; if (q >= 8) l.push(cellOf(bd, w.ids[i]), q); } out[k] = l; });   // steps of 8 and nothing below 8: small files
+    return out;
+  }
+  return { load, use, ready, setBel, packBel, boardOf, observe, forward, move, attack, decoy, act, target, ACT, actsOf, fromApp, hasActs: () => !!(net && net.w['act_head.0.weight']) };
 })();
 if (typeof window !== 'undefined') window.NN = NN;
 if (typeof module !== 'undefined') module.exports = NN;

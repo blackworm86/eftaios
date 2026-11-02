@@ -69,10 +69,11 @@ class Teacher:
         first = len(self.sp)
         seen = {}
 
-        def on(g, phase, action):
+        def on(g, phase, action, bel):
             e = seen.get("env")
             if e is None:
                 e = seen["env"] = env_mod.Env.wrap(g)
+            e.bel = bel
             seat, ob = e.decision()
             dyn = ob["dyn"]
             flat = dyn[KEEP].reshape(-1)

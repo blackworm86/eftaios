@@ -9,9 +9,10 @@ import numpy as np
 from . import engine
 from . import maps as maps_mod
 
-D_DYN = 37   # per-cell dynamic channels, uint8: 0 me, 1 legal targets, 2 open pods, 3-18 announcement heat, 19-25 per-player traces, 26 my path, 27 walk to a pod, 28 walk from me, 29-36 Spotlight / Sensor reveal heat
+D_DYN = 39   # per-cell dynamic channels, uint8: 0 me, 1 legal targets, 2 open pods, 3-18 announcement heat, 19-25 per-player traces, 26 my path, 27 walk to a pod, 28 walk from me, 29-36 Spotlight / Sensor reveal heat, 37-38 the Hard bot's picture (expected Humans, expected Aliens; only in recorded games)
+BELIEF_INPUTS = True   # the network sees the Hard bot's picture of the table, which only the app can compute: no reinforcement training with it (see train.py)
 D_STAT = 9   # per-cell static channels: wall, dangerous, secure, H, A, pod1-4
-G_DIM = 260  # global vector: 0-93 as before, 96-105 my items, 106-121 my Character, 122-125 power used / Adrenaline / Cat / noises still to name, 127+ seven slots of 19 (known side, cards played, known Character)
+G_DIM = 267  # global vector: 0-93 as before, 96-105 my items, 106-121 my Character, 122-125 power used / Adrenaline / Cat / noises still to name, 127+ seven slots of 19 (known side, cards played, known Character), 260+ per slot: the Hard bot's chance that the seat is an Alien (recorded games only)
 P_DIM = 40   # critic-only privileged vector
 SLOTS = 7    # other seats, in turn order after this one
 AGES = 8     # turns of announcement history kept as heat maps
@@ -48,6 +49,7 @@ class Env:
         self.board = g.board
         self._log_seen = 0
         self._pod_dist_cache = {}
+        self.bel = {}   # per seat, the Hard bot's picture of the table from a teacher recording: {'h': {cell: 8-255 in steps of 8}, 'a': ..., 'p': {seat: chance of being an Alien}}
 
     # ---------------------------------------------------------------- state
     @property
@@ -263,8 +265,17 @@ class Env:
             priv[sl * 5:sl * 5 + 5] = [o.role == "alien", o.reborn, min(dist[o.pos], 20) / 20, dist[o.pos] <= 3, o.fed]
         priv[35] = sum(o.role == "alien" and o.over is None for o in g.seats) / self.n
         priv[36] = sum(o.role == "human" and o.over is None for o in g.seats) / self.n
+        d8 = (dyn * 255).astype(np.uint8)
+        bel = self.bel.get(me)
+        if bel:   # the picture's values are already 0-255; placing them directly keeps them equal to the app's
+            for c, k in enumerate("ha"):
+                for cell, q in bel[k].items():
+                    d8[37 + c, cell] = q
+            for j, v in bel["p"].items():
+                if j != me and v >= 0:
+                    glob[260 + self._slot_of(me, j)] = v
         return me, {
-            "map": b.id, "phase": PHASES[g.phase], "dyn": (dyn * 255).astype(np.uint8), "glob": glob, "priv": priv,
+            "map": b.id, "phase": PHASES[g.phase], "dyn": d8, "glob": glob, "priv": priv,
             "mask": mask, "me": s.pos, "role": 0 if s.role == "human" else 1,
         }
 

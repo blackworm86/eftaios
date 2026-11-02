@@ -1,30 +1,21 @@
 # Network training status
 
-Updated 2026-11-02 20:48.
+Updated 2026-11-02 22:24.
 
-- Iteration: **1074**
-- Speed: 90 seconds per iteration (40 per hour)
-- Network: 64 hidden units, 4 layers; 15 game workers
+- Iteration: **0**
+- Network: 64 hidden units, 4 layers; 0 game workers
 
-## Evaluation against the Hard copy (average of the last 5 checks, 240 games per side each)
-
-| | network | the Hard copy |
-|---|---|---|
-| Humans (team win %) | 76.8 | 72.8 |
-| Aliens (team win % minus Humans escaped %) | 15.5 | -37.7 |
-
-Gain over the Hard copy, both sides added: **+57.1 points**. Verdict: better than the Hard copy
-The network sent to the repository is the best one so far: iteration 1050 (gain +58.7).
+Not enough evaluations yet (one is made every 20 iterations).
 
 ## Last log lines
 
 ```
-2026-11-02 20:38:06 it 1069: 26267 decisions in 192 games (40s collect, 52s train), aliens won 49%, loss pol -0.007 val 0.194 ent 0.67, kl to the Hard copy 0.587
-2026-11-02 20:39:34 it 1070: 25659 decisions in 190 games (37s collect, 51s train), aliens won 50%, loss pol -0.009 val 0.223 ent 0.68, kl to the Hard copy 0.649
-2026-11-02 20:42:51 EVAL it 1070 against the Hard copy: as Humans the team wins 75% (the Hard copy: 74%); as Aliens 23% (the Hard copy: -37%); gain over the last 3 checks +58.2 points
-2026-11-02 20:44:16 it 1071: 24931 decisions in 189 games (36s collect, 49s train), aliens won 54%, loss pol -0.008 val 0.222 ent 0.69, kl to the Hard copy 0.624
-2026-11-02 20:45:42 it 1072: 25151 decisions in 202 games (36s collect, 50s train), aliens won 50%, loss pol -0.012 val 0.226 ent 0.67, kl to the Hard copy 0.617
-2026-11-02 20:47:14 it 1073: 25793 decisions in 204 games (41s collect, 51s train), aliens won 49%, loss pol -0.005 val 0.209 ent 0.68, kl to the Hard copy 0.615
-2026-11-02 20:48:48 it 1074: 25505 decisions in 198 games (42s collect, 52s train), aliens won 48%, loss pol -0.012 val 0.205 ent 0.71, kl to the Hard copy 0.625
-2026-11-02 20:48:48 STOP file found: finishing
+2026-11-02 21:59:23 epoch 14/20: cross-entropy 0.565 (check games 0.596); same action as the Hard bot on unseen games: moves 70% (Humans 86%, Aliens 62%), attacks 98%, decoys 27%, Items and powers 95%, their targets 33% (250s)
+2026-11-02 22:03:33 epoch 15/20: cross-entropy 0.559 (check games 0.595); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 62%), attacks 98%, decoys 27%, Items and powers 95%, their targets 31% (250s)
+2026-11-02 22:07:42 epoch 16/20: cross-entropy 0.553 (check games 0.593); same action as the Hard bot on unseen games: moves 71% (Humans 87%, Aliens 63%), attacks 99%, decoys 28%, Items and powers 95%, their targets 31% (250s)
+2026-11-02 22:11:52 epoch 17/20: cross-entropy 0.548 (check games 0.588); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 63%), attacks 99%, decoys 29%, Items and powers 95%, their targets 30% (250s)
+2026-11-02 22:16:02 epoch 18/20: cross-entropy 0.543 (check games 0.592); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 63%), attacks 99%, decoys 28%, Items and powers 95%, their targets 34% (250s)
+2026-11-02 22:20:11 epoch 19/20: cross-entropy 0.540 (check games 0.587); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 63%), attacks 99%, decoys 27%, Items and powers 95%, their targets 34% (250s)
+2026-11-02 22:24:21 epoch 20/20: cross-entropy 0.537 (check games 0.587); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 63%), attacks 99%, decoys 28%, Items and powers 95%, their targets 35% (250s)
+2026-11-02 22:24:21 distillation finished
 ```

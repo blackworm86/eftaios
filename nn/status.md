@@ -1,30 +1,30 @@
 # Network training status
 
-Updated 2026-11-03 12:14.
+Updated 2026-11-03 15:15.
 
-- Iteration: **93**
-- Speed: 106 seconds per iteration (34 per hour)
+- Iteration: **183**
+- Speed: 105 seconds per iteration (34 per hour)
 - Network: 128 hidden units, 4 layers; 15 game workers
 
-## Evaluation against the Hard copy (average of the last 4 checks, 240 games per side each)
+## Evaluation against the Hard copy (average of the last 5 checks, 240 games per side each)
 
 | | network | the Hard copy |
 |---|---|---|
-| Humans (team win %) | 77.0 | 72.9 |
-| Aliens (team win % minus Humans escaped %) | -26.7 | -28.1 |
+| Humans (team win %) | 76.5 | 74.0 |
+| Aliens (team win % minus Humans escaped %) | -23.2 | -33.7 |
 
-Gain over the Hard copy, both sides added: **+5.4 points**. Verdict: better than the Hard copy
-The network sent to the repository is the best one so far: iteration 60 (gain +4.9).
+Gain over the Hard copy, both sides added: **+12.9 points**. Verdict: better than the Hard copy
+The network sent to the repository is the best one so far: iteration 180 (gain +16.2).
 
 ## Last log lines
 
 ```
-2026-11-03 12:02:05 it 86: 25812 decisions in 201 games (55s collect, 48s train), aliens won 26%, loss pol 0.003 val 0.154 ent 0.74, kl to the Hard copy 0.079
-2026-11-03 12:03:52 it 87: 25695 decisions in 212 games (59s collect, 48s train), aliens won 32%, loss pol -0.002 val 0.171 ent 0.72, kl to the Hard copy 0.086
-2026-11-03 12:05:39 it 88: 26080 decisions in 203 games (59s collect, 48s train), aliens won 31%, loss pol 0.001 val 0.144 ent 0.73, kl to the Hard copy 0.076
-2026-11-03 12:07:23 it 89: 25034 decisions in 203 games (57s collect, 47s train), aliens won 26%, loss pol -0.009 val 0.155 ent 0.74, kl to the Hard copy 0.081
-2026-11-03 12:09:05 it 90: 24776 decisions in 195 games (55s collect, 46s train), aliens won 27%, loss pol -0.008 val 0.154 ent 0.73, kl to the Hard copy 0.079
-2026-11-03 12:10:53 it 91: 25668 decisions in 199 games (61s collect, 48s train), aliens won 29%, loss pol -0.006 val 0.153 ent 0.73, kl to the Hard copy 0.078
-2026-11-03 12:12:35 it 92: 25229 decisions in 176 games (55s collect, 47s train), aliens won 31%, loss pol -0.006 val 0.155 ent 0.74, kl to the Hard copy 0.073
-2026-11-03 12:14:19 it 93: 25312 decisions in 209 games (57s collect, 47s train), aliens won 21%, loss pol -0.003 val 0.152 ent 0.70, kl to the Hard copy 0.077
+2026-11-03 15:02:34 it 178: 25547 decisions in 212 games (57s collect, 48s train), aliens won 33%, loss pol -0.003 val 0.167 ent 0.73, kl to the Hard copy 0.106
+2026-11-03 15:04:15 it 179: 25438 decisions in 203 games (54s collect, 47s train), aliens won 30%, loss pol -0.012 val 0.170 ent 0.72, kl to the Hard copy 0.108
+2026-11-03 15:06:05 it 180: 25622 decisions in 226 games (62s collect, 48s train), aliens won 32%, loss pol -0.003 val 0.182 ent 0.72, kl to the Hard copy 0.112
+2026-11-03 15:10:25 EVAL it 180 against the Hard copy: as Humans the team wins 78% (the Hard copy: 72%); as Aliens -16% (the Hard copy: -41%); gain over the last 3 checks +16.2 points
+2026-11-03 15:10:25 new best network: iteration 180 (gain +16.2 points over the Hard copy)
+2026-11-03 15:12:12 it 181: 25939 decisions in 219 games (59s collect, 48s train), aliens won 31%, loss pol -0.002 val 0.171 ent 0.71, kl to the Hard copy 0.109
+2026-11-03 15:13:56 it 182: 25646 decisions in 206 games (56s collect, 48s train), aliens won 28%, loss pol 0.002 val 0.174 ent 0.73, kl to the Hard copy 0.102
+2026-11-03 15:15:39 it 183: 25719 decisions in 193 games (55s collect, 48s train), aliens won 29%, loss pol -0.004 val 0.166 ent 0.74, kl to the Hard copy 0.106
 ```

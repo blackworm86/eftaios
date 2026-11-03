@@ -1,21 +1,21 @@
 # Network training status
 
-Updated 2026-11-02 22:24.
+Updated 2026-11-03 09:14.
 
-- Iteration: **0**
-- Network: 64 hidden units, 4 layers; 0 game workers
+- Iteration: **1**
+- Network: 128 hidden units, 4 layers; 15 game workers
 
 Not enough evaluations yet (one is made every 20 iterations).
 
 ## Last log lines
 
 ```
-2026-11-02 21:59:23 epoch 14/20: cross-entropy 0.565 (check games 0.596); same action as the Hard bot on unseen games: moves 70% (Humans 86%, Aliens 62%), attacks 98%, decoys 27%, Items and powers 95%, their targets 33% (250s)
-2026-11-02 22:03:33 epoch 15/20: cross-entropy 0.559 (check games 0.595); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 62%), attacks 98%, decoys 27%, Items and powers 95%, their targets 31% (250s)
-2026-11-02 22:07:42 epoch 16/20: cross-entropy 0.553 (check games 0.593); same action as the Hard bot on unseen games: moves 71% (Humans 87%, Aliens 63%), attacks 99%, decoys 28%, Items and powers 95%, their targets 31% (250s)
-2026-11-02 22:11:52 epoch 17/20: cross-entropy 0.548 (check games 0.588); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 63%), attacks 99%, decoys 29%, Items and powers 95%, their targets 30% (250s)
-2026-11-02 22:16:02 epoch 18/20: cross-entropy 0.543 (check games 0.592); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 63%), attacks 99%, decoys 28%, Items and powers 95%, their targets 34% (250s)
-2026-11-02 22:20:11 epoch 19/20: cross-entropy 0.540 (check games 0.587); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 63%), attacks 99%, decoys 27%, Items and powers 95%, their targets 34% (250s)
-2026-11-02 22:24:21 epoch 20/20: cross-entropy 0.537 (check games 0.587); same action as the Hard bot on unseen games: moves 71% (Humans 86%, Aliens 63%), attacks 99%, decoys 28%, Items and powers 95%, their targets 35% (250s)
-2026-11-02 22:24:21 distillation finished
+2026-11-01 14:08:26 epoch 17/20: cross-entropy 0.688 (check games 0.779); same action as the Hard bot on unseen games: moves 63% (Humans 84%, Aliens 52%), attacks 93%, decoys 27%, Items and powers 93%, their targets 24% (391s)
+2026-11-01 14:15:18 epoch 18/20: cross-entropy 0.681 (check games 0.785); same action as the Hard bot on unseen games: moves 63% (Humans 84%, Aliens 52%), attacks 93%, decoys 27%, Items and powers 93%, their targets 24% (412s)
+2026-11-01 14:22:10 epoch 19/20: cross-entropy 0.676 (check games 0.784); same action as the Hard bot on unseen games: moves 63% (Humans 84%, Aliens 52%), attacks 93%, decoys 28%, Items and powers 93%, their targets 24% (412s)
+2026-11-01 14:28:49 epoch 20/20: cross-entropy 0.672 (check games 0.785); same action as the Hard bot on unseen games: moves 63% (Humans 84%, Aliens 52%), attacks 93%, decoys 27%, Items and powers 93%, their targets 24% (398s)
+2026-11-01 14:28:49 distillation finished
+2026-11-03 09:12:21 resumed from iteration 0
+2026-11-03 09:12:21 device cuda, 15 workers, 462361 parameters
+2026-11-03 09:14:09 it 1: 24931 decisions in 217 games (62s collect, 45s train), aliens won 29%, loss pol -0.004 val 0.290 ent 0.70, kl to the Hard copy 0.000 (critic only)
 ```

@@ -74,7 +74,7 @@ def collect(job):
     while stats["decisions"] < target:
         n = rng.choice(cfg["players"])
         mid = rng.choice(ids)
-        env = env_mod.Env(mid, n, seed=rng.getrandbits(32))
+        env = env_mod.Env(mid, n, seed=rng.getrandbits(32), track=True)
         mode = _choose_mode(rng, cfg, bool(pool))
         who = []  # per seat: 'cur' | ('pool', net)
         for i in range(n):
@@ -146,7 +146,7 @@ def evaluate_net(job):
         s = rng.getrandbits(32)
         for side in ("human", "alien"):
             for use_net, key in ((True, side), (False, "base_" + side)):
-                env = env_mod.Env(mid, n, seed=s)
+                env = env_mod.Env(mid, n, seed=s, track=True)
                 while not env.done:
                     seat, ob = env.decision()
                     mine = use_net and env.g.seats[seat].role0 == side

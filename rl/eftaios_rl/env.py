@@ -8,9 +8,9 @@ import numpy as np
 
 from . import engine
 from . import maps as maps_mod
+from . import tracker
 
 D_DYN = 39   # per-cell dynamic channels, uint8: 0 me, 1 legal targets, 2 open pods, 3-18 announcement heat, 19-25 per-player traces, 26 my path, 27 walk to a pod, 28 walk from me, 29-36 Spotlight / Sensor reveal heat, 37-38 the Hard bot's picture (expected Humans, expected Aliens; only in recorded games)
-BELIEF_INPUTS = True   # the network sees the Hard bot's picture of the table, which only the app can compute: no reinforcement training with it (see train.py)
 D_STAT = 9   # per-cell static channels: wall, dangerous, secure, H, A, pod1-4
 G_DIM = 267  # global vector: 0-93 as before, 96-105 my items, 106-121 my Character, 122-125 power used / Adrenaline / Cat / noises still to name, 127+ seven slots of 19 (known side, cards played, known Character), 260+ per slot: the Hard bot's chance that the seat is an Alien (recorded games only)
 P_DIM = 40   # critic-only privileged vector
@@ -33,8 +33,11 @@ def static_channels(board):
 class Env:
     """One game. Call decision() to see whose turn it is and what they see, then act(action)."""
 
-    def __init__(self, map_id, n, seed=None, ultimate=True, roles=None, full=True):
+    def __init__(self, map_id, n, seed=None, ultimate=True, roles=None, full=True, track=False):
+        """track: the seat on the move gets the Hard bot's picture of the table, made by tracker.py at the start of its turn and again after it has used a
+        Spotlight, Sensor or Medic (as the app does for the network). A teacher recording brings its own pictures (self.bel) and leaves this off."""
         self._setup(engine.Game(map_id, n, seed=seed, ultimate=ultimate, roles=roles, full=full))
+        self.track = track
 
     @classmethod
     def wrap(cls, game):
@@ -49,6 +52,8 @@ class Env:
         self.board = g.board
         self._log_seen = 0
         self._pod_dist_cache = {}
+        self.track = False
+        self._pic = {}   # per seat: (turn it was made in, the picture); dropped after a reveal the seat caused
         self.bel = {}   # per seat, the Hard bot's picture of the table from a teacher recording: {'h': {cell: 8-255 in steps of 8}, 'a': ..., 'p': {seat: chance of being an Alien}}
 
     # ---------------------------------------------------------------- state
@@ -96,11 +101,15 @@ class Env:
         elif g.phase == "attack":
             g.step_attack(bool(action))
         elif g.phase in ("pre", "post"):
+            if g.phase == "pre" and int(action) != 0:
+                self._pic.pop(me, None)   # a card or power was used: the picture is made again from the new log
             g.step_act(int(action))
         elif g.phase == "target_cell":
             g.step_target_cell(int(action))
+            self._pic.pop(me, None)
         elif g.phase == "target_seat":
-            g.step_target_seat((me + 1 + int(action)) % self.n)   # the action is the slot: seats counted on from this one
+            g.step_target_seat((me + 1 + int(action)) % self.n)
+            self._pic.pop(me, None)   # the action is the slot: seats counted on from this one
         else:
             g.step_decoy(int(action))
         r = 0.0
@@ -267,6 +276,11 @@ class Env:
         priv[36] = sum(o.role == "human" and o.over is None for o in g.seats) / self.n
         d8 = (dyn * 255).astype(np.uint8)
         bel = self.bel.get(me)
+        if bel is None and self.track:
+            held = self._pic.get(me)
+            if held is None or held[0] != g.turn:
+                held = self._pic[me] = (g.turn, tracker.belief(b, g.log, self.n, me, s.role, g.turn, g.open_pods))
+            bel = held[1]
         if bel:   # the picture's values are already 0-255; placing them directly keeps them equal to the app's
             for c, k in enumerate("ha"):
                 for cell, q in bel[k].items():

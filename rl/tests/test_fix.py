@@ -11,7 +11,6 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-os.environ["EFTAIOS_BLIND_OK"] = "1"   # these tests train on all-zero pictures of the table
 from eftaios_rl import env as env_mod, hardcopy, maps, rollout, train  # noqa: E402
 from eftaios_rl.model import BoardCache, Net  # noqa: E402
 

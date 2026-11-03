@@ -17,7 +17,6 @@ import numpy as np
 import torch
 from torch.distributions import Categorical
 
-from . import env as env_mod
 from . import hardcopy, report
 from . import maps as maps_mod
 from . import publish
@@ -29,7 +28,7 @@ DEFAULT = dict(
     workers=0,                # 0 = number of CPU cores - 1
     decisions_per_iter=24000, epochs=2, minibatch=256, lr=3e-5, clip=0.1, vf=0.5, ent=0.002, ent_end=0.002, ent_iters=400,
     p_pool=0.5, teacher_share=0.6, pool_every=10, pool_size=4, eval_every=20, eval_games=240, max_iters=0, publish_hours=3,
-    kl=0.1, kl_end=0.02, kl_iters=500,   # the pull towards the Hard copy, and how fast it relaxes
+    kl=0.1, kl_end=0.05, kl_iters=500,   # the pull towards the Hard copy, and how fast it relaxes
     value_warmup=15,                     # iterations at the start in which only the critic learns
 )
 
@@ -111,10 +110,6 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=0)
     ap.add_argument("--max-iters", type=int, default=0)
     args = ap.parse_args(argv)
-    if env_mod.BELIEF_INPUTS and not os.environ.get("EFTAIOS_BLIND_OK"):   # the tests set this: they train on pictures that are all zero
-        print("Reinforcement training is switched off: this network sees the Hard bot's picture of the table, which the Python training game cannot compute. Use menu item 9 only.")
-        return 2
-
     run_dir = os.path.abspath(os.path.join(args.runs_dir, args.run))
     os.makedirs(os.path.join(run_dir, "pool"), exist_ok=True)
     cfg = dict(DEFAULT)

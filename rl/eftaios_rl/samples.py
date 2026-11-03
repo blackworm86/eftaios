@@ -24,7 +24,7 @@ def make(run_dir, games=12, seed=None):
     out = []
     for k in range(games):
         n = [3, 4, 5, 6, 7, 8][k % 6]
-        env = env_mod.Env(rng.choice(ids), n, seed=rng.getrandbits(32))
+        env = env_mod.Env(rng.choice(ids), n, seed=rng.getrandbits(32), track=True)
         while not env.done:
             _, ob = env.decision()
             env.act(rollout.net_act(net, ob)[0])

@@ -57,10 +57,6 @@ def running():
 
 
 def cmd_train(extra=()):
-    from eftaios_rl import env as env_mod
-    if env_mod.BELIEF_INPUTS:
-        say("Reinforcement training is switched off: this network sees the Hard bot's picture of the table, which the Python training game cannot compute.\nUse menu item 9 (it teaches the network from the recordings), then tell me.")
-        return 1
     from eftaios_rl import publish
     if not ensure_torch():
         return 1

@@ -19,3 +19,6 @@ chrome-*.out
 .agents/
 .codex/
 skills-lock.json
+
+# personal Claude Code settings
+.claude/settings.local.json
